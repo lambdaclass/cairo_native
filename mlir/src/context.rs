@@ -43,9 +43,7 @@ impl Drop for Context {
 impl PartialEq for Context {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        unsafe {
-            mlirContextEqual(self.inner, other.inner)
-        }
+        unsafe { mlirContextEqual(self.inner, other.inner) }
     }
 }
 

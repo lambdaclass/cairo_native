@@ -8,7 +8,7 @@ use crate::context::Context;
 #[derive(Debug)]
 pub struct Location<'ctx> {
     pub(crate) inner: MlirLocation,
-    _phantom: PhantomData<&'ctx ()>
+    _phantom: PhantomData<&'ctx ()>,
 }
 
 impl<'ctx> Location<'ctx> {
@@ -16,7 +16,7 @@ impl<'ctx> Location<'ctx> {
     pub fn new(ctx: &'ctx Context) -> Self {
         Self {
             inner: unsafe { mlirLocationUnknownGet(ctx.inner) },
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
     }
 }

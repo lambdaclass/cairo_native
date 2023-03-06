@@ -21,9 +21,7 @@ impl Default for Registry {
 
 impl Drop for Registry {
     fn drop(&mut self) {
-        unsafe {
-            mlirDialectRegistryDestroy(self.inner)
-        }
+        unsafe { mlirDialectRegistryDestroy(self.inner) }
     }
 }
 

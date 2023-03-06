@@ -10,7 +10,7 @@ pub struct Module {
 impl Module {
     pub fn new(location: Location) -> Self {
         Self {
-            inner: unsafe { mlirModuleCreateEmpty(location.inner)}
+            inner: unsafe { mlirModuleCreateEmpty(location.inner) },
         }
     }
 }
