@@ -13,7 +13,7 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
 This project consists of two crates:
 
 - mlir: Safe rusty bindings around the llvm-mlir-sys crate. Aims to provide safe easy to use MLIR bindings.
-- cairo_sierra_to_mlir: The actual compiler, using the mlir crate.
+- sierra2mlir: The actual compiler, using the mlir crate.
 
 ## Setup
 

@@ -1,10 +1,10 @@
 [package]
-name = "cairo_sierra_to_mlir"
+name = "sierra2mlir"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "4.1.8"
+clap = { version = "4.1.8", features = ["derive"] }
 mlir = { version = "0.1.0", path = "../mlir" }
