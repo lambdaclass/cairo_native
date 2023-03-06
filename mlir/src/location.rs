@@ -8,7 +8,7 @@ use crate::context::Context;
 #[derive(Debug)]
 pub struct Location<'ctx> {
     pub(crate) inner: MlirLocation,
-    _ctx: PhantomData<&'ctx Context>
+    _ctx: PhantomData<&'ctx Context>,
 }
 
 impl<'ctx> Location<'ctx> {

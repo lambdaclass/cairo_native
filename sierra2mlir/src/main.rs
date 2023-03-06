@@ -3,10 +3,20 @@
 #![forbid(unsafe_code)]
 //#![deny(warnings)]
 #![warn(clippy::nursery)]
+#![allow(unused)]
 
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
+use cairo_lang_sierra::{program::Program, ProgramParser};
 use clap::Parser;
+use melior::{
+    dialect,
+    ir::{operation, Attribute, Block, Identifier, Location, Module, Region, Type, Value},
+    utility::register_all_dialects,
+    Context,
+};
+
+use crate::compiler::Compiler;
 
 mod compiler;
 
@@ -30,7 +40,11 @@ struct Args {
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     tracing_subscriber::fmt::init();
-    let _args = Args::parse();
+    let args = Args::parse();
 
+    let code = fs::read_to_string(args.input)?;
+
+    let compiler = Compiler::new(&code)?;
+    compiler.run()?;
     Ok(())
 }
