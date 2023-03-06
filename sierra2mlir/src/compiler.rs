@@ -100,9 +100,9 @@ impl<'ctx> Compiler<'ctx> {
     /// Only the MLIR op, doesn't do modulo.
     pub fn op_felt_add(
         &'ctx self,
-        block: &'ctx Block,
-        lhs: Value,
-        rhs: Value,
+        block: &'ctx Block<'ctx>,
+        lhs: Value<'ctx>,
+        rhs: Value<'ctx>,
     ) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.addi", Location::unknown(&self.context))
@@ -115,9 +115,9 @@ impl<'ctx> Compiler<'ctx> {
     /// Only the MLIR op, doesn't do modulo.
     pub fn op_felt_sub(
         &'ctx self,
-        block: &'ctx Block,
-        lhs: Value,
-        rhs: Value,
+        block: &'ctx Block<'ctx>,
+        lhs: Value<'ctx>,
+        rhs: Value<'ctx>,
     ) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.subi", Location::unknown(&self.context))
@@ -190,32 +190,45 @@ impl<'ctx> Compiler<'ctx> {
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func(
         &'ctx self,
-        block: &'ctx Block,
         name: &str,
         function_type: &str,
-    ) -> OperationRef<'ctx> {
-        let region = Region::new();
-        block.append_operation(
-            operation::Builder::new("func.func", Location::unknown(&self.context))
-                .add_attributes(&[
-                    (
-                        Identifier::new(&self.context, "function_type"),
-                        Attribute::parse(&self.context, function_type).unwrap(),
-                    ),
-                    (
-                        Identifier::new(&self.context, "sym_name"),
-                        Attribute::parse(&self.context, &format!("\"{name}\"")).unwrap(),
-                    ),
-                ])
-                .add_regions(vec![region])
-                .build(),
-        )
+        regions: Vec<Region>,
+    ) -> Operation<'ctx> {
+        operation::Builder::new("func.func", Location::unknown(&self.context))
+            .add_attributes(&[
+                (
+                    Identifier::new(&self.context, "function_type"),
+                    Attribute::parse(&self.context, function_type).unwrap(),
+                ),
+                (
+                    Identifier::new(&self.context, "sym_name"),
+                    Attribute::parse(&self.context, &format!("\"{name}\"")).unwrap(),
+                ),
+            ])
+            .add_regions(regions)
+            .build()
     }
 
     pub fn op_return(&'ctx self, block: &'ctx Block, result: &[Value]) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("func.return", Location::unknown(&self.context))
                 .add_operands(result)
+                .build(),
+        )
+    }
+
+    pub fn op_func_call(
+        &'ctx self,
+        block: &'ctx Block,
+        name: &str,
+        args: &[Value],
+        results: &[Type],
+    ) -> OperationRef<'ctx> {
+        block.append_operation(
+            operation::Builder::new("func.call", Location::unknown(&self.context))
+                .add_attributes(&[self.named_attribute("callee", name)])
+                .add_operands(args)
+                .add_results(results)
                 .build(),
         )
     }
@@ -246,63 +259,107 @@ impl<'ctx> Compiler<'ctx> {
         let location = Location::unknown(&self.context);
 
         let function = {
+            let fib_region = Region::new();
             // arguments: a: felt, n: felt
-            let block = self.new_block(&[felt_type, felt_type]);
-            let arg_a = block.argument(0)?;
-            let arg_n = block.argument(1)?;
+            let fib_block = self.new_block(&[felt_type, felt_type, felt_type]);
+            let arg_a = fib_block.argument(0)?;
+            let arg_b = fib_block.argument(1)?;
+            let arg_n = fib_block.argument(2)?;
 
-            // if n == 0
+            // prepare the if comparision: n == 0
+            let zero = self.op_felt_const(&fib_block, "0");
+            let zero_res = zero.result(0)?.into();
+            let eq = self.op_eq(&fib_block, arg_n.into(), zero_res);
 
-            let zero = self.op_felt_const(&block, "0");
-            dbg!(zero.to_string());
-            let eq = self.op_eq(&block, arg_n.into(), zero.result(0)?.into());
+            // if else regions
+            let if_region = Region::new();
+            let else_region = Region::new();
 
-            let isif = block.append_operation(
+            // if
+            {
+                //  0 => (a, 0),
+                let if_block = self.new_block(&[]);
+
+                let yield_op = if_block.append_operation(
+                    operation::Builder::new("scf.yield", location)
+                        .add_operands(&[arg_a.into(), zero_res])
+                        .build(),
+                );
+
+                if_region.append_block(if_block);
+            }
+
+            // else
+            {
+                /*
+                    let (v, count) = fib(b, a + b, n - 1);
+                    return (v, count + 1)
+                */
+
+                let else_block = self.new_block(&[]);
+
+                let a_plus_b = self.op_felt_add(&else_block, arg_a.into(), arg_b.into());
+                let a_plus_b_res = a_plus_b.result(0).unwrap();
+
+                let one = self.op_felt_const(&fib_block, "1");
+                let one_res = one.result(0)?.into();
+
+                let n_minus_1 = self.op_felt_sub(&else_block, arg_a.into(), one_res);
+                let n_minus_1_res = n_minus_1.result(0).unwrap();
+
+                let func_call = self.op_func_call(
+                    &else_block,
+                    "@fib",
+                    &[arg_b.into(), a_plus_b_res.into(), n_minus_1_res.into()],
+                    &[felt_type, felt_type],
+                );
+
+                let value = func_call.result(0)?;
+                let count = func_call.result(1)?;
+
+                let count_plus_1 = self.op_felt_add(&else_block, count.into(), one_res);
+                let count_plus_1_res = count_plus_1.result(0).unwrap();
+
+                let yield_op = else_block.append_operation(
+                    operation::Builder::new("scf.yield", location)
+                        .add_operands(&[value.into(), count_plus_1_res.into()])
+                        .build(),
+                );
+
+                else_region.append_block(else_block);
+            }
+
+            let isif = fib_block.append_operation(
                 operation::Builder::new("scf.if", location)
                     .add_operands(&[eq.result(0)?.into()])
                     .add_results(&[felt_type, felt_type])
+                    .add_regions(vec![if_region, else_region])
                     .build(),
             );
 
-            dbg!(isif.to_string());
-            dbg!(block.to_string());
+            let value = isif.result(0)?;
+            let count = isif.result(1)?;
 
-            /*
-            block.append_operation(
-                operation::Builder::new("func.return", Location::unknown(&context))
-                    .add_operands(&[sum.result(0)?.into()])
-                    .build(),
+            self.op_return(&fib_block, &[value.into(), count.into()]);
+
+            fib_region.append_block(fib_block);
+
+            let func = self.op_func(
+                "fib",
+                "(i256, i256, i256) -> (i256, i256)",
+                vec![fib_region],
             );
 
-            region.append_block(block);
-
-            operation::Builder::new("func.func", Location::unknown(&context))
-                .add_attributes(&[
-                    (
-                        Identifier::new(&context, "function_type"),
-                        Attribute::parse(&context, "(i64, i64) -> i64").unwrap(),
-                    ),
-                    (
-                        Identifier::new(&context, "sym_name"),
-                        Attribute::parse(&context, "\"add\"").unwrap(),
-                    ),
-                ])
-                .add_regions(vec![region])
-                .build()
-
-            */
-            todo!()
+            func
         };
 
-        /*
-        module.body().append_operation(function);
+        self.module.body().append_operation(function);
 
-        let op = module.as_operation();
+        let op = self.module.as_operation();
         dbg!(op.verify());
 
         let x = op.to_string();
-        dbg!(x);
-         */
+        println!("≤n{}", x);
 
         Ok(())
     }
