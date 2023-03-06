@@ -1,4 +1,4 @@
-use std::{path::Path, fs::File};
+use std::{fs::File, path::Path};
 
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use melior::{
