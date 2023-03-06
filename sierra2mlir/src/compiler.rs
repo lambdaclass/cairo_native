@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, fs::File};
 
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use melior::{
@@ -240,7 +240,7 @@ impl<'ctx> Compiler<'ctx> {
         Block::new(&args)
     }
 
-    pub fn run(&'ctx self) -> color_eyre::Result<()> {
+    pub fn run(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         // hardcoded fib
 
         /*
@@ -356,11 +356,11 @@ impl<'ctx> Compiler<'ctx> {
         self.module.body().append_operation(function);
 
         let op = self.module.as_operation();
-        dbg!(op.verify());
 
-        let x = op.to_string();
-        println!("≤n{}", x);
-
-        Ok(())
+        if op.verify() {
+            Ok(op)
+        } else {
+            Err(color_eyre::eyre::eyre!("error verifiying"))
+        }
     }
 }

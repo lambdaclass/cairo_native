@@ -45,6 +45,8 @@ fn main() -> color_eyre::Result<()> {
     let code = fs::read_to_string(args.input)?;
 
     let compiler = Compiler::new(&code)?;
-    compiler.run()?;
+    let op = compiler.run()?;
+    let output = op.to_string();
+    fs::write(args.output, output);
     Ok(())
 }
