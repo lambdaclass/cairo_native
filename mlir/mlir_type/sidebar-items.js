@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["DataType",""]],"struct":[["Type","A MLIR type."]]};
