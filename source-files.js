@@ -1,5 +1,5 @@
 var sourcesIndex = JSON.parse('{\
-"mlir":["",[],["block.rs","context.rs","dialects.rs","lib.rs","location.rs","mlir_type.rs","module.rs"]],\
-"sierra2mlir":["",[],["main.rs"]]\
+"mlir":["",[],["attribute.rs","block.rs","context.rs","dialects.rs","identifier.rs","lib.rs","llvm_string.rs","location.rs","mlir_type.rs","module.rs","operation.rs","registry.rs"]],\
+"sierra2mlir":["",[],["compiler.rs","main.rs"]]\
 }');
 createSourceSidebar();

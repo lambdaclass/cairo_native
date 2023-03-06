@@ -28,15 +28,23 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A compiler to convert Cairo&#39;s intermediate representation &quot;Sierra&quot; code to MLIR.
 
 </span><span class="attr">#![forbid(unsafe_code)]
-#![deny(warnings)]
-#![deny(clippy::nursery)]
+</span><span class="comment">//#![deny(warnings)]
+</span><span class="attr">#![warn(clippy::nursery)]
 
 </span><span class="kw">use </span>std::path::PathBuf;
 
 <span class="kw">use </span>clap::Parser;
+
+<span class="kw">mod </span>compiler;
 
 <span class="attr">#[derive(Parser, Debug)]
 #[command(
@@ -55,8 +63,12 @@
     </span>output: PathBuf,
 }
 
-<span class="kw">fn </span>main() {
+<span class="kw">fn </span>main() -&gt; color_eyre::Result&lt;()&gt; {
+    color_eyre::install()<span class="question-mark">?</span>;
+    tracing_subscriber::fmt::init();
     <span class="kw">let </span>_args = Args::parse();
+
+    <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sierra2mlir" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

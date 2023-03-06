@@ -50,7 +50,7 @@
 <a href="#50" id="50">50</a>
 </pre><pre class="rust"><code><span class="kw">use </span>llvm_mlir_sys::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::dialects::Registry;
+<span class="kw">use </span><span class="kw">crate</span>::registry::Registry;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Context {
@@ -68,7 +68,7 @@
 
     <span class="doccomment">/// Append the contents of the given dialect registry to the registry associated with the context.
     </span><span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>append_registry(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>Registry) {
+    </span><span class="kw">pub fn </span>append_registry(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: Registry) {
         <span class="kw">unsafe </span>{
             mlirContextAppendDialectRegistry(<span class="self">self</span>.inner, registry.inner);
         }

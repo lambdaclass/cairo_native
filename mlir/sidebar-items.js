@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["block",""],["context",""],["dialects",""],["location",""],["mlir_type",""],["module",""]]};
+window.SIDEBAR_ITEMS = {"mod":[["attribute",""],["block",""],["context",""],["dialects",""],["identifier",""],["llvm_string",""],["location",""],["mlir_type",""],["module",""],["operation",""],["registry",""]]};
