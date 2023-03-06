@@ -1,6 +1,6 @@
 use llvm_mlir_sys::*;
 
-use crate::dialects::Registry;
+use crate::registry::Registry;
 
 #[derive(Debug)]
 pub struct Context {
@@ -18,7 +18,7 @@ impl Context {
 
     /// Append the contents of the given dialect registry to the registry associated with the context.
     #[inline]
-    pub fn append_registry(&self, registry: &Registry) {
+    pub fn append_registry(&self, registry: Registry) {
         unsafe {
             mlirContextAppendDialectRegistry(self.inner, registry.inner);
         }

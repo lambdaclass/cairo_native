@@ -1,12 +1,14 @@
 //! A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
 
 #![forbid(unsafe_code)]
-#![deny(warnings)]
-#![deny(clippy::nursery)]
+//#![deny(warnings)]
+#![warn(clippy::nursery)]
 
 use std::path::PathBuf;
 
 use clap::Parser;
+
+mod compiler;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -25,6 +27,10 @@ struct Args {
     output: PathBuf,
 }
 
-fn main() {
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+    tracing_subscriber::fmt::init();
     let _args = Args::parse();
+
+    Ok(())
 }
