@@ -14,4 +14,12 @@ module {
     }
     return %1#0, %1#1 : i256, i256
   }
+  func.func @main() -> i32 {
+    %c1_i256 = arith.constant 1 : i256
+    %c1_i256_0 = arith.constant 1 : i256
+    %c20_i256 = arith.constant 20 : i256
+    %0:2 = call @fib(%c1_i256, %c1_i256_0, %c20_i256) : (i256, i256, i256) -> (i256, i256)
+    %c0_i32 = arith.constant 0 : i32
+    return %c0_i32 : i32
+  }
 }

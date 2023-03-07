@@ -93,6 +93,10 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 256)
     }
 
+    pub fn i32_type(&'ctx self) -> Type<'ctx> {
+        Type::integer(&self.context, 32)
+    }
+
     pub fn bool_type(&'ctx self) -> Type<'ctx> {
         Type::integer(&self.context, 1)
     }
@@ -174,13 +178,22 @@ impl<'ctx> Compiler<'ctx> {
 
     /// New felt constant
     pub fn op_felt_const(&'ctx self, block: &'ctx Block, val: &str) -> OperationRef<'ctx> {
+        self.op_const(block, val, self.felt_type())
+    }
+
+    /// New constant
+    pub fn op_const(
+        &'ctx self,
+        block: &'ctx Block,
+        val: &str,
+        ty: Type<'ctx>,
+    ) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                .add_results(&[self.felt_type()])
+                .add_results(&[ty])
                 .add_attributes(&[(
                     Identifier::new(&self.context, "value"),
-                    Attribute::parse(&self.context, &format!("{val} : {}", self.felt_type()))
-                        .unwrap(),
+                    Attribute::parse(&self.context, &format!("{val} : {}", ty)).unwrap(),
                 )])
                 .build(),
         )
@@ -354,6 +367,37 @@ impl<'ctx> Compiler<'ctx> {
         };
 
         self.module.body().append_operation(function);
+
+        let main_function = {
+            let region = Region::new();
+            let block = Block::new(&[]);
+
+            let first_arg = self.op_felt_const(&block, "1");
+            let first_arg_res = first_arg.result(0)?.into();
+            let second_arg = self.op_felt_const(&block, "1");
+            let second_arg_res = second_arg.result(0)?.into();
+            let n_arg = self.op_felt_const(&block, "20");
+            let n_arg_res = n_arg.result(0)?.into();
+
+            let func_call = self.op_func_call(
+                &block,
+                "@fib",
+                &[first_arg_res, second_arg_res, n_arg_res],
+                &[felt_type, felt_type],
+            );
+
+            let main_ret = self.op_const(&block, "0", self.i32_type());
+
+            self.op_return(&block, &[main_ret.result(0)?.into()]);
+
+            region.append_block(block);
+
+            let func = self.op_func("main", "() -> i32", vec![region]);
+
+            func
+        };
+
+        self.module.body().append_operation(main_function);
 
         let op = self.module.as_operation();
 
