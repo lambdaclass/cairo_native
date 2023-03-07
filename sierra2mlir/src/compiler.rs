@@ -2,7 +2,7 @@ use std::{fs::File, path::Path};
 
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use melior::{
-    dialect,
+    dialect::{self, Handle},
     ir::{
         block,
         operation::{self, ResultValue},
@@ -26,15 +26,20 @@ impl<'ctx> Compiler<'ctx> {
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
         let registry = dialect::Registry::new();
+
         register_all_dialects(&registry);
 
         let context = Context::new();
         context.append_dialect_registry(&registry);
+        Handle::scf().register_dialect(&context);
+        Handle::cf().register_dialect(&context);
+        Handle::func().register_dialect(&context);
         context.get_or_load_dialect("func"); // needed?
         context.get_or_load_dialect("arith");
         context.get_or_load_dialect("math");
         context.get_or_load_dialect("cf");
-        context.get_or_load_dialect("scf");
+        let scf = context.get_or_load_dialect("scf");
+        dbg!(scf);
 
         let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
