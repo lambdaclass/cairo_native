@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::File, path::Path};
 
 use cairo_lang_sierra::{program::Program, ProgramParser};
-use melior::{
+use melior_next::{
     dialect::{self, Handle},
     ir::{
         block,
@@ -38,12 +38,15 @@ impl<'ctx> Compiler<'ctx> {
 
         let context = Context::new();
         context.append_dialect_registry(&registry);
+        register_all_llvm_translations(&context);
+        unsafe {
+            mlir_sys::mlirRegisterConversionSCFToControlFlow();
+        }
         context.get_or_load_dialect("func");
         context.get_or_load_dialect("arith");
         context.get_or_load_dialect("math");
         context.get_or_load_dialect("cf");
         context.get_or_load_dialect("scf");
-        register_all_llvm_translations(&context);
 
         let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
@@ -366,7 +369,7 @@ impl<'ctx> Compiler<'ctx> {
             let first_arg_res = first_arg.result(0)?.into();
             let second_arg = self.op_felt_const(&block, "1");
             let second_arg_res = second_arg.result(0)?.into();
-            let n_arg = self.op_felt_const(&block, "20");
+            let n_arg = self.op_felt_const(&block, "5000");
             let n_arg_res = n_arg.result(0)?.into();
 
             let func_call = self.op_func_call(

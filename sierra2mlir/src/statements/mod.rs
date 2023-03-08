@@ -3,7 +3,7 @@ use cairo_lang_sierra::{
     program::{GenStatement, GenericArg},
 };
 use color_eyre::Result;
-use melior::ir::{Block, Location, Operation, OperationRef, Region, Type};
+use melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
 use tracing::debug;
 
 use crate::compiler::{Compiler, Storage};
