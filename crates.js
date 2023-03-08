@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["mlir","sierra2mlir"];
+window.ALL_CRATES = ["sierra2mlir"];
