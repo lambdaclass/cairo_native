@@ -201,6 +201,10 @@ impl<'ctx> Compiler<'ctx> {
                     Identifier::new(&self.context, "sym_name"),
                     Attribute::parse(&self.context, &format!("\"{name}\"")).unwrap(),
                 ),
+                (
+                    Identifier::new(&self.context, "llvm.emit_c_interface"),
+                    Attribute::parse(&self.context, r#"unit"#).unwrap(),
+                ),
             ])
             .add_regions(regions)
             .build()

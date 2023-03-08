@@ -63,24 +63,21 @@ fn main() -> color_eyre::Result<()> {
 
     let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
 
-    let mut result1: i32 = -1;
-    let mut result2: i32 = -1;
+    let mut result: i32 = -1;
 
     let now = Instant::now();
     unsafe {
         engine.invoke_packed(
             "main",
             &mut [
-                &mut result1 as *mut i32 as *mut (),
-                &mut result2 as *mut i32 as *mut (),
+                &mut result as *mut i32 as *mut (),
             ],
-        );
+        ).unwrap();
     };
     let done = now.elapsed();
     println!("{done:?}");
 
-    dbg!(result1);
-    dbg!(result2);
+    dbg!(result);
 
     let op = compiler.module.as_operation();
     if op.verify() {
