@@ -310,7 +310,7 @@ impl<'ctx> Compiler<'ctx> {
                 let one = self.op_felt_const(&fib_block, "1");
                 let one_res = one.result(0)?.into();
 
-                let n_minus_1 = self.op_felt_sub(&else_block, arg_a.into(), one_res);
+                let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
 
                 let func_call = self.op_func_call(
