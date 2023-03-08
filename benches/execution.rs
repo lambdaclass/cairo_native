@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             .unwrap();
     };
 
-    c.bench_with_input(BenchmarkId::new("Llvm", 1), &(engine), |b, engine| {
+    c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
         b.iter(|| {
             let mut result: i32 = -1;
             unsafe {
