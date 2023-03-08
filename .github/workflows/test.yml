@@ -21,7 +21,7 @@ jobs:
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install libllvm-15-ocaml-dev libllvm15 llvm-25 llvm-15-dev llvm-15-doc llvm-15-examples llvm-15-runtime clang-15 clang-tools-15 clang-15-doc libclang-common-15-dev libclang-15-dev libclang1-15 lld-15 libpolly-15-dev libclang-rt-15-dev libc++-15-dev libc++abi-15-dev libmlir-15-dev mlir-15-tools
+        run: sudo apt-get install libllvm-15-ocaml-dev libllvm15 llvm-15 llvm-15-dev llvm-15-doc llvm-15-examples llvm-15-runtime clang-15 clang-tools-15 clang-15-doc libclang-common-15-dev libclang-15-dev libclang1-15 lld-15 libpolly-15-dev libclang-rt-15-dev libc++-15-dev libc++abi-15-dev libmlir-15-dev mlir-15-tools
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
