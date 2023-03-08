@@ -13,7 +13,7 @@ jobs:
     name: GitHub Pages
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_150_PREFIX: /usr/lib/llvm-15
+      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -21,11 +21,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-15 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install libllvm-15-ocaml-dev libllvm15 llvm-15 llvm-15-dev llvm-15-doc llvm-15-examples llvm-15-runtime clang-15 clang-tools-15 clang-15-doc libclang-common-15-dev libclang-15-dev libclang1-15 lld-15 libpolly-15-dev libclang-rt-15-dev libc++-15-dev libc++abi-15-dev libmlir-15-dev mlir-15-tools
+        run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1

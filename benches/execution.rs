@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, black_box};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 use sierra2mlir::compiler::Compiler;
 
@@ -16,7 +16,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module).unwrap();
 
-    let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
+    let engine = ExecutionEngine::new(&compiler.module, 2, &[], false);
 
     let mut result: i32 = -1;
     unsafe {

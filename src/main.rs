@@ -18,7 +18,6 @@ use melior_next::{
 
 use sierra2mlir::compiler::Compiler;
 
-
 #[derive(Parser, Debug)]
 #[command(
     author,
@@ -56,31 +55,25 @@ fn main() -> color_eyre::Result<()> {
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;
 
-    let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
+    let engine = ExecutionEngine::new(&compiler.module, 2, &[], false);
 
     let mut result: i32 = -1;
 
     println!("unjitted");
     let now = Instant::now();
     unsafe {
-        engine.invoke_packed(
-            "main",
-            &mut [
-                &mut result as *mut i32 as *mut (),
-            ],
-        ).unwrap();
+        engine
+            .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
+            .unwrap();
     };
     let done = now.elapsed();
     println!("{done:?}");
     println!("jitted");
     let now = Instant::now();
     unsafe {
-        engine.invoke_packed(
-            "main",
-            &mut [
-                &mut result as *mut i32 as *mut (),
-            ],
-        ).unwrap();
+        engine
+            .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
+            .unwrap();
     };
     let done = now.elapsed();
     println!("{done:?}");

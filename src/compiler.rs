@@ -39,9 +39,6 @@ impl<'ctx> Compiler<'ctx> {
         let context = Context::new();
         context.append_dialect_registry(&registry);
         register_all_llvm_translations(&context);
-        unsafe {
-            mlir_sys::mlirRegisterConversionSCFToControlFlow();
-        }
         context.get_or_load_dialect("func");
         context.get_or_load_dialect("arith");
         context.get_or_load_dialect("math");
@@ -276,6 +273,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let felt_type = self.felt_type();
         let location = Location::unknown(&self.context);
+        let prime = "3618502788666131213697322783095070105623107215331596699973092056135872020481";
 
         let fib_function = {
             let fib_region = Region::new();
@@ -317,8 +315,15 @@ impl<'ctx> Compiler<'ctx> {
 
                 let else_block = self.new_block(&[]);
 
+                let prime = self.op_felt_const(&else_block, prime);
+                let prime_res = prime.result(0)?;
+
                 let a_plus_b = self.op_felt_add(&else_block, arg_a.into(), arg_b.into());
                 let a_plus_b_res = a_plus_b.result(0).unwrap();
+
+                let a_plus_b_mod =
+                    self.op_felt_rem(&else_block, a_plus_b_res.into(), prime_res.into());
+                let a_plus_b_mod_res = a_plus_b_mod.result(0)?;
 
                 let one = self.op_felt_const(&fib_block, "1");
                 let one_res = one.result(0)?.into();
@@ -326,10 +331,18 @@ impl<'ctx> Compiler<'ctx> {
                 let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
 
+                let n_minus_1_mod =
+                    self.op_felt_rem(&else_block, n_minus_1_res.into(), prime_res.into());
+                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
+
                 let func_call = self.op_func_call(
                     &else_block,
                     "@fib",
-                    &[arg_b.into(), a_plus_b_res.into(), n_minus_1_res.into()],
+                    &[
+                        arg_b.into(),
+                        a_plus_b_mod_res.into(),
+                        n_minus_1_mod_res.into(),
+                    ],
                     &[felt_type, felt_type],
                 );
 
@@ -339,9 +352,13 @@ impl<'ctx> Compiler<'ctx> {
                 let count_plus_1 = self.op_felt_add(&else_block, count.into(), one_res);
                 let count_plus_1_res = count_plus_1.result(0).unwrap();
 
+                let count_plus_1_mod =
+                    self.op_felt_rem(&else_block, count_plus_1_res.into(), prime_res.into());
+                let count_plus_1_mod_res = count_plus_1_mod.result(0)?;
+
                 let yield_op = else_block.append_operation(
                     operation::Builder::new("scf.yield", location)
-                        .add_operands(&[value.into(), count_plus_1_res.into()])
+                        .add_operands(&[value.into(), count_plus_1_mod_res.into()])
                         .build(),
                 );
 
@@ -405,10 +422,8 @@ impl<'ctx> Compiler<'ctx> {
                 //  0 => (),
                 let if_block = self.new_block(&[]);
 
-                let yield_op = if_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .build(),
-                );
+                let yield_op = if_block
+                    .append_operation(operation::Builder::new("scf.yield", location).build());
 
                 if_region.append_block(if_block);
             }
@@ -437,17 +452,18 @@ impl<'ctx> Compiler<'ctx> {
                 let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
 
-                let func_call = self.op_func_call(
-                    &else_block,
-                    "@fib_mid",
-                    &[n_minus_1_res.into()],
-                    &[],
-                );
+                let prime = self.op_felt_const(&else_block, prime);
+                let prime_res = prime.result(0)?;
 
-                let yield_op = else_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .build(),
-                );
+                let n_minus_1_mod =
+                    self.op_felt_rem(&else_block, n_minus_1_res.into(), prime_res.into());
+                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
+
+                let func_call =
+                    self.op_func_call(&else_block, "@fib_mid", &[n_minus_1_mod_res.into()], &[]);
+
+                let yield_op = else_block
+                    .append_operation(operation::Builder::new("scf.yield", location).build());
 
                 else_region.append_block(else_block);
             }
@@ -464,11 +480,7 @@ impl<'ctx> Compiler<'ctx> {
 
             fib_mid_region.append_block(fib_block);
 
-            let func = self.op_func(
-                "fib_mid",
-                "(i256) -> ()",
-                vec![fib_mid_region],
-            );
+            let func = self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region]);
 
             func
         };
@@ -482,12 +494,7 @@ impl<'ctx> Compiler<'ctx> {
             let n_arg = self.op_felt_const(&block, "100");
             let n_arg_res = n_arg.result(0)?.into();
 
-            let func_call = self.op_func_call(
-                &block,
-                "@fib_mid",
-                &[n_arg_res],
-                &[],
-            );
+            let func_call = self.op_func_call(&block, "@fib_mid", &[n_arg_res], &[]);
 
             let main_ret = self.op_const(&block, "0", self.i32_type());
 
