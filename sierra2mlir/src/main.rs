@@ -12,13 +12,17 @@ use clap::Parser;
 use melior::{
     dialect,
     ir::{operation, Attribute, Block, Identifier, Location, Module, Region, Type, Value},
+    pass,
     utility::register_all_dialects,
-    Context,
+    Context, ExecutionEngine,
 };
 
 use crate::compiler::Compiler;
 
 mod compiler;
+mod libfuncs;
+mod statements;
+mod types;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -44,9 +48,27 @@ fn main() -> color_eyre::Result<()> {
 
     let code = fs::read_to_string(args.input)?;
 
-    let compiler = Compiler::new(&code)?;
-    let op = compiler.run()?;
-    let output = op.to_string();
-    fs::write(args.output, output);
-    Ok(())
+    let mut compiler = Compiler::new(&code)?;
+    //let op = compiler.compile()?;
+    compiler.run_fib()?;
+
+    let pass_manager = pass::Manager::new(&compiler.context);
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
+
+    pass_manager
+        .nested_under("func.func")
+        .add_pass(pass::conversion::convert_arithmetic_to_llvm());
+
+    assert_eq!(pass_manager.run(&mut compiler.module), Ok(()));
+
+    //let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
+
+    let op = compiler.module.as_operation();
+    if op.verify() {
+        let output = op.to_string();
+        fs::write(args.output, output);
+        Ok(())
+    } else {
+        Err(color_eyre::eyre::eyre!("error verifiying"))
+    }
 }

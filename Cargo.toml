@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "mlir",
+    #"mlir",
     "sierra2mlir"
 ]

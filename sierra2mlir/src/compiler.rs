@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::{collections::HashMap, fs::File, path::Path};
 
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use melior::{
@@ -9,8 +9,9 @@ use melior::{
         Attribute, Block, Identifier, Location, Module, Operation, OperationRef, Region, Type,
         Value,
     },
-    utility::register_all_dialects,
-    Context,
+    pass,
+    utility::{register_all_dialects, register_all_llvm_translations},
+    Context, ExecutionEngine,
 };
 
 pub struct Compiler<'ctx> {
@@ -20,26 +21,29 @@ pub struct Compiler<'ctx> {
     pub module: Module<'ctx>,
 }
 
+/// Types, functions, etc storage.
+/// This aproach works better with lifetimes.
+#[derive(Debug, Default)]
+pub struct Storage<'ctx> {
+    pub(crate) types: HashMap<u64, Type<'ctx>>,
+}
+
 impl<'ctx> Compiler<'ctx> {
     pub fn new(code: &str) -> color_eyre::Result<Self> {
         let code = code.to_string();
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
         let registry = dialect::Registry::new();
-
         register_all_dialects(&registry);
 
         let context = Context::new();
         context.append_dialect_registry(&registry);
-        Handle::scf().register_dialect(&context);
-        Handle::cf().register_dialect(&context);
-        Handle::func().register_dialect(&context);
-        context.get_or_load_dialect("func"); // needed?
+        context.get_or_load_dialect("func");
         context.get_or_load_dialect("arith");
         context.get_or_load_dialect("math");
         context.get_or_load_dialect("cf");
-        let scf = context.get_or_load_dialect("scf");
-        dbg!(scf);
+        context.get_or_load_dialect("scf");
+        register_all_llvm_translations(&context);
 
         let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
@@ -51,34 +55,6 @@ impl<'ctx> Compiler<'ctx> {
             context,
             module,
         })
-    }
-
-    pub fn compile_from_code(code: &str) -> color_eyre::Result<()> {
-        let code = code.to_string();
-        let program: Program = ProgramParser::new().parse(&code).unwrap();
-
-        let registry = dialect::Registry::new();
-        register_all_dialects(&registry);
-
-        let context = Context::new();
-        context.append_dialect_registry(&registry);
-        context.get_or_load_dialect("func"); // needed?
-        context.get_or_load_dialect("arith");
-        context.get_or_load_dialect("math");
-        context.get_or_load_dialect("cf");
-
-        let felt_type = Type::integer(&context, 256);
-        let location = Location::unknown(&context);
-        let module = Module::new(location);
-
-        let compiler = Self {
-            code,
-            program,
-            context,
-            module,
-        };
-
-        Ok(())
     }
 }
 
@@ -258,7 +234,16 @@ impl<'ctx> Compiler<'ctx> {
         Block::new(&args)
     }
 
-    pub fn run(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+    pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        let mut storage = Storage::default();
+        self.process_types(&mut storage);
+        self.process_libfuncs(&mut storage)?;
+        self.process_statements(&mut storage)?;
+
+        Ok(self.module.as_operation())
+    }
+
+    pub fn run_fib(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         // hardcoded fib
 
         /*
@@ -403,7 +388,6 @@ impl<'ctx> Compiler<'ctx> {
         };
 
         self.module.body().append_operation(main_function);
-
         let op = self.module.as_operation();
 
         if op.verify() {
