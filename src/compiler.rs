@@ -254,21 +254,30 @@ impl<'ctx> Compiler<'ctx> {
         // hardcoded fib
 
         /*
-        fn fib(a: felt, b: felt, n: felt) -> (felt, felt) {
+        fn fib(a: felt, b: felt, n: felt) -> felt {
             match n {
-                0 => (a, 0),
+                0 => a,
+                _ => fib(b, a + b, n - 1),
+            }
+        }
+        fn fib_mid(n: felt) {
+            match n {
+                0 => (),
                 _ => {
-                    let (v, count) = fib(b, a + b, n - 1);
-                    (v, count + 1)
+                    fib(0, 1, 500);
+                    fib_mid(n - 1);
                 },
             }
+        }
+        fn main(a: felt) {
+            fib_mid(100);
         }
          */
 
         let felt_type = self.felt_type();
         let location = Location::unknown(&self.context);
 
-        let function = {
+        let fib_function = {
             let fib_region = Region::new();
             // arguments: a: felt, n: felt
             let fib_block = self.new_block(&[felt_type, felt_type, felt_type]);
@@ -363,24 +372,121 @@ impl<'ctx> Compiler<'ctx> {
             func
         };
 
-        self.module.body().append_operation(function);
+        self.module.body().append_operation(fib_function);
+
+        let fib_mid_function = {
+            /*
+            fn fib_mid(n: felt) {
+                match n {
+                    0 => (),
+                    _ => {
+                        fib(0, 1, 500);
+                        fib_mid(n - 1);
+                    },
+                }
+            }
+            */
+            let fib_mid_region = Region::new();
+            // arguments: a: felt, n: felt
+            let fib_block = self.new_block(&[felt_type]);
+            let arg_n = fib_block.argument(0)?;
+
+            // prepare the if comparision: n == 0
+            let zero = self.op_felt_const(&fib_block, "0");
+            let zero_res = zero.result(0)?.into();
+            let eq = self.op_eq(&fib_block, arg_n.into(), zero_res);
+
+            // if else regions
+            let if_region = Region::new();
+            let else_region = Region::new();
+
+            // if
+            {
+                //  0 => (),
+                let if_block = self.new_block(&[]);
+
+                let yield_op = if_block.append_operation(
+                    operation::Builder::new("scf.yield", location)
+                        .build(),
+                );
+
+                if_region.append_block(if_block);
+            }
+
+            // else
+            {
+                /*
+                    fib(0, 1, 500);
+                    fib_mid(n - 1);
+                */
+
+                let else_block = self.new_block(&[]);
+
+                let one = self.op_felt_const(&fib_block, "1");
+                let one_res = one.result(0)?.into();
+                let times = self.op_felt_const(&fib_block, "500");
+                let times_res = one.result(0)?.into();
+
+                let func_call = self.op_func_call(
+                    &else_block,
+                    "@fib",
+                    &[zero_res, one_res, times_res],
+                    &[felt_type, felt_type],
+                );
+
+                let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
+                let n_minus_1_res = n_minus_1.result(0).unwrap();
+
+                let func_call = self.op_func_call(
+                    &else_block,
+                    "@fib_mid",
+                    &[n_minus_1_res.into()],
+                    &[],
+                );
+
+                let yield_op = else_block.append_operation(
+                    operation::Builder::new("scf.yield", location)
+                        .build(),
+                );
+
+                else_region.append_block(else_block);
+            }
+
+            let isif = fib_block.append_operation(
+                operation::Builder::new("scf.if", location)
+                    .add_operands(&[eq.result(0)?.into()])
+                    .add_results(&[])
+                    .add_regions(vec![if_region, else_region])
+                    .build(),
+            );
+
+            self.op_return(&fib_block, &[]);
+
+            fib_mid_region.append_block(fib_block);
+
+            let func = self.op_func(
+                "fib_mid",
+                "(i256) -> ()",
+                vec![fib_mid_region],
+            );
+
+            func
+        };
+
+        self.module.body().append_operation(fib_mid_function);
 
         let main_function = {
             let region = Region::new();
             let block = Block::new(&[]);
 
-            let first_arg = self.op_felt_const(&block, "1");
-            let first_arg_res = first_arg.result(0)?.into();
-            let second_arg = self.op_felt_const(&block, "1");
-            let second_arg_res = second_arg.result(0)?.into();
-            let n_arg = self.op_felt_const(&block, "5000");
+            let n_arg = self.op_felt_const(&block, "100");
             let n_arg_res = n_arg.result(0)?.into();
 
             let func_call = self.op_func_call(
                 &block,
-                "@fib",
-                &[first_arg_res, second_arg_res, n_arg_res],
-                &[felt_type, felt_type],
+                "@fib_mid",
+                &[n_arg_res],
+                &[],
             );
 
             let main_ret = self.op_const(&block, "0", self.i32_type());

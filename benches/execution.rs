@@ -1,0 +1,42 @@
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, black_box};
+use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
+use sierra2mlir::compiler::Compiler;
+
+pub fn criterion_benchmark(c: &mut Criterion) {
+    let mut compiler = Compiler::new("").unwrap();
+    //let op = compiler.compile()?;
+    compiler.run_fib().unwrap();
+
+    let pass_manager = pass::Manager::new(&compiler.context);
+    register_all_passes();
+    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
+    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+    pass_manager.enable_verifier(true);
+    pass_manager.run(&mut compiler.module).unwrap();
+
+    let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
+
+    let mut result: i32 = -1;
+    unsafe {
+        engine
+            .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
+            .unwrap();
+    };
+
+    c.bench_with_input(BenchmarkId::new("Llvm", 1), &(engine), |b, engine| {
+        b.iter(|| {
+            let mut result: i32 = -1;
+            unsafe {
+                engine
+                    .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
+                    .ok();
+                black_box(result)
+            };
+        });
+    });
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);

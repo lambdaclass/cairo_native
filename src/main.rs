@@ -12,16 +12,12 @@ use melior_next::{
     dialect,
     ir::{operation, Attribute, Block, Identifier, Location, Module, Region, Type, Value},
     pass,
-    utility::register_all_dialects,
+    utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
 
-use crate::compiler::Compiler;
+use sierra2mlir::compiler::Compiler;
 
-mod compiler;
-mod libfuncs;
-mod statements;
-mod types;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -52,19 +48,31 @@ fn main() -> color_eyre::Result<()> {
     compiler.run_fib()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
+    register_all_passes();
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
-
     pass_manager.enable_verifier(true);
-
     pass_manager.run(&mut compiler.module)?;
 
     let engine = ExecutionEngine::new(&compiler.module, 2, &[]);
 
     let mut result: i32 = -1;
 
+    println!("unjitted");
+    let now = Instant::now();
+    unsafe {
+        engine.invoke_packed(
+            "main",
+            &mut [
+                &mut result as *mut i32 as *mut (),
+            ],
+        ).unwrap();
+    };
+    let done = now.elapsed();
+    println!("{done:?}");
+    println!("jitted");
     let now = Instant::now();
     unsafe {
         engine.invoke_packed(
