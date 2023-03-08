@@ -510,6 +510,13 @@
 <a href="#510" id="510">510</a>
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, fs::File, path::Path};
 
 <span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
@@ -551,9 +558,6 @@
         <span class="kw">let </span>context = Context::new();
         context.append_dialect_registry(<span class="kw-2">&amp;</span>registry);
         register_all_llvm_translations(<span class="kw-2">&amp;</span>context);
-        <span class="kw">unsafe </span>{
-            mlir_sys::mlirRegisterConversionSCFToControlFlow();
-        }
         context.get_or_load_dialect(<span class="string">&quot;func&quot;</span>);
         context.get_or_load_dialect(<span class="string">&quot;arith&quot;</span>);
         context.get_or_load_dialect(<span class="string">&quot;math&quot;</span>);
@@ -788,6 +792,7 @@
 
         </span><span class="kw">let </span>felt_type = <span class="self">self</span>.felt_type();
         <span class="kw">let </span>location = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
+        <span class="kw">let </span>prime = <span class="string">&quot;3618502788666131213697322783095070105623107215331596699973092056135872020481&quot;</span>;
 
         <span class="kw">let </span>fib_function = {
             <span class="kw">let </span>fib_region = Region::new();
@@ -829,8 +834,15 @@
 
                 </span><span class="kw">let </span>else_block = <span class="self">self</span>.new_block(<span class="kw-2">&amp;</span>[]);
 
+                <span class="kw">let </span>prime = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>else_block, prime);
+                <span class="kw">let </span>prime_res = prime.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
                 <span class="kw">let </span>a_plus_b = <span class="self">self</span>.op_felt_add(<span class="kw-2">&amp;</span>else_block, arg_a.into(), arg_b.into());
                 <span class="kw">let </span>a_plus_b_res = a_plus_b.result(<span class="number">0</span>).unwrap();
+
+                <span class="kw">let </span>a_plus_b_mod =
+                    <span class="self">self</span>.op_felt_rem(<span class="kw-2">&amp;</span>else_block, a_plus_b_res.into(), prime_res.into());
+                <span class="kw">let </span>a_plus_b_mod_res = a_plus_b_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>one = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>fib_block, <span class="string">&quot;1&quot;</span>);
                 <span class="kw">let </span>one_res = one.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -838,10 +850,18 @@
                 <span class="kw">let </span>n_minus_1 = <span class="self">self</span>.op_felt_sub(<span class="kw-2">&amp;</span>else_block, arg_n.into(), one_res);
                 <span class="kw">let </span>n_minus_1_res = n_minus_1.result(<span class="number">0</span>).unwrap();
 
+                <span class="kw">let </span>n_minus_1_mod =
+                    <span class="self">self</span>.op_felt_rem(<span class="kw-2">&amp;</span>else_block, n_minus_1_res.into(), prime_res.into());
+                <span class="kw">let </span>n_minus_1_mod_res = n_minus_1_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
                 <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(
                     <span class="kw-2">&amp;</span>else_block,
                     <span class="string">&quot;@fib&quot;</span>,
-                    <span class="kw-2">&amp;</span>[arg_b.into(), a_plus_b_res.into(), n_minus_1_res.into()],
+                    <span class="kw-2">&amp;</span>[
+                        arg_b.into(),
+                        a_plus_b_mod_res.into(),
+                        n_minus_1_mod_res.into(),
+                    ],
                     <span class="kw-2">&amp;</span>[felt_type, felt_type],
                 );
 
@@ -851,9 +871,13 @@
                 <span class="kw">let </span>count_plus_1 = <span class="self">self</span>.op_felt_add(<span class="kw-2">&amp;</span>else_block, count.into(), one_res);
                 <span class="kw">let </span>count_plus_1_res = count_plus_1.result(<span class="number">0</span>).unwrap();
 
+                <span class="kw">let </span>count_plus_1_mod =
+                    <span class="self">self</span>.op_felt_rem(<span class="kw-2">&amp;</span>else_block, count_plus_1_res.into(), prime_res.into());
+                <span class="kw">let </span>count_plus_1_mod_res = count_plus_1_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
                 <span class="kw">let </span>yield_op = else_block.append_operation(
                     operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location)
-                        .add_operands(<span class="kw-2">&amp;</span>[value.into(), count_plus_1_res.into()])
+                        .add_operands(<span class="kw-2">&amp;</span>[value.into(), count_plus_1_mod_res.into()])
                         .build(),
                 );
 
@@ -917,10 +941,8 @@
                 <span class="comment">//  0 =&gt; (),
                 </span><span class="kw">let </span>if_block = <span class="self">self</span>.new_block(<span class="kw-2">&amp;</span>[]);
 
-                <span class="kw">let </span>yield_op = if_block.append_operation(
-                    operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location)
-                        .build(),
-                );
+                <span class="kw">let </span>yield_op = if_block
+                    .append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
 
                 if_region.append_block(if_block);
             }
@@ -949,17 +971,18 @@
                 <span class="kw">let </span>n_minus_1 = <span class="self">self</span>.op_felt_sub(<span class="kw-2">&amp;</span>else_block, arg_n.into(), one_res);
                 <span class="kw">let </span>n_minus_1_res = n_minus_1.result(<span class="number">0</span>).unwrap();
 
-                <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(
-                    <span class="kw-2">&amp;</span>else_block,
-                    <span class="string">&quot;@fib_mid&quot;</span>,
-                    <span class="kw-2">&amp;</span>[n_minus_1_res.into()],
-                    <span class="kw-2">&amp;</span>[],
-                );
+                <span class="kw">let </span>prime = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>else_block, prime);
+                <span class="kw">let </span>prime_res = prime.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>yield_op = else_block.append_operation(
-                    operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location)
-                        .build(),
-                );
+                <span class="kw">let </span>n_minus_1_mod =
+                    <span class="self">self</span>.op_felt_rem(<span class="kw-2">&amp;</span>else_block, n_minus_1_res.into(), prime_res.into());
+                <span class="kw">let </span>n_minus_1_mod_res = n_minus_1_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>func_call =
+                    <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>else_block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_minus_1_mod_res.into()], <span class="kw-2">&amp;</span>[]);
+
+                <span class="kw">let </span>yield_op = else_block
+                    .append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
 
                 else_region.append_block(else_block);
             }
@@ -976,11 +999,7 @@
 
             fib_mid_region.append_block(fib_block);
 
-            <span class="kw">let </span>func = <span class="self">self</span>.op_func(
-                <span class="string">&quot;fib_mid&quot;</span>,
-                <span class="string">&quot;(i256) -&gt; ()&quot;</span>,
-                <span class="macro">vec!</span>[fib_mid_region],
-            );
+            <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;fib_mid&quot;</span>, <span class="string">&quot;(i256) -&gt; ()&quot;</span>, <span class="macro">vec!</span>[fib_mid_region]);
 
             func
         };
@@ -994,12 +1013,7 @@
             <span class="kw">let </span>n_arg = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;100&quot;</span>);
             <span class="kw">let </span>n_arg_res = n_arg.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-            <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(
-                <span class="kw-2">&amp;</span>block,
-                <span class="string">&quot;@fib_mid&quot;</span>,
-                <span class="kw-2">&amp;</span>[n_arg_res],
-                <span class="kw-2">&amp;</span>[],
-            );
+            <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_arg_res], <span class="kw-2">&amp;</span>[]);
 
             <span class="kw">let </span>main_ret = <span class="self">self</span>.op_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;0&quot;</span>, <span class="self">self</span>.i32_type());
 
