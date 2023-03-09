@@ -40,7 +40,7 @@ module attributes {llvm.data_layout = ""} {
   ^bb1:  // pred: ^bb0
     llvm.br ^bb3
   ^bb2:  // pred: ^bb0
-    %4 = llvm.call @fib(%0, %2, %2) : (i256, i256, i256) -> !llvm.struct<(i256, i256)>
+    %4 = llvm.call @fib(%0, %2, %3) : (i256, i256, i256) -> !llvm.struct<(i256, i256)>
     %5 = llvm.extractvalue %4[0] : !llvm.struct<(i256, i256)> 
     %6 = llvm.extractvalue %4[1] : !llvm.struct<(i256, i256)> 
     %7 = llvm.sub %arg0, %2  : i256
