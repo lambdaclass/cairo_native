@@ -20,7 +20,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 color-eyre = "0.6.2"
 #mlir-sys = "0.1.4"
-melior-next = { git = "https://github.com/edg-l/melior-next", version = "0.4.0" }
+melior-next = { git = "https://github.com/edg-l/melior-next", version = "0.4" }
 
 [dev-dependencies]
 criterion = "0.4.0"
