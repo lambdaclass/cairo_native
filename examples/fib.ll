@@ -67,7 +67,7 @@ define void @_mlir_ciface_fib_mid(i256 %0) {
 }
 
 define i32 @main() {
-  call void @fib_mid(i256 10000000)
+  call void @fib_mid(i256 100)
   ret i32 0
 }
 

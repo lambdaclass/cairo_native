@@ -25,12 +25,5 @@ Check out the setup guide on the [llvm-mlir-sys](https://github.com/lambdaclass/
 ## Translate output MLIR to LLVM IR
 
 ```
-mlir-opt --convert-scf-to-cf \
-    --convert-cf-to-llvm \
-    --convert-arith-to-llvm \
-    --convert-func-to-llvm \
-    --llvm-legalize-for-export \
-    input.mlir -o output.mlir
-
 mlir-translate --mlir-to-llvmir output.mlir -o output.ll
 ```
