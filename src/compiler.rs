@@ -440,7 +440,7 @@ impl<'ctx> Compiler<'ctx> {
                 let one = self.op_felt_const(&fib_block, "1");
                 let one_res = one.result(0)?.into();
                 let times = self.op_felt_const(&fib_block, "500");
-                let times_res = one.result(0)?.into();
+                let times_res = times.result(0)?.into();
 
                 let func_call = self.op_func_call(
                     &else_block,
