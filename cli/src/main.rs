@@ -61,10 +61,9 @@ fn main() -> color_eyre::Result<()> {
             let engine = sierra2mlir::execute(&code)?;
 
             unsafe {
-                engine
-                    .invoke_packed(&function, &mut [])?;
+                engine.invoke_packed(&function, &mut [])?;
             };
-        },
+        }
     }
 
     Ok(())
