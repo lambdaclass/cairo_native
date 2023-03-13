@@ -92,6 +92,59 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{ids::GenericTypeId, program::GenericArg};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
@@ -122,6 +175,10 @@
                     <span class="kw">let </span>func = <span class="self">self</span>.felt_sub_create()<span class="question-mark">?</span>;
                     <span class="self">self</span>.module.body().append_operation(func);
                 }
+                <span class="string">&quot;felt_mul&quot; </span>=&gt; {
+                    <span class="kw">let </span>func = <span class="self">self</span>.felt_mul_create()<span class="question-mark">?</span>;
+                    <span class="self">self</span>.module.body().append_operation(func);
+                }
                 <span class="kw">_ </span>=&gt; <span class="macro">debug!</span>(<span class="question-mark">?</span>func_decl, <span class="string">&quot;unhandled libfunc&quot;</span>),
             }
         }
@@ -140,12 +197,19 @@
         <span class="kw">let </span>lhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>rhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>res = <span class="self">self</span>.op_add(<span class="kw-2">&amp;</span>block, lhs_arg.into(), rhs_arg.into());
+        <span class="kw">let </span>lhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, lhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>lhs = lhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>rhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, rhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>rhs = rhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>res = <span class="self">self</span>.op_add(<span class="kw-2">&amp;</span>block, lhs.into(), rhs.into());
         <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// todo: modulo
+        <span class="kw">let </span>res = <span class="self">self</span>.op_felt_modulo(<span class="kw-2">&amp;</span>block, res_result.into())<span class="question-mark">?</span>;
+        <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        </span><span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[res_result.into()]);
+        <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[res_result.into()]);
 
         region.append_block(block);
 
@@ -168,17 +232,59 @@
         <span class="kw">let </span>lhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>rhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>res = <span class="self">self</span>.op_felt_sub(<span class="kw-2">&amp;</span>block, lhs_arg.into(), rhs_arg.into());
+        <span class="kw">let </span>lhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, lhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>lhs = lhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>rhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, rhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>rhs = rhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>res = <span class="self">self</span>.op_sub(<span class="kw-2">&amp;</span>block, lhs.into(), rhs.into());
         <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// todo: modulo
+        <span class="kw">let </span>res = <span class="self">self</span>.op_felt_modulo(<span class="kw-2">&amp;</span>block, res_result.into())<span class="question-mark">?</span>;
+        <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-        </span><span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[res_result.into()]);
+        <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[res_result.into()]);
 
         region.append_block(block);
 
         <span class="kw">let </span>func = <span class="self">self</span>.op_func(
             <span class="string">&quot;felt_sub&quot;</span>,
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
+            <span class="macro">vec!</span>[region],
+        );
+
+        <span class="prelude-val">Ok</span>(func)
+    }
+
+    <span class="kw">pub fn </span>felt_mul_create(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        <span class="kw">let </span>felt_type = <span class="self">self</span>.felt_type();
+        <span class="kw">let </span>loc = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
+
+        <span class="kw">let </span>region = Region::new();
+        <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>[(felt_type, loc), (felt_type, loc)]);
+
+        <span class="kw">let </span>lhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>rhs_arg = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>lhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, lhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>lhs = lhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>rhs_ext = <span class="self">self</span>.op_sext(<span class="kw-2">&amp;</span>block, rhs_arg.into(), <span class="self">self</span>.double_felt_type());
+        <span class="kw">let </span>rhs = rhs_ext.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>res = <span class="self">self</span>.op_mul(<span class="kw-2">&amp;</span>block, lhs.into(), rhs.into());
+        <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>res = <span class="self">self</span>.op_felt_modulo(<span class="kw-2">&amp;</span>block, res_result.into())<span class="question-mark">?</span>;
+        <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[res_result.into()]);
+
+        region.append_block(block);
+
+        <span class="kw">let </span>func = <span class="self">self</span>.op_func(
+            <span class="string">&quot;felt_mul&quot;</span>,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
         );
