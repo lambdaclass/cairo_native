@@ -68,7 +68,6 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A compiler to convert Cairo&#39;s intermediate representation &quot;Sierra&quot; code to MLIR.
 
 </span><span class="comment">//#![deny(warnings)]
@@ -132,10 +131,9 @@
             <span class="kw">let </span>engine = sierra2mlir::execute(<span class="kw-2">&amp;</span>code)<span class="question-mark">?</span>;
 
             <span class="kw">unsafe </span>{
-                engine
-                    .invoke_packed(<span class="kw-2">&amp;</span>function, <span class="kw-2">&amp;mut </span>[])<span class="question-mark">?</span>;
+                engine.invoke_packed(<span class="kw-2">&amp;</span>function, <span class="kw-2">&amp;mut </span>[])<span class="question-mark">?</span>;
             };
-        },
+        }
     }
 
     <span class="prelude-val">Ok</span>(())
