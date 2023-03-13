@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["sierra2mlir"];
+window.ALL_CRATES = ["cli","sierra2mlir"];

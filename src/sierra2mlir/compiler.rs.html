@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/compiler.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>compiler.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../sierra2mlir/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `sierra2mlir/src/compiler.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>compiler.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../sierra2mlir/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -517,6 +517,211 @@
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{collections::HashMap, fs::File, path::Path};
 
 <span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
@@ -526,7 +731,7 @@
         block,
         operation::{<span class="self">self</span>, ResultValue},
         Attribute, Block, Identifier, Location, Module, Operation, OperationRef, Region, Type,
-        Value,
+        Value, ValueLike,
     },
     pass,
     utility::{register_all_dialects, register_all_llvm_translations},
@@ -566,7 +771,19 @@
 
         <span class="kw">let </span>felt_type = Type::integer(<span class="kw-2">&amp;</span>context, <span class="number">256</span>);
         <span class="kw">let </span>location = Location::unknown(<span class="kw-2">&amp;</span>context);
-        <span class="kw">let </span>module = Module::new(location);
+
+        <span class="kw">let </span>region = Region::new();
+        <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>[]);
+        region.append_block(block);
+        <span class="kw">let </span>module_op = operation::Builder::new(<span class="string">&quot;builtin.module&quot;</span>, location)
+            .add_attributes(<span class="kw-2">&amp;</span>[(
+                Identifier::new(<span class="kw-2">&amp;</span>context, <span class="string">&quot;gpu.container_module&quot;</span>),
+                Attribute::parse(<span class="kw-2">&amp;</span>context, <span class="string">&quot;unit&quot;</span>).unwrap(),
+            )])
+            .add_regions(<span class="macro">vec!</span>[region])
+            .build();
+
+        <span class="kw">let </span>module = Module::from_operation(module_op).unwrap();
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             code,
@@ -602,7 +819,7 @@
     }
 
     <span class="doccomment">/// Only the MLIR op, doesn&#39;t do modulo.
-    </span><span class="kw">pub fn </span>op_felt_add(
+    </span><span class="kw">pub fn </span>op_add(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
         block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
         lhs: Value&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -611,7 +828,7 @@
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.addi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
-                .add_results(<span class="kw-2">&amp;</span>[<span class="self">self</span>.felt_type()])
+                .add_results(<span class="kw-2">&amp;</span>[lhs.r#type()])
                 .build(),
         )
     }
@@ -837,7 +1054,7 @@
                 <span class="kw">let </span>prime = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>else_block, prime);
                 <span class="kw">let </span>prime_res = prime.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>a_plus_b = <span class="self">self</span>.op_felt_add(<span class="kw-2">&amp;</span>else_block, arg_a.into(), arg_b.into());
+                <span class="kw">let </span>a_plus_b = <span class="self">self</span>.op_add(<span class="kw-2">&amp;</span>else_block, arg_a.into(), arg_b.into());
                 <span class="kw">let </span>a_plus_b_res = a_plus_b.result(<span class="number">0</span>).unwrap();
 
                 <span class="kw">let </span>a_plus_b_mod =
@@ -868,7 +1085,7 @@
                 <span class="kw">let </span>value = func_call.result(<span class="number">0</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>count = func_call.result(<span class="number">1</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>count_plus_1 = <span class="self">self</span>.op_felt_add(<span class="kw-2">&amp;</span>else_block, count.into(), one_res);
+                <span class="kw">let </span>count_plus_1 = <span class="self">self</span>.op_add(<span class="kw-2">&amp;</span>else_block, count.into(), one_res);
                 <span class="kw">let </span>count_plus_1_res = count_plus_1.result(<span class="number">0</span>).unwrap();
 
                 <span class="kw">let </span>count_plus_1_mod =
@@ -1035,6 +1252,199 @@
             <span class="prelude-val">Err</span>(<span class="macro">color_eyre::eyre::eyre!</span>(<span class="string">&quot;error verifiying&quot;</span>))
         }
     }
+
+    <span class="kw">pub fn </span>run_gpu(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; color_eyre::Result&lt;OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        <span class="comment">// hardcoded fib
+
+        /*
+        fn main(a: i32, b: i32) -&gt; i32 {
+            a * b
+        }
+         */
+
+        </span><span class="kw">let </span>i32_type = Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">32</span>);
+        <span class="kw">let </span>i256_type = Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">256</span>);
+        <span class="kw">let </span>index_type = Type::index(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
+        <span class="kw">let </span>location = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
+
+        <span class="kw">let </span>gpu_module = {
+            <span class="kw">let </span>module_region = Region::new();
+            <span class="kw">let </span>module_block = Block::new(<span class="kw-2">&amp;</span>[]);
+
+            <span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>[(i256_type, location), (i256_type, location)]);
+
+            <span class="kw">let </span>arg1 = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>arg2 = block.argument(<span class="number">1</span>)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>res = <span class="self">self</span>.op_add(<span class="kw-2">&amp;</span>block, arg1.into(), arg2.into());
+            <span class="kw">let </span>res_result = res.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>trunc_op = block.append_operation(
+                operation::Builder::new(<span class="string">&quot;arith.trunci&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_operands(<span class="kw-2">&amp;</span>[res_result.into()])
+                    .add_results(<span class="kw-2">&amp;</span>[i32_type])
+                    .build(),
+            );
+
+            <span class="kw">let </span>trunc_op_res = trunc_op.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+            block.append_operation(
+                operation::Builder::new(<span class="string">&quot;gpu.printf&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;format&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">r#&quot;&quot;suma: %d &quot;&quot;#</span>).unwrap(),
+                    )])
+                    .add_operands(<span class="kw-2">&amp;</span>[trunc_op_res.into()])
+                    .build(),
+            );
+
+            <span class="comment">// kernels always return void
+            </span>block.append_operation(
+                operation::Builder::new(<span class="string">&quot;gpu.return&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)).build(),
+            );
+
+            region.append_block(block);
+
+            <span class="kw">let </span>func = operation::Builder::new(<span class="string">&quot;gpu.func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                .add_attributes(<span class="kw-2">&amp;</span>[
+                    (
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;function_type&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;(i256, i256) -&gt; ()&quot;</span>).unwrap(),
+                    ),
+                    (
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;sym_name&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;\&quot;kernel1\&quot;&quot;</span>).unwrap(),
+                    ),
+                    (
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;gpu.kernel&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;unit&quot;</span>).unwrap(),
+                    ),
+                ])
+                .add_regions(<span class="macro">vec!</span>[region])
+                .build();
+
+            module_block.append_operation(func);
+
+            module_block.append_operation(
+                operation::Builder::new(<span class="string">&quot;gpu.module_end&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)).build(),
+            );
+
+            module_region.append_block(module_block);
+
+            <span class="kw">let </span>gpu_module =
+                operation::Builder::new(<span class="string">&quot;gpu.module&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;sym_name&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;\&quot;kernels\&quot;&quot;</span>).unwrap(),
+                    )])
+                    .add_regions(<span class="macro">vec!</span>[module_region])
+                    .build();
+
+            gpu_module
+        };
+
+        <span class="macro">dbg!</span>(gpu_module.to_string());
+        <span class="self">self</span>.module.body().append_operation(gpu_module);
+
+        <span class="kw">let </span>main_function = {
+            <span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>[]);
+
+            <span class="kw">let </span>index_op = block.append_operation(
+                operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_results(<span class="kw-2">&amp;</span>[index_type])
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {}&quot;</span>, index_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            <span class="kw">let </span>index_value = index_op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+
+            <span class="kw">let </span>dynamic_shared_memory_size_op = block.append_operation(
+                operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_results(<span class="kw-2">&amp;</span>[i32_type])
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;0 : {}&quot;</span>, i32_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            <span class="kw">let </span>dynamic_shared_memory_size = dynamic_shared_memory_size_op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+
+            <span class="kw">let </span>arg1_op = block.append_operation(
+                operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_results(<span class="kw-2">&amp;</span>[i256_type])
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;4 : {}&quot;</span>, i256_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            <span class="kw">let </span>arg1 = arg1_op.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>arg2_op = block.append_operation(
+                operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_results(<span class="kw-2">&amp;</span>[i256_type])
+                    .add_attributes(<span class="kw-2">&amp;</span>[(
+                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
+                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;2 : {}&quot;</span>, i256_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            <span class="kw">let </span>arg2 = arg2_op.result(<span class="number">0</span>)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>gpu_launch =
+                operation::Builder::new(<span class="string">&quot;gpu.launch_func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;kernel&quot;</span>),
+                            Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;@kernels::@kernel1&quot;</span>).unwrap(),
+                        ),
+                        (
+                            Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;operand_segment_sizes&quot;</span>),
+                            Attribute::parse(
+                                <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                                <span class="string">&quot;array&lt;i32: 0, 1, 1, 1, 1, 1, 1, 1, 2&gt;&quot;</span>,
+                            )
+                            .unwrap(),
+                        ),
+                    ])
+                    .add_operands(<span class="kw-2">&amp;</span>[
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        dynamic_shared_memory_size,
+                        arg1.into(),
+                        arg2.into(),
+                    ])
+                    .build();
+
+            block.append_operation(gpu_launch);
+
+            <span class="kw">let </span>main_ret = <span class="self">self</span>.op_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;0&quot;</span>, <span class="self">self</span>.i32_type());
+            <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[main_ret.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()]);
+            region.append_block(block);
+            <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;main&quot;</span>, <span class="string">&quot;() -&gt; i32&quot;</span>, <span class="macro">vec!</span>[region]);
+
+            func
+        };
+
+        <span class="self">self</span>.module.body().append_operation(main_function);
+
+        <span class="kw">let </span>op = <span class="self">self</span>.module.as_operation();
+
+        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>op);
+
+        <span class="kw">if </span>op.verify() {
+            <span class="prelude-val">Ok</span>(op)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(<span class="macro">color_eyre::eyre::eyre!</span>(<span class="string">&quot;error verifiying&quot;</span>))
+        }
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sierra2mlir" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sierra2mlir" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
