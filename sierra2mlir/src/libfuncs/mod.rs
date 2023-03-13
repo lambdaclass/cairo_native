@@ -28,6 +28,10 @@ impl<'ctx> Compiler<'ctx> {
                     let func = self.felt_sub_create()?;
                     self.module.body().append_operation(func);
                 }
+                "felt_mul" => {
+                    let func = self.felt_mul_create()?;
+                    self.module.body().append_operation(func);
+                }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
         }
@@ -46,10 +50,17 @@ impl<'ctx> Compiler<'ctx> {
         let lhs_arg = block.argument(0)?;
         let rhs_arg = block.argument(0)?;
 
-        let res = self.op_add(&block, lhs_arg.into(), rhs_arg.into());
+        let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
+        let lhs = lhs_ext.result(0)?;
+
+        let rhs_ext = self.op_sext(&block, rhs_arg.into(), self.double_felt_type());
+        let rhs = rhs_ext.result(0)?;
+
+        let res = self.op_add(&block, lhs.into(), rhs.into());
         let res_result = res.result(0)?;
 
-        // todo: modulo
+        let res = self.op_felt_modulo(&block, res_result.into())?;
+        let res_result = res.result(0)?;
 
         self.op_return(&block, &[res_result.into()]);
 
@@ -74,10 +85,17 @@ impl<'ctx> Compiler<'ctx> {
         let lhs_arg = block.argument(0)?;
         let rhs_arg = block.argument(0)?;
 
-        let res = self.op_felt_sub(&block, lhs_arg.into(), rhs_arg.into());
+        let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
+        let lhs = lhs_ext.result(0)?;
+
+        let rhs_ext = self.op_sext(&block, rhs_arg.into(), self.double_felt_type());
+        let rhs = rhs_ext.result(0)?;
+
+        let res = self.op_sub(&block, lhs.into(), rhs.into());
         let res_result = res.result(0)?;
 
-        // todo: modulo
+        let res = self.op_felt_modulo(&block, res_result.into())?;
+        let res_result = res.result(0)?;
 
         self.op_return(&block, &[res_result.into()]);
 
@@ -85,6 +103,41 @@ impl<'ctx> Compiler<'ctx> {
 
         let func = self.op_func(
             "felt_sub",
+            &format!("({felt_type}, {felt_type}) -> {felt_type}"),
+            vec![region],
+        );
+
+        Ok(func)
+    }
+
+    pub fn felt_mul_create(&'ctx self) -> Result<Operation<'ctx>> {
+        let felt_type = self.felt_type();
+        let loc = Location::unknown(&self.context);
+
+        let region = Region::new();
+        let block = Block::new(&[(felt_type, loc), (felt_type, loc)]);
+
+        let lhs_arg = block.argument(0)?;
+        let rhs_arg = block.argument(0)?;
+
+        let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
+        let lhs = lhs_ext.result(0)?;
+
+        let rhs_ext = self.op_sext(&block, rhs_arg.into(), self.double_felt_type());
+        let rhs = rhs_ext.result(0)?;
+
+        let res = self.op_mul(&block, lhs.into(), rhs.into());
+        let res_result = res.result(0)?;
+
+        let res = self.op_felt_modulo(&block, res_result.into())?;
+        let res_result = res.result(0)?;
+
+        self.op_return(&block, &[res_result.into()]);
+
+        region.append_block(block);
+
+        let func = self.op_func(
+            "felt_mul",
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
         );

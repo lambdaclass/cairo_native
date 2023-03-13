@@ -1,6 +1,5 @@
-use std::{collections::HashMap, fs::File, path::Path};
-
 use cairo_lang_sierra::{program::Program, ProgramParser};
+use color_eyre::Result;
 use melior_next::{
     dialect::{self, Handle},
     ir::{
@@ -13,6 +12,7 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context, ExecutionEngine,
 };
+use std::{collections::HashMap, fs::File, path::Path};
 
 pub struct Compiler<'ctx> {
     pub code: String,
@@ -86,12 +86,25 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 256)
     }
 
+    pub fn double_felt_type(&'ctx self) -> Type<'ctx> {
+        Type::integer(&self.context, 512)
+    }
+
     pub fn i32_type(&'ctx self) -> Type<'ctx> {
         Type::integer(&self.context, 32)
     }
 
     pub fn bool_type(&'ctx self) -> Type<'ctx> {
         Type::integer(&self.context, 1)
+    }
+
+    pub fn prime_constant(&'ctx self, block: &'ctx Block<'ctx>) -> OperationRef<'ctx> {
+        // The prime number is a double felt as it's always used for modulo.
+        self.op_const(
+            block,
+            "3618502788666131213697322783095070105623107215331596699973092056135872020481",
+            self.double_felt_type(),
+        )
     }
 
     /// Only the MLIR op, doesn't do modulo.
@@ -110,7 +123,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op, doesn't do modulo.
-    pub fn op_felt_sub(
+    pub fn op_sub(
         &'ctx self,
         block: &'ctx Block<'ctx>,
         lhs: Value<'ctx>,
@@ -119,37 +132,27 @@ impl<'ctx> Compiler<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.subi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
-                .add_results(&[self.felt_type()])
+                .add_results(&[lhs.r#type()])
                 .build(),
         )
     }
 
     /// Only the MLIR op.
-    pub fn op_felt_mul(
-        &'ctx self,
-        block: &'ctx Block,
-        lhs: Value,
-        rhs: Value,
-    ) -> OperationRef<'ctx> {
+    pub fn op_mul(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.muli", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
-                .add_results(&[self.felt_type()])
+                .add_results(&[lhs.r#type()])
                 .build(),
         )
     }
 
     /// Only the MLIR op.
-    pub fn op_felt_rem(
-        &'ctx self,
-        block: &'ctx Block,
-        lhs: Value,
-        rhs: Value,
-    ) -> OperationRef<'ctx> {
+    pub fn op_rem(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.remsi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
-                .add_results(&[self.felt_type()])
+                .add_results(&[lhs.r#type()])
                 .build(),
         )
     }
@@ -169,9 +172,31 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    /// New felt constant
-    pub fn op_felt_const(&'ctx self, block: &'ctx Block, val: &str) -> OperationRef<'ctx> {
-        self.op_const(block, val, self.felt_type())
+    pub fn op_trunc(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+        block.append_operation(
+            operation::Builder::new("arith.trunci", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_sext(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+        block.append_operation(
+            operation::Builder::new("arith.extsi", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_zext(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+        block.append_operation(
+            operation::Builder::new("arith.extui", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
     }
 
     /// New constant
@@ -190,6 +215,27 @@ impl<'ctx> Compiler<'ctx> {
                 )])
                 .build(),
         )
+    }
+
+    /// New felt constant
+    pub fn op_felt_const(&'ctx self, block: &'ctx Block, val: &str) -> OperationRef<'ctx> {
+        self.op_const(block, val, self.felt_type())
+    }
+
+    /// Does modulo prime and truncates back to felt type.
+    ///
+    /// Arguments should be of double felt type.
+    pub fn op_felt_modulo(
+        &'ctx self,
+        block: &'ctx Block,
+        val: Value,
+    ) -> Result<OperationRef<'ctx>> {
+        let prime = self.prime_constant(block);
+        let prime_val = prime.result(0)?.into();
+        let op = self.op_rem(block, val, prime_val);
+        let rem_val = op.result(0)?.into();
+        let trunc = self.op_trunc(block, rem_val, self.felt_type());
+        Ok(trunc)
     }
 
     ///
@@ -333,18 +379,17 @@ impl<'ctx> Compiler<'ctx> {
                 let a_plus_b = self.op_add(&else_block, arg_a.into(), arg_b.into());
                 let a_plus_b_res = a_plus_b.result(0).unwrap();
 
-                let a_plus_b_mod =
-                    self.op_felt_rem(&else_block, a_plus_b_res.into(), prime_res.into());
+                let a_plus_b_mod = self.op_rem(&else_block, a_plus_b_res.into(), prime_res.into());
                 let a_plus_b_mod_res = a_plus_b_mod.result(0)?;
 
                 let one = self.op_felt_const(&fib_block, "1");
                 let one_res = one.result(0)?.into();
 
-                let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
+                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
 
                 let n_minus_1_mod =
-                    self.op_felt_rem(&else_block, n_minus_1_res.into(), prime_res.into());
+                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
                 let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
 
                 let func_call = self.op_func_call(
@@ -365,7 +410,7 @@ impl<'ctx> Compiler<'ctx> {
                 let count_plus_1_res = count_plus_1.result(0).unwrap();
 
                 let count_plus_1_mod =
-                    self.op_felt_rem(&else_block, count_plus_1_res.into(), prime_res.into());
+                    self.op_rem(&else_block, count_plus_1_res.into(), prime_res.into());
                 let count_plus_1_mod_res = count_plus_1_mod.result(0)?;
 
                 let yield_op = else_block.append_operation(
@@ -461,14 +506,14 @@ impl<'ctx> Compiler<'ctx> {
                     &[felt_type, felt_type],
                 );
 
-                let n_minus_1 = self.op_felt_sub(&else_block, arg_n.into(), one_res);
+                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
 
                 let prime = self.op_felt_const(&else_block, prime);
                 let prime_res = prime.result(0)?;
 
                 let n_minus_1_mod =
-                    self.op_felt_rem(&else_block, n_minus_1_res.into(), prime_res.into());
+                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
                 let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
 
                 let func_call =
