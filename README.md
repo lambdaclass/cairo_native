@@ -48,11 +48,10 @@ cmake -G Ninja ../llvm \
    -DLLVM_TARGETS_TO_BUILD="X86;AArch64;NVPTX;AMDGPU" \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_ENABLE_ASSERTIONS=ON \
-   -DLLVM_BUILD_LLVM_DYLIB=ON \
    -DLLVM_INSTALL_UTILS=ON \
    -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
    -DMLIR_ENABLE_CUDA_RUNNER=ON \
-   -DCMAKE_INSTALL_PREFIX=~/mlir
+   -DCMAKE_INSTALL_PREFIX=~/data/mlir
 ```
 
 Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the mlir directory:

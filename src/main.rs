@@ -44,17 +44,18 @@ fn main() -> color_eyre::Result<()> {
 
     let mut compiler = Compiler::new(&code)?;
     //let op = compiler.compile()?;
-    compiler.run_fib()?;
+    compiler.run_gpu()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
-    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
-    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
-    pass_manager.enable_verifier(true);
+    //pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
+    //pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
+    //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
+    //pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+    //pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;
 
+    /*
     let engine = ExecutionEngine::new(&compiler.module, 2, &[], false);
 
     let mut result: i32 = -1;
@@ -79,8 +80,10 @@ fn main() -> color_eyre::Result<()> {
     println!("{done:?}");
 
     dbg!(result);
+    */
 
     let op = compiler.module.as_operation();
+    dbg!(&op);
     if op.verify() {
         let output = op.to_string();
         fs::write(args.output, output);

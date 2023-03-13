@@ -7,7 +7,7 @@ use melior_next::{
         block,
         operation::{self, ResultValue},
         Attribute, Block, Identifier, Location, Module, Operation, OperationRef, Region, Type,
-        Value,
+        Value, ValueLike,
     },
     pass,
     utility::{register_all_dialects, register_all_llvm_translations},
@@ -44,10 +44,23 @@ impl<'ctx> Compiler<'ctx> {
         context.get_or_load_dialect("math");
         context.get_or_load_dialect("cf");
         context.get_or_load_dialect("scf");
+        context.get_or_load_dialect("gpu");
 
         let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
-        let module = Module::new(location);
+
+        let region = Region::new();
+        let block = Block::new(&[]);
+        region.append_block(block);
+        let module_op = operation::Builder::new("builtin.module", location)
+            .add_attributes(&[(
+                Identifier::new(&context, "gpu.container_module"),
+                Attribute::parse(&context, "unit").unwrap(),
+            )])
+            .add_regions(vec![region])
+            .build();
+
+        let module = Module::from_operation(module_op).unwrap();
 
         Ok(Self {
             code,
@@ -83,7 +96,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op, doesn't do modulo.
-    pub fn op_felt_add(
+    pub fn op_add(
         &'ctx self,
         block: &'ctx Block<'ctx>,
         lhs: Value<'ctx>,
@@ -92,7 +105,7 @@ impl<'ctx> Compiler<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.addi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
-                .add_results(&[self.felt_type()])
+                .add_results(&[lhs.r#type()])
                 .build(),
         )
     }
@@ -318,7 +331,7 @@ impl<'ctx> Compiler<'ctx> {
                 let prime = self.op_felt_const(&else_block, prime);
                 let prime_res = prime.result(0)?;
 
-                let a_plus_b = self.op_felt_add(&else_block, arg_a.into(), arg_b.into());
+                let a_plus_b = self.op_add(&else_block, arg_a.into(), arg_b.into());
                 let a_plus_b_res = a_plus_b.result(0).unwrap();
 
                 let a_plus_b_mod =
@@ -349,7 +362,7 @@ impl<'ctx> Compiler<'ctx> {
                 let value = func_call.result(0)?;
                 let count = func_call.result(1)?;
 
-                let count_plus_1 = self.op_felt_add(&else_block, count.into(), one_res);
+                let count_plus_1 = self.op_add(&else_block, count.into(), one_res);
                 let count_plus_1_res = count_plus_1.result(0).unwrap();
 
                 let count_plus_1_mod =
@@ -509,6 +522,202 @@ impl<'ctx> Compiler<'ctx> {
 
         self.module.body().append_operation(main_function);
         let op = self.module.as_operation();
+
+        if op.verify() {
+            Ok(op)
+        } else {
+            Err(color_eyre::eyre::eyre!("error verifiying"))
+        }
+    }
+
+    pub fn run_gpu(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        // hardcoded fib
+
+        /*
+        fn main(a: i32, b: i32) -> i32 {
+            a * b
+        }
+         */
+
+        let i32_type = Type::integer(&self.context, 32);
+        let i256_type = Type::integer(&self.context, 256);
+        let index_type = Type::index(&self.context);
+        let location = Location::unknown(&self.context);
+
+        let gpu_module = {
+            let module_region = Region::new();
+            let module_block = Block::new(&[]);
+
+            let region = Region::new();
+            let block = Block::new(&[(i256_type, location), (i256_type, location)]);
+
+            let arg1 = block.argument(0)?;
+            let arg2 = block.argument(1)?;
+
+            let res = self.op_add(&block, arg1.into(), arg2.into());
+            let res_result = res.result(0)?;
+
+            let trunc_op = block.append_operation(
+                operation::Builder::new("arith.trunci", Location::unknown(&self.context))
+                    .add_operands(&[res_result.into()])
+                    .add_results(&[i32_type])
+                    .build(),
+            );
+
+            let trunc_op_res = trunc_op.result(0)?;
+
+            block.append_operation(
+                operation::Builder::new("gpu.printf", Location::unknown(&self.context))
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "format"),
+                        Attribute::parse(&self.context, r#""suma: %d ""#).unwrap(),
+                    )])
+                    .add_operands(&[trunc_op_res.into()])
+                    .build(),
+            );
+
+            // kernels always return void
+            block.append_operation(
+                operation::Builder::new("gpu.return", Location::unknown(&self.context)).build(),
+            );
+
+            region.append_block(block);
+
+            let func = operation::Builder::new("gpu.func", Location::unknown(&self.context))
+                .add_attributes(&[
+                    (
+                        Identifier::new(&self.context, "function_type"),
+                        Attribute::parse(&self.context, "(i256, i256) -> ()").unwrap(),
+                    ),
+                    (
+                        Identifier::new(&self.context, "sym_name"),
+                        Attribute::parse(&self.context, "\"kernel1\"").unwrap(),
+                    ),
+                    (
+                        Identifier::new(&self.context, "gpu.kernel"),
+                        Attribute::parse(&self.context, "unit").unwrap(),
+                    ),
+                ])
+                .add_regions(vec![region])
+                .build();
+
+            module_block.append_operation(func);
+
+            module_block.append_operation(
+                operation::Builder::new("gpu.module_end", Location::unknown(&self.context)).build(),
+            );
+
+            module_region.append_block(module_block);
+
+            let gpu_module =
+                operation::Builder::new("gpu.module", Location::unknown(&self.context))
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "sym_name"),
+                        Attribute::parse(&self.context, "\"kernels\"").unwrap(),
+                    ),
+                   ])
+                    .add_regions(vec![module_region])
+                    .build();
+
+            gpu_module
+        };
+
+        dbg!(gpu_module.to_string());
+        self.module.body().append_operation(gpu_module);
+
+        let main_function = {
+            let region = Region::new();
+            let block = Block::new(&[]);
+
+            let index_op = block.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_results(&[index_type])
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "value"),
+                        Attribute::parse(&self.context, &format!("1 : {}", index_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            let index_value = index_op.result(0)?.into();
+
+            let dynamic_shared_memory_size_op = block.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_results(&[i32_type])
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "value"),
+                        Attribute::parse(&self.context, &format!("0 : {}", i32_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            let dynamic_shared_memory_size = dynamic_shared_memory_size_op.result(0)?.into();
+
+            let arg1_op = block.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_results(&[i256_type])
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "value"),
+                        Attribute::parse(&self.context, &format!("4 : {}", i256_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            let arg1 = arg1_op.result(0)?;
+            let arg2_op = block.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_results(&[i256_type])
+                    .add_attributes(&[(
+                        Identifier::new(&self.context, "value"),
+                        Attribute::parse(&self.context, &format!("2 : {}", i256_type)).unwrap(),
+                    )])
+                    .build(),
+            );
+            let arg2 = arg2_op.result(0)?;
+
+            let gpu_launch =
+                operation::Builder::new("gpu.launch_func", Location::unknown(&self.context))
+                    .add_attributes(&[
+                        (
+                            Identifier::new(&self.context, "kernel"),
+                            Attribute::parse(&self.context, "@kernels::@kernel1")
+                                .unwrap(),
+                        ),
+
+                        (
+                            Identifier::new(&self.context, "operand_segment_sizes"),
+                            Attribute::parse(
+                                &self.context,
+                                "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>",
+                            )
+                            .unwrap(),
+                        ),
+                    ])
+                    .add_operands(&[
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        index_value,
+                        dynamic_shared_memory_size,
+                        arg1.into(),
+                        arg2.into(),
+                    ])
+                    .build();
+
+            block.append_operation(gpu_launch);
+
+            let main_ret = self.op_const(&block, "0", self.i32_type());
+            self.op_return(&block, &[main_ret.result(0)?.into()]);
+            region.append_block(block);
+            let func = self.op_func("main", "() -> i32", vec![region]);
+
+            func
+        };
+
+        self.module.body().append_operation(main_function);
+
+        let op = self.module.as_operation();
+
+        dbg!(&op);
 
         if op.verify() {
             Ok(op)

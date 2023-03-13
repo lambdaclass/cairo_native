@@ -46,7 +46,7 @@ impl<'ctx> Compiler<'ctx> {
         let lhs_arg = block.argument(0)?;
         let rhs_arg = block.argument(0)?;
 
-        let res = self.op_felt_add(&block, lhs_arg.into(), rhs_arg.into());
+        let res = self.op_add(&block, lhs_arg.into(), rhs_arg.into());
         let res_result = res.result(0)?;
 
         // todo: modulo
