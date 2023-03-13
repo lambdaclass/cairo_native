@@ -4,11 +4,11 @@
 #![warn(clippy::nursery)]
 #![allow(unused)]
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use sierra2mlir::compiler::Compiler;
 use std::{fs, path::PathBuf, time::Instant};
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(
     author,
     version,
@@ -20,9 +20,24 @@ struct Args {
     #[arg(short, long)]
     input: PathBuf,
 
-    /// The output file.
-    #[arg(short, long)]
-    output: PathBuf,
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
+    Compile {
+        /// The output file. If not specified its output will be stdout.
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Compile and run a program. The entry point must be a function without arguments.
+    Run {
+        /// The function to run. Can only run functions without arguments and return types.
+        #[arg(short, long)]
+        function: String,
+    },
 }
 
 fn main() -> color_eyre::Result<()> {
@@ -32,9 +47,25 @@ fn main() -> color_eyre::Result<()> {
 
     let code = fs::read_to_string(args.input)?;
 
-    let output = sierra2mlir::compile(&code)?;
+    match args.command {
+        Commands::Compile { output } => {
+            let mlir_output = sierra2mlir::compile(&code)?;
 
-    fs::write(args.output, output);
+            if let Some(output) = output {
+                fs::write(output, mlir_output);
+            } else {
+                println!("{mlir_output}");
+            }
+        }
+        Commands::Run { function } => {
+            let engine = sierra2mlir::execute(&code)?;
+
+            unsafe {
+                engine
+                    .invoke_packed(&function, &mut [])?;
+            };
+        },
+    }
 
     Ok(())
 }

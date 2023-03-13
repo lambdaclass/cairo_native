@@ -11,22 +11,17 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
 ## CLI Interface
 
 ```
-A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
+Usage: cli --input <INPUT> <COMMAND>
 
-Usage: sierra2mlir --input <INPUT> --output <OUTPUT>
+Commands:
+  compile  Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
+  run      Compile and run a program. The entry point must be a function without arguments
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
-  -i, --input <INPUT>
-          The input sierra file
-
-  -o, --output <OUTPUT>
-          The output file
-
-  -h, --help
-          Print help (see a summary with '-h')
-
-  -V, --version
-          Print version
+  -i, --input <INPUT>  The input sierra file
+  -h, --help           Print help (see more with '--help')
+  -V, --version        Print version
 ```
 
 ## Setup
@@ -50,8 +45,7 @@ cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_ASSERTIONS=ON \
    -DLLVM_INSTALL_UTILS=ON \
    -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
-   -DMLIR_ENABLE_CUDA_RUNNER=ON \
-   -DCMAKE_INSTALL_PREFIX=~/data/mlir
+   -DCMAKE_INSTALL_PREFIX=~/mlir
 ```
 
 Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the mlir directory:
