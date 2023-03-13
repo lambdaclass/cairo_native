@@ -1,4 +1,3 @@
 (function() {var implementors = {
-"cli":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.68.0/core/fmt/trait.Debug.html\" title=\"trait core::fmt::Debug\">Debug</a> for <a class=\"struct\" href=\"cli/struct.Args.html\" title=\"struct cli::Args\">Args</a>"]],
 "sierra2mlir":[["impl&lt;'ctx&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.68.0/core/fmt/trait.Debug.html\" title=\"trait core::fmt::Debug\">Debug</a> for <a class=\"struct\" href=\"sierra2mlir/compiler/struct.Storage.html\" title=\"struct sierra2mlir::compiler::Storage\">Storage</a>&lt;'ctx&gt;"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
