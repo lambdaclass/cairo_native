@@ -34,7 +34,7 @@ jobs:
           profile: minimal
           override: true
           components: rustfmt, rust-src
-          
+
       - name: Build Documentation
         uses: actions-rs/cargo@v1
         with:
@@ -43,7 +43,7 @@ jobs:
 
       - name: Prepare index
         run: |
-          echo '<meta http-equiv="refresh" content="0; url=mlir/index.html" />' > target/doc/index.html
+          echo '<meta http-equiv="refresh" content="0; url=sierra2mlir/index.html" />' > target/doc/index.html
 
       - name: Deploy Documentation
         uses: peaceiris/actions-gh-pages@v3.9.0

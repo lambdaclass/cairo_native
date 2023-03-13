@@ -1,26 +1,6 @@
-[package]
-name = "sierra2mlir"
-version = "0.1.0"
-edition = "2021"
-authors = [
-    "Edgar <@edg-l>",
+[workspace]
+
+members = [
+    "sierra2mlir",
+    "cli"
 ]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[[bench]]
-name = "execution"
-harness = false
-
-[dependencies]
-clap = { version = "4.1.8", features = ["derive"] }
-#mlir = { version = "0.1.0", path = "../mlir" }
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", branch = "main" }
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-color-eyre = "0.6.2"
-#mlir-sys = "0.1.4"
-melior-next = { version = "0.4.4", features = ["cuda"], git = "https://github.com/edg-l/melior-next" }
-
-[dev-dependencies]
-criterion = "0.4.0"

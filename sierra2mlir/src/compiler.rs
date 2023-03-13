@@ -44,7 +44,6 @@ impl<'ctx> Compiler<'ctx> {
         context.get_or_load_dialect("math");
         context.get_or_load_dialect("cf");
         context.get_or_load_dialect("scf");
-        context.get_or_load_dialect("gpu");
 
         let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
@@ -614,8 +613,7 @@ impl<'ctx> Compiler<'ctx> {
                     .add_attributes(&[(
                         Identifier::new(&self.context, "sym_name"),
                         Attribute::parse(&self.context, "\"kernels\"").unwrap(),
-                    ),
-                   ])
+                    )])
                     .add_regions(vec![module_region])
                     .build();
 
@@ -677,10 +675,8 @@ impl<'ctx> Compiler<'ctx> {
                     .add_attributes(&[
                         (
                             Identifier::new(&self.context, "kernel"),
-                            Attribute::parse(&self.context, "@kernels::@kernel1")
-                                .unwrap(),
+                            Attribute::parse(&self.context, "@kernels::@kernel1").unwrap(),
                         ),
-
                         (
                             Identifier::new(&self.context, "operand_segment_sizes"),
                             Attribute::parse(
