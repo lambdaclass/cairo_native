@@ -1,6 +1,5 @@
-use cairo_lang_sierra::{ids::GenericTypeId, program::GenericArg};
 use color_eyre::Result;
-use melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
+use melior_next::ir::{Block, Location, Operation, Region};
 use tracing::debug;
 
 use crate::compiler::{Compiler, Storage};
@@ -8,7 +7,7 @@ use crate::compiler::{Compiler, Storage};
 impl<'ctx> Compiler<'ctx> {
     pub fn process_libfuncs(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for func_decl in &self.program.libfunc_declarations {
-            let id = func_decl.id.id;
+            let _id = func_decl.id.id;
             let name = func_decl.long_id.generic_id.0.as_str();
             debug!(name, "processing libfunc decl");
 
@@ -70,7 +69,8 @@ impl<'ctx> Compiler<'ctx> {
             "felt_add",
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
-        );
+            false,
+        )?;
 
         Ok(func)
     }
@@ -105,7 +105,8 @@ impl<'ctx> Compiler<'ctx> {
             "felt_sub",
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
-        );
+            false,
+        )?;
 
         Ok(func)
     }
@@ -140,7 +141,8 @@ impl<'ctx> Compiler<'ctx> {
             "felt_mul",
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
-        );
+            false,
+        )?;
 
         Ok(func)
     }

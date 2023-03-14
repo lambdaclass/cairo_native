@@ -1,18 +1,15 @@
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use color_eyre::Result;
 use melior_next::{
-    dialect::{self, Handle},
+    dialect,
     ir::{
-        block,
-        operation::{self, ResultValue},
-        Attribute, Block, Identifier, Location, Module, Operation, OperationRef, Region, Type,
+        operation, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
         Value, ValueLike,
     },
-    pass,
     utility::{register_all_dialects, register_all_llvm_translations},
-    Context, ExecutionEngine,
+    Context,
 };
-use std::{collections::HashMap, fs::File, path::Path};
+use std::collections::HashMap;
 
 pub struct Compiler<'ctx> {
     pub code: String,
@@ -45,17 +42,20 @@ impl<'ctx> Compiler<'ctx> {
         context.get_or_load_dialect("cf");
         context.get_or_load_dialect("scf");
 
-        let felt_type = Type::integer(&context, 256);
         let location = Location::unknown(&context);
 
         let region = Region::new();
         let block = Block::new(&[]);
         region.append_block(block);
         let module_op = operation::Builder::new("builtin.module", location)
-            .add_attributes(&[(
-                Identifier::new(&context, "gpu.container_module"),
-                Attribute::parse(&context, "unit").unwrap(),
-            )])
+            /*
+            .add_attributes(&[NamedAttribute::new_parsed(
+                &context,
+                "gpu.container_module",
+                "unit",
+            )
+            .unwrap()])
+            */
             .add_regions(vec![region])
             .build();
 
@@ -75,11 +75,8 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         name: &str,
         attribute: &str,
-    ) -> (Identifier<'ctx>, Attribute<'ctx>) {
-        (
-            Identifier::new(&self.context, name),
-            Attribute::parse(&self.context, attribute).unwrap(),
-        )
+    ) -> Result<NamedAttribute<'ctx>> {
+        Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
     }
 
     pub fn felt_type(&'ctx self) -> Type<'ctx> {
@@ -165,7 +162,9 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_eq(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
-                .add_attributes(&[self.named_attribute("predicate", "0")]) // 0 -> eq
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "predicate", "0").unwrap()
+                ]) // 0 -> eq
                 .add_operands(&[lhs, rhs])
                 .add_results(&[Type::integer(&self.context, 1)])
                 .build(),
@@ -209,10 +208,12 @@ impl<'ctx> Compiler<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.constant", Location::unknown(&self.context))
                 .add_results(&[ty])
-                .add_attributes(&[(
-                    Identifier::new(&self.context, "value"),
-                    Attribute::parse(&self.context, &format!("{val} : {}", ty)).unwrap(),
-                )])
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "value",
+                    &format!("{val} : {}", ty),
+                )
+                .unwrap()])
                 .build(),
         )
     }
@@ -245,24 +246,35 @@ impl<'ctx> Compiler<'ctx> {
         name: &str,
         function_type: &str,
         regions: Vec<Region>,
-    ) -> Operation<'ctx> {
-        operation::Builder::new("func.func", Location::unknown(&self.context))
-            .add_attributes(&[
-                (
-                    Identifier::new(&self.context, "function_type"),
-                    Attribute::parse(&self.context, function_type).unwrap(),
-                ),
-                (
-                    Identifier::new(&self.context, "sym_name"),
-                    Attribute::parse(&self.context, &format!("\"{name}\"")).unwrap(),
-                ),
-                (
-                    Identifier::new(&self.context, "llvm.emit_c_interface"),
-                    Attribute::parse(&self.context, r#"unit"#).unwrap(),
-                ),
-            ])
-            .add_regions(regions)
-            .build()
+        emit_c_interface: bool,
+    ) -> Result<Operation<'ctx>> {
+        let mut attrs = Vec::with_capacity(3);
+
+        attrs.push(NamedAttribute::new_parsed(
+            &self.context,
+            "function_type",
+            function_type,
+        )?);
+        attrs.push(NamedAttribute::new_parsed(
+            &self.context,
+            "sym_name",
+            &format!("\"{name}\""),
+        )?);
+
+        if emit_c_interface {
+            attrs.push(NamedAttribute::new_parsed(
+                &self.context,
+                "emit_c_interface",
+                "unit",
+            )?);
+        }
+
+        Ok(
+            operation::Builder::new("func.func", Location::unknown(&self.context))
+                .add_attributes(&attrs)
+                .add_regions(regions)
+                .build(),
+        )
     }
 
     pub fn op_return(&'ctx self, block: &'ctx Block, result: &[Value]) -> OperationRef<'ctx> {
@@ -279,14 +291,14 @@ impl<'ctx> Compiler<'ctx> {
         name: &str,
         args: &[Value],
         results: &[Type],
-    ) -> OperationRef<'ctx> {
-        block.append_operation(
+    ) -> Result<OperationRef<'ctx>> {
+        Ok(block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
-                .add_attributes(&[self.named_attribute("callee", name)])
+                .add_attributes(&[self.named_attribute("callee", name)?])
                 .add_operands(args)
                 .add_results(results)
                 .build(),
-        )
+        ))
     }
 
     /// Creates a new block
@@ -355,7 +367,7 @@ impl<'ctx> Compiler<'ctx> {
                 //  0 => (a, 0),
                 let if_block = self.new_block(&[]);
 
-                let yield_op = if_block.append_operation(
+                if_block.append_operation(
                     operation::Builder::new("scf.yield", location)
                         .add_operands(&[arg_a.into(), zero_res])
                         .build(),
@@ -401,7 +413,7 @@ impl<'ctx> Compiler<'ctx> {
                         n_minus_1_mod_res.into(),
                     ],
                     &[felt_type, felt_type],
-                );
+                )?;
 
                 let value = func_call.result(0)?;
                 let count = func_call.result(1)?;
@@ -413,7 +425,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.op_rem(&else_block, count_plus_1_res.into(), prime_res.into());
                 let count_plus_1_mod_res = count_plus_1_mod.result(0)?;
 
-                let yield_op = else_block.append_operation(
+                else_block.append_operation(
                     operation::Builder::new("scf.yield", location)
                         .add_operands(&[value.into(), count_plus_1_mod_res.into()])
                         .build(),
@@ -437,13 +449,12 @@ impl<'ctx> Compiler<'ctx> {
 
             fib_region.append_block(fib_block);
 
-            let func = self.op_func(
+            self.op_func(
                 "fib",
                 "(i256, i256, i256) -> (i256, i256)",
                 vec![fib_region],
-            );
-
-            func
+                true,
+            )?
         };
 
         self.module.body().append_operation(fib_function);
@@ -479,8 +490,7 @@ impl<'ctx> Compiler<'ctx> {
                 //  0 => (),
                 let if_block = self.new_block(&[]);
 
-                let yield_op = if_block
-                    .append_operation(operation::Builder::new("scf.yield", location).build());
+                if_block.append_operation(operation::Builder::new("scf.yield", location).build());
 
                 if_region.append_block(if_block);
             }
@@ -499,12 +509,12 @@ impl<'ctx> Compiler<'ctx> {
                 let times = self.op_felt_const(&fib_block, "500");
                 let times_res = times.result(0)?.into();
 
-                let func_call = self.op_func_call(
+                self.op_func_call(
                     &else_block,
                     "@fib",
                     &[zero_res, one_res, times_res],
                     &[felt_type, felt_type],
-                );
+                )?;
 
                 let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
                 let n_minus_1_res = n_minus_1.result(0).unwrap();
@@ -516,16 +526,14 @@ impl<'ctx> Compiler<'ctx> {
                     self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
                 let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
 
-                let func_call =
-                    self.op_func_call(&else_block, "@fib_mid", &[n_minus_1_mod_res.into()], &[]);
+                self.op_func_call(&else_block, "@fib_mid", &[n_minus_1_mod_res.into()], &[])?;
 
-                let yield_op = else_block
-                    .append_operation(operation::Builder::new("scf.yield", location).build());
+                else_block.append_operation(operation::Builder::new("scf.yield", location).build());
 
                 else_region.append_block(else_block);
             }
 
-            let isif = fib_block.append_operation(
+            fib_block.append_operation(
                 operation::Builder::new("scf.if", location)
                     .add_operands(&[eq.result(0)?.into()])
                     .add_results(&[])
@@ -537,9 +545,7 @@ impl<'ctx> Compiler<'ctx> {
 
             fib_mid_region.append_block(fib_block);
 
-            let func = self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region]);
-
-            func
+            self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region], false)?
         };
 
         self.module.body().append_operation(fib_mid_function);
@@ -551,7 +557,7 @@ impl<'ctx> Compiler<'ctx> {
             let n_arg = self.op_felt_const(&block, "100");
             let n_arg_res = n_arg.result(0)?.into();
 
-            let func_call = self.op_func_call(&block, "@fib_mid", &[n_arg_res], &[]);
+            self.op_func_call(&block, "@fib_mid", &[n_arg_res], &[])?;
 
             let main_ret = self.op_const(&block, "0", self.i32_type());
 
@@ -559,9 +565,7 @@ impl<'ctx> Compiler<'ctx> {
 
             region.append_block(block);
 
-            let func = self.op_func("main", "() -> i32", vec![region]);
-
-            func
+            self.op_func("main", "() -> i32", vec![region], true)?
         };
 
         self.module.body().append_operation(main_function);
@@ -612,10 +616,7 @@ impl<'ctx> Compiler<'ctx> {
 
             block.append_operation(
                 operation::Builder::new("gpu.printf", Location::unknown(&self.context))
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "format"),
-                        Attribute::parse(&self.context, r#""suma: %d ""#).unwrap(),
-                    )])
+                    .add_attributes(&[self.named_attribute("format", r#""suma: %d ""#)?])
                     .add_operands(&[trunc_op_res.into()])
                     .build(),
             );
@@ -628,20 +629,14 @@ impl<'ctx> Compiler<'ctx> {
             region.append_block(block);
 
             let func = operation::Builder::new("gpu.func", Location::unknown(&self.context))
-                .add_attributes(&[
-                    (
-                        Identifier::new(&self.context, "function_type"),
-                        Attribute::parse(&self.context, "(i256, i256) -> ()").unwrap(),
-                    ),
-                    (
-                        Identifier::new(&self.context, "sym_name"),
-                        Attribute::parse(&self.context, "\"kernel1\"").unwrap(),
-                    ),
-                    (
-                        Identifier::new(&self.context, "gpu.kernel"),
-                        Attribute::parse(&self.context, "unit").unwrap(),
-                    ),
-                ])
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        ("function_type", "(i256, i256) -> ()"),
+                        ("sym_name", "\"kernel1\""),
+                        ("gpu.kernel", "unit"),
+                    ],
+                )?)
                 .add_regions(vec![region])
                 .build();
 
@@ -655,10 +650,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let gpu_module =
                 operation::Builder::new("gpu.module", Location::unknown(&self.context))
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "sym_name"),
-                        Attribute::parse(&self.context, "\"kernels\"").unwrap(),
-                    )])
+                    .add_attributes(&[self.named_attribute("sym_name", "\"kernels\"")?])
                     .add_regions(vec![module_region])
                     .build();
 
@@ -675,10 +667,9 @@ impl<'ctx> Compiler<'ctx> {
             let index_op = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_results(&[index_type])
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "value"),
-                        Attribute::parse(&self.context, &format!("1 : {}", index_type)).unwrap(),
-                    )])
+                    .add_attributes(&[
+                        self.named_attribute("value", &format!("1 : {}", index_type))?
+                    ])
                     .build(),
             );
             let index_value = index_op.result(0)?.into();
@@ -686,10 +677,7 @@ impl<'ctx> Compiler<'ctx> {
             let dynamic_shared_memory_size_op = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_results(&[i32_type])
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "value"),
-                        Attribute::parse(&self.context, &format!("0 : {}", i32_type)).unwrap(),
-                    )])
+                    .add_attributes(&[self.named_attribute("value", &format!("0 : {}", i32_type))?])
                     .build(),
             );
             let dynamic_shared_memory_size = dynamic_shared_memory_size_op.result(0)?.into();
@@ -697,40 +685,34 @@ impl<'ctx> Compiler<'ctx> {
             let arg1_op = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_results(&[i256_type])
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "value"),
-                        Attribute::parse(&self.context, &format!("4 : {}", i256_type)).unwrap(),
-                    )])
+                    .add_attributes(
+                        &[self.named_attribute("value", &format!("4 : {}", i256_type))?],
+                    )
                     .build(),
             );
             let arg1 = arg1_op.result(0)?;
             let arg2_op = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_results(&[i256_type])
-                    .add_attributes(&[(
-                        Identifier::new(&self.context, "value"),
-                        Attribute::parse(&self.context, &format!("2 : {}", i256_type)).unwrap(),
-                    )])
+                    .add_attributes(
+                        &[self.named_attribute("value", &format!("2 : {}", i256_type))?],
+                    )
                     .build(),
             );
             let arg2 = arg2_op.result(0)?;
 
             let gpu_launch =
                 operation::Builder::new("gpu.launch_func", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        (
-                            Identifier::new(&self.context, "kernel"),
-                            Attribute::parse(&self.context, "@kernels::@kernel1").unwrap(),
-                        ),
-                        (
-                            Identifier::new(&self.context, "operand_segment_sizes"),
-                            Attribute::parse(
-                                &self.context,
+                    .add_attributes(&NamedAttribute::new_parsed_vec(
+                        &self.context,
+                        &[
+                            ("kernel", "@kernels::@kernel1"),
+                            (
+                                "operand_segment_sizes",
                                 "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>",
-                            )
-                            .unwrap(),
-                        ),
-                    ])
+                            ),
+                        ],
+                    )?)
                     .add_operands(&[
                         index_value,
                         index_value,
@@ -749,9 +731,8 @@ impl<'ctx> Compiler<'ctx> {
             let main_ret = self.op_const(&block, "0", self.i32_type());
             self.op_return(&block, &[main_ret.result(0)?.into()]);
             region.append_block(block);
-            let func = self.op_func("main", "() -> i32", vec![region]);
 
-            func
+            self.op_func("main", "() -> i32", vec![region], true)?
         };
 
         self.module.body().append_operation(main_function);

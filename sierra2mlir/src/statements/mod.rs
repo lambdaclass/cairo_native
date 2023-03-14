@@ -1,9 +1,6 @@
-use cairo_lang_sierra::{
-    ids::GenericTypeId,
-    program::{GenStatement, GenericArg},
-};
+use cairo_lang_sierra::program::GenStatement;
 use color_eyre::Result;
-use melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
+use melior_next::ir::{Block, Location, Region};
 use tracing::debug;
 
 use crate::compiler::{Compiler, Storage};
@@ -26,11 +23,11 @@ impl<'ctx> Compiler<'ctx> {
                 params.push((*ty, loc));
             }
 
-            let region = Region::new();
-            let block = Block::new(&params);
+            let _region = Region::new();
+            let _block = Block::new(&params);
 
             let statements_entry = self.program.statements.iter().skip(entry);
-            let mut statements = statements_entry.clone();
+            let statements = statements_entry.clone();
 
             for statement in statements {
                 match statement {

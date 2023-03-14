@@ -1,5 +1,4 @@
-use cairo_lang_sierra::{ids::GenericTypeId, program::GenericArg};
-use melior_next::ir::Type;
+use cairo_lang_sierra::program::GenericArg;
 use tracing::debug;
 
 use crate::compiler::{Compiler, Storage};
