@@ -748,40 +748,18 @@
 <a href="#748" id="748">748</a>
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>melior_next::{
-    dialect::{<span class="self">self</span>, Handle},
+    dialect,
     ir::{
-        block,
-        operation::{<span class="self">self</span>, ResultValue},
-        Attribute, Block, Identifier, Location, Module, Operation, OperationRef, Region, Type,
+        operation, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
         Value, ValueLike,
     },
-    pass,
     utility::{register_all_dialects, register_all_llvm_translations},
-    Context, ExecutionEngine,
+    Context,
 };
-<span class="kw">use </span>std::{collections::HashMap, fs::File, path::Path};
+<span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">pub struct </span>Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     <span class="kw">pub </span>code: String,
@@ -814,18 +792,21 @@
         context.get_or_load_dialect(<span class="string">&quot;cf&quot;</span>);
         context.get_or_load_dialect(<span class="string">&quot;scf&quot;</span>);
 
-        <span class="kw">let </span>felt_type = Type::integer(<span class="kw-2">&amp;</span>context, <span class="number">256</span>);
         <span class="kw">let </span>location = Location::unknown(<span class="kw-2">&amp;</span>context);
 
         <span class="kw">let </span>region = Region::new();
         <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>[]);
         region.append_block(block);
         <span class="kw">let </span>module_op = operation::Builder::new(<span class="string">&quot;builtin.module&quot;</span>, location)
-            .add_attributes(<span class="kw-2">&amp;</span>[(
-                Identifier::new(<span class="kw-2">&amp;</span>context, <span class="string">&quot;gpu.container_module&quot;</span>),
-                Attribute::parse(<span class="kw-2">&amp;</span>context, <span class="string">&quot;unit&quot;</span>).unwrap(),
-            )])
-            .add_regions(<span class="macro">vec!</span>[region])
+            <span class="comment">/*
+            .add_attributes(&amp;[NamedAttribute::new_parsed(
+                &amp;context,
+                &quot;gpu.container_module&quot;,
+                &quot;unit&quot;,
+            )
+            .unwrap()])
+            */
+            </span>.add_regions(<span class="macro">vec!</span>[region])
             .build();
 
         <span class="kw">let </span>module = Module::from_operation(module_op).unwrap();
@@ -844,11 +825,8 @@
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
         name: <span class="kw-2">&amp;</span>str,
         attribute: <span class="kw-2">&amp;</span>str,
-    ) -&gt; (Identifier&lt;<span class="lifetime">&#39;ctx</span>&gt;, Attribute&lt;<span class="lifetime">&#39;ctx</span>&gt;) {
-        (
-            Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, name),
-            Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, attribute).unwrap(),
-        )
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NamedAttribute&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        <span class="prelude-val">Ok</span>(NamedAttribute::new_parsed(<span class="kw-2">&amp;</span><span class="self">self</span>.context, name, attribute)<span class="question-mark">?</span>)
     }
 
     <span class="kw">pub fn </span>felt_type(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; Type&lt;<span class="lifetime">&#39;ctx</span>&gt; {
@@ -934,7 +912,9 @@
     </span><span class="kw">pub fn </span>op_eq(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.cmpi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;predicate&quot;</span>, <span class="string">&quot;0&quot;</span>)]) <span class="comment">// 0 -&gt; eq
+                .add_attributes(<span class="kw-2">&amp;</span>[
+                    NamedAttribute::new_parsed(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;predicate&quot;</span>, <span class="string">&quot;0&quot;</span>).unwrap()
+                ]) <span class="comment">// 0 -&gt; eq
                 </span>.add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
                 .add_results(<span class="kw-2">&amp;</span>[Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">1</span>)])
                 .build(),
@@ -978,10 +958,12 @@
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_results(<span class="kw-2">&amp;</span>[ty])
-                .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
-                    Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{val} : {}&quot;</span>, ty)).unwrap(),
-                )])
+                .add_attributes(<span class="kw-2">&amp;</span>[NamedAttribute::new_parsed(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                    <span class="string">&quot;value&quot;</span>,
+                    <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{val} : {}&quot;</span>, ty),
+                )
+                .unwrap()])
                 .build(),
         )
     }
@@ -1014,24 +996,35 @@
         name: <span class="kw-2">&amp;</span>str,
         function_type: <span class="kw-2">&amp;</span>str,
         regions: Vec&lt;Region&gt;,
-    ) -&gt; Operation&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-        operation::Builder::new(<span class="string">&quot;func.func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-            .add_attributes(<span class="kw-2">&amp;</span>[
-                (
-                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;function_type&quot;</span>),
-                    Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, function_type).unwrap(),
-                ),
-                (
-                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;sym_name&quot;</span>),
-                    Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{name}\&quot;&quot;</span>)).unwrap(),
-                ),
-                (
-                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;llvm.emit_c_interface&quot;</span>),
-                    Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">r#&quot;unit&quot;#</span>).unwrap(),
-                ),
-            ])
-            .add_regions(regions)
-            .build()
+        emit_c_interface: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>attrs = Vec::with_capacity(<span class="number">3</span>);
+
+        attrs.push(NamedAttribute::new_parsed(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+            <span class="string">&quot;function_type&quot;</span>,
+            function_type,
+        )<span class="question-mark">?</span>);
+        attrs.push(NamedAttribute::new_parsed(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+            <span class="string">&quot;sym_name&quot;</span>,
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{name}\&quot;&quot;</span>),
+        )<span class="question-mark">?</span>);
+
+        <span class="kw">if </span>emit_c_interface {
+            attrs.push(NamedAttribute::new_parsed(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                <span class="string">&quot;emit_c_interface&quot;</span>,
+                <span class="string">&quot;unit&quot;</span>,
+            )<span class="question-mark">?</span>);
+        }
+
+        <span class="prelude-val">Ok</span>(
+            operation::Builder::new(<span class="string">&quot;func.func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                .add_attributes(<span class="kw-2">&amp;</span>attrs)
+                .add_regions(regions)
+                .build(),
+        )
     }
 
     <span class="kw">pub fn </span>op_return(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, result: <span class="kw-2">&amp;</span>[Value]) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
@@ -1048,14 +1041,14 @@
         name: <span class="kw-2">&amp;</span>str,
         args: <span class="kw-2">&amp;</span>[Value],
         results: <span class="kw-2">&amp;</span>[Type],
-    ) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-        block.append_operation(
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        <span class="prelude-val">Ok</span>(block.append_operation(
             operation::Builder::new(<span class="string">&quot;func.call&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;callee&quot;</span>, name)])
+                .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;callee&quot;</span>, name)<span class="question-mark">?</span>])
                 .add_operands(args)
                 .add_results(results)
                 .build(),
-        )
+        ))
     }
 
     <span class="doccomment">/// Creates a new block
@@ -1124,7 +1117,7 @@
                 <span class="comment">//  0 =&gt; (a, 0),
                 </span><span class="kw">let </span>if_block = <span class="self">self</span>.new_block(<span class="kw-2">&amp;</span>[]);
 
-                <span class="kw">let </span>yield_op = if_block.append_operation(
+                if_block.append_operation(
                     operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location)
                         .add_operands(<span class="kw-2">&amp;</span>[arg_a.into(), zero_res])
                         .build(),
@@ -1170,7 +1163,7 @@
                         n_minus_1_mod_res.into(),
                     ],
                     <span class="kw-2">&amp;</span>[felt_type, felt_type],
-                );
+                )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>value = func_call.result(<span class="number">0</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>count = func_call.result(<span class="number">1</span>)<span class="question-mark">?</span>;
@@ -1182,7 +1175,7 @@
                     <span class="self">self</span>.op_rem(<span class="kw-2">&amp;</span>else_block, count_plus_1_res.into(), prime_res.into());
                 <span class="kw">let </span>count_plus_1_mod_res = count_plus_1_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>yield_op = else_block.append_operation(
+                else_block.append_operation(
                     operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location)
                         .add_operands(<span class="kw-2">&amp;</span>[value.into(), count_plus_1_mod_res.into()])
                         .build(),
@@ -1206,14 +1199,13 @@
 
             fib_region.append_block(fib_block);
 
-            <span class="kw">let </span>func = <span class="self">self</span>.op_func(
+            <span class="self">self</span>.op_func(
                 <span class="string">&quot;fib&quot;</span>,
                 <span class="string">&quot;(i256, i256, i256) -&gt; (i256, i256)&quot;</span>,
                 <span class="macro">vec!</span>[fib_region],
-            );
-
-            func
-        };
+                <span class="bool-val">true</span>,
+            )<span class="question-mark">?
+        </span>};
 
         <span class="self">self</span>.module.body().append_operation(fib_function);
 
@@ -1248,8 +1240,7 @@
                 <span class="comment">//  0 =&gt; (),
                 </span><span class="kw">let </span>if_block = <span class="self">self</span>.new_block(<span class="kw-2">&amp;</span>[]);
 
-                <span class="kw">let </span>yield_op = if_block
-                    .append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
+                if_block.append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
 
                 if_region.append_block(if_block);
             }
@@ -1268,12 +1259,12 @@
                 <span class="kw">let </span>times = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>fib_block, <span class="string">&quot;500&quot;</span>);
                 <span class="kw">let </span>times_res = times.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-                <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(
+                <span class="self">self</span>.op_func_call(
                     <span class="kw-2">&amp;</span>else_block,
                     <span class="string">&quot;@fib&quot;</span>,
                     <span class="kw-2">&amp;</span>[zero_res, one_res, times_res],
                     <span class="kw-2">&amp;</span>[felt_type, felt_type],
-                );
+                )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>n_minus_1 = <span class="self">self</span>.op_sub(<span class="kw-2">&amp;</span>else_block, arg_n.into(), one_res);
                 <span class="kw">let </span>n_minus_1_res = n_minus_1.result(<span class="number">0</span>).unwrap();
@@ -1285,16 +1276,14 @@
                     <span class="self">self</span>.op_rem(<span class="kw-2">&amp;</span>else_block, n_minus_1_res.into(), prime_res.into());
                 <span class="kw">let </span>n_minus_1_mod_res = n_minus_1_mod.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>func_call =
-                    <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>else_block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_minus_1_mod_res.into()], <span class="kw-2">&amp;</span>[]);
+                <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>else_block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_minus_1_mod_res.into()], <span class="kw-2">&amp;</span>[])<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>yield_op = else_block
-                    .append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
+                else_block.append_operation(operation::Builder::new(<span class="string">&quot;scf.yield&quot;</span>, location).build());
 
                 else_region.append_block(else_block);
             }
 
-            <span class="kw">let </span>isif = fib_block.append_operation(
+            fib_block.append_operation(
                 operation::Builder::new(<span class="string">&quot;scf.if&quot;</span>, location)
                     .add_operands(<span class="kw-2">&amp;</span>[eq.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
                     .add_results(<span class="kw-2">&amp;</span>[])
@@ -1306,10 +1295,8 @@
 
             fib_mid_region.append_block(fib_block);
 
-            <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;fib_mid&quot;</span>, <span class="string">&quot;(i256) -&gt; ()&quot;</span>, <span class="macro">vec!</span>[fib_mid_region]);
-
-            func
-        };
+            <span class="self">self</span>.op_func(<span class="string">&quot;fib_mid&quot;</span>, <span class="string">&quot;(i256) -&gt; ()&quot;</span>, <span class="macro">vec!</span>[fib_mid_region], <span class="bool-val">false</span>)<span class="question-mark">?
+        </span>};
 
         <span class="self">self</span>.module.body().append_operation(fib_mid_function);
 
@@ -1320,7 +1307,7 @@
             <span class="kw">let </span>n_arg = <span class="self">self</span>.op_felt_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;100&quot;</span>);
             <span class="kw">let </span>n_arg_res = n_arg.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-            <span class="kw">let </span>func_call = <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_arg_res], <span class="kw-2">&amp;</span>[]);
+            <span class="self">self</span>.op_func_call(<span class="kw-2">&amp;</span>block, <span class="string">&quot;@fib_mid&quot;</span>, <span class="kw-2">&amp;</span>[n_arg_res], <span class="kw-2">&amp;</span>[])<span class="question-mark">?</span>;
 
             <span class="kw">let </span>main_ret = <span class="self">self</span>.op_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;0&quot;</span>, <span class="self">self</span>.i32_type());
 
@@ -1328,10 +1315,8 @@
 
             region.append_block(block);
 
-            <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;main&quot;</span>, <span class="string">&quot;() -&gt; i32&quot;</span>, <span class="macro">vec!</span>[region]);
-
-            func
-        };
+            <span class="self">self</span>.op_func(<span class="string">&quot;main&quot;</span>, <span class="string">&quot;() -&gt; i32&quot;</span>, <span class="macro">vec!</span>[region], <span class="bool-val">true</span>)<span class="question-mark">?
+        </span>};
 
         <span class="self">self</span>.module.body().append_operation(main_function);
         <span class="kw">let </span>op = <span class="self">self</span>.module.as_operation();
@@ -1381,10 +1366,7 @@
 
             block.append_operation(
                 operation::Builder::new(<span class="string">&quot;gpu.printf&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;format&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">r#&quot;&quot;suma: %d &quot;&quot;#</span>).unwrap(),
-                    )])
+                    .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;format&quot;</span>, <span class="string">r#&quot;&quot;suma: %d &quot;&quot;#</span>)<span class="question-mark">?</span>])
                     .add_operands(<span class="kw-2">&amp;</span>[trunc_op_res.into()])
                     .build(),
             );
@@ -1397,20 +1379,14 @@
             region.append_block(block);
 
             <span class="kw">let </span>func = operation::Builder::new(<span class="string">&quot;gpu.func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;function_type&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;(i256, i256) -&gt; ()&quot;</span>).unwrap(),
-                    ),
-                    (
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;sym_name&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;\&quot;kernel1\&quot;&quot;</span>).unwrap(),
-                    ),
-                    (
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;gpu.kernel&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;unit&quot;</span>).unwrap(),
-                    ),
-                ])
+                .add_attributes(<span class="kw-2">&amp;</span>NamedAttribute::new_parsed_vec(
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                    <span class="kw-2">&amp;</span>[
+                        (<span class="string">&quot;function_type&quot;</span>, <span class="string">&quot;(i256, i256) -&gt; ()&quot;</span>),
+                        (<span class="string">&quot;sym_name&quot;</span>, <span class="string">&quot;\&quot;kernel1\&quot;&quot;</span>),
+                        (<span class="string">&quot;gpu.kernel&quot;</span>, <span class="string">&quot;unit&quot;</span>),
+                    ],
+                )<span class="question-mark">?</span>)
                 .add_regions(<span class="macro">vec!</span>[region])
                 .build();
 
@@ -1424,10 +1400,7 @@
 
             <span class="kw">let </span>gpu_module =
                 operation::Builder::new(<span class="string">&quot;gpu.module&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;sym_name&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;\&quot;kernels\&quot;&quot;</span>).unwrap(),
-                    )])
+                    .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;sym_name&quot;</span>, <span class="string">&quot;\&quot;kernels\&quot;&quot;</span>)<span class="question-mark">?</span>])
                     .add_regions(<span class="macro">vec!</span>[module_region])
                     .build();
 
@@ -1444,10 +1417,9 @@
             <span class="kw">let </span>index_op = block.append_operation(
                 operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                     .add_results(<span class="kw-2">&amp;</span>[index_type])
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {}&quot;</span>, index_type)).unwrap(),
-                    )])
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        <span class="self">self</span>.named_attribute(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {}&quot;</span>, index_type))<span class="question-mark">?
+                    </span>])
                     .build(),
             );
             <span class="kw">let </span>index_value = index_op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -1455,10 +1427,7 @@
             <span class="kw">let </span>dynamic_shared_memory_size_op = block.append_operation(
                 operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                     .add_results(<span class="kw-2">&amp;</span>[i32_type])
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;0 : {}&quot;</span>, i32_type)).unwrap(),
-                    )])
+                    .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;0 : {}&quot;</span>, i32_type))<span class="question-mark">?</span>])
                     .build(),
             );
             <span class="kw">let </span>dynamic_shared_memory_size = dynamic_shared_memory_size_op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -1466,40 +1435,34 @@
             <span class="kw">let </span>arg1_op = block.append_operation(
                 operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                     .add_results(<span class="kw-2">&amp;</span>[i256_type])
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;4 : {}&quot;</span>, i256_type)).unwrap(),
-                    )])
+                    .add_attributes(
+                        <span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;4 : {}&quot;</span>, i256_type))<span class="question-mark">?</span>],
+                    )
                     .build(),
             );
             <span class="kw">let </span>arg1 = arg1_op.result(<span class="number">0</span>)<span class="question-mark">?</span>;
             <span class="kw">let </span>arg2_op = block.append_operation(
                 operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                     .add_results(<span class="kw-2">&amp;</span>[i256_type])
-                    .add_attributes(<span class="kw-2">&amp;</span>[(
-                        Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;value&quot;</span>),
-                        Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;2 : {}&quot;</span>, i256_type)).unwrap(),
-                    )])
+                    .add_attributes(
+                        <span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;2 : {}&quot;</span>, i256_type))<span class="question-mark">?</span>],
+                    )
                     .build(),
             );
             <span class="kw">let </span>arg2 = arg2_op.result(<span class="number">0</span>)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>gpu_launch =
                 operation::Builder::new(<span class="string">&quot;gpu.launch_func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                    .add_attributes(<span class="kw-2">&amp;</span>[
-                        (
-                            Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;kernel&quot;</span>),
-                            Attribute::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;@kernels::@kernel1&quot;</span>).unwrap(),
-                        ),
-                        (
-                            Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;operand_segment_sizes&quot;</span>),
-                            Attribute::parse(
-                                <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                    .add_attributes(<span class="kw-2">&amp;</span>NamedAttribute::new_parsed_vec(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                        <span class="kw-2">&amp;</span>[
+                            (<span class="string">&quot;kernel&quot;</span>, <span class="string">&quot;@kernels::@kernel1&quot;</span>),
+                            (
+                                <span class="string">&quot;operand_segment_sizes&quot;</span>,
                                 <span class="string">&quot;array&lt;i32: 0, 1, 1, 1, 1, 1, 1, 1, 2&gt;&quot;</span>,
-                            )
-                            .unwrap(),
-                        ),
-                    ])
+                            ),
+                        ],
+                    )<span class="question-mark">?</span>)
                     .add_operands(<span class="kw-2">&amp;</span>[
                         index_value,
                         index_value,
@@ -1518,10 +1481,9 @@
             <span class="kw">let </span>main_ret = <span class="self">self</span>.op_const(<span class="kw-2">&amp;</span>block, <span class="string">&quot;0&quot;</span>, <span class="self">self</span>.i32_type());
             <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[main_ret.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()]);
             region.append_block(block);
-            <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;main&quot;</span>, <span class="string">&quot;() -&gt; i32&quot;</span>, <span class="macro">vec!</span>[region]);
 
-            func
-        };
+            <span class="self">self</span>.op_func(<span class="string">&quot;main&quot;</span>, <span class="string">&quot;() -&gt; i32&quot;</span>, <span class="macro">vec!</span>[region], <span class="bool-val">true</span>)<span class="question-mark">?
+        </span>};
 
         <span class="self">self</span>.module.body().append_operation(main_function);
 

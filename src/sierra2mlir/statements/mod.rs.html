@@ -43,15 +43,9 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-</pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{
-    ids::GenericTypeId,
-    program::{GenStatement, GenericArg},
-};
+</pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::program::GenStatement;
 <span class="kw">use </span>color_eyre::Result;
-<span class="kw">use </span>melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
+<span class="kw">use </span>melior_next::ir::{Block, Location, Region};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, Storage};
@@ -74,11 +68,11 @@
                 params.push((<span class="kw-2">*</span>ty, loc));
             }
 
-            <span class="kw">let </span>region = Region::new();
-            <span class="kw">let </span>block = Block::new(<span class="kw-2">&amp;</span>params);
+            <span class="kw">let </span>_region = Region::new();
+            <span class="kw">let </span>_block = Block::new(<span class="kw-2">&amp;</span>params);
 
             <span class="kw">let </span>statements_entry = <span class="self">self</span>.program.statements.iter().skip(entry);
-            <span class="kw">let </span><span class="kw-2">mut </span>statements = statements_entry.clone();
+            <span class="kw">let </span>statements = statements_entry.clone();
 
             <span class="kw">for </span>statement <span class="kw">in </span>statements {
                 <span class="kw">match </span>statement {

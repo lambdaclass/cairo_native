@@ -53,29 +53,15 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A compiler to convert Cairo&#39;s intermediate representation &quot;Sierra&quot; code to MLIR.
 
 </span><span class="comment">//#![deny(warnings)]
 </span><span class="attr">#![warn(clippy::nursery)]
-#![allow(unused)]
+</span><span class="comment">//#![deny(clippy::pedantic)]
+</span><span class="attr">#![warn(clippy::all)]
+#![warn(unused)]
 
-</span><span class="kw">use </span>std::{fs, path::PathBuf, time::Instant};
-
-<span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
-<span class="kw">use </span>melior_next::{
-    dialect,
-    ir::{operation, Attribute, Block, Identifier, Location, Module, Region, Type, Value},
-    pass,
-    utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
-};
+</span><span class="kw">use </span>melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::Compiler;
 

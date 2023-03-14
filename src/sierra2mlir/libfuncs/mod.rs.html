@@ -145,9 +145,10 @@
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
-</pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{ids::GenericTypeId, program::GenericArg};
-<span class="kw">use </span>color_eyre::Result;
-<span class="kw">use </span>melior_next::ir::{Block, Location, Operation, OperationRef, Region, Type};
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+</pre><pre class="rust"><code><span class="kw">use </span>color_eyre::Result;
+<span class="kw">use </span>melior_next::ir::{Block, Location, Operation, Region};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, Storage};
@@ -155,7 +156,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     <span class="kw">pub fn </span>process_libfuncs(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, storage: <span class="kw-2">&amp;mut </span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">for </span>func_decl <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.program.libfunc_declarations {
-            <span class="kw">let </span>id = func_decl.id.id;
+            <span class="kw">let </span>_id = func_decl.id.id;
             <span class="kw">let </span>name = func_decl.long_id.generic_id.<span class="number">0</span>.as_str();
             <span class="macro">debug!</span>(name, <span class="string">&quot;processing libfunc decl&quot;</span>);
 
@@ -217,7 +218,8 @@
             <span class="string">&quot;felt_add&quot;</span>,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
-        );
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(func)
     }
@@ -252,7 +254,8 @@
             <span class="string">&quot;felt_sub&quot;</span>,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
-        );
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(func)
     }
@@ -287,7 +290,8 @@
             <span class="string">&quot;felt_mul&quot;</span>,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
-        );
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(func)
     }
