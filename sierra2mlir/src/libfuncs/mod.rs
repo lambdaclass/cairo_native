@@ -1,5 +1,6 @@
+use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
-use melior_next::ir::{Block, Location, Operation, Region};
+use melior_next::ir::{Block, Location, Operation, Region, Value};
 use tracing::debug;
 
 use crate::compiler::{Compiler, Storage};
@@ -14,6 +15,7 @@ impl<'ctx> Compiler<'ctx> {
             match name {
                 // no-ops
                 "revoke_ap_tracking" => continue,
+                "disable_ap_tracking" => continue,
                 name if name.starts_with("rename") => continue,
                 name if name.starts_with("drop") => continue,
                 name if name.starts_with("store_temp") => continue,
@@ -31,12 +33,72 @@ impl<'ctx> Compiler<'ctx> {
                     let func = self.felt_mul_create()?;
                     self.module.body().append_operation(func);
                 }
+                "dup" => {
+                    let func = self.felt_add_dup(func_decl, storage)?;
+                    self.module.body().append_operation(func);
+                }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
         }
 
         debug!(types = ?storage.types, "processed");
         Ok(())
+    }
+
+    pub fn felt_add_dup(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &Storage<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        let mut args = vec![];
+
+        for arg in &func_decl.long_id.generic_args {
+            match arg {
+                GenericArg::UserType(_) => todo!(),
+                GenericArg::Type(type_id) => {
+                    let ty = storage
+                        .types
+                        .get(&type_id.id.to_string())
+                        .expect("type to exist");
+                    self.collect_types(&mut args, ty);
+                }
+                GenericArg::Value(_) => todo!(),
+                GenericArg::UserFunc(_) => todo!(),
+                GenericArg::Libfunc(_) => todo!(),
+            }
+        }
+
+        let region = Region::new();
+
+        let block = Block::new(&args);
+
+        // Return the results, 2 times.
+        let mut results: Vec<Value> = vec![];
+
+        for i in 0..block.argument_count() {
+            let arg = block.argument(i)?;
+            results.push(arg.into());
+        }
+
+        // 2 times, duplicate.
+        for i in 0..block.argument_count() {
+            let arg = block.argument(i)?;
+            results.push(arg.into());
+        }
+
+        self.op_return(&block, &results);
+
+        region.append_block(block);
+
+        let mut return_types = Vec::with_capacity(args.len() * 2);
+        return_types.extend_from_slice(&args);
+        return_types.extend_from_slice(&args);
+
+        let function_type = self.create_fn_signature(&args, &return_types);
+
+        let func = self.op_func("dup", &function_type, vec![region], false)?;
+
+        Ok(func)
     }
 
     pub fn felt_add_create(&'ctx self) -> Result<Operation<'ctx>> {

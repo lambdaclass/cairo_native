@@ -1,7 +1,7 @@
 use cairo_lang_sierra::program::GenericArg;
 use tracing::debug;
 
-use crate::compiler::{Compiler, Storage};
+use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_types(&'ctx self, storage: &mut Storage<'ctx>) {
@@ -13,22 +13,53 @@ impl<'ctx> Compiler<'ctx> {
             match name {
                 "felt" => {
                     let ty = self.felt_type();
-                    storage.types.insert(id, ty);
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
                 }
                 "NonZero" => {
-                    let gen_arg = type_decl
-                        .long_id
-                        .generic_args
-                        .get(0)
-                        .expect("should have 1 generic arg");
-                    let gen_arg_ty = match gen_arg {
-                        GenericArg::Type(gen_arg_typeid) => storage
-                            .types
-                            .get(&gen_arg_typeid.id)
-                            .expect("type should exist"),
-                        _ => todo!(),
+                    let mut types = vec![];
+
+                    for gen_arg in &type_decl.long_id.generic_args {
+                        let gen_arg_ty = match gen_arg {
+                            GenericArg::Type(gen_arg_typeid) => storage
+                                .types
+                                .get(&gen_arg_typeid.id.to_string())
+                                .expect("type should exist"),
+                            _ => todo!(),
+                        };
+                        types.push(gen_arg_ty.clone());
+                    }
+                    storage
+                        .types
+                        .insert(id.to_string(), SierraType::Struct(types));
+                }
+                "Struct" => {
+                    dbg!(type_decl);
+                    let mut types = vec![];
+
+                    let _user_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::UserType(x) => x,
+                        _ => {
+                            unreachable!("first arg on struct libfunc should always be a user type")
+                        }
                     };
-                    storage.types.insert(id, *gen_arg_ty);
+
+                    for gen_arg in type_decl.long_id.generic_args.iter().skip(1) {
+                        let gen_arg_ty = match gen_arg {
+                            GenericArg::Type(gen_arg_typeid) => storage
+                                .types
+                                .get(&gen_arg_typeid.id.to_string())
+                                .expect("type should exist"),
+                            GenericArg::UserType(user_type_id) => storage
+                                .types
+                                .get(&user_type_id.id.to_string())
+                                .expect("type should exist"),
+                            _ => todo!(),
+                        };
+                        types.push(gen_arg_ty.clone());
+                    }
+                    storage
+                        .types
+                        .insert(id.to_string(), SierraType::Struct(types));
                 }
                 _ => debug!(?type_decl, "unhandled type"),
             }

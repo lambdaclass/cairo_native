@@ -18,11 +18,18 @@ pub struct Compiler<'ctx> {
     pub module: Module<'ctx>,
 }
 
+// We represent a struct as a contiguous list of types, like sierra does, for now.
+#[derive(Debug, Clone)]
+pub enum SierraType<'ctx> {
+    Simple(Type<'ctx>),
+    Struct(Vec<Self>),
+}
+
 /// Types, functions, etc storage.
 /// This aproach works better with lifetimes.
 #[derive(Debug, Default)]
 pub struct Storage<'ctx> {
-    pub(crate) types: HashMap<u64, Type<'ctx>>,
+    pub(crate) types: HashMap<String, SierraType<'ctx>>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -239,7 +246,6 @@ impl<'ctx> Compiler<'ctx> {
         Ok(trunc)
     }
 
-    ///
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func(
         &'ctx self,
