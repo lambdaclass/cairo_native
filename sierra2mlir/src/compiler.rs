@@ -3,7 +3,7 @@ use color_eyre::Result;
 use melior_next::{
     dialect,
     ir::{
-        operation, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
+        operation::{self, ResultValue}, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
         Value, ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
@@ -16,6 +16,7 @@ pub struct Compiler<'ctx> {
     pub program: Program,
     pub context: Context,
     pub module: Module<'ctx>,
+
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
@@ -25,11 +26,19 @@ pub enum SierraType<'ctx> {
     Struct(Vec<Self>),
 }
 
+#[derive(Debug, Clone)]
+pub struct FunctionDef<'ctx> {
+    pub(crate) args: Vec<Type<'ctx>>,
+    pub(crate) return_types: Vec<Type<'ctx>>,
+}
+
 /// Types, functions, etc storage.
 /// This aproach works better with lifetimes.
 #[derive(Debug, Default)]
 pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
+    pub(crate) felt_consts: HashMap<String, String>,
+    pub(crate) functions: HashMap<String, FunctionDef<'ctx>>,
 }
 
 impl<'ctx> Compiler<'ctx> {
