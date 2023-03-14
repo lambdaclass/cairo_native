@@ -748,6 +748,12 @@
 <a href="#748" id="748">748</a>
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>melior_next::{
@@ -768,11 +774,18 @@
     <span class="kw">pub </span>module: Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
 }
 
+<span class="comment">// We represent a struct as a contiguous list of types, like sierra does, for now.
+</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    Simple(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;),
+    Struct(Vec&lt;<span class="self">Self</span>&gt;),
+}
+
 <span class="doccomment">/// Types, functions, etc storage.
 /// This aproach works better with lifetimes.
 </span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub struct </span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) types: HashMap&lt;u64, Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) types: HashMap&lt;String, SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
@@ -989,8 +1002,7 @@
         <span class="prelude-val">Ok</span>(trunc)
     }
 
-    <span class="doccomment">///
-    /// Example function_type: &quot;(i64, i64) -&gt; i64&quot;
+    <span class="doccomment">/// Example function_type: &quot;(i64, i64) -&gt; i64&quot;
     </span><span class="kw">pub fn </span>op_func(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
         name: <span class="kw-2">&amp;</span>str,

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Compiler",""],["Storage","Types, functions, etc storage. This aproach works better with lifetimes."]]};
+window.SIDEBAR_ITEMS = {"enum":[["SierraType",""]],"struct":[["Compiler",""],["Storage","Types, functions, etc storage. This aproach works better with lifetimes."]]};
