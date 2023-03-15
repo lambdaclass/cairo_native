@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use cairo_lang_sierra::{ids::VarId, program::GenStatement};
 use color_eyre::Result;
@@ -9,7 +9,7 @@ use tracing::debug;
 use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_statements(&self, storage: Storage<'ctx>) -> Result<Storage<'ctx>> {
+    pub fn process_statements(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         let loc = Location::unknown(&self.context);
 
         for func in &self.program.funcs {
@@ -20,13 +20,15 @@ impl<'ctx> Compiler<'ctx> {
             let mut params = vec![];
             let mut return_types = vec![];
 
+            let storage = storage.borrow();
+
             for param in &func.params {
                 let ty = storage
                     .types
                     .get(&param.ty.id.to_string())
                     .expect("type for param should exist");
 
-                self.collect_types(&mut params, ty);
+                self.collect_types(&mut params, ty.clone());
             }
 
             dbg!(&storage.types);
@@ -35,7 +37,7 @@ impl<'ctx> Compiler<'ctx> {
                     .types
                     .get(&ret.id.to_string())
                     .expect("type for param should exist");
-                self.collect_types(&mut return_types, ty);
+                self.collect_types(&mut return_types, ty.clone());
             }
 
             // The varid -> operation ref which holds the results, usize is the index into the results.
@@ -151,7 +153,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.module.body().append_operation(op);
         }
-        Ok(storage)
+        Ok(())
     }
 
     pub fn create_fn_signature(
@@ -172,11 +174,11 @@ impl<'ctx> Compiler<'ctx> {
     pub fn collect_types(
         &'ctx self,
         data: &mut Vec<(Type<'ctx>, Location<'ctx>)>,
-        ty: &'ctx SierraType,
+        ty: SierraType<'ctx>,
     ) {
         match ty {
             SierraType::Simple(ty) => {
-                data.push((*ty, Location::unknown(&self.context)));
+                data.push((ty, Location::unknown(&self.context)));
             }
             SierraType::Struct(types) => {
                 for ty in types {

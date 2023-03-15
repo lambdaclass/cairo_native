@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use cairo_lang_sierra::program::GenericArg;
 use color_eyre::Result;
 use tracing::debug;
@@ -5,11 +7,13 @@ use tracing::debug;
 use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_types(&'ctx self, mut storage: Storage<'ctx>) -> Result<Storage<'ctx>> {
+    pub fn process_types(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for type_decl in &self.program.type_declarations {
             let id = type_decl.id.id;
             let name = type_decl.long_id.generic_id.0.as_str();
             debug!(name, "processing type decl");
+
+            let mut storage = storage.borrow_mut();
 
             match name {
                 "felt" => {
@@ -66,7 +70,7 @@ impl<'ctx> Compiler<'ctx> {
             }
         }
 
-        debug!(types = ?storage.types, "processed");
-        Ok(storage)
+        debug!(types = ?storage.borrow().types, "processed");
+        Ok(())
     }
 }

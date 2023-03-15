@@ -3,14 +3,14 @@ use color_eyre::Result;
 use melior_next::{
     dialect,
     ir::{
-        operation::{self, ResultValue},
+        operation::{self},
         Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, Value,
         ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Compiler<'ctx> {
     pub code: String,
@@ -324,10 +324,10 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        let mut storage = Storage::default();
-        storage = self.process_types(storage)?;
-        storage = self.process_libfuncs(storage)?;
-        storage = self.process_statements(storage)?;
+        let storage = Rc::new(RefCell::new(Storage::default()));
+        self.process_types(storage.clone())?;
+        self.process_libfuncs(storage.clone())?;
+        self.process_statements(storage)?;
 
         Ok(self.module.as_operation())
     }
