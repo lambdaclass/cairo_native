@@ -1,10 +1,11 @@
 use cairo_lang_sierra::program::GenericArg;
+use color_eyre::Result;
 use tracing::debug;
 
 use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_types(&'ctx self, storage: &mut Storage<'ctx>) {
+    pub fn process_types(&'ctx self, mut storage: Storage<'ctx>) -> Result<Storage<'ctx>> {
         for type_decl in &self.program.type_declarations {
             let id = type_decl.id.id;
             let name = type_decl.long_id.generic_id.0.as_str();
@@ -65,6 +66,7 @@ impl<'ctx> Compiler<'ctx> {
             }
         }
 
-        debug!(types = ?storage.types, "processed")
+        debug!(types = ?storage.types, "processed");
+        Ok(storage)
     }
 }

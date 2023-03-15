@@ -1,16 +1,24 @@
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
-use melior_next::ir::{Block, Location, Operation, Region, Value, ValueLike};
+use itertools::Itertools;
+use melior_next::ir::{
+    Block, BlockRef, Location, Operation, OperationRef, Region, Type, Value, ValueLike,
+};
 use tracing::debug;
 
 use crate::compiler::{Compiler, FunctionDef, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_libfuncs(&'ctx self, storage: &'ctx mut Storage<'ctx>) -> Result<()> {
+    pub fn process_libfuncs<'b: 'ctx>(
+        &'b self,
+        mut storage: Storage<'ctx>,
+    ) -> Result<Storage<'ctx>> {
         for func_decl in &self.program.libfunc_declarations {
             let _id = func_decl.id.id;
             let name = func_decl.long_id.generic_id.0.as_str();
             debug!(name, "processing libfunc decl");
+
+            let parent_block = self.module.body();
 
             match name {
                 // no-ops
@@ -18,34 +26,30 @@ impl<'ctx> Compiler<'ctx> {
                 "disable_ap_tracking" => continue,
                 "rename" | "drop" | "store_temp" => continue,
                 "felt_const" => {
-                    self.create_libfunc_felt_const(func_decl, storage);
+                    self.create_libfunc_felt_const(func_decl, &mut storage);
                 }
                 "felt_add" => {
-                    let func = self.create_libfunc_felt_add(func_decl, storage)?;
-                    self.module.body().append_operation(func);
+                    self.create_libfunc_felt_add(func_decl, &parent_block, &mut storage)?;
                 }
                 "felt_sub" => {
-                    let func = self.create_libfunc_felt_sub(func_decl, storage)?;
-                    self.module.body().append_operation(func);
+                    self.create_libfunc_felt_sub(func_decl, &parent_block, &mut storage)?;
                 }
                 "felt_mul" => {
-                    let func = self.create_libfunc_felt_mul(func_decl, storage)?;
-                    self.module.body().append_operation(func);
+                    self.create_libfunc_felt_mul(func_decl, &parent_block, &mut storage)?;
                 }
                 "dup" => {
-                    let func = self.create_libfunc_dup(func_decl, storage)?;
-                    self.module.body().append_operation(func);
+                    self.create_libfunc_dup(func_decl, &parent_block, &mut storage)?;
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
         }
 
         debug!(types = ?storage.types, "processed");
-        Ok(())
+        Ok(storage)
     }
 
     pub fn create_libfunc_felt_const(
-        &'ctx self,
+        &self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) {
@@ -57,11 +61,12 @@ impl<'ctx> Compiler<'ctx> {
         storage.felt_consts.insert(func_decl.id.id.to_string(), arg);
     }
 
-    pub fn create_libfunc_dup(
-        &'ctx self,
+    pub fn create_libfunc_dup<'b: 'ctx>(
+        &'b self,
         func_decl: &LibfuncDeclaration,
+        parent_block: &'b BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx>> {
         let id = func_decl.id.id.to_string();
         let mut args = vec![];
 
@@ -111,22 +116,25 @@ impl<'ctx> Compiler<'ctx> {
 
         let func = self.op_func(&id, &function_type, vec![region], false)?;
 
+        let args: Vec<Type<'b>> = args.iter().map(|x| x.0).collect();
+
         storage.functions.insert(
             id,
             FunctionDef {
-                args: args.iter().map(|x| x.0).collect(),
+                args: args.iter().map(|x| x.0).collect_vec(),
                 return_types: return_types.iter().map(|x| x.0).collect(),
             },
         );
 
-        Ok(func)
+        Ok(parent_block.append_operation(func))
     }
 
-    pub fn create_libfunc_felt_add(
-        &'ctx self,
+    pub fn create_libfunc_felt_add<'b: 'ctx>(
+        &'b self,
         func_decl: &LibfuncDeclaration,
+        parent_block: &'b BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx>> {
         let id = func_decl.id.id.to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
@@ -168,14 +176,15 @@ impl<'ctx> Compiler<'ctx> {
             },
         );
 
-        Ok(func)
+        Ok(parent_block.append_operation(func))
     }
 
-    pub fn create_libfunc_felt_sub(
-        &'ctx self,
+    pub fn create_libfunc_felt_sub<'b: 'ctx>(
+        &'b self,
         func_decl: &LibfuncDeclaration,
+        parent_block: &'b BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx>> {
         let id = func_decl.id.id.to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
@@ -217,14 +226,15 @@ impl<'ctx> Compiler<'ctx> {
             },
         );
 
-        Ok(func)
+        Ok(parent_block.append_operation(func))
     }
 
-    pub fn create_libfunc_felt_mul(
-        &'ctx self,
+    pub fn create_libfunc_felt_mul<'b: 'ctx>(
+        &'b self,
         func_decl: &LibfuncDeclaration,
+        parent_block: &'b BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx>> {
         let id = func_decl.id.id.to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
@@ -266,6 +276,6 @@ impl<'ctx> Compiler<'ctx> {
             },
         );
 
-        Ok(func)
+        Ok(parent_block.append_operation(func))
     }
 }

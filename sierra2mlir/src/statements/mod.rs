@@ -9,7 +9,7 @@ use tracing::debug;
 use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_statements(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
+    pub fn process_statements(&self, storage: Storage<'ctx>) -> Result<Storage<'ctx>> {
         let loc = Location::unknown(&self.context);
 
         for func in &self.program.funcs {
@@ -151,7 +151,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.module.body().append_operation(op);
         }
-        Ok(())
+        Ok(storage)
     }
 
     pub fn create_fn_signature(

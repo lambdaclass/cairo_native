@@ -3,8 +3,9 @@ use color_eyre::Result;
 use melior_next::{
     dialect,
     ir::{
-        operation::{self, ResultValue}, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
-        Value, ValueLike,
+        operation::{self, ResultValue},
+        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, Value,
+        ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
@@ -16,7 +17,6 @@ pub struct Compiler<'ctx> {
     pub program: Program,
     pub context: Context,
     pub module: Module<'ctx>,
-
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
@@ -34,7 +34,7 @@ pub struct FunctionDef<'ctx> {
 
 /// Types, functions, etc storage.
 /// This aproach works better with lifetimes.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
     pub(crate) felt_consts: HashMap<String, String>,
@@ -95,19 +95,19 @@ impl<'ctx> Compiler<'ctx> {
         Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
     }
 
-    pub fn felt_type(&'ctx self) -> Type<'ctx> {
+    pub fn felt_type(&self) -> Type {
         Type::integer(&self.context, 256)
     }
 
-    pub fn double_felt_type(&'ctx self) -> Type<'ctx> {
+    pub fn double_felt_type(&self) -> Type {
         Type::integer(&self.context, 512)
     }
 
-    pub fn i32_type(&'ctx self) -> Type<'ctx> {
+    pub fn i32_type(&self) -> Type {
         Type::integer(&self.context, 32)
     }
 
-    pub fn bool_type(&'ctx self) -> Type<'ctx> {
+    pub fn bool_type(&self) -> Type {
         Type::integer(&self.context, 1)
     }
 
@@ -325,9 +325,9 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         let mut storage = Storage::default();
-        self.process_types(&mut storage);
-        self.process_libfuncs(&mut storage)?;
-        self.process_statements(&mut storage)?;
+        storage = self.process_types(storage)?;
+        storage = self.process_libfuncs(storage)?;
+        storage = self.process_statements(storage)?;
 
         Ok(self.module.as_operation())
     }
