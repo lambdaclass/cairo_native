@@ -3,10 +3,10 @@ use std::{cell::RefCell, rc::Rc};
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value, ValueLike};
 use tracing::debug;
 
-use crate::compiler::{Compiler, FunctionDef, Storage};
+use crate::compiler::{Compiler, FunctionDef, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_libfuncs<'b: 'ctx>(&'b self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
@@ -21,7 +21,7 @@ impl<'ctx> Compiler<'ctx> {
                 // no-ops
                 "revoke_ap_tracking" => continue,
                 "disable_ap_tracking" => continue,
-                "rename" | "drop" | "store_temp" => continue,
+                "rename" | "drop" => continue,
                 "felt_const" => {
                     self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
@@ -36,6 +36,12 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;
+                }
+                "struct_construct" => {
+                    self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
+                }
+                "store_temp" => {
+                    self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
@@ -58,6 +64,150 @@ impl<'ctx> Compiler<'ctx> {
         storage.felt_consts.insert(func_decl.id.id.to_string(), arg);
     }
 
+    pub fn create_libfunc_struct_construct(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> Result<()> {
+        let id = func_decl.id.id.to_string();
+        let mut args = vec![];
+
+        for arg in &func_decl.long_id.generic_args {
+            let storage = RefCell::borrow(&*storage);
+            match arg {
+                GenericArg::UserType(_) => todo!(),
+                GenericArg::Type(type_id) => {
+                    let ty = storage
+                        .types
+                        .get(&type_id.id.to_string())
+                        .expect("type to exist");
+
+                    let ty = match ty {
+                        SierraType::Simple(ty) => ty,
+                        SierraType::Struct { ty, fields } => ty,
+                    };
+
+                    args.push((*ty, Location::unknown(&self.context)));
+                }
+                GenericArg::Value(_) => todo!(),
+                GenericArg::UserFunc(_) => todo!(),
+                GenericArg::Libfunc(_) => todo!(),
+            }
+        }
+
+        let region = Region::new();
+
+        let block = Block::new(&args);
+
+        let types = args.iter().map(|x| x.0).collect_vec();
+        let struct_llvm_type = self.struct_type_string(&types);
+        let mut struct_type_op = self.op_llvm_struct(&block, &types);
+        //let mut struct_value: Value = struct_type_op.result(0)?.into();
+
+        for i in 0..block.argument_count() {
+            let arg = block.argument(i)?;
+            let struct_value = struct_type_op.result(0)?.into();
+            struct_type_op =
+                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), &struct_llvm_type)?;
+        }
+
+        let struct_value: Value = struct_type_op.result(0)?.into();
+        self.op_return(&block, &[struct_value]);
+
+        let return_type = Type::parse(&self.context, &self.struct_type_string(&types)).unwrap();
+        let function_type =
+            self.create_fn_signature(&args, &[(return_type, Location::unknown(&self.context))]);
+
+        region.append_block(block);
+
+        let func = self.op_func(&id, &function_type, vec![region], false)?;
+
+        {
+            let mut storage = storage.borrow_mut();
+            storage.functions.insert(
+                id,
+                FunctionDef {
+                    args: args.iter().map(|x| x.0).collect_vec(),
+                    return_types: vec![return_type],
+                },
+            );
+        }
+
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    /// Returns the given value, needed so its handled nicely when processing statements
+    /// and the variable id gets assigned to the returned value.
+    pub fn create_libfunc_store_temp(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> Result<()> {
+        let id = func_decl.id.id.to_string();
+        let mut args = vec![];
+
+        for arg in &func_decl.long_id.generic_args {
+            let storage = RefCell::borrow(&*storage);
+            match arg {
+                GenericArg::UserType(_) => todo!(),
+                GenericArg::Type(type_id) => {
+                    let ty = storage
+                        .types
+                        .get(&type_id.id.to_string())
+                        .expect("type to exist");
+
+                    let ty = match ty {
+                        SierraType::Simple(ty) => ty,
+                        SierraType::Struct { ty, fields: _ } => ty,
+                    };
+
+                    args.push((*ty, Location::unknown(&self.context)));
+                }
+                GenericArg::Value(_) => todo!(),
+                GenericArg::UserFunc(_) => todo!(),
+                GenericArg::Libfunc(_) => todo!(),
+            }
+        }
+
+        let region = Region::new();
+
+        let block = Block::new(&args);
+
+        let mut results: Vec<Value> = vec![];
+
+        for i in 0..block.argument_count() {
+            let arg = block.argument(i)?;
+            results.push(arg.into());
+        }
+
+        self.op_return(&block, &results);
+
+        region.append_block(block);
+
+        let function_type = self.create_fn_signature(&args, &args);
+
+        let func = self.op_func(&id, &function_type, vec![region], false)?;
+
+        {
+            let mut storage = storage.borrow_mut();
+            storage.functions.insert(
+                id,
+                FunctionDef {
+                    args: args.iter().map(|x| x.0).collect_vec(),
+                    return_types: args.iter().map(|x| x.0).collect(),
+                },
+            );
+        }
+
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
     pub fn create_libfunc_dup(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -76,7 +226,13 @@ impl<'ctx> Compiler<'ctx> {
                         .types
                         .get(&type_id.id.to_string())
                         .expect("type to exist");
-                    self.collect_types(&mut args, ty.clone());
+
+                    let ty = match ty {
+                        SierraType::Simple(ty) => ty,
+                        SierraType::Struct { ty, fields } => ty,
+                    };
+
+                    args.push((*ty, Location::unknown(&self.context)));
                 }
                 GenericArg::Value(_) => todo!(),
                 GenericArg::UserFunc(_) => todo!(),

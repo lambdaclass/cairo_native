@@ -1,5 +1,6 @@
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use color_eyre::Result;
+use itertools::Itertools;
 use melior_next::{
     dialect,
     ir::{
@@ -23,7 +24,7 @@ pub struct Compiler<'ctx> {
 #[derive(Debug, Clone)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
-    Struct(Vec<Self>),
+    Struct { ty: Type<'ctx>, fields: usize },
 }
 
 #[derive(Debug, Clone)]
@@ -87,11 +88,7 @@ impl<'ctx> Compiler<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn named_attribute(
-        &'ctx self,
-        name: &str,
-        attribute: &str,
-    ) -> Result<NamedAttribute<'ctx>> {
+    pub fn named_attribute(&self, name: &str, attribute: &str) -> Result<NamedAttribute> {
         Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
     }
 
@@ -111,7 +108,7 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 1)
     }
 
-    pub fn prime_constant(&'ctx self, block: &'ctx Block<'ctx>) -> OperationRef<'ctx> {
+    pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         // The prime number is a double felt as it's always used for modulo.
         self.op_const(
             block,
@@ -121,12 +118,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op, doesn't do modulo.
-    pub fn op_add(
-        &'ctx self,
-        block: &'ctx Block<'ctx>,
-        lhs: Value<'ctx>,
-        rhs: Value<'ctx>,
-    ) -> OperationRef<'ctx> {
+    pub fn op_add<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.addi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
@@ -136,12 +128,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op, doesn't do modulo.
-    pub fn op_sub(
-        &'ctx self,
-        block: &'ctx Block<'ctx>,
-        lhs: Value<'ctx>,
-        rhs: Value<'ctx>,
-    ) -> OperationRef<'ctx> {
+    pub fn op_sub<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.subi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
@@ -151,7 +138,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op.
-    pub fn op_mul(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
+    pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.muli", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
@@ -161,7 +148,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Only the MLIR op.
-    pub fn op_rem(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
+    pub fn op_rem<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.remsi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
@@ -175,7 +162,7 @@ impl<'ctx> Compiler<'ctx> {
     /// todo adapt to all predicates, probs with a enum
     ///
     /// https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
-    pub fn op_eq(&'ctx self, block: &'ctx Block, lhs: Value, rhs: Value) -> OperationRef<'ctx> {
+    pub fn op_eq<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
                 .add_attributes(&[
@@ -187,7 +174,7 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_trunc(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+    pub fn op_trunc<'a>(&self, block: &'a Block, value: Value, to: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.trunci", Location::unknown(&self.context))
                 .add_operands(&[value])
@@ -196,7 +183,7 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_sext(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+    pub fn op_sext<'a>(&self, block: &'a Block, value: Value, to: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.extsi", Location::unknown(&self.context))
                 .add_operands(&[value])
@@ -205,7 +192,7 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_zext(&'ctx self, block: &'ctx Block, value: Value, to: Type) -> OperationRef<'ctx> {
+    pub fn op_zext<'a>(&self, block: &'a Block, value: Value, to: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.extui", Location::unknown(&self.context))
                 .add_operands(&[value])
@@ -215,12 +202,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// New constant
-    pub fn op_const(
-        &'ctx self,
-        block: &'ctx Block,
-        val: &str,
-        ty: Type<'ctx>,
-    ) -> OperationRef<'ctx> {
+    pub fn op_const<'a>(&self, block: &'a Block, val: &str, ty: Type<'ctx>) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.constant", Location::unknown(&self.context))
                 .add_results(&[ty])
@@ -235,18 +217,14 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// New felt constant
-    pub fn op_felt_const(&'ctx self, block: &'ctx Block, val: &str) -> OperationRef<'ctx> {
+    pub fn op_felt_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
         self.op_const(block, val, self.felt_type())
     }
 
     /// Does modulo prime and truncates back to felt type.
     ///
     /// Arguments should be of double felt type.
-    pub fn op_felt_modulo(
-        &'ctx self,
-        block: &'ctx Block,
-        val: Value,
-    ) -> Result<OperationRef<'ctx>> {
+    pub fn op_felt_modulo<'a>(&self, block: &'a Block, val: Value) -> Result<OperationRef<'a>> {
         let prime = self.prime_constant(block);
         let prime_val = prime.result(0)?.into();
         let op = self.op_rem(block, val, prime_val);
@@ -256,13 +234,13 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Example function_type: "(i64, i64) -> i64"
-    pub fn op_func(
-        &'ctx self,
+    pub fn op_func<'a>(
+        &'a self,
         name: &str,
         function_type: &str,
         regions: Vec<Region>,
         emit_c_interface: bool,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
         attrs.push(NamedAttribute::new_parsed(
@@ -292,7 +270,7 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_return(&'ctx self, block: &'ctx Block, result: &[Value]) -> OperationRef<'ctx> {
+    pub fn op_return<'a>(&self, block: &'a Block, result: &[Value]) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("func.return", Location::unknown(&self.context))
                 .add_operands(result)
@@ -300,13 +278,74 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_func_call(
-        &'ctx self,
-        block: &'ctx Block,
+    /// creates a llvm struct
+    pub fn op_llvm_struct<'a>(&self, block: &'a Block, types: &[Type]) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
+                .add_results(
+                    &[Type::parse(&self.context, &self.struct_type_string(types)).unwrap()],
+                )
+                .build(),
+        )
+    }
+
+    /// inserts a value into the specified struct.
+    ///
+    /// The struct_llvm_type is made from `struct_type_string`
+    ///
+    /// The result is the struct with the value inserted.
+    pub fn op_llvm_insertvalue<'a>(
+        &self,
+        block: &'a Block,
+        index: usize,
+        struct_value: Value,
+        value: Value,
+        struct_llvm_type: &str,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
+                .add_attributes(&[
+                    self.named_attribute("position", &format!("array<i64: {}>", index))?
+                ])
+                .add_operands(&[struct_value, value])
+                .add_results(&[Type::parse(&self.context, struct_llvm_type).unwrap()])
+                .build(),
+        ))
+    }
+
+    /// extracts a value from the specified struct.
+    ///
+    /// The result is the value with tthe given type.
+    pub fn op_llvm_extractvalue<'a>(
+        &self,
+        block: &'a Block,
+        index: usize,
+        struct_value: Value,
+        value_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.extractvalue", Location::unknown(&self.context))
+                .add_attributes(&[
+                    self.named_attribute("position", &format!("array<i64: {}>", index))?
+                ])
+                .add_operands(&[struct_value])
+                .add_results(&[value_type])
+                .build(),
+        ))
+    }
+
+    pub fn struct_type_string(&self, types: &[Type]) -> String {
+        let types = types.iter().map(|x| x.to_string()).join(", ");
+        format!("!llvm.struct<({})>", types)
+    }
+
+    pub fn op_func_call<'a>(
+        &self,
+        block: &'a Block,
         name: &str,
         args: &[Value],
         results: &[Type],
-    ) -> Result<OperationRef<'ctx>> {
+    ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
                 .add_attributes(&[self.named_attribute("callee", name)?])
@@ -317,7 +356,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Creates a new block
-    pub fn new_block(&'ctx self, args: &[Type<'ctx>]) -> Block<'ctx> {
+    pub fn new_block(&self, args: &[Type<'ctx>]) -> Block {
         let location = Location::unknown(&self.context);
         let args: Vec<_> = args.iter().map(|x| (*x, location)).collect();
         Block::new(&args)

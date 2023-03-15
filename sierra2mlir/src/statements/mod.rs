@@ -4,7 +4,7 @@ use cairo_lang_sierra::{ids::VarId, program::GenStatement};
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{Block, Location, OperationRef, Region, Type, Value};
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::compiler::{Compiler, SierraType, Storage};
 
@@ -26,19 +26,29 @@ impl<'ctx> Compiler<'ctx> {
                     .get(&param.ty.id.to_string())
                     .expect("type for param should exist");
 
-                self.collect_types(&mut params, ty.clone());
+                let ty = match ty {
+                    SierraType::Simple(ty) => ty,
+                    SierraType::Struct { ty, fields: _ } => ty,
+                };
+                params.push((ty.clone(), Location::unknown(&self.context)));
+                // self.collect_types(&mut params, ty.clone());
             }
 
-            dbg!(&storage.types);
             for ret in &func.signature.ret_types {
                 let ty = storage
                     .types
                     .get(&ret.id.to_string())
                     .expect("type for param should exist");
-                self.collect_types(&mut return_types, ty.clone());
+
+                let ty = match ty {
+                    SierraType::Simple(ty) => ty,
+                    SierraType::Struct { ty, fields: _ } => ty,
+                };
+                return_types.push((ty.clone(), Location::unknown(&self.context)));
+                // self.collect_types(&mut return_types, ty.clone());
             }
 
-            // The varid -> operation ref which holds the results, usize is the index into the results.
+            // The varid -> operation ref which holds the variable value in the result at index.
             let mut variables: HashMap<&VarId, (OperationRef, usize)> = HashMap::new();
             let mut param_values: HashMap<&VarId, Value> = HashMap::new();
 
@@ -74,7 +84,6 @@ impl<'ctx> Compiler<'ctx> {
                                     let var_id = &inv.branches[0].results[0];
                                     variables.insert(var_id, (op, 0));
                                 }
-                                "store_temp" => continue,
                                 "jump" => todo!(),
                                 _name if inv.branches.len() > 1 => {
                                     todo!(
@@ -82,37 +91,43 @@ impl<'ctx> Compiler<'ctx> {
                                     )
                                 }
                                 name => {
-                                    let func_def = storage
-                                        .functions
-                                        .get(&id)
-                                        .expect("should find the libfunc def");
+                                    let func_def =
+                                        if let Some(func_def) = storage.functions.get(&id) {
+                                            func_def
+                                        } else {
+                                            error!(
+                                                id,
+                                                name, "encountered undefined libfunc invocation"
+                                            );
+                                            continue;
+                                        };
                                     let mut args = vec![];
 
                                     for var in &inv.args {
-                                        if let Some((op_res, result_index)) = variables.get(&var) {
-                                            let res = op_res.result(*result_index)?;
-                                            args.push(res.into());
+                                        let res = if let Some((var, i)) = variables.get(&var) {
+                                            let res = var.result(*i)?;
+                                            res.into()
                                         } else {
                                             let res = param_values
                                                 .get(var)
                                                 .expect("couldn't find variable");
-                                            args.push(*res);
+                                            *res
                                         };
+                                        args.push(res);
                                     }
 
+                                    dbg!(&variables);
+                                    debug!("creating func call");
                                     let op = self.op_func_call(
                                         &block,
-                                        name,
-                                        &args,
-                                        &func_def.return_types,
+                                        &id,
+                                        dbg!(&args),
+                                        dbg!(&func_def.return_types),
                                     )?;
+                                    debug!("created");
 
-                                    let results = &inv.branches[0].results;
-
-                                    assert_eq!(results.len(), op.result_count());
-
-                                    for (i, res) in results.iter().enumerate() {
-                                        variables.insert(res, (op, i));
+                                    for (i, var_id) in inv.branches[0].results.iter().enumerate() {
+                                        variables.insert(var_id, (op, i));
                                     }
 
                                     // debug!(name, "unimplemented");
@@ -123,14 +138,15 @@ impl<'ctx> Compiler<'ctx> {
                             let mut ret_values: Vec<Value> = vec![];
 
                             for var in ret {
-                                if let Some((op_res, result_index)) = variables.get(&var) {
-                                    let res = op_res.result(*result_index)?;
-                                    ret_values.push(res.into());
+                                let val = if let Some((op, i)) = variables.get(&var) {
+                                    let val = op.result(*i)?;
+                                    val.into()
                                 } else {
                                     let res =
                                         param_values.get(var).expect("couldn't find variable");
-                                    ret_values.push(*res);
+                                    *res
                                 };
+                                ret_values.push(val);
                             }
 
                             self.op_return(&block, &ret_values);
@@ -169,20 +185,25 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn collect_types(
-        &'ctx self,
-        data: &mut Vec<(Type<'ctx>, Location<'ctx>)>,
-        ty: SierraType<'ctx>,
-    ) {
-        match ty {
-            SierraType::Simple(ty) => {
-                data.push((ty, Location::unknown(&self.context)));
+    /*
+    #[allow(clippy::only_used_in_recursion)] // false positive, the lifetime of self is needed.
+    pub fn collect_values(
+        &self,
+        data: &mut Vec<Value<'ctx>>,
+        var: &'ctx VarInfo<'ctx>,
+    ) -> Result<()> {
+        match var {
+            VarInfo::Value { op, result_index } => {
+                let res = op.result(*result_index)?;
+                data.push(res.into());
             }
-            SierraType::Struct(types) => {
-                for ty in types {
-                    self.collect_types(data, ty);
+            VarInfo::Struct(vars) => {
+                for var in vars {
+                    self.collect_values(data, var)?;
                 }
             }
-        }
+        };
+        Ok(())
     }
+     */
 }

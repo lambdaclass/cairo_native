@@ -12,6 +12,9 @@ clean:
 test:
 	cargo test --all
 
+run-example:
+	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile
+
 # Experimental, just playing around.
 build-dialect: check-mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-tblgen --gen-dialect-decls dialect/SierraBase.td -I $(MLIR_SYS_160_PREFIX)/include/ -I ./dialect/ > dialect/SierraBase.h
