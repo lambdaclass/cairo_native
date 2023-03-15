@@ -1,15 +1,9 @@
-use std::{
-    borrow::Borrow,
-    cell::{Ref, RefCell},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{
-    Block, BlockRef, Location, Operation, OperationRef, Region, Type, Value, ValueLike,
-};
+use melior_next::ir::{Block, BlockRef, Location, Region, Value};
 use tracing::debug;
 
 use crate::compiler::{Compiler, FunctionDef, Storage};
@@ -32,13 +26,13 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
                 "felt_add" => {
-                    self.create_libfunc_felt_add(func_decl, parent_block.clone(), storage.clone())?;
+                    self.create_libfunc_felt_add(func_decl, parent_block, storage.clone())?;
                 }
                 "felt_sub" => {
-                    self.create_libfunc_felt_sub(func_decl, parent_block.clone(), storage.clone())?;
+                    self.create_libfunc_felt_sub(func_decl, parent_block, storage.clone())?;
                 }
                 "felt_mul" => {
-                    self.create_libfunc_felt_mul(func_decl, parent_block.clone(), storage.clone())?;
+                    self.create_libfunc_felt_mul(func_decl, parent_block, storage.clone())?;
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;

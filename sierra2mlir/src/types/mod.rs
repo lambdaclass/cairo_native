@@ -38,7 +38,6 @@ impl<'ctx> Compiler<'ctx> {
                         .insert(id.to_string(), SierraType::Struct(types));
                 }
                 "Struct" => {
-                    dbg!(type_decl);
                     let mut types = vec![];
 
                     let _user_type = match &type_decl.long_id.generic_args[0] {
@@ -70,7 +69,7 @@ impl<'ctx> Compiler<'ctx> {
             }
         }
 
-        debug!(types = ?storage.borrow().types, "processed");
+        // debug!(types = ?storage.borrow().types, "processed");
         Ok(())
     }
 }

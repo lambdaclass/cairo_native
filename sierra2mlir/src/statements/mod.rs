@@ -10,8 +10,6 @@ use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_statements(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
-        let loc = Location::unknown(&self.context);
-
         for func in &self.program.funcs {
             debug!(?func, "processing func");
 
