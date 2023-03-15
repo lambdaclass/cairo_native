@@ -209,61 +209,163 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
-</pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    borrow::Borrow,
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
+
+<span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 <span class="kw">use </span>color_eyre::Result;
-<span class="kw">use </span>melior_next::ir::{Block, Location, Operation, Region, Value};
+<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>melior_next::ir::{
+    Block, BlockRef, Location, Operation, OperationRef, Region, Type, Value, ValueLike,
+};
 <span class="kw">use </span>tracing::debug;
 
-<span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, Storage};
+<span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, FunctionDef, Storage};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-    <span class="kw">pub fn </span>process_libfuncs(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, storage: <span class="kw-2">&amp;mut </span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub fn </span>process_libfuncs&lt;<span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;ctx</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="self">self</span>, storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">for </span>func_decl <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.program.libfunc_declarations {
             <span class="kw">let </span>_id = func_decl.id.id;
             <span class="kw">let </span>name = func_decl.long_id.generic_id.<span class="number">0</span>.as_str();
             <span class="macro">debug!</span>(name, <span class="string">&quot;processing libfunc decl&quot;</span>);
 
+            <span class="kw">let </span>parent_block = <span class="self">self</span>.module.body();
+
             <span class="kw">match </span>name {
                 <span class="comment">// no-ops
                 </span><span class="string">&quot;revoke_ap_tracking&quot; </span>=&gt; <span class="kw">continue</span>,
                 <span class="string">&quot;disable_ap_tracking&quot; </span>=&gt; <span class="kw">continue</span>,
-                name <span class="kw">if </span>name.starts_with(<span class="string">&quot;rename&quot;</span>) =&gt; <span class="kw">continue</span>,
-                name <span class="kw">if </span>name.starts_with(<span class="string">&quot;drop&quot;</span>) =&gt; <span class="kw">continue</span>,
-                name <span class="kw">if </span>name.starts_with(<span class="string">&quot;store_temp&quot;</span>) =&gt; <span class="kw">continue</span>,
-                <span class="comment">// handled directly, no need for a function
-                </span>name <span class="kw">if </span>name.starts_with(<span class="string">&quot;felt_const&quot;</span>) =&gt; <span class="kw">continue</span>,
+                <span class="string">&quot;rename&quot; </span>| <span class="string">&quot;drop&quot; </span>| <span class="string">&quot;store_temp&quot; </span>=&gt; <span class="kw">continue</span>,
+                <span class="string">&quot;felt_const&quot; </span>=&gt; {
+                    <span class="self">self</span>.create_libfunc_felt_const(func_decl, <span class="kw-2">&amp;mut </span>storage.borrow_mut());
+                }
                 <span class="string">&quot;felt_add&quot; </span>=&gt; {
-                    <span class="kw">let </span>func = <span class="self">self</span>.felt_add_create()<span class="question-mark">?</span>;
-                    <span class="self">self</span>.module.body().append_operation(func);
+                    <span class="self">self</span>.create_libfunc_felt_add(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;felt_sub&quot; </span>=&gt; {
-                    <span class="kw">let </span>func = <span class="self">self</span>.felt_sub_create()<span class="question-mark">?</span>;
-                    <span class="self">self</span>.module.body().append_operation(func);
+                    <span class="self">self</span>.create_libfunc_felt_sub(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;felt_mul&quot; </span>=&gt; {
-                    <span class="kw">let </span>func = <span class="self">self</span>.felt_mul_create()<span class="question-mark">?</span>;
-                    <span class="self">self</span>.module.body().append_operation(func);
+                    <span class="self">self</span>.create_libfunc_felt_mul(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;dup&quot; </span>=&gt; {
-                    <span class="kw">let </span>func = <span class="self">self</span>.felt_add_dup(func_decl, storage)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.module.body().append_operation(func);
+                    <span class="self">self</span>.create_libfunc_dup(func_decl, parent_block, storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="kw">_ </span>=&gt; <span class="macro">debug!</span>(<span class="question-mark">?</span>func_decl, <span class="string">&quot;unhandled libfunc&quot;</span>),
             }
         }
 
-        <span class="macro">debug!</span>(types = <span class="question-mark">?</span>storage.types, <span class="string">&quot;processed&quot;</span>);
+        <span class="macro">debug!</span>(types = <span class="question-mark">?</span>RefCell::borrow(<span class="kw-2">&amp;*</span>storage).types, <span class="string">&quot;processed&quot;</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>felt_add_dup(
+    <span class="kw">pub fn </span>create_libfunc_felt_const(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        func_decl: <span class="kw-2">&amp;</span>LibfuncDeclaration,
+        storage: <span class="kw-2">&amp;mut </span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    ) {
+        <span class="kw">let </span>arg = <span class="kw">match </span><span class="kw-2">&amp;</span>func_decl.long_id.generic_args[<span class="number">0</span>] {
+            GenericArg::Value(value) =&gt; value.to_string(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;should always be value&quot;</span>),
+        };
+
+        storage.felt_consts.insert(func_decl.id.id.to_string(), arg);
+    }
+
+    <span class="kw">pub fn </span>create_libfunc_dup(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
         func_decl: <span class="kw-2">&amp;</span>LibfuncDeclaration,
-        storage: <span class="kw-2">&amp;</span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+        parent_block: BlockRef&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+        storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>id = func_decl.id.id.to_string();
         <span class="kw">let </span><span class="kw-2">mut </span>args = <span class="macro">vec!</span>[];
 
         <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>func_decl.long_id.generic_args {
+            <span class="kw">let </span>storage = RefCell::borrow(<span class="kw-2">&amp;*</span>storage);
             <span class="kw">match </span>arg {
                 GenericArg::UserType(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 GenericArg::Type(type_id) =&gt; {
@@ -271,7 +373,7 @@
                         .types
                         .get(<span class="kw-2">&amp;</span>type_id.id.to_string())
                         .expect(<span class="string">&quot;type to exist&quot;</span>);
-                    <span class="self">self</span>.collect_types(<span class="kw-2">&amp;mut </span>args, ty);
+                    <span class="self">self</span>.collect_types(<span class="kw-2">&amp;mut </span>args, ty.clone());
                 }
                 GenericArg::Value(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 GenericArg::UserFunc(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -307,12 +409,31 @@
 
         <span class="kw">let </span>function_type = <span class="self">self</span>.create_fn_signature(<span class="kw-2">&amp;</span>args, <span class="kw-2">&amp;</span>return_types);
 
-        <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="string">&quot;dup&quot;</span>, <span class="kw-2">&amp;</span>function_type, <span class="macro">vec!</span>[region], <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>func = <span class="self">self</span>.op_func(<span class="kw-2">&amp;</span>id, <span class="kw-2">&amp;</span>function_type, <span class="macro">vec!</span>[region], <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(func)
+        {
+            <span class="kw">let </span><span class="kw-2">mut </span>storage = storage.borrow_mut();
+            storage.functions.insert(
+                id,
+                FunctionDef {
+                    args: args.iter().map(|x| x.<span class="number">0</span>).collect_vec(),
+                    return_types: return_types.iter().map(|x| x.<span class="number">0</span>).collect(),
+                },
+            );
+        }
+
+        parent_block.append_operation(func);
+
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>felt_add_create(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    <span class="kw">pub fn </span>create_libfunc_felt_add(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
+        func_decl: <span class="kw-2">&amp;</span>LibfuncDeclaration,
+        parent_block: BlockRef&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+        storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>id = func_decl.id.id.to_string();
         <span class="kw">let </span>felt_type = <span class="self">self</span>.felt_type();
         <span class="kw">let </span>loc = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
 
@@ -339,16 +460,31 @@
         region.append_block(block);
 
         <span class="kw">let </span>func = <span class="self">self</span>.op_func(
-            <span class="string">&quot;felt_add&quot;</span>,
+            <span class="kw-2">&amp;</span>id,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
             <span class="bool-val">false</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(func)
+        storage.borrow_mut().functions.insert(
+            id,
+            FunctionDef {
+                args: <span class="macro">vec!</span>[felt_type, felt_type],
+                return_types: <span class="macro">vec!</span>[felt_type],
+            },
+        );
+
+        parent_block.append_operation(func);
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>felt_sub_create(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    <span class="kw">pub fn </span>create_libfunc_felt_sub(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
+        func_decl: <span class="kw-2">&amp;</span>LibfuncDeclaration,
+        parent_block: BlockRef&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+        storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>id = func_decl.id.id.to_string();
         <span class="kw">let </span>felt_type = <span class="self">self</span>.felt_type();
         <span class="kw">let </span>loc = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
 
@@ -375,16 +511,31 @@
         region.append_block(block);
 
         <span class="kw">let </span>func = <span class="self">self</span>.op_func(
-            <span class="string">&quot;felt_sub&quot;</span>,
+            <span class="kw-2">&amp;</span>id,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
             <span class="bool-val">false</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(func)
+        storage.borrow_mut().functions.insert(
+            id,
+            FunctionDef {
+                args: <span class="macro">vec!</span>[felt_type, felt_type],
+                return_types: <span class="macro">vec!</span>[felt_type],
+            },
+        );
+
+        parent_block.append_operation(func);
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>felt_mul_create(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    <span class="kw">pub fn </span>create_libfunc_felt_mul(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
+        func_decl: <span class="kw-2">&amp;</span>LibfuncDeclaration,
+        parent_block: BlockRef&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+        storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>id = func_decl.id.id.to_string();
         <span class="kw">let </span>felt_type = <span class="self">self</span>.felt_type();
         <span class="kw">let </span>loc = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
 
@@ -411,13 +562,22 @@
         region.append_block(block);
 
         <span class="kw">let </span>func = <span class="self">self</span>.op_func(
-            <span class="string">&quot;felt_mul&quot;</span>,
+            <span class="kw-2">&amp;</span>id,
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;({felt_type}, {felt_type}) -&gt; {felt_type}&quot;</span>),
             <span class="macro">vec!</span>[region],
             <span class="bool-val">false</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(func)
+        storage.borrow_mut().functions.insert(
+            id,
+            FunctionDef {
+                args: <span class="macro">vec!</span>[felt_type, felt_type],
+                return_types: <span class="macro">vec!</span>[felt_type],
+            },
+        );
+
+        parent_block.append_operation(func);
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

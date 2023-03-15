@@ -754,18 +754,28 @@
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>melior_next::{
     dialect,
     ir::{
-        operation, Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
-        Value, ValueLike,
+        operation::{<span class="self">self</span>},
+        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, Value,
+        ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 <span class="kw">pub struct </span>Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     <span class="kw">pub </span>code: String,
@@ -781,11 +791,19 @@
     Struct(Vec&lt;<span class="self">Self</span>&gt;),
 }
 
+<span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>FunctionDef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) args: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) return_types: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+}
+
 <span class="doccomment">/// Types, functions, etc storage.
 /// This aproach works better with lifetimes.
-</span><span class="attr">#[derive(Debug, Default)]
+</span><span class="attr">#[derive(Debug, Default, Clone)]
 </span><span class="kw">pub struct </span>Storage&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) types: HashMap&lt;String, SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) felt_consts: HashMap&lt;String, String&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) functions: HashMap&lt;String, FunctionDef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
@@ -842,19 +860,19 @@
         <span class="prelude-val">Ok</span>(NamedAttribute::new_parsed(<span class="kw-2">&amp;</span><span class="self">self</span>.context, name, attribute)<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>felt_type(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; Type&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>felt_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Type {
         Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">256</span>)
     }
 
-    <span class="kw">pub fn </span>double_felt_type(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; Type&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>double_felt_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Type {
         Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">512</span>)
     }
 
-    <span class="kw">pub fn </span>i32_type(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; Type&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>i32_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Type {
         Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">32</span>)
     }
 
-    <span class="kw">pub fn </span>bool_type(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; Type&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>bool_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Type {
         Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">1</span>)
     }
 
@@ -1071,10 +1089,10 @@
     }
 
     <span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>) -&gt; color_eyre::Result&lt;OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>storage = Storage::default();
-        <span class="self">self</span>.process_types(<span class="kw-2">&amp;mut </span>storage);
-        <span class="self">self</span>.process_libfuncs(<span class="kw-2">&amp;mut </span>storage)<span class="question-mark">?</span>;
-        <span class="self">self</span>.process_statements(<span class="kw-2">&amp;mut </span>storage)<span class="question-mark">?</span>;
+        <span class="kw">let </span>storage = Rc::new(RefCell::new(Storage::default()));
+        <span class="self">self</span>.process_types(storage.clone())<span class="question-mark">?</span>;
+        <span class="self">self</span>.process_libfuncs(storage.clone())<span class="question-mark">?</span>;
+        <span class="self">self</span>.process_statements(storage)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.module.as_operation())
     }
