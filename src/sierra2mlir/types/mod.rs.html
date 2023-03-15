@@ -73,7 +73,6 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::program::GenericArg;
@@ -114,7 +113,6 @@
                         .insert(id.to_string(), SierraType::Struct(types));
                 }
                 <span class="string">&quot;Struct&quot; </span>=&gt; {
-                    <span class="macro">dbg!</span>(type_decl);
                     <span class="kw">let </span><span class="kw-2">mut </span>types = <span class="macro">vec!</span>[];
 
                     <span class="kw">let </span>_user_type = <span class="kw">match </span><span class="kw-2">&amp;</span>type_decl.long_id.generic_args[<span class="number">0</span>] {
@@ -146,8 +144,8 @@
             }
         }
 
-        <span class="macro">debug!</span>(types = <span class="question-mark">?</span>storage.borrow().types, <span class="string">&quot;processed&quot;</span>);
-        <span class="prelude-val">Ok</span>(())
+        <span class="comment">// debug!(types = ?storage.borrow().types, &quot;processed&quot;);
+        </span><span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

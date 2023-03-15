@@ -283,24 +283,12 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::{
-    borrow::Borrow,
-    cell::{Ref, RefCell},
-    rc::Rc,
-};
+</pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>melior_next::ir::{
-    Block, BlockRef, Location, Operation, OperationRef, Region, Type, Value, ValueLike,
-};
+<span class="kw">use </span>melior_next::ir::{Block, BlockRef, Location, Region, Value};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, FunctionDef, Storage};
@@ -323,13 +311,13 @@
                     <span class="self">self</span>.create_libfunc_felt_const(func_decl, <span class="kw-2">&amp;mut </span>storage.borrow_mut());
                 }
                 <span class="string">&quot;felt_add&quot; </span>=&gt; {
-                    <span class="self">self</span>.create_libfunc_felt_add(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
+                    <span class="self">self</span>.create_libfunc_felt_add(func_decl, parent_block, storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;felt_sub&quot; </span>=&gt; {
-                    <span class="self">self</span>.create_libfunc_felt_sub(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
+                    <span class="self">self</span>.create_libfunc_felt_sub(func_decl, parent_block, storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;felt_mul&quot; </span>=&gt; {
-                    <span class="self">self</span>.create_libfunc_felt_mul(func_decl, parent_block.clone(), storage.clone())<span class="question-mark">?</span>;
+                    <span class="self">self</span>.create_libfunc_felt_mul(func_decl, parent_block, storage.clone())<span class="question-mark">?</span>;
                 }
                 <span class="string">&quot;dup&quot; </span>=&gt; {
                     <span class="self">self</span>.create_libfunc_dup(func_decl, parent_block, storage.clone())<span class="question-mark">?</span>;
