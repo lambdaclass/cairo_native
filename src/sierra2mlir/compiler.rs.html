@@ -763,8 +763,48 @@
 <a href="#763" id="763">763</a>
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>color_eyre::Result;
+<span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>melior_next::{
     dialect,
     ir::{
@@ -788,7 +828,7 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     Simple(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;),
-    Struct(Vec&lt;<span class="self">Self</span>&gt;),
+    Struct { ty: Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, fields: usize },
 }
 
 <span class="attr">#[derive(Debug, Clone)]
@@ -852,11 +892,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-    <span class="kw">pub fn </span>named_attribute(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        name: <span class="kw-2">&amp;</span>str,
-        attribute: <span class="kw-2">&amp;</span>str,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NamedAttribute&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    <span class="kw">pub fn </span>named_attribute(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, attribute: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;NamedAttribute&gt; {
         <span class="prelude-val">Ok</span>(NamedAttribute::new_parsed(<span class="kw-2">&amp;</span><span class="self">self</span>.context, name, attribute)<span class="question-mark">?</span>)
     }
 
@@ -876,7 +912,7 @@
         Type::integer(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="number">1</span>)
     }
 
-    <span class="kw">pub fn </span>prime_constant(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>prime_constant&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         <span class="comment">// The prime number is a double felt as it&#39;s always used for modulo.
         </span><span class="self">self</span>.op_const(
             block,
@@ -886,12 +922,7 @@
     }
 
     <span class="doccomment">/// Only the MLIR op, doesn&#39;t do modulo.
-    </span><span class="kw">pub fn </span>op_add(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        lhs: Value&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        rhs: Value&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_add&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.addi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
@@ -901,12 +932,7 @@
     }
 
     <span class="doccomment">/// Only the MLIR op, doesn&#39;t do modulo.
-    </span><span class="kw">pub fn </span>op_sub(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        lhs: Value&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        rhs: Value&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_sub&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.subi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
@@ -916,7 +942,7 @@
     }
 
     <span class="doccomment">/// Only the MLIR op.
-    </span><span class="kw">pub fn </span>op_mul(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_mul&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.muli&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
@@ -926,7 +952,7 @@
     }
 
     <span class="doccomment">/// Only the MLIR op.
-    </span><span class="kw">pub fn </span>op_rem(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_rem&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.remsi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
@@ -940,7 +966,7 @@
     /// todo adapt to all predicates, probs with a enum
     ///
     /// https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
-    </span><span class="kw">pub fn </span>op_eq(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_eq&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, lhs: Value, rhs: Value) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.cmpi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_attributes(<span class="kw-2">&amp;</span>[
@@ -952,7 +978,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>op_trunc(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>op_trunc&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.trunci&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[value])
@@ -961,7 +987,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>op_sext(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>op_sext&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.extsi&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[value])
@@ -970,7 +996,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>op_zext(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>op_zext&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, value: Value, to: Type) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.extui&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(<span class="kw-2">&amp;</span>[value])
@@ -980,12 +1006,7 @@
     }
 
     <span class="doccomment">/// New constant
-    </span><span class="kw">pub fn </span>op_const(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block,
-        val: <span class="kw-2">&amp;</span>str,
-        ty: Type&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_const&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, val: <span class="kw-2">&amp;</span>str, ty: Type&lt;<span class="lifetime">&#39;ctx</span>&gt;) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;arith.constant&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_results(<span class="kw-2">&amp;</span>[ty])
@@ -1000,18 +1021,14 @@
     }
 
     <span class="doccomment">/// New felt constant
-    </span><span class="kw">pub fn </span>op_felt_const(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, val: <span class="kw-2">&amp;</span>str) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>op_felt_const&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, val: <span class="kw-2">&amp;</span>str) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         <span class="self">self</span>.op_const(block, val, <span class="self">self</span>.felt_type())
     }
 
     <span class="doccomment">/// Does modulo prime and truncates back to felt type.
     ///
     /// Arguments should be of double felt type.
-    </span><span class="kw">pub fn </span>op_felt_modulo(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block,
-        val: Value,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    </span><span class="kw">pub fn </span>op_felt_modulo&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, val: Value) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="kw">let </span>prime = <span class="self">self</span>.prime_constant(block);
         <span class="kw">let </span>prime_val = prime.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
         <span class="kw">let </span>op = <span class="self">self</span>.op_rem(block, val, prime_val);
@@ -1021,13 +1038,13 @@
     }
 
     <span class="doccomment">/// Example function_type: &quot;(i64, i64) -&gt; i64&quot;
-    </span><span class="kw">pub fn </span>op_func(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
+    </span><span class="kw">pub fn </span>op_func&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
         name: <span class="kw-2">&amp;</span>str,
         function_type: <span class="kw-2">&amp;</span>str,
         regions: Vec&lt;Region&gt;,
         emit_c_interface: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>attrs = Vec::with_capacity(<span class="number">3</span>);
 
         attrs.push(NamedAttribute::new_parsed(
@@ -1057,7 +1074,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>op_return(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block, result: <span class="kw-2">&amp;</span>[Value]) -&gt; OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="kw">pub fn </span>op_return&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, result: <span class="kw-2">&amp;</span>[Value]) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
         block.append_operation(
             operation::Builder::new(<span class="string">&quot;func.return&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_operands(result)
@@ -1065,13 +1082,74 @@
         )
     }
 
-    <span class="kw">pub fn </span>op_func_call(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block,
+    <span class="doccomment">/// creates a llvm struct
+    </span><span class="kw">pub fn </span>op_llvm_struct&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, types: <span class="kw-2">&amp;</span>[Type]) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
+        block.append_operation(
+            operation::Builder::new(<span class="string">&quot;llvm.mlir.undef&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                .add_results(
+                    <span class="kw-2">&amp;</span>[Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="self">self</span>.struct_type_string(types)).unwrap()],
+                )
+                .build(),
+        )
+    }
+
+    <span class="doccomment">/// inserts a value into the specified struct.
+    ///
+    /// The struct_llvm_type is made from `struct_type_string`
+    ///
+    /// The result is the struct with the value inserted.
+    </span><span class="kw">pub fn </span>op_llvm_insertvalue&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block,
+        index: usize,
+        struct_value: Value,
+        value: Value,
+        struct_llvm_type: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
+        <span class="prelude-val">Ok</span>(block.append_operation(
+            operation::Builder::new(<span class="string">&quot;llvm.insertvalue&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                .add_attributes(<span class="kw-2">&amp;</span>[
+                    <span class="self">self</span>.named_attribute(<span class="string">&quot;position&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;array&lt;i64: {}&gt;&quot;</span>, index))<span class="question-mark">?
+                </span>])
+                .add_operands(<span class="kw-2">&amp;</span>[struct_value, value])
+                .add_results(<span class="kw-2">&amp;</span>[Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, struct_llvm_type).unwrap()])
+                .build(),
+        ))
+    }
+
+    <span class="doccomment">/// extracts a value from the specified struct.
+    ///
+    /// The result is the value with tthe given type.
+    </span><span class="kw">pub fn </span>op_llvm_extractvalue&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block,
+        index: usize,
+        struct_value: Value,
+        value_type: Type,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
+        <span class="prelude-val">Ok</span>(block.append_operation(
+            operation::Builder::new(<span class="string">&quot;llvm.extractvalue&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+                .add_attributes(<span class="kw-2">&amp;</span>[
+                    <span class="self">self</span>.named_attribute(<span class="string">&quot;position&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;array&lt;i64: {}&gt;&quot;</span>, index))<span class="question-mark">?
+                </span>])
+                .add_operands(<span class="kw-2">&amp;</span>[struct_value])
+                .add_results(<span class="kw-2">&amp;</span>[value_type])
+                .build(),
+        ))
+    }
+
+    <span class="kw">pub fn </span>struct_type_string(<span class="kw-2">&amp;</span><span class="self">self</span>, types: <span class="kw-2">&amp;</span>[Type]) -&gt; String {
+        <span class="kw">let </span>types = types.iter().map(|x| x.to_string()).join(<span class="string">&quot;, &quot;</span>);
+        <span class="macro">format!</span>(<span class="string">&quot;!llvm.struct&lt;({})&gt;&quot;</span>, types)
+    }
+
+    <span class="kw">pub fn </span>op_func_call&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block,
         name: <span class="kw-2">&amp;</span>str,
         args: <span class="kw-2">&amp;</span>[Value],
         results: <span class="kw-2">&amp;</span>[Type],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="prelude-val">Ok</span>(block.append_operation(
             operation::Builder::new(<span class="string">&quot;func.call&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
                 .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;callee&quot;</span>, name)<span class="question-mark">?</span>])
@@ -1082,7 +1160,7 @@
     }
 
     <span class="doccomment">/// Creates a new block
-    </span><span class="kw">pub fn </span>new_block(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, args: <span class="kw-2">&amp;</span>[Type&lt;<span class="lifetime">&#39;ctx</span>&gt;]) -&gt; Block&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>new_block(<span class="kw-2">&amp;</span><span class="self">self</span>, args: <span class="kw-2">&amp;</span>[Type&lt;<span class="lifetime">&#39;ctx</span>&gt;]) -&gt; Block {
         <span class="kw">let </span>location = Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
         <span class="kw">let </span>args: Vec&lt;<span class="kw">_</span>&gt; = args.iter().map(|x| (<span class="kw-2">*</span>x, location)).collect();
         Block::new(<span class="kw-2">&amp;</span>args)

@@ -186,13 +186,34 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::{ids::VarId, program::GenStatement};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>melior_next::ir::{Block, Location, OperationRef, Region, Type, Value};
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, error};
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, SierraType, Storage};
 
@@ -214,19 +235,29 @@
                     .get(<span class="kw-2">&amp;</span>param.ty.id.to_string())
                     .expect(<span class="string">&quot;type for param should exist&quot;</span>);
 
-                <span class="self">self</span>.collect_types(<span class="kw-2">&amp;mut </span>params, ty.clone());
-            }
+                <span class="kw">let </span>ty = <span class="kw">match </span>ty {
+                    SierraType::Simple(ty) =&gt; ty,
+                    SierraType::Struct { ty, fields: <span class="kw">_ </span>} =&gt; ty,
+                };
+                params.push((ty.clone(), Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
+                <span class="comment">// self.collect_types(&amp;mut params, ty.clone());
+            </span>}
 
-            <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>storage.types);
             <span class="kw">for </span>ret <span class="kw">in </span><span class="kw-2">&amp;</span>func.signature.ret_types {
                 <span class="kw">let </span>ty = storage
                     .types
                     .get(<span class="kw-2">&amp;</span>ret.id.to_string())
                     .expect(<span class="string">&quot;type for param should exist&quot;</span>);
-                <span class="self">self</span>.collect_types(<span class="kw-2">&amp;mut </span>return_types, ty.clone());
-            }
 
-            <span class="comment">// The varid -&gt; operation ref which holds the results, usize is the index into the results.
+                <span class="kw">let </span>ty = <span class="kw">match </span>ty {
+                    SierraType::Simple(ty) =&gt; ty,
+                    SierraType::Struct { ty, fields: <span class="kw">_ </span>} =&gt; ty,
+                };
+                return_types.push((ty.clone(), Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
+                <span class="comment">// self.collect_types(&amp;mut return_types, ty.clone());
+            </span>}
+
+            <span class="comment">// The varid -&gt; operation ref which holds the variable value in the result at index.
             </span><span class="kw">let </span><span class="kw-2">mut </span>variables: HashMap&lt;<span class="kw-2">&amp;</span>VarId, (OperationRef, usize)&gt; = HashMap::new();
             <span class="kw">let </span><span class="kw-2">mut </span>param_values: HashMap&lt;<span class="kw-2">&amp;</span>VarId, Value&gt; = HashMap::new();
 
@@ -262,7 +293,6 @@
                                     <span class="kw">let </span>var_id = <span class="kw-2">&amp;</span>inv.branches[<span class="number">0</span>].results[<span class="number">0</span>];
                                     variables.insert(var_id, (op, <span class="number">0</span>));
                                 }
-                                <span class="string">&quot;store_temp&quot; </span>=&gt; <span class="kw">continue</span>,
                                 <span class="string">&quot;jump&quot; </span>=&gt; <span class="macro">todo!</span>(),
                                 _name <span class="kw">if </span>inv.branches.len() &gt; <span class="number">1 </span>=&gt; {
                                     <span class="macro">todo!</span>(
@@ -270,37 +300,43 @@
                                     )
                                 }
                                 name =&gt; {
-                                    <span class="kw">let </span>func_def = storage
-                                        .functions
-                                        .get(<span class="kw-2">&amp;</span>id)
-                                        .expect(<span class="string">&quot;should find the libfunc def&quot;</span>);
+                                    <span class="kw">let </span>func_def =
+                                        <span class="kw">if let </span><span class="prelude-val">Some</span>(func_def) = storage.functions.get(<span class="kw-2">&amp;</span>id) {
+                                            func_def
+                                        } <span class="kw">else </span>{
+                                            <span class="macro">error!</span>(
+                                                id,
+                                                name, <span class="string">&quot;encountered undefined libfunc invocation&quot;
+                                            </span>);
+                                            <span class="kw">continue</span>;
+                                        };
                                     <span class="kw">let </span><span class="kw-2">mut </span>args = <span class="macro">vec!</span>[];
 
                                     <span class="kw">for </span>var <span class="kw">in </span><span class="kw-2">&amp;</span>inv.args {
-                                        <span class="kw">if let </span><span class="prelude-val">Some</span>((op_res, result_index)) = variables.get(<span class="kw-2">&amp;</span>var) {
-                                            <span class="kw">let </span>res = op_res.result(<span class="kw-2">*</span>result_index)<span class="question-mark">?</span>;
-                                            args.push(res.into());
+                                        <span class="kw">let </span>res = <span class="kw">if let </span><span class="prelude-val">Some</span>((var, i)) = variables.get(<span class="kw-2">&amp;</span>var) {
+                                            <span class="kw">let </span>res = var.result(<span class="kw-2">*</span>i)<span class="question-mark">?</span>;
+                                            res.into()
                                         } <span class="kw">else </span>{
                                             <span class="kw">let </span>res = param_values
                                                 .get(var)
                                                 .expect(<span class="string">&quot;couldn&#39;t find variable&quot;</span>);
-                                            args.push(<span class="kw-2">*</span>res);
+                                            <span class="kw-2">*</span>res
                                         };
+                                        args.push(res);
                                     }
 
+                                    <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>variables);
+                                    <span class="macro">debug!</span>(<span class="string">&quot;creating func call&quot;</span>);
                                     <span class="kw">let </span>op = <span class="self">self</span>.op_func_call(
                                         <span class="kw-2">&amp;</span>block,
-                                        name,
-                                        <span class="kw-2">&amp;</span>args,
-                                        <span class="kw-2">&amp;</span>func_def.return_types,
+                                        <span class="kw-2">&amp;</span>id,
+                                        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>args),
+                                        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>func_def.return_types),
                                     )<span class="question-mark">?</span>;
+                                    <span class="macro">debug!</span>(<span class="string">&quot;created&quot;</span>);
 
-                                    <span class="kw">let </span>results = <span class="kw-2">&amp;</span>inv.branches[<span class="number">0</span>].results;
-
-                                    <span class="macro">assert_eq!</span>(results.len(), op.result_count());
-
-                                    <span class="kw">for </span>(i, res) <span class="kw">in </span>results.iter().enumerate() {
-                                        variables.insert(res, (op, i));
+                                    <span class="kw">for </span>(i, var_id) <span class="kw">in </span>inv.branches[<span class="number">0</span>].results.iter().enumerate() {
+                                        variables.insert(var_id, (op, i));
                                     }
 
                                     <span class="comment">// debug!(name, &quot;unimplemented&quot;);
@@ -311,14 +347,15 @@
                             <span class="kw">let </span><span class="kw-2">mut </span>ret_values: Vec&lt;Value&gt; = <span class="macro">vec!</span>[];
 
                             <span class="kw">for </span>var <span class="kw">in </span>ret {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>((op_res, result_index)) = variables.get(<span class="kw-2">&amp;</span>var) {
-                                    <span class="kw">let </span>res = op_res.result(<span class="kw-2">*</span>result_index)<span class="question-mark">?</span>;
-                                    ret_values.push(res.into());
+                                <span class="kw">let </span>val = <span class="kw">if let </span><span class="prelude-val">Some</span>((op, i)) = variables.get(<span class="kw-2">&amp;</span>var) {
+                                    <span class="kw">let </span>val = op.result(<span class="kw-2">*</span>i)<span class="question-mark">?</span>;
+                                    val.into()
                                 } <span class="kw">else </span>{
                                     <span class="kw">let </span>res =
                                         param_values.get(var).expect(<span class="string">&quot;couldn&#39;t find variable&quot;</span>);
-                                    ret_values.push(<span class="kw-2">*</span>res);
+                                    <span class="kw-2">*</span>res
                                 };
+                                ret_values.push(val);
                             }
 
                             <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>ret_values);
@@ -357,22 +394,27 @@
         )
     }
 
-    <span class="kw">pub fn </span>collect_types(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>,
-        data: <span class="kw-2">&amp;mut </span>Vec&lt;(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, Location&lt;<span class="lifetime">&#39;ctx</span>&gt;)&gt;,
-        ty: SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) {
-        <span class="kw">match </span>ty {
-            SierraType::Simple(ty) =&gt; {
-                data.push((ty, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
+    <span class="comment">/*
+    #[allow(clippy::only_used_in_recursion)] // false positive, the lifetime of self is needed.
+    pub fn collect_values(
+        &amp;self,
+        data: &amp;mut Vec&lt;Value&lt;&#39;ctx&gt;&gt;,
+        var: &amp;&#39;ctx VarInfo&lt;&#39;ctx&gt;,
+    ) -&gt; Result&lt;()&gt; {
+        match var {
+            VarInfo::Value { op, result_index } =&gt; {
+                let res = op.result(*result_index)?;
+                data.push(res.into());
             }
-            SierraType::Struct(types) =&gt; {
-                <span class="kw">for </span>ty <span class="kw">in </span>types {
-                    <span class="self">self</span>.collect_types(data, ty);
+            VarInfo::Struct(vars) =&gt; {
+                for var in vars {
+                    self.collect_values(data, var)?;
                 }
             }
-        }
+        };
+        Ok(())
     }
-}
+     */
+</span>}
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sierra2mlir" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
