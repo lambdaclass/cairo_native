@@ -12,6 +12,7 @@ use tracing::{debug, error};
 use crate::compiler::{Compiler, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
+    #[allow(clippy::cognitive_complexity)]
     pub fn process_functions(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for func in &self.program.funcs {
             debug!(?func, "processing func");
@@ -76,7 +77,7 @@ impl<'ctx> Compiler<'ctx> {
                             match branch.target {
                                 GenBranchTarget::Fallthrough => {
                                     had_fall_through = true;
-                                },
+                                }
                                 GenBranchTarget::Statement(statement_id) => {
                                     debug!(from = i, to = statement_id.0, "added jump");
                                     jump_dests.insert(
@@ -97,7 +98,6 @@ impl<'ctx> Compiler<'ctx> {
                             if name_without_generics == "felt_is_zero" {
                                 jump_dests.insert(i + 1, region.append_block(Block::new(&[])));
                             }
-
                         }
                     }
                     GenStatement::Return(_) => break,
