@@ -61,7 +61,11 @@ impl<'ctx> Compiler<'ctx> {
             _ => unimplemented!("should always be value"),
         };
 
-        storage.felt_consts.insert(func_decl.id.id.to_string(), arg);
+        storage.felt_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+                .to_string(),
+            arg,
+        );
     }
 
     pub fn create_libfunc_struct_construct(
@@ -70,7 +74,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let mut args = vec![];
 
         for arg in &func_decl.long_id.generic_args {
@@ -151,7 +156,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let mut args = vec![];
 
         for arg in &func_decl.long_id.generic_args {
@@ -218,7 +224,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let mut args = vec![];
 
         for arg in &func_decl.long_id.generic_args {
@@ -296,7 +303,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
 
@@ -347,7 +355,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
 
@@ -398,7 +407,8 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let id = func_decl.id.id.to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
         let felt_type = self.felt_type();
         let loc = Location::unknown(&self.context);
 

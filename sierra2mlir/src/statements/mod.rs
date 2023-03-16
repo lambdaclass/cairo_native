@@ -13,7 +13,8 @@ impl<'ctx> Compiler<'ctx> {
         for func in &self.program.funcs {
             debug!(?func, "processing func");
 
-            let name = func.id.id.to_string();
+            let name = Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str())
+                .to_string();
             let entry = func.entry_point.0;
             let mut params = vec![];
             let mut return_types = vec![];
@@ -31,7 +32,6 @@ impl<'ctx> Compiler<'ctx> {
                     SierraType::Struct { ty, field_types: _ } => ty,
                 };
                 params.push((*ty, Location::unknown(&self.context)));
-                // self.collect_types(&mut params, ty.clone());
             }
 
             for ret in &func.signature.ret_types {
@@ -45,7 +45,6 @@ impl<'ctx> Compiler<'ctx> {
                     SierraType::Struct { ty, field_types: _ } => ty,
                 };
                 return_types.push((*ty, Location::unknown(&self.context)));
-                // self.collect_types(&mut return_types, ty.clone());
             }
 
             // The varid -> operation ref which holds the variable value in the result at index.
@@ -69,7 +68,10 @@ impl<'ctx> Compiler<'ctx> {
                     match statement {
                         GenStatement::Invocation(inv) => {
                             let name = inv.libfunc_id.debug_name.as_ref().unwrap().as_str();
-                            let id = inv.libfunc_id.id.to_string();
+                            let id = Self::normalize_func_name(
+                                inv.libfunc_id.debug_name.as_ref().unwrap().as_str(),
+                            )
+                            .to_string();
                             debug!(name, "processing statement: invocation");
 
                             let name_without_generics = name.split('<').next().unwrap();
@@ -79,7 +81,7 @@ impl<'ctx> Compiler<'ctx> {
                                 "felt_const" => {
                                     let felt_const = storage
                                         .felt_consts
-                                        .get(&inv.libfunc_id.id.to_string())
+                                        .get(&id)
                                         .expect("constant should exist");
                                     let op = self.op_felt_const(&block, felt_const);
                                     let var_id = &inv.branches[0].results[0];
@@ -117,7 +119,7 @@ impl<'ctx> Compiler<'ctx> {
                                         args.push(res);
                                     }
 
-                                    debug!("creating func call");
+                                    debug!(id, "creating func call");
                                     let op = self.op_func_call(
                                         &block,
                                         &id,

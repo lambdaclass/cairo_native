@@ -11,7 +11,8 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use regex::Regex;
+use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Compiler<'ctx> {
     pub code: String,
@@ -255,7 +256,7 @@ impl<'ctx> Compiler<'ctx> {
         attrs.push(NamedAttribute::new_parsed(
             &self.context,
             "sym_name",
-            &format!("\"sierra_func_{name}\""),
+            &format!("\"{name}\""),
         )?);
 
         if emit_c_interface {
@@ -266,13 +267,12 @@ impl<'ctx> Compiler<'ctx> {
             )?);
         }
 
-        Ok(operation::Builder::new(
-            "func.func",
-            Location::new(&self.context, "example.sierra", 2, 0),
+        Ok(
+            operation::Builder::new("func.func", Location::unknown(&self.context))
+                .add_attributes(&attrs)
+                .add_regions(regions)
+                .build(),
         )
-        .add_attributes(&attrs)
-        .add_regions(regions)
-        .build())
     }
 
     pub fn op_return<'a>(&self, block: &'a Block, result: &[Value]) -> OperationRef<'a> {
@@ -353,7 +353,7 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
-                .add_attributes(&[self.named_attribute("callee", &format!("@sierra_func_{name}"))?])
+                .add_attributes(&[self.named_attribute("callee", &format!("@\"{name}\""))?])
                 .add_operands(args)
                 .add_results(results)
                 .build(),
@@ -365,6 +365,14 @@ impl<'ctx> Compiler<'ctx> {
         let location = Location::unknown(&self.context);
         let args: Vec<_> = args.iter().map(|x| (*x, location)).collect();
         Block::new(&args)
+    }
+
+    /// Normalizes a function name.
+    ///
+    /// a::a::name -> a_a_name()
+    pub fn normalize_func_name(name: &str) -> Cow<str> {
+        let re = Regex::new(r"[:-]+").unwrap();
+        re.replace_all(name, "_")
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
