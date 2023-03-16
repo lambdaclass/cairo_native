@@ -443,10 +443,6 @@
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
@@ -527,11 +523,7 @@
             <span class="kw">match </span>arg {
                 GenericArg::UserType(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 GenericArg::Type(type_id) =&gt; {
-                    <span class="comment">// TODO: FIXME here we get the struct type itself, but we need the field types...
-                    // TODO: FIXME here we get the struct type itself, but we need the field types...
-                    // TODO: FIXME here we get the struct type itself, but we need the field types...
-                    // TODO: FIXME here we get the struct type itself, but we need the field types...
-                    </span><span class="kw">let </span>ty = storage
+                    <span class="kw">let </span>ty = storage
                         .types
                         .get(<span class="kw-2">&amp;</span>type_id.id.to_string())
                         .expect(<span class="string">&quot;type to exist&quot;</span>);
