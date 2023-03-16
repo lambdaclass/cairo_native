@@ -112,11 +112,6 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::program::GenericArg;
@@ -163,7 +158,7 @@
                             .iter()
                             .map(|ty| <span class="kw">match </span>ty {
                                 SierraType::Simple(ty) =&gt; <span class="kw-2">*</span>ty,
-                                SierraType::Struct { ty, fields: <span class="kw">_ </span>} =&gt; <span class="kw-2">*</span>ty,
+                                SierraType::Struct { ty, field_types: <span class="kw">_ </span>} =&gt; <span class="kw-2">*</span>ty,
                             })
                             .collect_vec();
                         <span class="kw">let </span>struct_type =
@@ -174,7 +169,7 @@
                             id.to_string(),
                             SierraType::Struct {
                                 ty: struct_type,
-                                fields: struct_types.len(),
+                                field_types: struct_types,
                             },
                         );
                     }
@@ -204,29 +199,24 @@
                         types.push(gen_arg_ty.clone());
                     }
 
-                    <span class="kw">if </span>types.len() == <span class="number">1 </span>{
-                        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>types[<span class="number">0</span>];
-                        storage.types.insert(id.to_string(), ty.clone());
-                    } <span class="kw">else </span>{
-                        <span class="kw">let </span>struct_types = types
-                            .iter()
-                            .map(|ty| <span class="kw">match </span>ty {
-                                SierraType::Simple(ty) =&gt; <span class="kw-2">*</span>ty,
-                                SierraType::Struct { ty, fields: <span class="kw">_ </span>} =&gt; <span class="kw-2">*</span>ty,
-                            })
-                            .collect_vec();
-                        <span class="kw">let </span>struct_type =
-                            Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="self">self</span>.struct_type_string(<span class="kw-2">&amp;</span>struct_types))
-                                .unwrap();
+                    <span class="kw">let </span>struct_types = types
+                        .iter()
+                        .map(|ty| <span class="kw">match </span>ty {
+                            SierraType::Simple(ty) =&gt; <span class="kw-2">*</span>ty,
+                            SierraType::Struct { ty, field_types: <span class="kw">_ </span>} =&gt; <span class="kw-2">*</span>ty,
+                        })
+                        .collect_vec();
+                    <span class="kw">let </span>struct_type =
+                        Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="self">self</span>.struct_type_string(<span class="kw-2">&amp;</span>struct_types))
+                            .unwrap();
 
-                        storage.types.insert(
-                            id.to_string(),
-                            SierraType::Struct {
-                                ty: struct_type,
-                                fields: struct_types.len(),
-                            },
-                        );
-                    }
+                    storage.types.insert(
+                        id.to_string(),
+                        SierraType::Struct {
+                            ty: struct_type,
+                            field_types: struct_types,
+                        },
+                    );
                 }
                 <span class="kw">_ </span>=&gt; <span class="macro">debug!</span>(<span class="question-mark">?</span>type_decl, <span class="string">&quot;unhandled type&quot;</span>),
             }

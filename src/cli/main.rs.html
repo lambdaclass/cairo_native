@@ -68,6 +68,14 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A compiler to convert Cairo&#39;s intermediate representation &quot;Sierra&quot; code to MLIR.
 
 </span><span class="comment">//#![deny(warnings)]
@@ -90,6 +98,10 @@
     </span><span class="attr">#[arg(short, long)]
     </span>input: PathBuf,
 
+    <span class="doccomment">/// Output optimized MLIR.
+    </span><span class="attr">#[arg(short, long)]
+    </span>optimize: bool,
+
     <span class="attr">#[command(subcommand)]
     </span>command: Commands,
 }
@@ -101,6 +113,10 @@
         <span class="doccomment">/// The output file. If not specified its output will be stdout.
         </span><span class="attr">#[arg(short, long)]
         </span>output: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
+
+        <span class="doccomment">/// Turn on debug info.
+        </span><span class="attr">#[arg(short, long)]
+        </span>debug: bool,
     },
     <span class="doccomment">/// Compile and run a program. The entry point must be a function without arguments.
     </span>Run {
@@ -118,8 +134,8 @@
     <span class="kw">let </span>code = fs::read_to_string(args.input)<span class="question-mark">?</span>;
 
     <span class="kw">match </span>args.command {
-        Commands::Compile { output } =&gt; {
-            <span class="kw">let </span>mlir_output = sierra2mlir::compile(<span class="kw-2">&amp;</span>code)<span class="question-mark">?</span>;
+        Commands::Compile { output, debug } =&gt; {
+            <span class="kw">let </span>mlir_output = sierra2mlir::compile(<span class="kw-2">&amp;</span>code, args.optimize, debug)<span class="question-mark">?</span>;
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(output) = output {
                 fs::write(output, mlir_output);

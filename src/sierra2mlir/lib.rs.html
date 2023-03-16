@@ -53,6 +53,25 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A compiler to convert Cairo&#39;s intermediate representation &quot;Sierra&quot; code to MLIR.
 
 </span><span class="comment">//#![deny(warnings)]
@@ -70,22 +89,41 @@
 <span class="kw">mod </span>statements;
 <span class="kw">mod </span>types;
 
-<span class="kw">pub fn </span>compile(code: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String, color_eyre::Report&gt; {
+<span class="kw">pub fn </span>compile(
+    code: <span class="kw-2">&amp;</span>str,
+    optimized: bool,
+    debug_info: bool,
+) -&gt; <span class="prelude-ty">Result</span>&lt;String, color_eyre::Report&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>compiler = Compiler::new(code)<span class="question-mark">?</span>;
     compiler.compile()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>pass_manager = pass::Manager::new(<span class="kw-2">&amp;</span>compiler.context);
     register_all_passes();
+
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     <span class="comment">//pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
     </span>pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
-    pass_manager.enable_verifier(<span class="bool-val">true</span>);
+
+    <span class="kw">if </span>optimized {
+        pass_manager.add_pass(pass::transform::sccp());
+        pass_manager.add_pass(pass::transform::cse());
+        pass_manager.add_pass(pass::transform::inliner());
+        pass_manager.add_pass(pass::transform::symbol_dce());
+        pass_manager.add_pass(pass::transform::canonicalizer());
+    }
+
+    <span class="comment">// pass_manager.add_pass(pass::transform::print_operation_stats());
+    </span>pass_manager.enable_verifier(<span class="bool-val">true</span>);
     pass_manager.run(<span class="kw-2">&amp;mut </span>compiler.module)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = compiler.module.as_operation();
     <span class="kw">if </span>op.verify() {
-        <span class="prelude-val">Ok</span>(op.to_string())
+        <span class="kw">if </span>debug_info {
+            <span class="prelude-val">Ok</span>(op.debug_print())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(op.to_string())
+        }
     } <span class="kw">else </span>{
         <span class="prelude-val">Err</span>(<span class="macro">color_eyre::eyre::eyre!</span>(<span class="string">&quot;error verifiying&quot;</span>))
     }

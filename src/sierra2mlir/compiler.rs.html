@@ -802,6 +802,7 @@
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
 </pre><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>itertools::Itertools;
@@ -828,12 +829,16 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>SierraType&lt;<span class="lifetime">&#39;ctx</span>&gt; {
     Simple(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;),
-    Struct { ty: Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, fields: usize },
+    Struct {
+        ty: Type&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+        field_types: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+    },
 }
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>FunctionDef&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) args: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
+    <span class="attr">#[allow(unused)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) args: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) return_types: Vec&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;,
 }
 
@@ -1055,7 +1060,7 @@
         attrs.push(NamedAttribute::new_parsed(
             <span class="kw-2">&amp;</span><span class="self">self</span>.context,
             <span class="string">&quot;sym_name&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{name}\&quot;&quot;</span>),
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;sierra_func_{name}\&quot;&quot;</span>),
         )<span class="question-mark">?</span>);
 
         <span class="kw">if </span>emit_c_interface {
@@ -1066,12 +1071,13 @@
             )<span class="question-mark">?</span>);
         }
 
-        <span class="prelude-val">Ok</span>(
-            operation::Builder::new(<span class="string">&quot;func.func&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                .add_attributes(<span class="kw-2">&amp;</span>attrs)
-                .add_regions(regions)
-                .build(),
+        <span class="prelude-val">Ok</span>(operation::Builder::new(
+            <span class="string">&quot;func.func&quot;</span>,
+            Location::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">&quot;example.sierra&quot;</span>, <span class="number">2</span>, <span class="number">0</span>),
         )
+        .add_attributes(<span class="kw-2">&amp;</span>attrs)
+        .add_regions(regions)
+        .build())
     }
 
     <span class="kw">pub fn </span>op_return&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block, result: <span class="kw-2">&amp;</span>[Value]) -&gt; OperationRef&lt;<span class="lifetime">&#39;a</span>&gt; {
@@ -1152,7 +1158,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="prelude-val">Ok</span>(block.append_operation(
             operation::Builder::new(<span class="string">&quot;func.call&quot;</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
-                .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;callee&quot;</span>, name)<span class="question-mark">?</span>])
+                .add_attributes(<span class="kw-2">&amp;</span>[<span class="self">self</span>.named_attribute(<span class="string">&quot;callee&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;@sierra_func_{name}&quot;</span>))<span class="question-mark">?</span>])
                 .add_operands(args)
                 .add_results(results)
                 .build(),
@@ -1171,7 +1177,6 @@
         <span class="self">self</span>.process_types(storage.clone())<span class="question-mark">?</span>;
         <span class="self">self</span>.process_libfuncs(storage.clone())<span class="question-mark">?</span>;
         <span class="self">self</span>.process_statements(storage)<span class="question-mark">?</span>;
-
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.module.as_operation())
     }
 
@@ -1515,7 +1520,6 @@
             gpu_module
         };
 
-        <span class="macro">dbg!</span>(gpu_module.to_string());
         <span class="self">self</span>.module.body().append_operation(gpu_module);
 
         <span class="kw">let </span>main_function = {
@@ -1596,8 +1600,6 @@
         <span class="self">self</span>.module.body().append_operation(main_function);
 
         <span class="kw">let </span>op = <span class="self">self</span>.module.as_operation();
-
-        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>op);
 
         <span class="kw">if </span>op.verify() {
             <span class="prelude-val">Ok</span>(op)

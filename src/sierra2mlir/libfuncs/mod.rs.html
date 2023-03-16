@@ -439,22 +439,30 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, rc::Rc};
 
 <span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 <span class="kw">use </span>color_eyre::Result;
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>melior_next::ir::{Block, BlockRef, Location, Region, Type, Value, ValueLike};
+<span class="kw">use </span>melior_next::ir::{Block, BlockRef, Location, Region, Type, Value};
 <span class="kw">use </span>tracing::debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::compiler::{Compiler, FunctionDef, SierraType, Storage};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>&gt; Compiler&lt;<span class="lifetime">&#39;ctx</span>&gt; {
-    <span class="kw">pub fn </span>process_libfuncs&lt;<span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;ctx</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="self">self</span>, storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub fn </span>process_libfuncs(<span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span><span class="self">self</span>, storage: Rc&lt;RefCell&lt;Storage&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">for </span>func_decl <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.program.libfunc_declarations {
-            <span class="kw">let </span>_id = func_decl.id.id;
+            <span class="kw">let </span>id = func_decl.id.id;
             <span class="kw">let </span>name = func_decl.long_id.generic_id.<span class="number">0</span>.as_str();
-            <span class="macro">debug!</span>(name, <span class="string">&quot;processing libfunc decl&quot;</span>);
+            <span class="macro">debug!</span>(name, id, <span class="string">&quot;processing libfunc decl&quot;</span>);
 
             <span class="kw">let </span>parent_block = <span class="self">self</span>.module.body();
 
@@ -519,17 +527,25 @@
             <span class="kw">match </span>arg {
                 GenericArg::UserType(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 GenericArg::Type(type_id) =&gt; {
-                    <span class="kw">let </span>ty = storage
+                    <span class="comment">// TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    </span><span class="kw">let </span>ty = storage
                         .types
                         .get(<span class="kw-2">&amp;</span>type_id.id.to_string())
                         .expect(<span class="string">&quot;type to exist&quot;</span>);
 
-                    <span class="kw">let </span>ty = <span class="kw">match </span>ty {
-                        SierraType::Simple(ty) =&gt; ty,
-                        SierraType::Struct { ty, fields } =&gt; ty,
+                    <span class="kw">let </span>field_types = <span class="kw">match </span>ty {
+                        SierraType::Simple(_ty) =&gt; {
+                            <span class="macro">unreachable!</span>(<span class="string">&quot;struct construct shouldnt be called for simple types&quot;</span>)
+                        }
+                        SierraType::Struct { ty: <span class="kw">_</span>, field_types } =&gt; field_types,
                     };
 
-                    args.push((<span class="kw-2">*</span>ty, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
+                    <span class="kw">for </span>ty <span class="kw">in </span>field_types {
+                        args.push((<span class="kw-2">*</span>ty, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
+                    }
                 }
                 GenericArg::Value(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 GenericArg::UserFunc(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -556,7 +572,7 @@
         <span class="kw">let </span>struct_value: Value = struct_type_op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
         <span class="self">self</span>.op_return(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;</span>[struct_value]);
 
-        <span class="kw">let </span>return_type = Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span><span class="self">self</span>.struct_type_string(<span class="kw-2">&amp;</span>types)).unwrap();
+        <span class="kw">let </span>return_type = Type::parse(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span>struct_llvm_type).unwrap();
         <span class="kw">let </span>function_type =
             <span class="self">self</span>.create_fn_signature(<span class="kw-2">&amp;</span>args, <span class="kw-2">&amp;</span>[(return_type, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))]);
 
@@ -603,7 +619,7 @@
 
                     <span class="kw">let </span>ty = <span class="kw">match </span>ty {
                         SierraType::Simple(ty) =&gt; ty,
-                        SierraType::Struct { ty, fields: <span class="kw">_ </span>} =&gt; ty,
+                        SierraType::Struct { ty, field_types: <span class="kw">_ </span>} =&gt; ty,
                     };
 
                     args.push((<span class="kw-2">*</span>ty, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
@@ -670,7 +686,7 @@
 
                     <span class="kw">let </span>ty = <span class="kw">match </span>ty {
                         SierraType::Simple(ty) =&gt; ty,
-                        SierraType::Struct { ty, fields } =&gt; ty,
+                        SierraType::Struct { ty, field_types: <span class="kw">_ </span>} =&gt; ty,
                     };
 
                     args.push((<span class="kw-2">*</span>ty, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)));
