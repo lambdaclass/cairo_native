@@ -16,12 +16,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Get mdBook
-        run: |
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.28/mdbook-v0.4.28-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=.
+      - name: Setup rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Get mdbook
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install mdbook mdbook-toc mdbook-mermaid
 
       - name: Build docs
-        run: ./mdbook build docs/
+        run: mdbook build docs/
 
       - name: Deploy Documentation
         uses: peaceiris/actions-gh-pages@v3.9.0

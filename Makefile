@@ -18,6 +18,9 @@ compile-example:
 compile-example-optimized:
 	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile --debug
 
+book:
+	mdbook serve docs
+
 # Experimental, just playing around.
 build-dialect: check-mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-tblgen --gen-dialect-decls dialect/SierraBase.td -I $(MLIR_SYS_160_PREFIX)/include/ -I ./dialect/ > dialect/SierraBase.h
