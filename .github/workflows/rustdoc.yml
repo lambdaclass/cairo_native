@@ -30,7 +30,8 @@ jobs:
           command: install mdbook mdbook-toc mdbook-mermaid
 
       - name: Build docs
-        run: mdbook build docs/
+        run: |
+          mdbook build docs/
 
       - name: Deploy Documentation
         uses: peaceiris/actions-gh-pages@v3.9.0
