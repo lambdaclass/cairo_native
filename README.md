@@ -3,8 +3,16 @@
 
 A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
 
-## Dependencies
+## Documentation
 
+There is an mdbook in the `docs` folder. Build and read it with
+```bash
+cd docs
+mdbook serve
+```
+
+## Dependencies
+- mdbook
 - LLVM 16+ with MLIR
 - Rust
 
@@ -25,6 +33,11 @@ Options:
 ```
 
 ## Setup
+
+Install mdbook and other documentation dependencies:
+```bash
+cargo install mdbook mdbook-toc mdbook-mermaid
+```
 
 Install LLVM with MLIR
 
