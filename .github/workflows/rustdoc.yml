@@ -12,18 +12,16 @@ jobs:
   release:
     name: GitHub Pages
     runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Get mdBook
         run: |
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.28/mdbook-v0.4.28-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=bin
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.28/mdbook-v0.4.28-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=.
 
       - name: Build docs
-        run: bin/mdbook build docs/
+        run: ./mdbook build docs/
 
       - name: Deploy Documentation
         uses: peaceiris/actions-gh-pages@v3.9.0
