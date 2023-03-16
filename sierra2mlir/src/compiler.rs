@@ -245,6 +245,7 @@ impl<'ctx> Compiler<'ctx> {
         function_type: &str,
         regions: Vec<Region>,
         emit_c_interface: bool,
+        public: bool,
     ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
@@ -258,6 +259,19 @@ impl<'ctx> Compiler<'ctx> {
             "sym_name",
             &format!("\"{name}\""),
         )?);
+
+        if !public {
+            attrs.push(NamedAttribute::new_parsed(
+                &self.context,
+                "llvm.linkage",
+                "#llvm.linkage<internal>", // found digging llvm code..
+            )?);
+            attrs.push(NamedAttribute::new_parsed(
+                &self.context,
+                "llvm.cconv",
+                "#llvm.cconv<fastcc>", // found digging llvm code..
+            )?);
+        }
 
         if emit_c_interface {
             attrs.push(NamedAttribute::new_parsed(
@@ -520,6 +534,7 @@ impl<'ctx> Compiler<'ctx> {
                 "(i256, i256, i256) -> (i256, i256)",
                 vec![fib_region],
                 true,
+                true,
             )?
         };
 
@@ -611,7 +626,7 @@ impl<'ctx> Compiler<'ctx> {
 
             fib_mid_region.append_block(fib_block);
 
-            self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region], false)?
+            self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region], false, true)?
         };
 
         self.module.body().append_operation(fib_mid_function);
@@ -631,7 +646,7 @@ impl<'ctx> Compiler<'ctx> {
 
             region.append_block(block);
 
-            self.op_func("main", "() -> i32", vec![region], true)?
+            self.op_func("main", "() -> i32", vec![region], true, true)?
         };
 
         self.module.body().append_operation(main_function);
@@ -797,7 +812,7 @@ impl<'ctx> Compiler<'ctx> {
             self.op_return(&block, &[main_ret.result(0)?.into()]);
             region.append_block(block);
 
-            self.op_func("main", "() -> i32", vec![region], true)?
+            self.op_func("main", "() -> i32", vec![region], true, true)?
         };
 
         self.module.body().append_operation(main_function);

@@ -163,7 +163,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let function_type = self.create_fn_signature(&params, &return_types);
 
-            let op = self.op_func(&name, &function_type, vec![region], false)?;
+            let op = self.op_func(&name, &function_type, vec![region], false, true)?;
 
             self.module.body().append_operation(op);
         }

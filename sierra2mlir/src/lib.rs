@@ -30,11 +30,12 @@ pub fn compile(
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
 
     if optimized {
+        pass_manager.add_pass(pass::transform::inliner());
         pass_manager.add_pass(pass::transform::sccp());
         pass_manager.add_pass(pass::transform::cse());
-        pass_manager.add_pass(pass::transform::inliner());
         pass_manager.add_pass(pass::transform::symbol_dce());
         pass_manager.add_pass(pass::transform::canonicalizer());
     }

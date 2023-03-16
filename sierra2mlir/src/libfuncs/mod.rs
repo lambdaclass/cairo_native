@@ -130,7 +130,7 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let func = self.op_func(&id, &function_type, vec![region], false)?;
+        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
             let mut storage = storage.borrow_mut();
@@ -200,7 +200,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = self.create_fn_signature(&args, &args);
 
-        let func = self.op_func(&id, &function_type, vec![region], false)?;
+        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
             let mut storage = storage.borrow_mut();
@@ -279,7 +279,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = self.create_fn_signature(&args, &return_types);
 
-        let func = self.op_func(&id, &function_type, vec![region], false)?;
+        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
             let mut storage = storage.borrow_mut();
@@ -335,6 +335,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
             false,
+            false,
         )?;
 
         storage.borrow_mut().functions.insert(
@@ -387,6 +388,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
             false,
+            false,
         )?;
 
         storage.borrow_mut().functions.insert(
@@ -438,6 +440,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &format!("({felt_type}, {felt_type}) -> {felt_type}"),
             vec![region],
+            false,
             false,
         )?;
 

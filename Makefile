@@ -1,4 +1,4 @@
-.PHONY: build check clean build-dialect check-mlir
+.PHONY: build check clean build-dialect check-mlir build-examples compile-example compile-example-optimized
 
 build: check-mlir
 	cargo build --release
@@ -9,14 +9,20 @@ check:
 clean:
 	cargo clean
 
-test:
+test: check-mlir
 	cargo test --all
 
-compile-example:
+compile-example: check-mlir
 	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile
 
-compile-example-optimized:
+compile-example-optimized: check-mlir
 	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile
+
+build-examples: check-mlir
+	cargo r -- -i examples/simple.sierra compile > examples/simple.mlir
+	cargo r -- --optimize -i examples/simple.sierra compile > examples/simple-optimized.mlir
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir > examples/simple.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir > examples/simple-optimized.ll
 
 book:
 	mdbook serve docs
