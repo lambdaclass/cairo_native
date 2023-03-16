@@ -266,11 +266,6 @@ impl<'ctx> Compiler<'ctx> {
                 "llvm.linkage",
                 "#llvm.linkage<internal>", // found digging llvm code..
             )?);
-            attrs.push(NamedAttribute::new_parsed(
-                &self.context,
-                "llvm.cconv",
-                "#llvm.cconv<fastcc>", // found digging llvm code..
-            )?);
         }
 
         if emit_c_interface {
@@ -304,6 +299,36 @@ impl<'ctx> Compiler<'ctx> {
                 .add_results(
                     &[Type::parse(&self.context, &self.struct_type_string(types)).unwrap()],
                 )
+                .build(),
+        )
+    }
+
+    // conditional branch
+    pub fn op_cond_br<'a>(
+        &self,
+        block: &'a Block,
+        cond: Value,
+        true_block: &Block,
+        false_block: &Block,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("cf.cond_br", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 1, 0, 0>",
+                )?])
+                .add_operands(&[cond])
+                .add_successors(&[true_block, false_block])
+                .build(),
+        ))
+    }
+
+    // unconditional branch
+    pub fn op_br<'a>(&self, block: &'a Block, target_block: &Block) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("cf.br", Location::unknown(&self.context))
+                .add_successors(&[target_block])
                 .build(),
         )
     }
@@ -393,7 +418,7 @@ impl<'ctx> Compiler<'ctx> {
         let storage = Rc::new(RefCell::new(Storage::default()));
         self.process_types(storage.clone())?;
         self.process_libfuncs(storage.clone())?;
-        self.process_statements(storage)?;
+        self.process_functions(storage)?;
         Ok(self.module.as_operation())
     }
 

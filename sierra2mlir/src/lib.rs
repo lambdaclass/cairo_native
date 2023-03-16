@@ -23,6 +23,7 @@ pub fn compile(
     let mut compiler = Compiler::new(code)?;
     compiler.compile()?;
 
+    println!("{}", compiler.module.as_operation());
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
 
