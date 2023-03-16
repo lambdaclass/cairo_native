@@ -21,7 +21,7 @@ impl<'ctx> Compiler<'ctx> {
                 // no-ops
                 "revoke_ap_tracking" => continue,
                 "disable_ap_tracking" => continue,
-                "rename" | "drop" => continue,
+                "drop" => continue,
                 "felt_const" => {
                     self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
@@ -40,7 +40,7 @@ impl<'ctx> Compiler<'ctx> {
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
                 }
-                "store_temp" => {
+                "store_temp" | "rename" => {
                     self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),

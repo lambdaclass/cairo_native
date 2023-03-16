@@ -75,6 +75,7 @@ impl<'ctx> Compiler<'ctx> {
                             let name_without_generics = name.split('<').next().unwrap();
 
                             match name_without_generics {
+                                "disable_ap_tracking" | "drop" => continue,
                                 "felt_const" => {
                                     let felt_const = storage
                                         .felt_consts

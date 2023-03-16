@@ -13,7 +13,7 @@ test:
 	cargo test --all
 
 compile-example:
-	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile --debug
+	RUST_LOG="debug" cargo r -- -i examples/fib.sierra compile --debug
 
 compile-example-optimized:
 	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile --debug
