@@ -44,7 +44,7 @@ impl<'ctx> Compiler<'ctx> {
                             .iter()
                             .map(|ty| match ty {
                                 SierraType::Simple(ty) => *ty,
-                                SierraType::Struct { ty, fields: _ } => *ty,
+                                SierraType::Struct { ty, field_types: _ } => *ty,
                             })
                             .collect_vec();
                         let struct_type =
@@ -55,7 +55,7 @@ impl<'ctx> Compiler<'ctx> {
                             id.to_string(),
                             SierraType::Struct {
                                 ty: struct_type,
-                                fields: struct_types.len(),
+                                field_types: struct_types,
                             },
                         );
                     }
@@ -85,29 +85,24 @@ impl<'ctx> Compiler<'ctx> {
                         types.push(gen_arg_ty.clone());
                     }
 
-                    if types.len() == 1 {
-                        let ty = &types[0];
-                        storage.types.insert(id.to_string(), ty.clone());
-                    } else {
-                        let struct_types = types
-                            .iter()
-                            .map(|ty| match ty {
-                                SierraType::Simple(ty) => *ty,
-                                SierraType::Struct { ty, fields: _ } => *ty,
-                            })
-                            .collect_vec();
-                        let struct_type =
-                            Type::parse(&self.context, &self.struct_type_string(&struct_types))
-                                .unwrap();
+                    let struct_types = types
+                        .iter()
+                        .map(|ty| match ty {
+                            SierraType::Simple(ty) => *ty,
+                            SierraType::Struct { ty, field_types: _ } => *ty,
+                        })
+                        .collect_vec();
+                    let struct_type =
+                        Type::parse(&self.context, &self.struct_type_string(&struct_types))
+                            .unwrap();
 
-                        storage.types.insert(
-                            id.to_string(),
-                            SierraType::Struct {
-                                ty: struct_type,
-                                fields: struct_types.len(),
-                            },
-                        );
-                    }
+                    storage.types.insert(
+                        id.to_string(),
+                        SierraType::Struct {
+                            ty: struct_type,
+                            field_types: struct_types,
+                        },
+                    );
                 }
                 _ => debug!(?type_decl, "unhandled type"),
             }

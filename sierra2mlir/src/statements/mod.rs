@@ -28,9 +28,9 @@ impl<'ctx> Compiler<'ctx> {
 
                 let ty = match ty {
                     SierraType::Simple(ty) => ty,
-                    SierraType::Struct { ty, fields: _ } => ty,
+                    SierraType::Struct { ty, field_types: _ } => ty,
                 };
-                params.push((ty.clone(), Location::unknown(&self.context)));
+                params.push((*ty, Location::unknown(&self.context)));
                 // self.collect_types(&mut params, ty.clone());
             }
 
@@ -42,9 +42,9 @@ impl<'ctx> Compiler<'ctx> {
 
                 let ty = match ty {
                     SierraType::Simple(ty) => ty,
-                    SierraType::Struct { ty, fields: _ } => ty,
+                    SierraType::Struct { ty, field_types: _ } => ty,
                 };
-                return_types.push((ty.clone(), Location::unknown(&self.context)));
+                return_types.push((*ty, Location::unknown(&self.context)));
                 // self.collect_types(&mut return_types, ty.clone());
             }
 
@@ -116,13 +116,12 @@ impl<'ctx> Compiler<'ctx> {
                                         args.push(res);
                                     }
 
-                                    dbg!(&variables);
                                     debug!("creating func call");
                                     let op = self.op_func_call(
                                         &block,
                                         &id,
-                                        dbg!(&args),
-                                        dbg!(&func_def.return_types),
+                                        &args,
+                                        &func_def.return_types,
                                     )?;
                                     debug!("created");
 
@@ -160,8 +159,6 @@ impl<'ctx> Compiler<'ctx> {
             region.append_block(block);
 
             let function_type = self.create_fn_signature(&params, &return_types);
-
-            dbg!(&function_type);
 
             let op = self.op_func(&name, &function_type, vec![region], false)?;
 

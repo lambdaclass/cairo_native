@@ -12,8 +12,11 @@ clean:
 test:
 	cargo test --all
 
-run-example:
-	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile
+compile-example:
+	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile --debug
+
+compile-example-optimized:
+	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile --debug
 
 # Experimental, just playing around.
 build-dialect: check-mlir

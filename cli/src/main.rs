@@ -20,6 +20,10 @@ struct Args {
     #[arg(short, long)]
     input: PathBuf,
 
+    /// Output optimized MLIR.
+    #[arg(short, long)]
+    optimize: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -31,6 +35,10 @@ enum Commands {
         /// The output file. If not specified its output will be stdout.
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Turn on debug info.
+        #[arg(short, long)]
+        debug: bool,
     },
     /// Compile and run a program. The entry point must be a function without arguments.
     Run {
@@ -48,8 +56,8 @@ fn main() -> color_eyre::Result<()> {
     let code = fs::read_to_string(args.input)?;
 
     match args.command {
-        Commands::Compile { output } => {
-            let mlir_output = sierra2mlir::compile(&code)?;
+        Commands::Compile { output, debug } => {
+            let mlir_output = sierra2mlir::compile(&code, args.optimize, debug)?;
 
             if let Some(output) = output {
                 fs::write(output, mlir_output);

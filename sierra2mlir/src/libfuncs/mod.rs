@@ -3,17 +3,17 @@ use std::{cell::RefCell, rc::Rc};
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value, ValueLike};
+use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value};
 use tracing::debug;
 
 use crate::compiler::{Compiler, FunctionDef, SierraType, Storage};
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_libfuncs<'b: 'ctx>(&'b self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_libfuncs(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for func_decl in &self.program.libfunc_declarations {
-            let _id = func_decl.id.id;
+            let id = func_decl.id.id;
             let name = func_decl.long_id.generic_id.0.as_str();
-            debug!(name, "processing libfunc decl");
+            debug!(name, id, "processing libfunc decl");
 
             let parent_block = self.module.body();
 
@@ -78,17 +78,25 @@ impl<'ctx> Compiler<'ctx> {
             match arg {
                 GenericArg::UserType(_) => todo!(),
                 GenericArg::Type(type_id) => {
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
+                    // TODO: FIXME here we get the struct type itself, but we need the field types...
                     let ty = storage
                         .types
                         .get(&type_id.id.to_string())
                         .expect("type to exist");
 
-                    let ty = match ty {
-                        SierraType::Simple(ty) => ty,
-                        SierraType::Struct { ty, fields } => ty,
+                    let field_types = match ty {
+                        SierraType::Simple(_ty) => {
+                            unreachable!("struct construct shouldnt be called for simple types")
+                        }
+                        SierraType::Struct { ty: _, field_types } => field_types,
                     };
 
-                    args.push((*ty, Location::unknown(&self.context)));
+                    for ty in field_types {
+                        args.push((*ty, Location::unknown(&self.context)));
+                    }
                 }
                 GenericArg::Value(_) => todo!(),
                 GenericArg::UserFunc(_) => todo!(),
@@ -115,7 +123,7 @@ impl<'ctx> Compiler<'ctx> {
         let struct_value: Value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let return_type = Type::parse(&self.context, &self.struct_type_string(&types)).unwrap();
+        let return_type = Type::parse(&self.context, &struct_llvm_type).unwrap();
         let function_type =
             self.create_fn_signature(&args, &[(return_type, Location::unknown(&self.context))]);
 
@@ -162,7 +170,7 @@ impl<'ctx> Compiler<'ctx> {
 
                     let ty = match ty {
                         SierraType::Simple(ty) => ty,
-                        SierraType::Struct { ty, fields: _ } => ty,
+                        SierraType::Struct { ty, field_types: _ } => ty,
                     };
 
                     args.push((*ty, Location::unknown(&self.context)));
@@ -229,7 +237,7 @@ impl<'ctx> Compiler<'ctx> {
 
                     let ty = match ty {
                         SierraType::Simple(ty) => ty,
-                        SierraType::Struct { ty, fields } => ty,
+                        SierraType::Struct { ty, field_types: _ } => ty,
                     };
 
                     args.push((*ty, Location::unknown(&self.context)));

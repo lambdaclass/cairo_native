@@ -24,11 +24,15 @@ pub struct Compiler<'ctx> {
 #[derive(Debug, Clone)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
-    Struct { ty: Type<'ctx>, fields: usize },
+    Struct {
+        ty: Type<'ctx>,
+        field_types: Vec<Type<'ctx>>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionDef<'ctx> {
+    #[allow(unused)]
     pub(crate) args: Vec<Type<'ctx>>,
     pub(crate) return_types: Vec<Type<'ctx>>,
 }
@@ -251,7 +255,7 @@ impl<'ctx> Compiler<'ctx> {
         attrs.push(NamedAttribute::new_parsed(
             &self.context,
             "sym_name",
-            &format!("\"{name}\""),
+            &format!("\"sierra_func_{name}\""),
         )?);
 
         if emit_c_interface {
@@ -262,12 +266,13 @@ impl<'ctx> Compiler<'ctx> {
             )?);
         }
 
-        Ok(
-            operation::Builder::new("func.func", Location::unknown(&self.context))
-                .add_attributes(&attrs)
-                .add_regions(regions)
-                .build(),
+        Ok(operation::Builder::new(
+            "func.func",
+            Location::new(&self.context, "example.sierra", 2, 0),
         )
+        .add_attributes(&attrs)
+        .add_regions(regions)
+        .build())
     }
 
     pub fn op_return<'a>(&self, block: &'a Block, result: &[Value]) -> OperationRef<'a> {
@@ -348,7 +353,7 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
-                .add_attributes(&[self.named_attribute("callee", name)?])
+                .add_attributes(&[self.named_attribute("callee", &format!("@sierra_func_{name}"))?])
                 .add_operands(args)
                 .add_results(results)
                 .build(),
@@ -367,7 +372,6 @@ impl<'ctx> Compiler<'ctx> {
         self.process_types(storage.clone())?;
         self.process_libfuncs(storage.clone())?;
         self.process_statements(storage)?;
-
         Ok(self.module.as_operation())
     }
 
@@ -711,7 +715,6 @@ impl<'ctx> Compiler<'ctx> {
             gpu_module
         };
 
-        dbg!(gpu_module.to_string());
         self.module.body().append_operation(gpu_module);
 
         let main_function = {
@@ -792,8 +795,6 @@ impl<'ctx> Compiler<'ctx> {
         self.module.body().append_operation(main_function);
 
         let op = self.module.as_operation();
-
-        dbg!(&op);
 
         if op.verify() {
             Ok(op)
