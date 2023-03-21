@@ -148,6 +148,51 @@ impl<'ctx> Compiler<'ctx> {
                                     self.op_br(current_block, target_block);
                                     had_jump = true;
                                 }
+                                "u8_const" => {
+                                    let value = storage
+                                        .u8_consts
+                                        .get(&id)
+                                        .expect("constant value not found");
+                                    let op = self.op_u8_const(current_block, value);
+                                    let var_id = &inv.branches[0].results[0];
+                                    variables.insert(var_id, (op, 0));
+                                }
+                                "u16_const" => {
+                                    let value = storage
+                                        .u16_consts
+                                        .get(&id)
+                                        .expect("constant value not found");
+                                    let op = self.op_u16_const(current_block, value);
+                                    let var_id = &inv.branches[0].results[0];
+                                    variables.insert(var_id, (op, 0));
+                                }
+                                "u32_const" => {
+                                    let value = storage
+                                        .u32_consts
+                                        .get(&id)
+                                        .expect("constant value not found");
+                                    let op = self.op_u32_const(current_block, value);
+                                    let var_id = &inv.branches[0].results[0];
+                                    variables.insert(var_id, (op, 0));
+                                }
+                                "u64_const" => {
+                                    let value = storage
+                                        .u64_consts
+                                        .get(&id)
+                                        .expect("constant value not found");
+                                    let op = self.op_u64_const(current_block, value);
+                                    let var_id = &inv.branches[0].results[0];
+                                    variables.insert(var_id, (op, 0));
+                                }
+                                "u128_const" => {
+                                    let value = storage
+                                        .u128_consts
+                                        .get(&id)
+                                        .expect("constant value not found");
+                                    let op = self.op_u128_const(current_block, value);
+                                    let var_id = &inv.branches[0].results[0];
+                                    variables.insert(var_id, (op, 0));
+                                }
                                 name if inv.branches.len() > 1 => {
                                     match name {
                                         "felt_is_zero" => {
@@ -273,7 +318,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let function_type = self.create_fn_signature(&params, &return_types);
 
-            let op = self.op_func(&name, &function_type, vec![region], false, true)?;
+            let op = self.op_func(&name, &function_type, vec![region], true, true)?;
 
             self.module.body().append_operation(op);
         }
