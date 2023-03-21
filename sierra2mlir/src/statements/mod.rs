@@ -92,12 +92,7 @@ impl<'ctx> Compiler<'ctx> {
                         // next statement from the jump needs a block, because this is a conditional jump
                         // where one condition simply follows through
                         if had_jump && had_fall_through {
-                            let name = inv.libfunc_id.debug_name.as_ref().unwrap().as_str();
-                            let name_without_generics = name.split('<').next().unwrap();
-
-                            if name_without_generics == "felt_is_zero" {
-                                jump_dests.insert(i + 1, region.append_block(Block::new(&[])));
-                            }
+                            jump_dests.insert(i + 1, region.append_block(Block::new(&[])));
                         }
                     }
                     GenStatement::Return(_) => break,
@@ -132,7 +127,7 @@ impl<'ctx> Compiler<'ctx> {
 
                             match name_without_generics {
                                 "disable_ap_tracking" | "drop" | "branch_align" => continue,
-                                "felt_const" => {
+                                "felt252_const" => {
                                     let felt_const = storage
                                         .felt_consts
                                         .get(&id)
@@ -243,8 +238,6 @@ impl<'ctx> Compiler<'ctx> {
                                     for (i, var_id) in inv.branches[0].results.iter().enumerate() {
                                         variables.insert(var_id, (op, i));
                                     }
-
-                                    // debug!(name, "unimplemented");
                                 }
                             }
                         }

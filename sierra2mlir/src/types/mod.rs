@@ -18,7 +18,7 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
 
             match name {
-                "felt" => {
+                "felt252" => {
                     let ty = self.felt_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
                 }
