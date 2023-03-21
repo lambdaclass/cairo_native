@@ -42,12 +42,23 @@ cargo install mdbook mdbook-toc mdbook-mermaid
 
 Install LLVM with MLIR
 
+If you have make:
+
 ```bash
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0-rc3/llvm-project-16.0.0rc3.src.tar.xz
+make install-llvm
+```
+
+This will get and compile llvm 16 with the MLIR target.
+You should export a env var `MLIR_SYS_160_PREFIX` to the generated `llvm/dist` folder.
+
+Otherwise manually:
+
+```bash
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
 
 mkdir ~/mlir
-tar -xf llvm-project-16.0.0rc3.src.tar.xz
-cd llvm-project-16.0.0rc3.src.tar
+tar -xf llvm-project-16.0.0.src.tar.xz
+cd llvm-project-16.0.0.src.tar
 mkdir build
 cd build
 
