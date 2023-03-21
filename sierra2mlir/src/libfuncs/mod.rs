@@ -22,16 +22,16 @@ impl<'ctx> Compiler<'ctx> {
                 "revoke_ap_tracking" => continue,
                 "disable_ap_tracking" => continue,
                 "drop" => continue,
-                "felt_const" => {
+                "felt252_const" => {
                     self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
-                "felt_add" => {
+                "felt252_add" => {
                     self.create_libfunc_felt_add(func_decl, parent_block, storage.clone())?;
                 }
-                "felt_sub" => {
+                "felt252_sub" => {
                     self.create_libfunc_felt_sub(func_decl, parent_block, storage.clone())?;
                 }
-                "felt_mul" => {
+                "felt252_mul" => {
                     self.create_libfunc_felt_mul(func_decl, parent_block, storage.clone())?;
                 }
                 "dup" => {

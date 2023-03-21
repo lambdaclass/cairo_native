@@ -19,10 +19,10 @@ compile-example-optimized: check-mlir
 	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile
 
 build-examples: check-mlir
-	cargo r -- -i examples/simple.sierra compile > examples/simple.mlir
-	cargo r -- --optimize -i examples/simple.sierra compile > examples/simple-optimized.mlir
-	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir > examples/simple.ll
-	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir > examples/simple-optimized.ll
+	cargo r -- -i examples/simple.sierra compile -o examples/simple.mlir
+	cargo r -- --optimize -i examples/simple.sierra compile -o examples/simple-optimized.mlir
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir -o examples/simple.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir -o examples/simple-optimized.ll
 
 book:
 	mdbook serve docs
