@@ -4,15 +4,21 @@ use sierra2mlir::compiler::Compiler;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut compiler = Compiler::new("").unwrap();
-    //let op = compiler.compile()?;
-    compiler.run_fib().unwrap();
+    compiler.compile_hardcoded_fib().unwrap();
 
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
+    // adding the inliner pass adds a substanstial slowdown.
+    // pass_manager.add_pass(pass::transform::inliner());
+    pass_manager.add_pass(pass::transform::symbol_dce());
+    pass_manager.add_pass(pass::transform::cse());
+    pass_manager.add_pass(pass::transform::sccp());
+    pass_manager.add_pass(pass::transform::canonicalizer());
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module).unwrap();
 

@@ -271,7 +271,7 @@ impl<'ctx> Compiler<'ctx> {
         if emit_c_interface {
             attrs.push(NamedAttribute::new_parsed(
                 &self.context,
-                "emit_c_interface",
+                "llvm.emit_c_interface",
                 "unit",
             )?);
         }
@@ -422,7 +422,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(self.module.as_operation())
     }
 
-    pub fn run_fib(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+    pub fn compile_hardcoded_fib(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         // hardcoded fib
 
         /*
@@ -511,7 +511,7 @@ impl<'ctx> Compiler<'ctx> {
 
                 let func_call = self.op_func_call(
                     &else_block,
-                    "@fib",
+                    "fib",
                     &[
                         arg_b.into(),
                         a_plus_b_mod_res.into(),
@@ -558,7 +558,7 @@ impl<'ctx> Compiler<'ctx> {
                 "fib",
                 "(i256, i256, i256) -> (i256, i256)",
                 vec![fib_region],
-                true,
+                false,
                 true,
             )?
         };
@@ -617,7 +617,7 @@ impl<'ctx> Compiler<'ctx> {
 
                 self.op_func_call(
                     &else_block,
-                    "@fib",
+                    "fib",
                     &[zero_res, one_res, times_res],
                     &[felt_type, felt_type],
                 )?;
@@ -632,7 +632,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
                 let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
 
-                self.op_func_call(&else_block, "@fib_mid", &[n_minus_1_mod_res.into()], &[])?;
+                self.op_func_call(&else_block, "fib_mid", &[n_minus_1_mod_res.into()], &[])?;
 
                 else_block.append_operation(operation::Builder::new("scf.yield", location).build());
 
@@ -663,7 +663,7 @@ impl<'ctx> Compiler<'ctx> {
             let n_arg = self.op_felt_const(&block, "100");
             let n_arg_res = n_arg.result(0)?.into();
 
-            self.op_func_call(&block, "@fib_mid", &[n_arg_res], &[])?;
+            self.op_func_call(&block, "fib_mid", &[n_arg_res], &[])?;
 
             let main_ret = self.op_const(&block, "0", self.i32_type());
 
@@ -684,14 +684,12 @@ impl<'ctx> Compiler<'ctx> {
         }
     }
 
-    pub fn run_gpu(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        // hardcoded fib
-
+    pub fn compile_hardcoded_gpu(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         /*
         fn main(a: i32, b: i32) -> i32 {
             a * b
         }
-         */
+        */
 
         let i32_type = Type::integer(&self.context, 32);
         let i256_type = Type::integer(&self.context, 256);
