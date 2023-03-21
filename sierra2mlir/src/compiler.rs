@@ -43,6 +43,11 @@ pub struct FunctionDef<'ctx> {
 #[derive(Debug, Default, Clone)]
 pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
+    pub(crate) u8_consts: HashMap<String, String>,
+    pub(crate) u16_consts: HashMap<String, String>,
+    pub(crate) u32_consts: HashMap<String, String>,
+    pub(crate) u64_consts: HashMap<String, String>,
+    pub(crate) u128_consts: HashMap<String, String>,
     pub(crate) felt_consts: HashMap<String, String>,
     pub(crate) functions: HashMap<String, FunctionDef<'ctx>>,
 }
@@ -111,6 +116,26 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn bool_type(&self) -> Type {
         Type::integer(&self.context, 1)
+    }
+
+    pub fn u8_type(&self) -> Type {
+        Type::integer(&self.context, 8)
+    }
+
+    pub fn u16_type(&self) -> Type {
+        Type::integer(&self.context, 16)
+    }
+
+    pub fn u32_type(&self) -> Type {
+        Type::integer(&self.context, 32)
+    }
+
+    pub fn u64_type(&self) -> Type {
+        Type::integer(&self.context, 64)
+    }
+
+    pub fn u128_type(&self) -> Type {
+        Type::integer(&self.context, 128)
     }
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
@@ -224,6 +249,31 @@ impl<'ctx> Compiler<'ctx> {
     /// New felt constant
     pub fn op_felt_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
         self.op_const(block, val, self.felt_type())
+    }
+
+    /// New u8 constant
+    pub fn op_u8_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
+        self.op_const(block, val, self.u8_type())
+    }
+
+    /// New u16 constant
+    pub fn op_u16_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
+        self.op_const(block, val, self.u16_type())
+    }
+
+    /// New u32 constant
+    pub fn op_u32_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
+        self.op_const(block, val, self.u32_type())
+    }
+
+    /// New u64 constant
+    pub fn op_u64_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
+        self.op_const(block, val, self.u64_type())
+    }
+
+    /// New u128 constant
+    pub fn op_u128_const<'a>(&'a self, block: &'a Block, val: &str) -> OperationRef<'a> {
+        self.op_const(block, val, self.u128_type())
     }
 
     /// Does modulo prime and truncates back to felt type.

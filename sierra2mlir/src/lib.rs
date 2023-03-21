@@ -67,6 +67,7 @@ pub fn execute(code: &str) -> Result<ExecutionEngine, color_eyre::Report> {
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;

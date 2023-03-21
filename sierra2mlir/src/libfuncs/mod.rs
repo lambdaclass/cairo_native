@@ -43,6 +43,21 @@ impl<'ctx> Compiler<'ctx> {
                 "store_temp" | "rename" => {
                     self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
                 }
+                "u8_const" => {
+                    self.create_libfunc_u8_const(func_decl, &mut storage.borrow_mut());
+                }
+                "u16_const" => {
+                    self.create_libfunc_u16_const(func_decl, &mut storage.borrow_mut());
+                }
+                "u32_const" => {
+                    self.create_libfunc_u32_const(func_decl, &mut storage.borrow_mut());
+                }
+                "u64_const" => {
+                    self.create_libfunc_u64_const(func_decl, &mut storage.borrow_mut());
+                }
+                "u128_const" => {
+                    self.create_libfunc_u128_const(func_decl, &mut storage.borrow_mut());
+                }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
         }
@@ -454,5 +469,85 @@ impl<'ctx> Compiler<'ctx> {
 
         parent_block.append_operation(func);
         Ok(())
+    }
+
+    pub fn create_libfunc_u8_const(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => todo!(),
+        };
+
+        storage.u8_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
+            arg,
+        );
+    }
+
+    pub fn create_libfunc_u16_const(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => todo!(),
+        };
+
+        storage.u16_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
+            arg,
+        );
+    }
+
+    pub fn create_libfunc_u32_const(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => todo!(),
+        };
+
+        storage.u32_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
+            arg,
+        );
+    }
+
+    pub fn create_libfunc_u64_const(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => todo!(),
+        };
+
+        storage.u64_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
+            arg,
+        );
+    }
+
+    pub fn create_libfunc_u128_const(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => todo!(),
+        };
+
+        storage.u128_consts.insert(
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
+            arg,
+        );
     }
 }
