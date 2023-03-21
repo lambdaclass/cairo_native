@@ -46,7 +46,7 @@ install-llvm:
 	wget -P llvm/source/ https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
 	tar -xf llvm/source/llvm-project-16.0.0.src.tar.xz -C llvm/source/
 	cd llvm/source/llvm-project-16.0.0.src && \
-		mkdir build && \
+		mkdir -p build && \
 		cd build && \
 		cmake -G Ninja ../llvm \
 			-DLLVM_ENABLE_PROJECTS=mlir \
