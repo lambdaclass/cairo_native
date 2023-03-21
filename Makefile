@@ -38,3 +38,25 @@ check-mlir:
 ifndef MLIR_SYS_160_PREFIX
 	$(error MLIR_SYS_160_PREFIX needs to be set to the path where LLVM with MLIR is)
 endif
+
+# requires ninja
+install-llvm:
+	mkdir -p llvm/dist
+	mkdir -p llvm/source
+	wget -P llvm/source/ https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
+	tar -xf llvm/source/llvm-project-16.0.0.src.tar.xz -C llvm/source/
+	cd llvm/source/llvm-project-16.0.0.src && \
+		mkdir build && \
+		cd build && \
+		cmake -G Ninja ../llvm \
+			-DLLVM_ENABLE_PROJECTS=mlir \
+			-DLLVM_BUILD_EXAMPLES=ON \
+			-DLLVM_TARGETS_TO_BUILD="X86;AArch64;NVPTX;AMDGPU" \
+			-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+			-DLLVM_ENABLE_ASSERTIONS=ON \
+			-DLLVM_INSTALL_UTILS=ON \
+			-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
+			-DCMAKE_INSTALL_PREFIX="../../dist/" && \
+		cmake --build . && \
+		cmake --install . && \
+		echo "Please create export a variable named MLIR_SYS_160_PREFIX pointing to the absolute path under llvm/dist"
