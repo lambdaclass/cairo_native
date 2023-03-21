@@ -56,7 +56,7 @@ install-llvm:
 			-DLLVM_ENABLE_ASSERTIONS=ON \
 			-DLLVM_INSTALL_UTILS=ON \
 			-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
-			-DCMAKE_INSTALL_PREFIX="../../dist/" && \
+			-DCMAKE_INSTALL_PREFIX="../../../dist/" && \
 		cmake --build . && \
 		cmake --install . && \
 		echo "Please create export a variable named MLIR_SYS_160_PREFIX pointing to the absolute path under llvm/dist"
