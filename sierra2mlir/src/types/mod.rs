@@ -8,7 +8,8 @@ use tracing::debug;
 
 use crate::compiler::{Compiler, SierraType, Storage};
 
-pub const DEFAULT_PRIME: &str = "3618502788666131213697322783095070105623107215331596699973092056135872020481";
+pub const DEFAULT_PRIME: &str =
+    "3618502788666131213697322783095070105623107215331596699973092056135872020481";
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_types(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {

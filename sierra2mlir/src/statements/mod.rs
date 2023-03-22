@@ -286,7 +286,9 @@ impl<'ctx> Compiler<'ctx> {
 
                                             had_jump = true;
                                         }
-                                        _ => todo!("Branching function {} not implemented yet", name),
+                                        _ => {
+                                            todo!("Branching function {} not implemented yet", name)
+                                        }
                                     };
                                 }
                                 name => {

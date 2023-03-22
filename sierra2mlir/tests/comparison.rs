@@ -130,7 +130,10 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let lli_output = lli_cmd.wait_with_output().unwrap();
 
     if lli_output.stderr.len() > 0 {
-        return Err(format!("lli failed with output: {}", String::from_utf8(lli_output.stderr).unwrap()));
+        return Err(format!(
+            "lli failed with output: {}",
+            String::from_utf8(lli_output.stderr).unwrap()
+        ));
     }
 
     let output = std::str::from_utf8(&lli_output.stdout).unwrap().trim();
