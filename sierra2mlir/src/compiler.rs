@@ -14,6 +14,8 @@ use melior_next::{
 use regex::Regex;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
+use crate::types::DEFAULT_PRIME;
+
 pub struct Compiler<'ctx> {
     pub code: String,
     pub program: Program,
@@ -144,7 +146,7 @@ impl<'ctx> Compiler<'ctx> {
         // The prime number is a double felt as it's always used for modulo.
         self.op_const(
             block,
-            "3618502788666131213697322783095070105623107215331596699973092056135872020481",
+            DEFAULT_PRIME,
             self.double_felt_type(),
         )
     }
@@ -582,7 +584,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let felt_type = self.felt_type();
         let location = Location::unknown(&self.context);
-        let prime = "3618502788666131213697322783095070105623107215331596699973092056135872020481";
+        let prime = DEFAULT_PRIME;
 
         let fib_function = {
             let fib_region = Region::new();

@@ -13,7 +13,7 @@ use crate::compiler::Compiler;
 pub mod compiler;
 mod libfuncs;
 mod statements;
-mod types;
+pub mod types;
 mod utility;
 
 pub fn compile(
