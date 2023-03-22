@@ -327,7 +327,7 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[(felt_type, loc), (felt_type, loc)]);
 
         let lhs_arg = block.argument(0)?;
-        let rhs_arg = block.argument(0)?;
+        let rhs_arg = block.argument(1)?;
 
         let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
         let lhs = lhs_ext.result(0)?;
@@ -380,7 +380,7 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[(felt_type, loc), (felt_type, loc)]);
 
         let lhs_arg = block.argument(0)?;
-        let rhs_arg = block.argument(0)?;
+        let rhs_arg = block.argument(1)?;
 
         let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
         let lhs = lhs_ext.result(0)?;
@@ -433,7 +433,7 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[(felt_type, loc), (felt_type, loc)]);
 
         let lhs_arg = block.argument(0)?;
-        let rhs_arg = block.argument(0)?;
+        let rhs_arg = block.argument(1)?;
 
         let lhs_ext = self.op_sext(&block, lhs_arg.into(), self.double_felt_type());
         let lhs = lhs_ext.result(0)?;
