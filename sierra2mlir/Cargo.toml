@@ -21,4 +21,10 @@ itertools = "0.10.5"
 regex = "1.7.1"
 
 [dev-dependencies]
+anyhow = "1.0.70"
+cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", branch = "main" }
 criterion = "0.4.0"
+num-bigint = "0.4.3"
+num-traits = "0.2.15"
+tempdir = "0.3.7"
+test-case = "3.0.0"
