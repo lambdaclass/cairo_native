@@ -144,11 +144,7 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         // The prime number is a double felt as it's always used for modulo.
-        self.op_const(
-            block,
-            DEFAULT_PRIME,
-            self.double_felt_type(),
-        )
+        self.op_const(block, DEFAULT_PRIME, self.double_felt_type())
     }
 
     /// Only the MLIR op, doesn't do modulo.
