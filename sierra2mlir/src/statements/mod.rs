@@ -337,6 +337,12 @@ impl<'ctx> Compiler<'ctx> {
                                 ret_values.push(val);
                             }
 
+                            if name.ends_with("main") && self.main_print {
+                                for val in &ret_values {
+                                    todo!()
+                                }
+                            }
+
                             self.op_return(current_block, &ret_values);
                             debug!(?ret, "processing statement: return");
                             break;

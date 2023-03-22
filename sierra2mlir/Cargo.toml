@@ -16,7 +16,7 @@ harness = false
 cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", branch = "main" }
 tracing = "0.1.37"
 color-eyre = "0.6.2"
-melior-next = { git = "https://github.com/edg-l/melior-next" }
+melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a742bdc7c211b07df307688f6411a40c"}
 itertools = "0.10.5"
 regex = "1.7.1"
 

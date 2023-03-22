@@ -14,14 +14,24 @@ pub mod compiler;
 mod libfuncs;
 mod statements;
 mod types;
+mod utility;
 
 pub fn compile(
     code: &str,
     optimized: bool,
     debug_info: bool,
+    main_print: bool,
 ) -> Result<String, color_eyre::Report> {
-    let mut compiler = Compiler::new(code)?;
+    let mut compiler = Compiler::new(code, main_print)?;
+
+    if main_print {
+        compiler.create_printf()?;
+        compiler.create_felt_print()?;
+    }
+
     compiler.compile()?;
+
+    if main_print {}
 
     println!("{}", compiler.module.as_operation());
     let pass_manager = pass::Manager::new(&compiler.context);
@@ -59,7 +69,7 @@ pub fn compile(
 }
 
 pub fn execute(code: &str) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(code)?;
+    let mut compiler = Compiler::new(code, false)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
