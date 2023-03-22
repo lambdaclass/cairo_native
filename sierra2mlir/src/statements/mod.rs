@@ -245,7 +245,7 @@ impl<'ctx> Compiler<'ctx> {
                                 }
                                 name if inv.branches.len() > 1 => {
                                     match name {
-                                        "felt_is_zero" => {
+                                        "felt252_is_zero" => {
                                             let felt_op_zero =
                                                 self.op_felt_const(current_block, "0");
                                             let zero = felt_op_zero.result(0)?.into();
@@ -286,7 +286,7 @@ impl<'ctx> Compiler<'ctx> {
 
                                             had_jump = true;
                                         }
-                                        _ => todo!(),
+                                        _ => todo!("Branching function {} not implemented yet", name),
                                     };
                                 }
                                 name => {
