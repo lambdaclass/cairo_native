@@ -64,7 +64,7 @@ impl<'c> Variable<'c> {
 
 impl<'ctx> Compiler<'ctx> {
     #[allow(clippy::cognitive_complexity)]
-    pub fn process_functions(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_functions(&self, storage_cell: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for func in &self.program.funcs {
             debug!(?func, "processing func");
 
@@ -78,15 +78,16 @@ impl<'ctx> Compiler<'ctx> {
             let mut return_types = vec![];
             let mut return_sierra_types = vec![];
 
-            let storage = storage.borrow();
+            let storage = storage_cell.borrow();
 
             for param in &func.params {
                 let ty = storage
                     .types
                     .get(&param.ty.id.to_string())
+                    .clone()
                     .expect("type for param should exist");
 
-                param_types.push(*ty.get_type());
+                param_types.push(ty.get_type());
             }
             let param_types = param_types;
 
@@ -97,8 +98,8 @@ impl<'ctx> Compiler<'ctx> {
                     .expect("type for param should exist")
                     .get_type();
 
-                return_types.push(*ty);
-                return_sierra_types.push((*ty, ret.clone()));
+                return_types.push(ty);
+                return_sierra_types.push((ty, ret.clone()));
             }
             let return_sierra_types = return_sierra_types;
             let return_types = return_types;
@@ -322,12 +323,18 @@ impl<'ctx> Compiler<'ctx> {
                                         args.push(res);
                                     }
 
+                                    let return_types = func_def
+                                        .return_types
+                                        .iter()
+                                        .map(|x| x.get_type())
+                                        .collect_vec();
+
                                     debug!(id, "creating func call");
                                     let op = self.op_func_call(
                                         current_block,
                                         &id,
                                         &args,
-                                        &func_def.return_types,
+                                        &return_types,
                                     )?;
                                     debug!("created");
 
@@ -377,7 +384,7 @@ impl<'ctx> Compiler<'ctx> {
                     &name,
                     &param_types,
                     &return_sierra_types,
-                    storage,
+                    storage_cell.borrow(),
                 )?;
             }
         }
