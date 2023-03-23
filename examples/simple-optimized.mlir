@@ -8,14 +8,20 @@ module attributes {llvm.data_layout = ""} {
   llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
     %1 = llvm.sext %arg0 : i256 to i512
-    %2 = llvm.add %1, %1  : i512
-    %3 = llvm.srem %2, %0  : i512
-    %4 = llvm.trunc %3 : i512 to i256
-    llvm.return %4 : i256
+    %2 = llvm.sext %arg1 : i256 to i512
+    %3 = llvm.add %1, %2  : i512
+    %4 = llvm.srem %3, %0  : i512
+    %5 = llvm.trunc %4 : i512 to i256
+    llvm.return %5 : i256
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
-    %0 = llvm.mlir.constant(0 : i256) : i256
-    llvm.return %0 : i256
+    %0 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
+    %1 = llvm.sext %arg0 : i256 to i512
+    %2 = llvm.sext %arg1 : i256 to i512
+    %3 = llvm.sub %1, %2  : i512
+    %4 = llvm.srem %3, %0  : i512
+    %5 = llvm.trunc %4 : i512 to i256
+    llvm.return %5 : i256
   }
   llvm.func internal @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>

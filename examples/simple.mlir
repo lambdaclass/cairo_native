@@ -7,7 +7,7 @@ module attributes {llvm.data_layout = ""} {
   }
   llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.sext %arg0 : i256 to i512
-    %1 = llvm.sext %arg0 : i256 to i512
+    %1 = llvm.sext %arg1 : i256 to i512
     %2 = llvm.add %0, %1  : i512
     %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
     %4 = llvm.srem %2, %3  : i512
@@ -16,7 +16,7 @@ module attributes {llvm.data_layout = ""} {
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.sext %arg0 : i256 to i512
-    %1 = llvm.sext %arg0 : i256 to i512
+    %1 = llvm.sext %arg1 : i256 to i512
     %2 = llvm.sub %0, %1  : i512
     %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
     %4 = llvm.srem %2, %3  : i512

@@ -384,12 +384,11 @@ impl<'ctx> Compiler<'ctx> {
                     &self.context,
                     &[
                         //("alignment", &align.to_string()),
+                        ("elem_type", &element_type.to_string()),
                     ],
                 )?)
                 .add_operands(&[size_res])
-                .add_results(&[
-                    Type::parse(&self.context, &format!("!llvm.ptr<{element_type}>")).unwrap(),
-                ])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
                 .build(),
         ))
     }

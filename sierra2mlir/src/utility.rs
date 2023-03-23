@@ -17,7 +17,7 @@ impl<'ctx> Compiler<'ctx> {
                 &self.context,
                 &[
                     ("sym_name", "\"printf\""),
-                    ("function_type", "!llvm.func<i32 (!llvm.ptr<i8>, ...)>"),
+                    ("function_type", "!llvm.func<i32 (!llvm.ptr, ...)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -39,17 +39,17 @@ impl<'ctx> Compiler<'ctx> {
         let fmt_len = fmt.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
-        //let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
-        //let addr: Value = data_op.result(0)?.into();
-
         let arr_ty = Type::parse(
             &self.context,
             &format!("!llvm.array<{fmt_len} x {i8_type}>"),
         )
         .unwrap();
+        let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
+        let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
-        // To create a constant array, we need to use dense, as a tensor type, which is then interpreted as a llvm.array type.
+        // To create a constant array, we need to use a dense array attribute, which has a tensor type, 
+        // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
             &block,
             &format!(
@@ -61,16 +61,16 @@ impl<'ctx> Compiler<'ctx> {
             arr_ty,
         );
 
-        // self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
+        self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
 
-        let mut args = vec![fmt_data.result(0)?.into()];
+        let mut args = vec![addr];
         args.extend(values);
 
         self.op_llvm_call(&block, "printf", &args, &[i32_type])?;
         Ok(())
     }
 
-    /// creates te implementation for the print felt method: "print_felt(value: i256) -> ()"
+    /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
     pub fn create_print_felt(&'ctx self) -> Result<()> {
         let region = Region::new();
 
@@ -112,6 +112,8 @@ impl<'ctx> Compiler<'ctx> {
 
             bit_width = bit_width.saturating_sub(32);
         }
+
+        self.call_printf(block, "\n\0", &[])?;
 
         self.op_return(&block, &[]);
 
