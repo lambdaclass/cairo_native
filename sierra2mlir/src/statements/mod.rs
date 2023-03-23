@@ -532,7 +532,7 @@ fn get_all_types_to_print(
                         }
                     }
                 }
-                if !types_to_print.contains(&type_decl) {
+                if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }
             }
