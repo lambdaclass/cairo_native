@@ -48,7 +48,7 @@ impl<'ctx> Compiler<'ctx> {
         let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
-        // To create a constant array, we need to use a dense array attribute, which has a tensor type, 
+        // To create a constant array, we need to use a dense array attribute, which has a tensor type,
         // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
             &block,
