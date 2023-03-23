@@ -249,6 +249,51 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_and<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.andi", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_or<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.ori", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_xor<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.xori", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
     /// New constant
     pub fn op_const<'a>(&self, block: &'a Block, val: &str, ty: Type<'ctx>) -> OperationRef<'a> {
         block.append_operation(
