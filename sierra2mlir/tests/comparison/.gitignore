@@ -1,0 +1,2 @@
+# Until we can autogenerate the tests from cairo, ignore cairo files to prevent them getting out of sync
+*.cairo
