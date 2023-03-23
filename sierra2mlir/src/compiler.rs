@@ -34,6 +34,15 @@ pub enum SierraType<'ctx> {
     },
 }
 
+impl<'ctx> SierraType<'ctx> {
+    pub fn get_type(&self) -> &Type<'ctx> {
+        match self {
+            SierraType::Simple(ty) => ty,
+            SierraType::Struct { ty, field_types: _ } => ty,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunctionDef<'ctx> {
     #[allow(unused)]

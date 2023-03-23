@@ -1,14 +1,19 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    rc::Rc,
+};
 
-use cairo_lang_sierra::program::{GenBranchTarget, GenStatement};
+use cairo_lang_sierra::{
+    ids::ConcreteTypeId,
+    program::{GenBranchTarget, GenStatement, GenericArg, Program, TypeDeclaration},
+};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{
-    Block, BlockRef, Location, OperationRef, Region, Type, TypeLike, Value, ValueLike,
-};
+use melior_next::ir::{Block, BlockRef, Location, OperationRef, Region, Type, Value};
 use tracing::{debug, error};
 
-use crate::compiler::{Compiler, SierraType, Storage};
+use crate::compiler::{Compiler, Storage};
 
 #[derive(Debug, Clone, Copy)]
 enum VariableValue<'c> {
@@ -59,15 +64,19 @@ impl<'c> Variable<'c> {
 
 impl<'ctx> Compiler<'ctx> {
     #[allow(clippy::cognitive_complexity)]
-    pub fn process_functions(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_functions(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for func in &self.program.funcs {
             debug!(?func, "processing func");
 
-            let name = Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str())
-                .to_string();
+            let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
+
+            let should_create_wrapper = should_create_wrapper(raw_func_name);
+            let name = Self::normalize_func_name(raw_func_name).to_string();
+
             let entry = func.entry_point.0;
-            let mut params = vec![];
+            let mut param_types = vec![];
             let mut return_types = vec![];
+            let mut return_sierra_types = vec![];
 
             let storage = storage.borrow();
 
@@ -77,31 +86,32 @@ impl<'ctx> Compiler<'ctx> {
                     .get(&param.ty.id.to_string())
                     .expect("type for param should exist");
 
-                let ty = match ty {
-                    SierraType::Simple(ty) => ty,
-                    SierraType::Struct { ty, field_types: _ } => ty,
-                };
-                params.push((*ty, Location::unknown(&self.context)));
+                param_types.push(*ty.get_type());
             }
+            let param_types = param_types;
 
             for ret in &func.signature.ret_types {
                 let ty = storage
                     .types
                     .get(&ret.id.to_string())
-                    .expect("type for param should exist");
+                    .expect("type for param should exist")
+                    .get_type();
 
-                let ty = match ty {
-                    SierraType::Simple(ty) => ty,
-                    SierraType::Struct { ty, field_types: _ } => ty,
-                };
-                return_types.push((*ty, Location::unknown(&self.context)));
+                return_types.push(*ty);
+                return_sierra_types.push((*ty, ret.clone()));
             }
+            let return_sierra_types = return_sierra_types;
+            let return_types = return_types;
 
             // The varid -> operation ref which holds the variable value in the result at index.
             let mut variables: HashMap<u64, Variable> = HashMap::new();
 
             let region = Region::new();
-            let function_block = region.append_block(Block::new(&params));
+            let param_types_with_locations = param_types
+                .iter()
+                .map(|t| (*t, Location::unknown(&self.context)))
+                .collect::<Vec<_>>();
+            let function_block = region.append_block(Block::new(&param_types_with_locations));
 
             for (i, param) in func.params.iter().enumerate() {
                 variables.insert(param.id.id, Variable::param(i, function_block));
@@ -341,21 +351,6 @@ impl<'ctx> Compiler<'ctx> {
                                 ret_values.push(val);
                             }
 
-                            if name.ends_with("main") && self.main_print {
-                                for val in &ret_values {
-                                    let ty = val.r#type();
-
-                                    if ty.is_integer() {
-                                        if ty.get_width().unwrap() > 64 {
-                                            self.call_print_felt(*current_block, *val)?;
-                                        } else {
-                                            self.call_printf(*current_block, "%lld\0", &[*val])?;
-                                        }
-                                    }
-                                    //todo!()
-                                }
-                            }
-
                             self.op_return(current_block, &ret_values);
                             debug!(?ret, "processing statement: return");
                             break;
@@ -371,33 +366,179 @@ impl<'ctx> Compiler<'ctx> {
                 }
             }
 
-            let function_type = self.create_fn_signature(&params, &return_types);
-
-            let name = if self.main_print && name.ends_with("main") {
-                "main".to_string()
-            } else {
-                name
-            };
+            let function_type = create_fn_signature(&param_types, &return_types);
 
             let op = self.op_func(&name, &function_type, vec![region], true, true)?;
 
             self.module.body().append_operation(op);
+
+            if should_create_wrapper {
+                self.create_felt_representation_wrapper(
+                    &name,
+                    &param_types,
+                    &return_sierra_types,
+                    storage,
+                )?;
+            }
         }
         Ok(())
     }
 
-    pub fn create_fn_signature(
+    pub fn create_felt_representation_wrapper(
         &'ctx self,
-        params: &[(Type, Location)],
-        return_types: &[(Type, Location)],
-    ) -> String {
-        format!(
-            "({}) -> {}",
-            params.iter().map(|x| x.0.to_string()).join(", "),
-            &format!(
-                "({})",
-                return_types.iter().map(|x| x.0.to_string()).join(", ")
-            ),
-        )
+        wrapped_func_name: &str,
+        arg_types: &[Type],
+        ret_types: &[(Type, ConcreteTypeId)],
+        storage: Ref<Storage<'ctx>>,
+    ) -> Result<()> {
+        // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
+        // This is especially important for enums
+        let ret_type_declarations = ret_types
+            .iter()
+            .map(|(mlir_type, type_id)| {
+                (
+                    mlir_type,
+                    self.program
+                        .type_declarations
+                        .iter()
+                        .find(|decl| decl.id == *type_id)
+                        .unwrap(),
+                )
+            })
+            .collect_vec();
+
+        // Create a list of types for which to generate print functions, with no duplicates
+        // For complex types, their components types must be added to the list before them
+        let types_to_print = get_all_types_to_print(
+            &ret_type_declarations
+                .iter()
+                .map(|(_t, decl)| (*decl).clone())
+                .collect_vec(),
+            &self.program,
+        );
+
+        for type_decl in types_to_print {
+            let type_category = type_decl.long_id.generic_id.0.as_str();
+            match type_category {
+                "felt252" => self.create_print_felt()?,
+                "NonZero" => todo!("Print box felt representation"),
+                "Box" => todo!("Print box felt representation"),
+                "Struct" => {
+                    let arg_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered");
+                    self.create_print_struct(arg_type, type_decl.clone())?
+                }
+                "Enum" => todo!("Print enum felt representation"),
+                _ => todo!("Felt representation for {}", type_category),
+            }
+        }
+
+        let region = Region::new();
+        let arg_types_with_locations = arg_types
+            .iter()
+            .map(|t| (*t, Location::unknown(&self.context)))
+            .collect::<Vec<_>>();
+        let block = Block::new(&arg_types_with_locations);
+
+        let mut arg_values: Vec<_> = vec![];
+        for i in 0..block.argument_count() {
+            let arg = block.argument(i)?;
+            arg_values.push(arg.into());
+        }
+        let arg_values = arg_values;
+        let mlir_ret_types = ret_types.iter().map(|(t, _id)| *t).collect_vec();
+
+        let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
+        for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
+            let result_val = raw_res.result(position)?;
+            self.op_func_call(
+                &block,
+                &format!(
+                    "print_{}",
+                    type_decl.id.debug_name.as_ref().unwrap().as_str()
+                ),
+                &[result_val.into()],
+                &[],
+            )?;
+        }
+
+        self.op_return(&block, &[]);
+
+        region.append_block(block);
+
+        // Currently this wrapper is only put on the entrypoint, so we call it main
+        // We might want to change this in the future
+        let op = self.op_func(
+            "main",
+            create_fn_signature(arg_types, &[]).as_str(),
+            vec![region],
+            true,
+            true,
+        )?;
+
+        self.module.body().append_operation(op);
+
+        Ok(())
     }
+}
+
+pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
+    format!(
+        "({}) -> {}",
+        params.iter().map(|x| x.to_string()).join(", "),
+        &format!(
+            "({})",
+            return_types.iter().map(|x| x.to_string()).join(", ")
+        ),
+    )
+}
+
+// Currently this checks whether the function in question is the main function,
+// but it could be switched for anything later
+fn should_create_wrapper(raw_func_name: &str) -> bool {
+    let parts = raw_func_name.split("::").collect::<Vec<_>>();
+    parts.len() == 3 && parts[0] == parts[1] && parts[2] == "main"
+}
+
+// Produces an ordered list of all types and component types
+fn get_all_types_to_print(
+    type_declarations: &[TypeDeclaration],
+    program: &Program,
+) -> Vec<TypeDeclaration> {
+    let mut types_to_print = vec![];
+    for type_decl in type_declarations {
+        let type_category = type_decl.long_id.generic_id.0.as_str();
+        match type_category {
+            "felt252" => {
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "NonZero" => todo!("Print box felt representation"),
+            "Box" => todo!("Print box felt representation"),
+            "Struct" => {
+                let field_type_declarations = type_decl.long_id.generic_args[1..].iter().map(|member_type| match member_type {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!("Struct type declaration arguments after the first should all be resolved"),
+                }).map(|member_type_id| program.type_declarations.iter().find(|decl| decl.id == *member_type_id).unwrap())
+                .map(|component_type_decl| get_all_types_to_print(&[component_type_decl.clone()], program));
+
+                for type_decls in field_type_declarations {
+                    for type_decl in type_decls {
+                        if !types_to_print.contains(&type_decl) {
+                            types_to_print.push(type_decl);
+                        }
+                    }
+                }
+                if !types_to_print.contains(&type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "Enum" => todo!("Print enum felt representation"),
+            _ => todo!("Felt representation for {}", type_category),
+        }
+    }
+    types_to_print
 }

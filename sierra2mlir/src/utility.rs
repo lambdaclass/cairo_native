@@ -1,9 +1,14 @@
 use itertools::Itertools;
+
+use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
 use melior_next::ir::{
     operation, Block, BlockRef, Location, NamedAttribute, Region, Type, TypeLike, Value, ValueLike,
 };
 
-use crate::{compiler::Compiler, statements::Variable};
+use crate::{
+    compiler::{Compiler, SierraType},
+    statements::{create_fn_signature, Variable},
+};
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
@@ -74,9 +79,10 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_print_felt(&'ctx self) -> Result<()> {
         let region = Region::new();
 
-        let args_types = [(self.felt_type(), Location::unknown(&self.context))];
+        let args_types = [self.felt_type()];
+        let args_types_with_locations = [(self.felt_type(), Location::unknown(&self.context))];
 
-        let block = Block::new(&args_types);
+        let block = Block::new(&args_types_with_locations);
         let block = region.append_block(block);
 
         let mut current_value = Variable::param(0, block);
@@ -117,9 +123,69 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_return(&block, &[]);
 
-        let function_type = self.create_fn_signature(&args_types, &[]);
+        let function_type = create_fn_signature(&args_types, &[]);
 
-        let func = self.op_func("print_felt", &function_type, vec![region], false, false)?;
+        let func = self.op_func("print_felt252", &function_type, vec![region], false, false)?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_print_struct(
+        &'ctx self,
+        struct_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[(
+            *struct_type.get_type(),
+            Location::unknown(&self.context),
+        )]));
+
+        let arg = block.argument(0)?;
+
+        let function_type = create_fn_signature(&[*struct_type.get_type()], &[]);
+
+        let struct_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
+            .iter()
+            .map(|member_type| match member_type {
+                GenericArg::Type(type_id) => type_id,
+                _ => panic!(
+                    "Struct type declaration arguments after the first should all be resolved"
+                ),
+            });
+
+        let field_types = match struct_type {
+            SierraType::Simple(_) => panic!("Attempted to create struct print for simple type"),
+            SierraType::Struct { ty: _, field_types } => field_types,
+        };
+
+        for (index, component_type_id) in component_type_ids.enumerate() {
+            let component_type_name = component_type_id.debug_name.as_ref().unwrap();
+            let component_type = field_types[index];
+            let extract_op =
+                self.op_llvm_extractvalue(&block, index, arg.into(), component_type)?;
+            let component_value = extract_op.result(0)?;
+            self.op_func_call(
+                &block,
+                &format!("print_{}", component_type_name),
+                &[component_value.into()],
+                &[],
+            )?;
+        }
+
+        self.op_return(&block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", struct_name.as_str()),
+            &function_type,
+            vec![region],
+            false,
+            false,
+        )?;
 
         self.module.body().append_operation(func);
 

@@ -14,7 +14,8 @@ use test_case::test_case;
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
-#[test_case("id")]
+#[test_case("simple_return")]
+#[test_case("tuple_return")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
@@ -83,6 +84,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let tmp_dir = tempdir::TempDir::new("test_comparison")
         .unwrap()
         .into_path();
+
     let mlir_file = tmp_dir
         .join(format!("{test_name}.mlir"))
         .display()
@@ -92,7 +94,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
         .display()
         .to_string();
 
-    let compiled_code = compile(sierra_code, false, false).unwrap();
+    let compiled_code = compile(sierra_code, false, false, true).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
@@ -151,6 +153,6 @@ fn parse_llvm_result(res: &str) -> Vec<BigUint> {
     return res
         .split('\n')
         .filter(|s| s.len() > 0)
-        .map(|x| BigUint::from_str_radix(x, 10).unwrap())
+        .map(|x| BigUint::from_str_radix(x, 16).unwrap())
         .collect();
 }

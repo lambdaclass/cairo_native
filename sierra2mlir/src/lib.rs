@@ -26,12 +26,9 @@ pub fn compile(
 
     if main_print {
         compiler.create_printf()?;
-        compiler.create_print_felt()?;
     }
 
     compiler.compile()?;
-
-    if main_print {}
 
     println!("{}", compiler.module.as_operation());
     let pass_manager = pass::Manager::new(&compiler.context);
