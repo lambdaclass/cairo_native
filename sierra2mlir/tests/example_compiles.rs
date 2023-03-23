@@ -15,4 +15,4 @@ macro_rules! impl_tests {
     };
 }
 
-impl_tests!(felt_is_zero, fib, fib_simple, program, simple, types);
+impl_tests!(destructure, felt_is_zero, fib, fib_simple, program, simple, types);

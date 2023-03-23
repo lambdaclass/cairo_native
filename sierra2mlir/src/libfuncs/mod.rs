@@ -23,7 +23,7 @@ impl<'ctx> Compiler<'ctx> {
                 "disable_ap_tracking" => continue,
                 "drop" => continue,
                 "felt252_const" => {
-                    self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_felt_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 "felt252_add" => {
                     self.create_libfunc_felt_add(func_decl, parent_block, storage.clone())?;
@@ -40,23 +40,30 @@ impl<'ctx> Compiler<'ctx> {
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
                 }
+                "struct_deconstruct" => {
+                    self.create_libfunc_struct_deconstruct(
+                        func_decl,
+                        parent_block,
+                        storage.clone(),
+                    )?;
+                }
                 "store_temp" | "rename" => {
                     self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
                 }
                 "u8_const" => {
-                    self.create_libfunc_u8_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u8_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 "u16_const" => {
-                    self.create_libfunc_u16_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u16_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 "u32_const" => {
-                    self.create_libfunc_u32_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u32_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 "u64_const" => {
-                    self.create_libfunc_u64_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u64_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 "u128_const" => {
-                    self.create_libfunc_u128_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u128_const(func_decl, &mut (*storage).borrow_mut());
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
@@ -148,7 +155,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = storage.borrow_mut();
+            let mut storage = (*storage).borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -160,6 +167,70 @@ impl<'ctx> Compiler<'ctx> {
 
         parent_block.append_operation(func);
 
+        Ok(())
+    }
+
+    /// Extract (destructure) each struct member (in order) into variables.
+    pub fn create_libfunc_struct_deconstruct(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> Result<()> {
+        let mut storage = (*storage).borrow_mut();
+
+        let struct_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[0] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("handler other types (error?)"),
+            })
+            .expect("struct type not found");
+        let (struct_type, field_types) = match struct_type {
+            SierraType::Struct { ty, field_types } => (*ty, field_types.as_slice()),
+            _ => todo!("handle non-struct types (error)"),
+        };
+
+        let args = field_types
+            .iter()
+            .map(|x| (*x, Location::unknown(&self.context)))
+            .collect::<Vec<_>>();
+
+        let region = Region::new();
+        region.append_block({
+            let block = Block::new(&[(struct_type, Location::unknown(&self.context))]);
+
+            let struct_value = block.argument(0)?;
+
+            let mut result_ops = Vec::with_capacity(args.len());
+            for (i, (arg_ty, _)) in args.iter().enumerate() {
+                let op_ref = self.op_llvm_extractvalue(&block, i, struct_value.into(), *arg_ty)?;
+                result_ops.push(op_ref);
+            }
+
+            let result_values: Vec<_> = result_ops
+                .iter()
+                .map(|x| x.result(0).map(Into::into))
+                .try_collect()?;
+            self.op_return(&block, &result_values);
+
+            block
+        });
+
+        let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
+        let fn_ty =
+            self.create_fn_signature(&[(struct_type, Location::unknown(&self.context))], &args);
+        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+
+        storage.functions.insert(
+            fn_id.into_owned(),
+            FunctionDef {
+                args: vec![struct_type],
+                return_types: args.into_iter().map(|x| x.0).collect(),
+            },
+        );
+
+        parent_block.append_operation(fn_op);
         Ok(())
     }
 
@@ -218,7 +289,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = storage.borrow_mut();
+            let mut storage = (*storage).borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -297,7 +368,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = storage.borrow_mut();
+            let mut storage = (*storage).borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -353,7 +424,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        storage.borrow_mut().functions.insert(
+        (*storage).borrow_mut().functions.insert(
             id,
             FunctionDef {
                 args: vec![felt_type, felt_type],
@@ -406,7 +477,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        storage.borrow_mut().functions.insert(
+        (*storage).borrow_mut().functions.insert(
             id,
             FunctionDef {
                 args: vec![felt_type, felt_type],
@@ -459,7 +530,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        storage.borrow_mut().functions.insert(
+        (*storage).borrow_mut().functions.insert(
             id,
             FunctionDef {
                 args: vec![felt_type, felt_type],
