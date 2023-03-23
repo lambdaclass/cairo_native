@@ -3,7 +3,7 @@ use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 use sierra2mlir::compiler::Compiler;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let mut compiler = Compiler::new("").unwrap();
+    let mut compiler = Compiler::new("", false).unwrap();
     compiler.compile_hardcoded_fib().unwrap();
 
     let pass_manager = pass::Manager::new(&compiler.context);

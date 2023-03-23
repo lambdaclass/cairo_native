@@ -13,7 +13,7 @@ define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
 
 define internal i256 @felt252_add(i256 %0, i256 %1) {
   %3 = sext i256 %0 to i512
-  %4 = sext i256 %0 to i512
+  %4 = sext i256 %1 to i512
   %5 = add i512 %3, %4
   %6 = srem i512 %5, 3618502788666131213697322783095070105623107215331596699973092056135872020481
   %7 = trunc i512 %6 to i256
@@ -22,7 +22,7 @@ define internal i256 @felt252_add(i256 %0, i256 %1) {
 
 define internal i256 @felt252_sub(i256 %0, i256 %1) {
   %3 = sext i256 %0 to i512
-  %4 = sext i256 %0 to i512
+  %4 = sext i256 %1 to i512
   %5 = sub i512 %3, %4
   %6 = srem i512 %5, 3618502788666131213697322783095070105623107215331596699973092056135872020481
   %7 = trunc i512 %6 to i256
@@ -48,6 +48,12 @@ define { i256, i256 } @simple_simple_something(i256 %0) {
   %7 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %5, i256 %6)
   %8 = call { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %7)
   ret { i256, i256 } %8
+}
+
+define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
+  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
+  store { i256, i256 } %3, ptr %0, align 4
+  ret void
 }
 
 !llvm.module.flags = !{!0}

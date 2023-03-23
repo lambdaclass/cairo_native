@@ -19,6 +19,7 @@ pub struct Compiler<'ctx> {
     pub program: Program,
     pub context: Context,
     pub module: Module<'ctx>,
+    pub main_print: bool,
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
@@ -53,7 +54,7 @@ pub struct Storage<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn new(code: &str) -> color_eyre::Result<Self> {
+    pub fn new(code: &str, main_print: bool) -> color_eyre::Result<Self> {
         let code = code.to_string();
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
@@ -93,6 +94,7 @@ impl<'ctx> Compiler<'ctx> {
             program,
             context,
             module,
+            main_print,
         })
     }
 }
@@ -183,6 +185,16 @@ impl<'ctx> Compiler<'ctx> {
             operation::Builder::new("arith.remsi", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
                 .add_results(&[lhs.r#type()])
+                .build(),
+        )
+    }
+
+    /// Shift right signed.
+    pub fn op_shrs<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.shrsi", Location::unknown(&self.context))
+                .add_operands(&[value, shift_by])
+                .add_results(&[value.r#type()])
                 .build(),
         )
     }
@@ -353,6 +365,62 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_llvm_alloca<'a>(
+        &self,
+        block: &'a Block,
+        element_type: Type,
+        array_size: usize,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        let size = self.op_const(
+            block,
+            &array_size.to_string(),
+            Type::integer(&self.context, 64),
+        );
+        let size_res = size.result(0)?.into();
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.alloca", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        //("alignment", &align.to_string()),
+                        ("elem_type", &element_type.to_string()),
+                    ],
+                )?)
+                .add_operands(&[size_res])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_const<'a>(
+        &self,
+        block: &'a Block,
+        val: &str,
+        ty: Type<'ctx>,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.mlir.constant", Location::unknown(&self.context))
+                .add_results(&[ty])
+                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", val).unwrap()])
+                .build(),
+        )
+    }
+
+    pub fn op_llvm_store<'a>(
+        &self,
+        block: &'a Block,
+        value: Value,
+        addr: Value,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.store", Location::unknown(&self.context))
+                .add_operands(&[value, addr])
+                .build(),
+        ))
+    }
+
     // conditional branch
     pub fn op_cond_br<'a>(
         &self,
@@ -442,6 +510,22 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
+                .add_attributes(&[self.named_attribute("callee", &format!("@\"{name}\""))?])
+                .add_operands(args)
+                .add_results(results)
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_call<'a>(
+        &self,
+        block: &'a Block,
+        name: &str,
+        args: &[Value],
+        results: &[Type],
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.call", Location::unknown(&self.context))
                 .add_attributes(&[self.named_attribute("callee", &format!("@\"{name}\""))?])
                 .add_operands(args)
                 .add_results(results)
