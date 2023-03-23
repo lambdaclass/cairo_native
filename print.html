@@ -232,6 +232,21 @@ Sierra has a primitive, yet rich typing system to express all high level code wh
 <li>Builtin library functions are always used correctly.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="multi-level-intermediate-representation"><a class="header" href="#multi-level-intermediate-representation">Multi-Level Intermediate Representation</a></h1>
+<h2 id="useful-notes"><a class="header" href="#useful-notes">Useful notes</a></h2>
+<h3 id="llvm-alloca-notes"><a class="header" href="#llvm-alloca-notes">LLVM alloca notes</a></h3>
+<p>It's better to use opaque pointers for the returned alloca data instead of specifying the full pointer type. Also LLVM is switching to those and deprecating non-opaque pointers.</p>
+<h3 id="creating-a-constant-llvm-array"><a class="header" href="#creating-a-constant-llvm-array">Creating a constant llvm array</a></h3>
+<p>To create a constant array, you need to use the <code>llvm.mlir.constant</code> operation.
+The way to represent the array data is by using a dense element attribute, for example:</p>
+<pre><code class="language-mlir">// The attribute should look like this:
+dense&lt;[3, 1, 4, 1, 5]&gt; : tensor&lt;5 x i8&gt;
+
+// Full example
+%alloca_size = llvm.mlir.constant(5 : i64) : i64
+%array_ptr = llvm.alloca %alloca_size x i8 : (i64) -&gt; !llvm.ptr
+%array_data = llvm.mlir.constant(dense&lt;[37, 48, 56, 88, 0]&gt; : tensor&lt;5xi8&gt;) : !llvm.array&lt;5 x i8&gt;
+llvm.store %array_data, %array_ptr : !llvm.array&lt;5 x i8&gt;, !llvm.ptr
+</code></pre>
 <h2 id="online-resources-1"><a class="header" href="#online-resources-1">Online Resources</a></h2>
 <h3 id="websites"><a class="header" href="#websites">Websites</a></h3>
 <ul>
