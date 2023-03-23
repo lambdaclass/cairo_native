@@ -4,8 +4,8 @@ use std::process::{Command, Stdio};
 
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::ProgramParser;
-use color_eyre::Result;
 use color_eyre::eyre::WrapErr;
+use color_eyre::Result;
 use num_bigint::BigUint;
 use num_traits::Num;
 use sierra2mlir::compile;

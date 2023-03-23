@@ -64,7 +64,7 @@ impl<'c> Variable<'c> {
 
 impl<'ctx> Compiler<'ctx> {
     #[allow(clippy::cognitive_complexity)]
-    pub fn process_functions(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_functions(&self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
         for func in &self.program.funcs {
             debug!(?func, "processing func");
 
