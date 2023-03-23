@@ -2,9 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use anyhow::Context;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::ProgramParser;
+use color_eyre::Result;
+use color_eyre::eyre::WrapErr;
 use num_bigint::BigUint;
 use num_traits::Num;
 use sierra2mlir::compile;
@@ -68,7 +69,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult, anyhow::Error> {
+fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
     let sierra_program = ProgramParser::new().parse(sierra_code).unwrap();
 
     let runner = SierraCasmRunner::new(sierra_program, false)
