@@ -3,7 +3,9 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use cairo_lang_sierra::program::{GenBranchTarget, GenStatement};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, OperationRef, Region, Type, Value};
+use melior_next::ir::{
+    Block, BlockRef, Location, OperationRef, Region, Type, TypeLike, Value, ValueLike,
+};
 use tracing::{debug, error};
 
 use crate::compiler::{Compiler, SierraType, Storage};
@@ -339,7 +341,16 @@ impl<'ctx> Compiler<'ctx> {
 
                             if name.ends_with("main") && self.main_print {
                                 for val in &ret_values {
-                                    todo!()
+                                    let ty = val.r#type();
+
+                                    if ty.is_integer() {
+                                        if ty.get_width().unwrap() > 64 {
+                                            self.call_print_felt(*current_block, *val)?;
+                                        } else {
+                                            self.call_printf(*current_block, "%lld\0", &[*val])?;
+                                        }
+                                    }
+                                    //todo!()
                                 }
                             }
 
@@ -359,6 +370,12 @@ impl<'ctx> Compiler<'ctx> {
             }
 
             let function_type = self.create_fn_signature(&params, &return_types);
+
+            let name = if self.main_print && name.ends_with("main") {
+                "main".to_string()
+            } else {
+                name
+            };
 
             let op = self.op_func(&name, &function_type, vec![region], true, true)?;
 

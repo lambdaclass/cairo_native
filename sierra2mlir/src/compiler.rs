@@ -365,12 +365,12 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    pub fn op_alloca<'a>(
+    pub fn op_llvm_alloca<'a>(
         &self,
         block: &'a Block,
         element_type: Type,
         array_size: usize,
-        align: usize,
+        // align: usize,
     ) -> Result<OperationRef<'a>> {
         let size = self.op_const(
             block,
@@ -384,13 +384,40 @@ impl<'ctx> Compiler<'ctx> {
                     &self.context,
                     &[
                         //("alignment", &align.to_string()),
-                        //("elem_type", &element_type.to_string()),
                     ],
                 )?)
                 .add_operands(&[size_res])
                 .add_results(&[
                     Type::parse(&self.context, &format!("!llvm.ptr<{element_type}>")).unwrap(),
                 ])
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_const<'a>(
+        &self,
+        block: &'a Block,
+        val: &str,
+        ty: Type<'ctx>,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.mlir.constant", Location::unknown(&self.context))
+                .add_results(&[ty])
+                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", val).unwrap()])
+                .build(),
+        )
+    }
+
+    pub fn op_llvm_store<'a>(
+        &self,
+        block: &'a Block,
+        value: Value,
+        addr: Value,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.store", Location::unknown(&self.context))
+                .add_operands(&[value, addr])
                 .build(),
         ))
     }

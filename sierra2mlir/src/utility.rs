@@ -1,13 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
-
+use itertools::Itertools;
 use melior_next::ir::{
     operation, Block, BlockRef, Location, NamedAttribute, Region, Type, TypeLike, Value, ValueLike,
 };
 
-use crate::{
-    compiler::{Compiler, FunctionDef, Storage},
-    statements::Variable,
-};
+use crate::{compiler::Compiler, statements::Variable};
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
@@ -32,6 +28,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    /// Utility function to create a printf call.
     pub fn call_printf(
         &'ctx self,
         block: BlockRef<'ctx>,
@@ -39,19 +36,42 @@ impl<'ctx> Compiler<'ctx> {
         values: &[Value],
     ) -> Result<()> {
         let i32_type = Type::integer(&self.context, 32);
-        let data_op = self.op_alloca(&block, Type::integer(&self.context, 8), fmt.len(), 4)?;
-        let data: Value = data_op.result(0)?.into();
+        let fmt_len = fmt.as_bytes().len();
 
-        let mut args = vec![data];
+        let i8_type = Type::integer(&self.context, 8);
+        //let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
+        //let addr: Value = data_op.result(0)?.into();
+
+        let arr_ty = Type::parse(
+            &self.context,
+            &format!("!llvm.array<{fmt_len} x {i8_type}>"),
+        )
+        .unwrap();
+
+        // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
+        // To create a constant array, we need to use dense, as a tensor type, which is then interpreted as a llvm.array type.
+        let fmt_data = self.op_llvm_const(
+            &block,
+            &format!(
+                "dense<[{}]> : tensor<{} x {}>",
+                fmt.as_bytes().iter().join(", "),
+                fmt_len,
+                i8_type
+            ),
+            arr_ty,
+        );
+
+        // self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
+
+        let mut args = vec![fmt_data.result(0)?.into()];
         args.extend(values);
 
         self.op_llvm_call(&block, "printf", &args, &[i32_type])?;
-        //todo!();
         Ok(())
     }
 
     /// creates te implementation for the print felt method: "print_felt(value: i256) -> ()"
-    pub fn create_felt_print(&'ctx self) -> Result<()> {
+    pub fn create_print_felt(&'ctx self) -> Result<()> {
         let region = Region::new();
 
         let args_types = [(self.felt_type(), Location::unknown(&self.context))];
@@ -88,7 +108,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let truncated_op = self.op_trunc(&block, shift_result, self.i32_type());
             let truncated = truncated_op.result(0)?.into();
-            self.call_printf(block, "%08X", &[truncated])?;
+            self.call_printf(block, "%08X\0", &[truncated])?;
 
             bit_width = bit_width.saturating_sub(32);
         }
@@ -101,6 +121,12 @@ impl<'ctx> Compiler<'ctx> {
 
         self.module.body().append_operation(func);
 
+        Ok(())
+    }
+
+    /// Utility method to create a print_felt call.
+    pub fn call_print_felt(&'ctx self, block: BlockRef<'ctx>, value: Value) -> Result<()> {
+        self.op_func_call(&block, "print_felt", &[value], &[])?;
         Ok(())
     }
 }

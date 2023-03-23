@@ -26,7 +26,7 @@ pub fn compile(
 
     if main_print {
         compiler.create_printf()?;
-        compiler.create_felt_print()?;
+        compiler.create_print_felt()?;
     }
 
     compiler.compile()?;

@@ -50,6 +50,12 @@ define { i256, i256 } @simple_simple_something(i256 %0) {
   ret { i256, i256 } %8
 }
 
+define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
+  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
+  store { i256, i256 } %3, ptr %0, align 4
+  ret void
+}
+
 !llvm.module.flags = !{!0}
 
 !0 = !{i32 2, !"Debug Info Version", i32 3}
