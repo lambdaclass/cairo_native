@@ -70,7 +70,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
-            let should_create_wrapper = should_create_wrapper(raw_func_name);
+            let should_create_wrapper = self.main_print && should_create_wrapper(raw_func_name);
             let name = Self::normalize_func_name(raw_func_name).to_string();
 
             let entry = func.entry_point.0;
