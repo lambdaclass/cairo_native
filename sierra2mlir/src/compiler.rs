@@ -140,6 +140,12 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 128)
     }
 
+    /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
+    /// classic segments this type makes no sense, therefore it's implemented as `()`.
+    pub fn bitwise_type(&self) -> Type {
+        Type::none(&self.context)
+    }
+
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         // The prime number is a double felt as it's always used for modulo.
         self.op_const(

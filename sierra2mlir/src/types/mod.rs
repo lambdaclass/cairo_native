@@ -18,6 +18,10 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
 
             match name {
+                "Bitwise" => {
+                    let ty = self.bitwise_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
                 "felt252" => {
                     let ty = self.felt_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
