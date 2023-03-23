@@ -1,15 +1,59 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use cairo_lang_sierra::{
-    ids::VarId,
-    program::{GenBranchTarget, GenStatement},
-};
+use cairo_lang_sierra::program::{GenBranchTarget, GenStatement};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Location, OperationRef, Region, Type, Value};
+use melior_next::ir::{Block, BlockRef, Location, OperationRef, Region, Type, Value};
 use tracing::{debug, error};
 
 use crate::compiler::{Compiler, SierraType, Storage};
+
+#[derive(Debug, Clone, Copy)]
+enum VariableValue<'c> {
+    Local {
+        op: OperationRef<'c>,
+        result_idx: usize,
+    },
+    Param {
+        argument_idx: usize,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Variable<'c> {
+    value: VariableValue<'c>,
+    block: BlockRef<'c>,
+}
+
+impl<'c> Variable<'c> {
+    pub const fn local(op: OperationRef<'c>, result_idx: usize, block: BlockRef<'c>) -> Self {
+        Self {
+            value: VariableValue::Local { op, result_idx },
+            block,
+        }
+    }
+
+    pub const fn param(argument_idx: usize, block: BlockRef<'c>) -> Self {
+        Self {
+            value: VariableValue::Param { argument_idx },
+            block,
+        }
+    }
+
+    pub fn get_value(&self) -> Value {
+        match &self.value {
+            VariableValue::Local { op, result_idx } => {
+                let res = op.result(*result_idx).unwrap();
+                res.into()
+            }
+            VariableValue::Param { argument_idx } => self
+                .block
+                .argument(*argument_idx)
+                .expect("couldn't get argument")
+                .into(),
+        }
+    }
+}
 
 impl<'ctx> Compiler<'ctx> {
     #[allow(clippy::cognitive_complexity)]
@@ -52,15 +96,13 @@ impl<'ctx> Compiler<'ctx> {
             }
 
             // The varid -> operation ref which holds the variable value in the result at index.
-            let mut variables: HashMap<&VarId, (OperationRef, usize)> = HashMap::new();
-            let mut param_values: HashMap<&VarId, Value> = HashMap::new();
+            let mut variables: HashMap<u64, Variable> = HashMap::new();
 
             let region = Region::new();
             let function_block = region.append_block(Block::new(&params));
 
             for (i, param) in func.params.iter().enumerate() {
-                let value = function_block.argument(i)?;
-                param_values.insert(&param.id, value.into());
+                variables.insert(param.id.id, Variable::param(i, function_block));
             }
 
             let statements_entry = self.program.statements.iter().enumerate().skip(entry);
@@ -134,7 +176,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant should exist");
                                     let op = self.op_felt_const(current_block, felt_const);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 "jump" => {
                                     let target_block = match &inv.branches[0].target {
@@ -155,7 +198,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant value not found");
                                     let op = self.op_u8_const(current_block, value);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 "u16_const" => {
                                     let value = storage
@@ -164,7 +208,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant value not found");
                                     let op = self.op_u16_const(current_block, value);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 "u32_const" => {
                                     let value = storage
@@ -173,7 +218,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant value not found");
                                     let op = self.op_u32_const(current_block, value);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 "u64_const" => {
                                     let value = storage
@@ -182,7 +228,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant value not found");
                                     let op = self.op_u64_const(current_block, value);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 "u128_const" => {
                                     let value = storage
@@ -191,7 +238,8 @@ impl<'ctx> Compiler<'ctx> {
                                         .expect("constant value not found");
                                     let op = self.op_u128_const(current_block, value);
                                     let var_id = &inv.branches[0].results[0];
-                                    variables.insert(var_id, (op, 0));
+                                    variables
+                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
                                 }
                                 name if inv.branches.len() > 1 => {
                                     match name {
@@ -201,16 +249,10 @@ impl<'ctx> Compiler<'ctx> {
                                             let zero = felt_op_zero.result(0)?.into();
 
                                             let var = &inv.args[0];
-                                            let felt_val =
-                                                if let Some((var, i)) = variables.get(var) {
-                                                    let res = var.result(*i)?;
-                                                    res.into()
-                                                } else {
-                                                    let res = param_values
-                                                        .get(var)
-                                                        .expect("couldn't find variable");
-                                                    *res
-                                                };
+                                            let felt_val = variables
+                                                .get(&var.id)
+                                                .expect("couldn't find variable")
+                                                .get_value();
                                             let eq_op = self.op_eq(current_block, felt_val, zero);
                                             let eq = eq_op.result(0)?;
 
@@ -259,15 +301,10 @@ impl<'ctx> Compiler<'ctx> {
                                     let mut args = vec![];
 
                                     for var in &inv.args {
-                                        let res = if let Some((var, i)) = variables.get(&var) {
-                                            let res = var.result(*i)?;
-                                            res.into()
-                                        } else {
-                                            let res = param_values
-                                                .get(var)
-                                                .expect("couldn't find variable");
-                                            *res
-                                        };
+                                        let res = variables
+                                            .get(&var.id)
+                                            .expect("couldn't find variable")
+                                            .get_value();
                                         args.push(res);
                                     }
 
@@ -281,7 +318,10 @@ impl<'ctx> Compiler<'ctx> {
                                     debug!("created");
 
                                     for (i, var_id) in inv.branches[0].results.iter().enumerate() {
-                                        variables.insert(var_id, (op, i));
+                                        variables.insert(
+                                            var_id.id,
+                                            Variable::local(op, i, *current_block),
+                                        );
                                     }
                                 }
                             }
@@ -290,14 +330,10 @@ impl<'ctx> Compiler<'ctx> {
                             let mut ret_values: Vec<Value> = vec![];
 
                             for var in ret {
-                                let val = if let Some((op, i)) = variables.get(&var) {
-                                    let val = op.result(*i)?;
-                                    val.into()
-                                } else {
-                                    let res =
-                                        param_values.get(var).expect("couldn't find variable");
-                                    *res
-                                };
+                                let val = variables
+                                    .get(&var.id)
+                                    .expect("couldn't find variable")
+                                    .get_value();
                                 ret_values.push(val);
                             }
 
@@ -339,26 +375,4 @@ impl<'ctx> Compiler<'ctx> {
             ),
         )
     }
-
-    /*
-    #[allow(clippy::only_used_in_recursion)] // false positive, the lifetime of self is needed.
-    pub fn collect_values(
-        &self,
-        data: &mut Vec<Value<'ctx>>,
-        var: &'ctx VarInfo<'ctx>,
-    ) -> Result<()> {
-        match var {
-            VarInfo::Value { op, result_index } => {
-                let res = op.result(*result_index)?;
-                data.push(res.into());
-            }
-            VarInfo::Struct(vars) => {
-                for var in vars {
-                    self.collect_values(data, var)?;
-                }
-            }
-        };
-        Ok(())
-    }
-     */
 }
