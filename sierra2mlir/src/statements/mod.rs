@@ -84,7 +84,6 @@ impl<'ctx> Compiler<'ctx> {
                 let ty = storage
                     .types
                     .get(&param.ty.id.to_string())
-                    .clone()
                     .expect("type for param should exist");
 
                 param_types.push(ty.get_type());
