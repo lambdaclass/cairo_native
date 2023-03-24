@@ -6,7 +6,10 @@ use itertools::Itertools;
 use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value};
 use tracing::debug;
 
-use crate::compiler::{Compiler, FunctionDef, SierraType, Storage};
+use crate::{
+    compiler::{Compiler, FunctionDef, SierraType, Storage},
+    statements::create_fn_signature,
+};
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_libfuncs(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
@@ -98,7 +101,7 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
-        let mut args = vec![];
+        let mut arg_types_with_locations = vec![];
 
         for arg in &func_decl.long_id.generic_args {
             let storage = RefCell::borrow(&*storage);
@@ -118,7 +121,7 @@ impl<'ctx> Compiler<'ctx> {
                     };
 
                     for ty in field_types {
-                        args.push((*ty, Location::unknown(&self.context)));
+                        arg_types_with_locations.push((*ty, Location::unknown(&self.context)));
                     }
                 }
                 GenericArg::Value(_) => todo!(),
@@ -129,11 +132,11 @@ impl<'ctx> Compiler<'ctx> {
 
         let region = Region::new();
 
-        let block = Block::new(&args);
+        let block = Block::new(&arg_types_with_locations);
 
-        let types = args.iter().map(|x| x.0).collect_vec();
-        let struct_llvm_type = self.struct_type_string(&types);
-        let mut struct_type_op = self.op_llvm_struct(&block, &types);
+        let arg_types = arg_types_with_locations.iter().map(|x| x.0).collect_vec();
+        let struct_llvm_type = self.struct_type_string(&arg_types);
+        let mut struct_type_op = self.op_llvm_struct(&block, &arg_types);
         //let mut struct_value: Value = struct_type_op.result(0)?.into();
 
         for i in 0..block.argument_count() {
@@ -147,8 +150,7 @@ impl<'ctx> Compiler<'ctx> {
         self.op_return(&block, &[struct_value]);
 
         let return_type = Type::parse(&self.context, &struct_llvm_type).unwrap();
-        let function_type =
-            self.create_fn_signature(&args, &[(return_type, Location::unknown(&self.context))]);
+        let function_type = create_fn_signature(&arg_types, &[return_type]);
 
         region.append_block(block);
 
@@ -159,7 +161,7 @@ impl<'ctx> Compiler<'ctx> {
             storage.functions.insert(
                 id,
                 FunctionDef {
-                    args: args.iter().map(|x| x.0).collect_vec(),
+                    args: arg_types,
                     return_types: vec![return_type],
                 },
             );
@@ -244,7 +246,7 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
-        let mut args = vec![];
+        let mut arg_types_with_locations = vec![];
 
         for arg in &func_decl.long_id.generic_args {
             let storage = RefCell::borrow(&*storage);
@@ -256,12 +258,8 @@ impl<'ctx> Compiler<'ctx> {
                         .get(&type_id.id.to_string())
                         .expect("type to exist");
 
-                    let ty = match ty {
-                        SierraType::Simple(ty) => ty,
-                        SierraType::Struct { ty, field_types: _ } => ty,
-                    };
-
-                    args.push((*ty, Location::unknown(&self.context)));
+                    arg_types_with_locations
+                        .push((*ty.get_type(), Location::unknown(&self.context)));
                 }
                 GenericArg::Value(_) => todo!(),
                 GenericArg::UserFunc(_) => todo!(),
@@ -271,7 +269,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let region = Region::new();
 
-        let block = Block::new(&args);
+        let block = Block::new(&arg_types_with_locations);
 
         let mut results: Vec<Value> = vec![];
 
@@ -284,7 +282,12 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let function_type = self.create_fn_signature(&args, &args);
+        let arg_types = arg_types_with_locations
+            .iter()
+            .map(|(t, _)| *t)
+            .collect_vec();
+
+        let function_type = create_fn_signature(&arg_types, &arg_types);
 
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
@@ -293,8 +296,8 @@ impl<'ctx> Compiler<'ctx> {
             storage.functions.insert(
                 id,
                 FunctionDef {
-                    args: args.iter().map(|x| x.0).collect_vec(),
-                    return_types: args.iter().map(|x| x.0).collect(),
+                    args: arg_types.clone(),
+                    return_types: arg_types,
                 },
             );
         }
@@ -312,7 +315,7 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
-        let mut args = vec![];
+        let mut arg_types_with_locations = vec![];
 
         for arg in &func_decl.long_id.generic_args {
             let storage = RefCell::borrow(&*storage);
@@ -324,12 +327,8 @@ impl<'ctx> Compiler<'ctx> {
                         .get(&type_id.id.to_string())
                         .expect("type to exist");
 
-                    let ty = match ty {
-                        SierraType::Simple(ty) => ty,
-                        SierraType::Struct { ty, field_types: _ } => ty,
-                    };
-
-                    args.push((*ty, Location::unknown(&self.context)));
+                    arg_types_with_locations
+                        .push((*ty.get_type(), Location::unknown(&self.context)));
                 }
                 GenericArg::Value(_) => todo!(),
                 GenericArg::UserFunc(_) => todo!(),
@@ -339,7 +338,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let region = Region::new();
 
-        let block = Block::new(&args);
+        let block = Block::new(&arg_types_with_locations);
 
         // Return the results, 2 times.
         let mut results: Vec<Value> = vec![];
@@ -359,11 +358,16 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let mut return_types = Vec::with_capacity(args.len() * 2);
-        return_types.extend_from_slice(&args);
-        return_types.extend_from_slice(&args);
+        let arg_types = arg_types_with_locations
+            .iter()
+            .map(|(t, _)| *t)
+            .collect::<Vec<_>>();
 
-        let function_type = self.create_fn_signature(&args, &return_types);
+        let mut return_types = Vec::with_capacity(arg_types.len() * 2);
+        return_types.extend_from_slice(&arg_types);
+        return_types.extend_from_slice(&arg_types);
+
+        let function_type = create_fn_signature(&arg_types, &return_types);
 
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
@@ -372,8 +376,8 @@ impl<'ctx> Compiler<'ctx> {
             storage.functions.insert(
                 id,
                 FunctionDef {
-                    args: args.iter().map(|x| x.0).collect_vec(),
-                    return_types: return_types.iter().map(|x| x.0).collect(),
+                    args: arg_types,
+                    return_types,
                 },
             );
         }
