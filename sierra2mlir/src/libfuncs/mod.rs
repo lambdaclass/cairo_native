@@ -58,6 +58,13 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_const" => {
                     self.create_libfunc_u128_const(func_decl, &mut storage.borrow_mut());
                 }
+                "bitwise" => {
+                    self.create_libfunc_bitwise(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                    )?;
+                }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
         }
@@ -549,5 +556,63 @@ impl<'ctx> Compiler<'ctx> {
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
+    }
+
+    pub fn create_libfunc_bitwise(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let data_in = &[
+            (self.bitwise_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+        ];
+        let data_out = &[
+            (self.bitwise_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+        ];
+
+        let region = Region::new();
+        region.append_block({
+            let block = Block::new(data_in);
+
+            let lhs = block.argument(0)?;
+            let rhs = block.argument(1)?;
+            let to = self.u128_type();
+
+            let and_ref = self.op_and(&block, lhs.into(), rhs.into(), to);
+            let xor_ref = self.op_xor(&block, lhs.into(), rhs.into(), to);
+            let or_ref = self.op_or(&block, lhs.into(), rhs.into(), to);
+
+            self.op_return(
+                &block,
+                &[
+                    and_ref.result(0)?.into(),
+                    xor_ref.result(0)?.into(),
+                    or_ref.result(0)?.into(),
+                ],
+            );
+
+            block
+        });
+
+        let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
+        let fn_ty = self.create_fn_signature(data_in, data_out);
+        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+
+        storage.functions.insert(
+            fn_id.into_owned(),
+            FunctionDef {
+                args: data_in.iter().map(|(x, _)| *x).collect(),
+                return_types: data_out.iter().map(|(x, _)| *x).collect(),
+            },
+        );
+
+        parent_block.append_operation(fn_op);
+        Ok(())
     }
 }
