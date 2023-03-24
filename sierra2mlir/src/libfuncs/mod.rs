@@ -568,21 +568,21 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let data_in = &[
-            (self.bitwise_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
-        ];
+        let data_in = &[self.bitwise_type(), self.u128_type(), self.u128_type()];
         let data_out = &[
-            (self.bitwise_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
+            self.bitwise_type(),
+            self.u128_type(),
+            self.u128_type(),
+            self.u128_type(),
         ];
 
         let region = Region::new();
         region.append_block({
-            let block = Block::new(data_in);
+            let block = Block::new(&[
+                (data_in[0], Location::unknown(&self.context)),
+                (data_in[1], Location::unknown(&self.context)),
+                (data_in[2], Location::unknown(&self.context)),
+            ]);
 
             let lhs = block.argument(0)?;
             let rhs = block.argument(1)?;
@@ -605,14 +605,14 @@ impl<'ctx> Compiler<'ctx> {
         });
 
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
-        let fn_ty = self.create_fn_signature(data_in, data_out);
+        let fn_ty = create_fn_signature(data_in, data_out);
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         storage.functions.insert(
             fn_id.into_owned(),
             FunctionDef {
-                args: data_in.iter().map(|(x, _)| *x).collect(),
-                return_types: data_out.iter().map(|(x, _)| *x).collect(),
+                args: data_in.to_vec(),
+                return_types: data_out.to_vec(),
             },
         );
 
