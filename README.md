@@ -1,5 +1,5 @@
 # Cairo Sierra to MLIR compiler
-[![test](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/test.yml/badge.svg)](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/test.yml)
+[![test](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/ci.yml)
 [![mdbook](https://img.shields.io/badge/mdbook-link-blue)](https://lambdaclass.github.io/cairo_sierra_2_MLIR/)
 
 A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
