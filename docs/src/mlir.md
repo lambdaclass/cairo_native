@@ -1,5 +1,27 @@
 # Multi-Level Intermediate Representation
 
+
+## Useful notes
+
+### LLVM alloca notes
+
+It's better to use opaque pointers for the returned alloca data instead of specifying the full pointer type. Also LLVM is switching to those and deprecating non-opaque pointers.
+### Creating a constant llvm array
+
+To create a constant array, you need to use the `llvm.mlir.constant` operation.
+The way to represent the array data is by using a dense element attribute, for example:
+
+```mlir
+// The attribute should look like this:
+dense<[3, 1, 4, 1, 5]> : tensor<5 x i8>
+
+// Full example
+%alloca_size = llvm.mlir.constant(5 : i64) : i64
+%array_ptr = llvm.alloca %alloca_size x i8 : (i64) -> !llvm.ptr
+%array_data = llvm.mlir.constant(dense<[37, 48, 56, 88, 0]> : tensor<5xi8>) : !llvm.array<5 x i8>
+llvm.store %array_data, %array_ptr : !llvm.array<5 x i8>, !llvm.ptr
+```
+
 ## Online Resources
 
 ### Websites
@@ -72,4 +94,3 @@
 - [Jim Keller: Moore's Law, Microprocessors, and First Principles | Lex Fridman Podcast #70](https://www.youtube.com/watch?v=Nb2tebYAaOA)
 - [Jim Keller: The Future of Computing, AI, Life, and Consciousness | Lex Fridman Podcast #162](https://www.youtube.com/watch?v=G4hL5Om4IJ4&t=2990s)
 - [Building the Software 2 0 Stack (Andrej Karpathy)](https://www.youtube.com/watch?v=y57wwucbXR8)
-

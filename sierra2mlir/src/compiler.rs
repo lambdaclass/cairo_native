@@ -14,6 +14,8 @@ use melior_next::{
 use regex::Regex;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
 
+use crate::types::DEFAULT_PRIME;
+
 pub struct Compiler<'ctx> {
     pub code: String,
     pub program: Program,
@@ -30,6 +32,15 @@ pub enum SierraType<'ctx> {
         ty: Type<'ctx>,
         field_types: Vec<Type<'ctx>>,
     },
+}
+
+impl<'ctx> SierraType<'ctx> {
+    pub const fn get_type(&self) -> &Type<'ctx> {
+        match self {
+            SierraType::Simple(ty) => ty,
+            SierraType::Struct { ty, field_types: _ } => ty,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -148,11 +159,7 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         // The prime number is a double felt as it's always used for modulo.
-        self.op_const(
-            block,
-            "3618502788666131213697322783095070105623107215331596699973092056135872020481",
-            self.double_felt_type(),
-        )
+        self.op_const(block, DEFAULT_PRIME, self.double_felt_type())
     }
 
     /// Only the MLIR op, doesn't do modulo.
@@ -633,7 +640,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let felt_type = self.felt_type();
         let location = Location::unknown(&self.context);
-        let prime = "3618502788666131213697322783095070105623107215331596699973092056135872020481";
+        let prime = DEFAULT_PRIME;
 
         let fib_function = {
             let fib_region = Region::new();
