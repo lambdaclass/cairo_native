@@ -193,19 +193,14 @@ impl<'ctx> Compiler<'ctx> {
             _ => todo!("handle non-struct types (error)"),
         };
 
-        let args = field_types
-            .iter()
-            .map(|x| (*x, Location::unknown(&self.context)))
-            .collect::<Vec<_>>();
-
         let region = Region::new();
         region.append_block({
             let block = Block::new(&[(struct_type, Location::unknown(&self.context))]);
 
             let struct_value = block.argument(0)?;
 
-            let mut result_ops = Vec::with_capacity(args.len());
-            for (i, (arg_ty, _)) in args.iter().enumerate() {
+            let mut result_ops = Vec::with_capacity(field_types.len());
+            for (i, arg_ty) in field_types.iter().enumerate() {
                 let op_ref = self.op_llvm_extractvalue(&block, i, struct_value.into(), *arg_ty)?;
                 result_ops.push(op_ref);
             }
@@ -220,15 +215,15 @@ impl<'ctx> Compiler<'ctx> {
         });
 
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
-        let fn_ty =
-            self.create_fn_signature(&[(struct_type, Location::unknown(&self.context))], &args);
+        let fn_ty = create_fn_signature(&[struct_type], field_types);
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
+        let return_types = field_types.to_vec();
         storage.functions.insert(
             fn_id.into_owned(),
             FunctionDef {
                 args: vec![struct_type],
-                return_types: args.into_iter().map(|x| x.0).collect(),
+                return_types,
             },
         );
 
