@@ -14,6 +14,8 @@ jobs:
   release:
     name: GitHub Pages
     runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3

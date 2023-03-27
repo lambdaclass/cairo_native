@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -41,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
       - uses: actions/checkout@v2
       - name: Setup rust env
@@ -83,13 +85,17 @@ jobs:
   # Check for unnecessary dependencies.
   udeps:
     runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      RUSTUP_TOOLCHAIN: nightly
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         name: "Rust Toolchain Setup"
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
 
       - name: add llvm deb repository
@@ -114,4 +120,4 @@ jobs:
         run: sudo apt-get install curl ripgrep jq
       - uses: actions/checkout@v2
       - name: Check cairo release
-        run: bash .github/scripts/check-git-deps.sh
+        run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'
