@@ -18,3 +18,5 @@ llvm/
 
 # Added so we can have our own specific development scripts
 scripts/
+
+!.github/scripts

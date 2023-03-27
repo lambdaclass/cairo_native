@@ -44,8 +44,11 @@ impl<'ctx> Compiler<'ctx> {
         let fmt_len = fmt.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
-        let arr_ty =
-            Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
+        let arr_ty = Type::parse(
+            &self.context,
+            &format!("!llvm.array<{fmt_len} x {i8_type}>"),
+        )
+        .unwrap();
         let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
@@ -99,8 +102,11 @@ impl<'ctx> Compiler<'ctx> {
         bit_width = rounded_up_bitwidth;
 
         while bit_width > 0 {
-            let shift_by_constant_op =
-                self.op_const(&block, &bit_width.saturating_sub(32).to_string(), value_type);
+            let shift_by_constant_op = self.op_const(
+                &block,
+                &bit_width.saturating_sub(32).to_string(),
+                value_type,
+            );
             let shift_by = shift_by_constant_op.result(0)?.into();
 
             let shift_op = self.op_shrs(&block, current_value.get_value(), shift_by);
@@ -143,14 +149,13 @@ impl<'ctx> Compiler<'ctx> {
 
         let struct_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        let component_type_ids =
-            sierra_type_declaration.long_id.generic_args[1..].iter().map(|member_type| {
-                match member_type {
-                    GenericArg::Type(type_id) => type_id,
-                    _ => panic!(
-                        "Struct type declaration arguments after the first should all be resolved"
-                    ),
-                }
+        let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
+            .iter()
+            .map(|member_type| match member_type {
+                GenericArg::Type(type_id) => type_id,
+                _ => panic!(
+                    "Struct type declaration arguments after the first should all be resolved"
+                ),
             });
 
         let field_types = struct_type
