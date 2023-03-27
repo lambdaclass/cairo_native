@@ -1041,8 +1041,9 @@ impl<'ctx> Compiler<'ctx> {
 
 // TODO: Add other supported comparisons.
 //   Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum CmpOp {
+    #[default]
     Equal,
     UnsignedGreaterEqual,
     UnsignedLess,
