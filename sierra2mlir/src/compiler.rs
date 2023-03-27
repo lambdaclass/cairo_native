@@ -5,8 +5,8 @@ use melior_next::{
     dialect,
     ir::{
         operation::{self},
-        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, Value,
-        ValueLike,
+        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, TypeLike,
+        Value, ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
@@ -25,20 +25,61 @@ pub struct Compiler<'ctx> {
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
     Struct {
         ty: Type<'ctx>,
-        field_types: Vec<Type<'ctx>>,
+        field_types: Vec<Self>,
     },
 }
 
 impl<'ctx> SierraType<'ctx> {
-    pub const fn get_type(&self) -> &Type<'ctx> {
+    pub fn get_width(&self) -> u32 {
         match self {
-            SierraType::Simple(ty) => ty,
-            SierraType::Struct { ty, field_types: _ } => ty,
+            SierraType::Simple(ty) => ty.get_width().unwrap_or(0),
+            SierraType::Struct { ty: _, field_types } => {
+                let mut width = 0;
+                for ty in field_types {
+                    width += ty.get_width();
+                }
+                width
+            }
+        }
+    }
+
+    /// Returns the MLIR type of this sierra type
+    pub const fn get_type(&self) -> Type {
+        match self {
+            Self::Simple(ty) => *ty,
+            Self::Struct { ty, field_types: _ } => *ty,
+        }
+    }
+
+    pub fn get_type_location(&self, context: &'ctx Context) -> (Type<'ctx>, Location<'ctx>) {
+        (
+            match self {
+                Self::Simple(ty) => *ty,
+                Self::Struct { ty, field_types: _ } => *ty,
+            },
+            Location::unknown(context),
+        )
+    }
+
+    /// Returns a vec of field types if this is a struct type.
+    pub fn get_field_types(&self) -> Option<Vec<Type>> {
+        match self {
+            SierraType::Simple(_) => None,
+            SierraType::Struct { ty: _, field_types } => {
+                Some(field_types.iter().map(|x| x.get_type()).collect_vec())
+            }
+        }
+    }
+
+    pub fn get_field_sierra_types(&self) -> Option<&[Self]> {
+        match self {
+            SierraType::Simple(_) => None,
+            SierraType::Struct { ty: _, field_types } => Some(field_types),
         }
     }
 }
@@ -46,8 +87,8 @@ impl<'ctx> SierraType<'ctx> {
 #[derive(Debug, Clone)]
 pub struct FunctionDef<'ctx> {
     #[allow(unused)]
-    pub(crate) args: Vec<Type<'ctx>>,
-    pub(crate) return_types: Vec<Type<'ctx>>,
+    pub(crate) args: Vec<SierraType<'ctx>>,
+    pub(crate) return_types: Vec<SierraType<'ctx>>,
 }
 
 /// Types, functions, etc storage.
