@@ -394,16 +394,14 @@ impl<'ctx> Compiler<'ctx> {
         self.op_const(block, val, self.u128_type())
     }
 
-    /// Does modulo prime and truncates back to felt type.
+    /// Does modulo prime.
     ///
     /// Arguments should be of double felt type.
     pub fn op_felt_modulo<'a>(&self, block: &'a Block, val: Value) -> Result<OperationRef<'a>> {
         let prime = self.prime_constant(block);
         let prime_val = prime.result(0)?.into();
         let op = self.op_rem(block, val, prime_val);
-        let rem_val = op.result(0)?.into();
-        let trunc = self.op_trunc(block, rem_val, self.felt_type());
-        Ok(trunc)
+        Ok(op)
     }
 
     /// Example function_type: "(i64, i64) -> i64"
@@ -545,7 +543,11 @@ impl<'ctx> Compiler<'ctx> {
                 .add_attributes(&[NamedAttribute::new_parsed(
                     &self.context,
                     "operand_segment_sizes",
-                    &format!("array<i32: 1, {}, {}>", true_block_args.len(), false_block_args.len()),
+                    &format!(
+                        "array<i32: 1, {}, {}>",
+                        true_block_args.len(),
+                        false_block_args.len()
+                    ),
                 )?])
                 .add_operands(&operands)
                 .add_successors(&[true_block, false_block])
@@ -554,12 +556,23 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     // unconditional branch
-    pub fn op_br<'a>(&self, block: &'a Block, target_block: &Block) -> OperationRef<'a> {
-        block.append_operation(
+    pub fn op_br<'a>(
+        &self,
+        block: &'a Block,
+        target_block: &Block,
+        args: &[Value],
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
             operation::Builder::new("cf.br", Location::unknown(&self.context))
+                .add_operands(args)
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    &format!("array<i32: {}>", args.len()),
+                )?])
                 .add_successors(&[target_block])
                 .build(),
-        )
+        ))
     }
 
     /// inserts a value into the specified struct.
