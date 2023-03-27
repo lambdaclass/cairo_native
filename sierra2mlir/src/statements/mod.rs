@@ -297,6 +297,8 @@ impl<'ctx> Compiler<'ctx> {
                                                 eq.into(),
                                                 true_block,
                                                 false_block,
+                                                &[],
+                                                &[],
                                             )?;
 
                                             had_jump = true;

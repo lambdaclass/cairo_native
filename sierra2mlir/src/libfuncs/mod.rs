@@ -455,8 +455,7 @@ impl<'ctx> Compiler<'ctx> {
                     &block,
                     cmp_op_value.into(),
                     &region.append_block({
-                        let block =
-                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+                        let block = Block::new(&[]);
 
                         let res = self.op_sub(&block, res_result.into(), prime_value.into());
                         let res_value = res.result(0)?;
@@ -465,12 +464,13 @@ impl<'ctx> Compiler<'ctx> {
                         block
                     }),
                     &region.append_block({
-                        let block =
-                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+                        let block = Block::new(&[]);
 
-                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        self.op_return(&block, &[res_result.into()]);
                         block
                     }),
+                    &[],
+                    &[],
                 )?
             }
             BinaryOp::Sub => {
@@ -484,8 +484,7 @@ impl<'ctx> Compiler<'ctx> {
                     &block,
                     cmp_op_value.into(),
                     &{
-                        let block =
-                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+                        let block = Block::new(&[]);
 
                         let res = self.op_add(&block, res_result.into(), prime_value.into());
                         let res_value = res.result(0)?;
@@ -494,12 +493,13 @@ impl<'ctx> Compiler<'ctx> {
                         block
                     },
                     &{
-                        let block =
-                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+                        let block = Block::new(&[]);
 
-                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        self.op_return(&block, &[res_result.into()]);
                         block
                     },
+                    &[],
+                    &[],
                 )?
             }
             _ => self.op_felt_modulo(&block, res_result.into())?,
