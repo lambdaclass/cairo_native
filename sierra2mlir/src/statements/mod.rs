@@ -13,7 +13,7 @@ use itertools::Itertools;
 use melior_next::ir::{Block, BlockRef, Location, OperationRef, Region, Type, Value};
 use tracing::{debug, error};
 
-use crate::compiler::{Compiler, Storage};
+use crate::compiler::{CmpOp, Compiler, Storage};
 
 #[derive(Debug, Clone, Copy)]
 enum VariableValue<'c> {
@@ -265,7 +265,12 @@ impl<'ctx> Compiler<'ctx> {
                                                 .get(&var.id)
                                                 .expect("couldn't find variable")
                                                 .get_value();
-                                            let eq_op = self.op_eq(current_block, felt_val, zero);
+                                            let eq_op = self.op_cmp(
+                                                current_block,
+                                                CmpOp::Equal,
+                                                felt_val,
+                                                zero,
+                                            );
                                             let eq = eq_op.result(0)?;
 
                                             let next_block = jump_dests

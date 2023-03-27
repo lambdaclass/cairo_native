@@ -7,7 +7,7 @@ use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value};
 use tracing::debug;
 
 use crate::{
-    compiler::{Compiler, FunctionDef, SierraType, Storage},
+    compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
     statements::create_fn_signature,
 };
 
@@ -332,7 +332,6 @@ impl<'ctx> Compiler<'ctx> {
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
-        dbg!(func_decl);
 
         let region = Region::new();
         let block = Block::new(&[felt_type_location, felt_type_location]);
@@ -354,7 +353,72 @@ impl<'ctx> Compiler<'ctx> {
         };
         let res_result = res.result(0)?;
 
-        let res = self.op_felt_modulo(&block, res_result.into())?;
+        let res = match binary_op {
+            BinaryOp::Add => {
+                let prime = self.prime_constant(&block);
+                let prime_value = prime.result(0)?;
+
+                let cmp_op = self.op_cmp(
+                    &block,
+                    CmpOp::UnsignedGreaterEqual,
+                    res_result.into(),
+                    prime_value.into(),
+                );
+                let cmp_op_value = cmp_op.result(0)?;
+
+                self.op_cond_br(
+                    &block,
+                    cmp_op_value.into(),
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        let res = self.op_sub(&block, res_result.into(), prime_value.into());
+                        let res_value = res.result(0)?;
+
+                        self.op_return(&block, &[res_value.into()]);
+                        block
+                    },
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        block
+                    },
+                )?
+            }
+            BinaryOp::Sub => {
+                let prime = self.prime_constant(&block);
+                let prime_value = prime.result(0)?;
+
+                let cmp_op = self.op_cmp(&block, CmpOp::UnsignedLess, lhs.into(), rhs.into());
+                let cmp_op_value = cmp_op.result(0)?;
+
+                self.op_cond_br(
+                    &block,
+                    cmp_op_value.into(),
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        let res = self.op_add(&block, res_result.into(), prime_value.into());
+                        let res_value = res.result(0)?;
+
+                        self.op_return(&block, &[res_value.into()]);
+                        block
+                    },
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        block
+                    },
+                )?
+            }
+            _ => self.op_felt_modulo(&block, res_result.into())?,
+        };
         let res_result = res.result(0)?;
 
         self.op_return(&block, &[res_result.into()]);
