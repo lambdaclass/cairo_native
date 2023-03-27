@@ -34,7 +34,7 @@ impl<'ctx> Compiler<'ctx> {
                 "disable_ap_tracking" => continue,
                 "drop" => continue,
                 "felt252_const" => {
-                    self.create_libfunc_felt_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
                 "felt252_add" => {
                     self.create_libfunc_felt_binary_op(
@@ -77,19 +77,19 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
                 }
                 "u8_const" => {
-                    self.create_libfunc_u8_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_u8_const(func_decl, &mut storage.borrow_mut());
                 }
                 "u16_const" => {
-                    self.create_libfunc_u16_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_u16_const(func_decl, &mut storage.borrow_mut());
                 }
                 "u32_const" => {
-                    self.create_libfunc_u32_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_u32_const(func_decl, &mut storage.borrow_mut());
                 }
                 "u64_const" => {
-                    self.create_libfunc_u64_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_u64_const(func_decl, &mut storage.borrow_mut());
                 }
                 "u128_const" => {
-                    self.create_libfunc_u128_const(func_decl, &mut (*storage).borrow_mut());
+                    self.create_libfunc_u128_const(func_decl, &mut storage.borrow_mut());
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
@@ -174,7 +174,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = (*storage).borrow_mut();
+            let mut storage = storage.borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -196,7 +196,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        let mut storage = (*storage).borrow_mut();
+        let mut storage = storage.borrow_mut();
 
         let struct_type = storage
             .types
@@ -205,20 +205,21 @@ impl<'ctx> Compiler<'ctx> {
                 _ => todo!("handler other types (error?)"),
             })
             .expect("struct type not found");
-        let (struct_type, field_types) = match struct_type {
+        let (struct_ty, field_types) = match struct_type {
             SierraType::Struct { ty, field_types } => (*ty, field_types.as_slice()),
             _ => todo!("handle non-struct types (error)"),
         };
 
         let region = Region::new();
         region.append_block({
-            let block = Block::new(&[(struct_type, Location::unknown(&self.context))]);
+            let block = Block::new(&[(struct_ty, Location::unknown(&self.context))]);
 
             let struct_value = block.argument(0)?;
 
             let mut result_ops = Vec::with_capacity(field_types.len());
             for (i, arg_ty) in field_types.iter().enumerate() {
-                let op_ref = self.op_llvm_extractvalue(&block, i, struct_value.into(), *arg_ty)?;
+                let op_ref =
+                    self.op_llvm_extractvalue(&block, i, struct_value.into(), arg_ty.get_type())?;
                 result_ops.push(op_ref);
             }
 
@@ -232,10 +233,18 @@ impl<'ctx> Compiler<'ctx> {
         });
 
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
-        let fn_ty = create_fn_signature(&[struct_type], field_types);
+        let fn_ty = create_fn_signature(
+            &[struct_ty],
+            field_types
+                .iter()
+                .map(|x| x.get_type())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         let return_types = field_types.to_vec();
+        let struct_type = struct_type.clone();
         storage.functions.insert(
             fn_id.into_owned(),
             FunctionDef {
@@ -298,7 +307,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = (*storage).borrow_mut();
+            let mut storage = storage.borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -371,7 +380,7 @@ impl<'ctx> Compiler<'ctx> {
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
         {
-            let mut storage = (*storage).borrow_mut();
+            let mut storage = storage.borrow_mut();
             storage.functions.insert(
                 id,
                 FunctionDef {
@@ -435,7 +444,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        (*storage).borrow_mut().functions.insert(
+        storage.borrow_mut().functions.insert(
             id,
             FunctionDef {
                 args: vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
