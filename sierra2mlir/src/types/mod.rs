@@ -43,13 +43,7 @@ impl<'ctx> Compiler<'ctx> {
                         let ty = &types[0];
                         storage.types.insert(id.to_string(), ty.clone());
                     } else {
-                        let struct_types = types
-                            .iter()
-                            .map(|ty| match ty {
-                                SierraType::Simple(ty) => *ty,
-                                SierraType::Struct { ty, field_types: _ } => *ty,
-                            })
-                            .collect_vec();
+                        let struct_types = types.iter().map(SierraType::get_type).collect_vec();
                         let struct_type =
                             Type::parse(&self.context, &self.struct_type_string(&struct_types))
                                 .unwrap();
@@ -58,7 +52,7 @@ impl<'ctx> Compiler<'ctx> {
                             id.to_string(),
                             SierraType::Struct {
                                 ty: struct_type,
-                                field_types: struct_types,
+                                field_types: types,
                             },
                         );
                     }
@@ -88,13 +82,7 @@ impl<'ctx> Compiler<'ctx> {
                         types.push(gen_arg_ty.clone());
                     }
 
-                    let struct_types = types
-                        .iter()
-                        .map(|ty| match ty {
-                            SierraType::Simple(ty) => *ty,
-                            SierraType::Struct { ty, field_types: _ } => *ty,
-                        })
-                        .collect_vec();
+                    let struct_types = types.iter().map(SierraType::get_type).collect_vec();
                     let struct_type =
                         Type::parse(&self.context, &self.struct_type_string(&struct_types))
                             .unwrap();
@@ -103,7 +91,7 @@ impl<'ctx> Compiler<'ctx> {
                         id.to_string(),
                         SierraType::Struct {
                             ty: struct_type,
-                            field_types: struct_types,
+                            field_types: types,
                         },
                     );
                 }
