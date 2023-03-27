@@ -192,6 +192,12 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 128)
     }
 
+    /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
+    /// classic segments this type makes no sense, therefore it's implemented as `()`.
+    pub fn bitwise_type(&self) -> Type {
+        Type::none(&self.context)
+    }
+
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         // The prime number is a double felt as it's always used for modulo.
         self.op_const(block, DEFAULT_PRIME, self.double_felt_type())
@@ -293,6 +299,51 @@ impl<'ctx> Compiler<'ctx> {
         block.append_operation(
             operation::Builder::new("arith.extui", Location::unknown(&self.context))
                 .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_and<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.andi", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_or<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.ori", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
+    pub fn op_xor<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.xori", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
                 .add_results(&[to])
                 .build(),
         )
