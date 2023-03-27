@@ -1049,7 +1049,7 @@ pub enum CmpOp {
 }
 
 impl CmpOp {
-    pub fn to_mlir_val(&self) -> &'static str {
+    pub const fn to_mlir_val(&self) -> &'static str {
         match self {
             Self::Equal => "0",
             Self::UnsignedGreaterEqual => "9",
