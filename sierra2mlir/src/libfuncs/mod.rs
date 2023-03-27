@@ -366,7 +366,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let func = self.op_func(
             &id,
-            &format!("({felt_type}, {felt_type}) -> {felt_type}"),
+            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
             false,
             false,
@@ -506,7 +506,7 @@ impl<'ctx> Compiler<'ctx> {
 
                 let func = self.op_func(
                     &id,
-                    &format!("({src_type}) -> {dst_type}"),
+                    &create_fn_signature(&[src_type], &[dst_type]),
                     vec![region],
                     false,
                     false,
