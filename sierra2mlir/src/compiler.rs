@@ -534,15 +534,20 @@ impl<'ctx> Compiler<'ctx> {
         cond: Value,
         true_block: &Block,
         false_block: &Block,
+        true_block_args: &[Value],
+        false_block_args: &[Value],
     ) -> Result<OperationRef<'a>> {
+        let mut operands = vec![cond];
+        operands.extend(true_block_args);
+        operands.extend(false_block_args);
         Ok(block.append_operation(
             operation::Builder::new("cf.cond_br", Location::unknown(&self.context))
                 .add_attributes(&[NamedAttribute::new_parsed(
                     &self.context,
                     "operand_segment_sizes",
-                    "array<i32: 1, 0, 0>",
+                    &format!("array<i32: 1, {}, {}>", true_block_args.len(), false_block_args.len()),
                 )?])
-                .add_operands(&[cond])
+                .add_operands(&operands)
                 .add_successors(&[true_block, false_block])
                 .build(),
         ))
