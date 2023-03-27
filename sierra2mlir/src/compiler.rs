@@ -12,7 +12,7 @@ use melior_next::{
     Context,
 };
 use regex::Regex;
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, rc::Rc};
 
 use crate::types::DEFAULT_PRIME;
 
@@ -199,8 +199,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
-        // The prime number is a double felt as it's always used for modulo.
-        self.op_const(block, DEFAULT_PRIME, self.double_felt_type())
+        self.op_const(block, DEFAULT_PRIME, self.felt_type())
     }
 
     /// Only the MLIR op, doesn't do modulo.
@@ -395,13 +394,24 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Does modulo prime.
-    ///
-    /// Arguments should be of double felt type.
     pub fn op_felt_modulo<'a>(&self, block: &'a Block, val: Value) -> Result<OperationRef<'a>> {
         let prime = self.prime_constant(block);
         let prime_val = prime.result(0)?.into();
-        let op = self.op_rem(block, val, prime_val);
-        Ok(op)
+
+        Ok(match val.r#type().get_width().unwrap().cmp(&252) {
+            // If num_bits(value) < 252, then no modulo is needed (already in range).
+            Ordering::Less => {
+                // TODO: Remove this modulo when  (it is not necessary).
+                self.op_rem(block, val, prime_val)
+            }
+            // If the value and the modulo have the same width, just apply the modulo.
+            Ordering::Equal => self.op_rem(block, val, prime_val),
+            // If the value is wider than the prime, zero-extend the prime before the modulo.
+            Ordering::Greater => {
+                let zext_op = self.op_zext(block, prime_val, val.r#type());
+                self.op_rem(block, val, zext_op.result(0)?.into())
+            }
+        })
     }
 
     /// Example function_type: "(i64, i64) -> i64"

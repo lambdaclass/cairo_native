@@ -422,14 +422,8 @@ impl<'ctx> Compiler<'ctx> {
         let entry_block = Block::new(&[felt_type_location, felt_type_location]);
         let entry_block = region.append_block(entry_block);
 
-        let lhs_arg = entry_block.argument(0)?;
-        let rhs_arg = entry_block.argument(1)?;
-
-        let lhs_ext = self.op_sext(&entry_block, lhs_arg.into(), self.double_felt_type());
-        let lhs = lhs_ext.result(0)?;
-
-        let rhs_ext = self.op_sext(&entry_block, rhs_arg.into(), self.double_felt_type());
-        let rhs = rhs_ext.result(0)?;
+        let lhs = entry_block.argument(0)?;
+        let rhs = entry_block.argument(1)?;
 
         let res = match binary_op {
             BinaryOp::Add => self.op_add(&entry_block, lhs.into(), rhs.into()),
@@ -439,8 +433,12 @@ impl<'ctx> Compiler<'ctx> {
         };
         let res_result = res.result(0)?;
 
-        let final_block =
-            Block::new(&[(self.double_felt_type(), Location::unknown(&self.context))]);
+        let end_block = region.append_block({
+            let block = Block::new(&[(felt_type, Location::unknown(&self.context))]);
+
+            self.op_return(&block, &[block.argument(0)?.into()]);
+            block
+        });
 
         match binary_op {
             BinaryOp::Add => {
@@ -455,19 +453,21 @@ impl<'ctx> Compiler<'ctx> {
                 );
                 let cmp_op_value = cmp_op.result(0)?;
 
+                let mod_block = region.append_block({
+                    let block = Block::new(&[]);
+
+                    let res = self.op_sub(&block, res_result.into(), prime_value.into());
+                    let res_value = res.result(0)?;
+
+                    self.op_br(&block, &end_block, &[res_value.into()])?;
+                    block
+                });
+
                 self.op_cond_br(
                     &entry_block,
                     cmp_op_value.into(),
-                    &region.append_block({
-                        let block = Block::new(&[]);
-
-                        let res = self.op_sub(&block, res_result.into(), prime_value.into());
-                        let res_value = res.result(0)?;
-
-                        self.op_br(&block, &final_block, &[res_value.into()])?;
-                        block
-                    }),
-                    &final_block,
+                    &mod_block,
+                    &end_block,
                     &[],
                     &[res_result.into()],
                 )?;
@@ -479,35 +479,30 @@ impl<'ctx> Compiler<'ctx> {
                 let cmp_op = self.op_cmp(&entry_block, CmpOp::UnsignedLess, lhs.into(), rhs.into());
                 let cmp_op_value = cmp_op.result(0)?;
 
+                let mod_block = region.append_block({
+                    let block = Block::new(&[]);
+
+                    let res = self.op_sub(&block, res_result.into(), prime_value.into());
+                    let res_value = res.result(0)?;
+
+                    self.op_br(&block, &end_block, &[res_value.into()])?;
+                    block
+                });
+
                 self.op_cond_br(
                     &entry_block,
                     cmp_op_value.into(),
-                    &region.append_block({
-                        let block = Block::new(&[]);
-
-                        let res = self.op_add(&block, res_result.into(), prime_value.into());
-                        let res_value = res.result(0)?;
-
-                        self.op_br(&block, &final_block, &[res_value.into()])?;
-                        block
-                    }),
-                    &final_block,
+                    &mod_block,
+                    &end_block,
                     &[],
                     &[res_result.into()],
                 )?;
             }
             _ => {
                 let res = self.op_felt_modulo(&entry_block, res_result.into())?;
-                self.op_br(&entry_block, &final_block, &[res.result(0)?.into()])?;
+                self.op_br(&entry_block, &end_block, &[res.result(0)?.into()])?;
             }
         };
-
-        let final_block = region.append_block(final_block);
-        let res_result = final_block.argument(0)?;
-
-        let trunc = self.op_trunc(&final_block, res_result.into(), self.felt_type());
-
-        self.op_return(&final_block, &[trunc.result(0)?.into()]);
 
         let func = self.op_func(
             &id,
