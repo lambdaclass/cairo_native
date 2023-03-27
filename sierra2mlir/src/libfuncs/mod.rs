@@ -454,7 +454,7 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_cond_br(
                     &block,
                     cmp_op_value.into(),
-                    &*region.append_block({
+                    &region.append_block({
                         let block =
                             Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
 
@@ -464,7 +464,7 @@ impl<'ctx> Compiler<'ctx> {
                         self.op_return(&block, &[res_value.into()]);
                         block
                     }),
-                    &*region.append_block({
+                    &region.append_block({
                         let block =
                             Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
 
