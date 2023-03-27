@@ -1,5 +1,5 @@
 macro_rules! impl_tests {
-    ( $( $name:ident ),* ) => {
+    ( $( $name:ident ),* $(,)? ) => {
         $(
             #[test]
             fn $name() {
@@ -16,11 +16,13 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(
+    casts,
     destructure,
     felt_is_zero,
     fib,
     fib_simple,
+    print_test,
     program,
     simple,
-    types
+    types,
 );

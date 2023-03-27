@@ -1,9 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
 use tracing::debug;
 
 use crate::{
@@ -97,6 +97,9 @@ impl<'ctx> Compiler<'ctx> {
                         parent_block,
                         &mut storage.borrow_mut(),
                     )?;
+                }
+                "upcast" => {
+                    self.create_libfunc_upcast(func_decl, parent_block, &mut storage.borrow_mut())?;
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
@@ -509,7 +512,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let func = self.op_func(
             &id,
-            &format!("({felt_type}, {felt_type}) -> {felt_type}"),
+            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
             false,
             false,
@@ -662,6 +665,71 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         parent_block.append_operation(fn_op);
+        Ok(())
+    }
+
+    pub fn create_libfunc_upcast(
+        &self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
+
+        let src_sierra_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[0] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("invalid generic kind"),
+            })
+            .expect("type to exist");
+        let dst_sierra_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[1] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("invalid generic kind"),
+            })
+            .expect("type to exist");
+
+        let src_type = src_sierra_type.get_type();
+        let dst_type = dst_sierra_type.get_type();
+
+        match src_type
+            .get_width()
+            .unwrap()
+            .cmp(&dst_type.get_width().unwrap())
+        {
+            Ordering::Less => {
+                let region = Region::new();
+                let block = Block::new(&[(src_type, Location::unknown(&self.context))]);
+
+                let op_ref = self.op_zext(&block, block.argument(0)?.into(), dst_type);
+
+                self.op_return(&block, &[op_ref.result(0)?.into()]);
+                region.append_block(block);
+
+                let func = self.op_func(
+                    &id,
+                    &create_fn_signature(&[src_type], &[dst_type]),
+                    vec![region],
+                    false,
+                    false,
+                )?;
+
+                storage.functions.insert(
+                    id,
+                    FunctionDef {
+                        args: vec![src_sierra_type.clone()],
+                        return_types: vec![dst_sierra_type.clone()],
+                    },
+                );
+
+                parent_block.append_operation(func);
+            }
+            Ordering::Equal => {}
+            Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
+        }
+
         Ok(())
     }
 }

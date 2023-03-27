@@ -99,6 +99,26 @@ impl<'ctx> Compiler<'ctx> {
                         },
                     );
                 }
+                "u8" => {
+                    let ty = self.u8_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
+                "u16" => {
+                    let ty = self.u16_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
+                "u32" => {
+                    let ty = self.u32_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
+                "u64" => {
+                    let ty = self.u64_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
+                "u128" => {
+                    let ty = self.u128_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
                 _ => debug!(?type_decl, "unhandled type"),
             }
         }
