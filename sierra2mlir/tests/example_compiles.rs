@@ -15,4 +15,4 @@ macro_rules! impl_tests {
     };
 }
 
-impl_tests!(felt_is_zero, fib, fib_simple, program, simple, types);
+impl_tests!(casts, felt_is_zero, fib, fib_simple, print_test, program, simple, types);
