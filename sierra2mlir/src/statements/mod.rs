@@ -200,7 +200,7 @@ impl<'ctx> Compiler<'ctx> {
                                             jump_dests.get(&(id.0)).unwrap()
                                         }
                                     };
-                                    self.op_br(current_block, target_block);
+                                    self.op_br(current_block, target_block, &[])?;
                                     had_jump = true;
                                 }
                                 "u8_const" => {
@@ -297,6 +297,8 @@ impl<'ctx> Compiler<'ctx> {
                                                 eq.into(),
                                                 true_block,
                                                 false_block,
+                                                &[],
+                                                &[],
                                             )?;
 
                                             had_jump = true;
@@ -371,7 +373,7 @@ impl<'ctx> Compiler<'ctx> {
                     // All blocks need a terminator.
                     if !had_jump {
                         if let Some(next_block) = jump_dests.get(&(statement_id + 1)) {
-                            self.op_br(current_block, next_block);
+                            self.op_br(current_block, next_block, &[])?;
                         }
                     }
                 }

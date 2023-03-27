@@ -10,18 +10,28 @@ module attributes {llvm.data_layout = ""} {
     %1 = llvm.sext %arg1 : i256 to i512
     %2 = llvm.add %0, %1  : i512
     %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
-    %4 = llvm.srem %2, %3  : i512
-    %5 = llvm.trunc %4 : i512 to i256
-    llvm.return %5 : i256
+    %4 = llvm.icmp "uge" %2, %3 : i512
+    llvm.cond_br %4, ^bb1, ^bb2(%2 : i512)
+  ^bb1:  // pred: ^bb0
+    %5 = llvm.sub %2, %3  : i512
+    llvm.br ^bb2(%5 : i512) {operand_segment_sizes = array<i32: 1>}
+  ^bb2(%6: i512):  // 2 preds: ^bb0, ^bb1
+    %7 = llvm.trunc %6 : i512 to i256
+    llvm.return %7 : i256
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.sext %arg0 : i256 to i512
     %1 = llvm.sext %arg1 : i256 to i512
     %2 = llvm.sub %0, %1  : i512
     %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
-    %4 = llvm.srem %2, %3  : i512
-    %5 = llvm.trunc %4 : i512 to i256
-    llvm.return %5 : i256
+    %4 = llvm.icmp "ult" %0, %1 : i512
+    llvm.cond_br %4, ^bb1, ^bb2(%2 : i512)
+  ^bb1:  // pred: ^bb0
+    %5 = llvm.add %2, %3  : i512
+    llvm.br ^bb2(%5 : i512) {operand_segment_sizes = array<i32: 1>}
+  ^bb2(%6: i512):  // 2 preds: ^bb0, ^bb1
+    %7 = llvm.trunc %6 : i512 to i256
+    llvm.return %7 : i256
   }
   llvm.func internal @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
