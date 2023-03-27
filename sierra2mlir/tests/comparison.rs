@@ -75,33 +75,21 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
     let runner =
         SierraCasmRunner::new(sierra_program, None).with_context(|| "Failed setting up runner.")?;
 
-    runner
-        .run_function("::main", &[], None)
-        .with_context(|| "Failed to run the function.")
+    runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via compiling to mlir, then llir, then invoking lli to run it
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
-    let tmp_dir = tempdir::TempDir::new("test_comparison")
-        .unwrap()
-        .into_path();
+    let tmp_dir = tempdir::TempDir::new("test_comparison").unwrap().into_path();
 
-    let mlir_file = tmp_dir
-        .join(format!("{test_name}.mlir"))
-        .display()
-        .to_string();
-    let output_file = tmp_dir
-        .join(format!("{test_name}.ll"))
-        .display()
-        .to_string();
+    let mlir_file = tmp_dir.join(format!("{test_name}.mlir")).display().to_string();
+    let output_file = tmp_dir.join(format!("{test_name}.ll")).display().to_string();
 
     let compiled_code = compile(sierra_code, false, false, true).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
-    let mlir_translate_path = Path::new(mlir_prefix.as_str())
-        .join("bin")
-        .join("mlir-translate");
+    let mlir_translate_path = Path::new(mlir_prefix.as_str()).join("bin").join("mlir-translate");
     let lli_path = Path::new(mlir_prefix.as_str()).join("bin").join("lli");
 
     let mlir_output = Command::new(mlir_translate_path)
@@ -146,11 +134,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
 
 // Parses the human-readable output from running the llir code into a raw list of outputs
 fn parse_llvm_result(res: &str) -> Vec<BigUint> {
-    println!(
-        "Parsing llvm result: '{}', length: {}",
-        res,
-        res.chars().count()
-    );
+    println!("Parsing llvm result: '{}', length: {}", res, res.chars().count());
     return res
         .split('\n')
         .filter(|s| !s.is_empty())

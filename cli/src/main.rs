@@ -60,11 +60,7 @@ fn main() -> color_eyre::Result<()> {
     let code = fs::read_to_string(args.input)?;
 
     match args.command {
-        Commands::Compile {
-            output,
-            debug,
-            main_print,
-        } => {
+        Commands::Compile { output, debug, main_print } => {
             let mlir_output = sierra2mlir::compile(&code, args.optimize, debug, main_print)?;
 
             if let Some(output) = output {
