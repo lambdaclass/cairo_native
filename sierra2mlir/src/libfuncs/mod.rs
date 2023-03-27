@@ -517,8 +517,8 @@ impl<'ctx> Compiler<'ctx> {
         storage.functions.insert(
             fn_id.into_owned(),
             FunctionDef {
-                args: data_in.to_vec(),
-                return_types: data_out.to_vec(),
+                args: data_in.iter().copied().map(SierraType::Simple).collect(),
+                return_types: data_out.iter().copied().map(SierraType::Simple).collect(),
             },
         );
 
