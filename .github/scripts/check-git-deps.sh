@@ -2,6 +2,8 @@
 
 # requires: curl, jq, ripgrep
 
+set -x
+
 latest_release=$(
     curl -L \
         -H "Accept: application/vnd.github+json" \
