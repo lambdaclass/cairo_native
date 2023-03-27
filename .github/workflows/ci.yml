@@ -1,19 +1,28 @@
-name: test
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   check:
-    name: check
+    name: clippy
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          components: clippy
       - uses: Swatinem/rust-cache@v2
+
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -22,15 +31,18 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
+
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
+          args: --all
 
   test:
     name: test
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
       - uses: actions/checkout@v2
       - name: Setup rust env
@@ -39,6 +51,7 @@ jobs:
           toolchain: stable
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
+
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -47,21 +60,64 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
+
       - run: cargo test
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all
   fmt:
-    name: fmt
+    name: rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
+          components: rustfmt
           toolchain: stable
       - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
+
+  # Check for unnecessary dependencies.
+  udeps:
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      RUSTUP_TOOLCHAIN: nightly
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        name: "Rust Toolchain Setup"
+        with:
+          profile: minimal
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@v2
+
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@10
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
+
+      - name: "Download and run cargo-udeps"
+        run: |
+          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          cargo-udeps-*/cargo-udeps udeps
+
+  cairo-release:
+    name: cairo release check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install deps
+        run: sudo apt-get install curl ripgrep jq
+      - uses: actions/checkout@v2
+      - name: Check cairo release
+        run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'
