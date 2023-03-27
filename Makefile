@@ -13,15 +13,15 @@ test: check-mlir
 	cargo test --all
 
 compile-example: check-mlir
-	RUST_LOG="debug" cargo r -- -i examples/simple.sierra compile
+	RUST_LOG="debug" cargo r -- compile examples/simple.sierra
 
 compile-example-optimized: check-mlir
-	RUST_LOG="debug" cargo r -- --optimize -i examples/simple.sierra compile
+	RUST_LOG="debug" cargo r -- compile examples/simple.sierra --optimize 
 
 build-examples: check-mlir
-	cargo r -- -i examples/print_test.sierra compile -o examples/print_test.mlir -m
-	cargo r -- -i examples/simple.sierra compile -o examples/simple.mlir
-	cargo r -- --optimize -i examples/simple.sierra compile -o examples/simple-optimized.mlir
+	cargo r -- compile examples/print_test.sierra -o examples/print_test.mlir -m
+	cargo r -- compile examples/simple.sierra -o examples/simple.mlir
+	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir -o examples/simple.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir -o examples/simple-optimized.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/print_test.mlir -o examples/print_test.ll

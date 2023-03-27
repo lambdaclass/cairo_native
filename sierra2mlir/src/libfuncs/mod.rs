@@ -7,7 +7,7 @@ use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
 use tracing::debug;
 
 use crate::{
-    compiler::{Compiler, FunctionDef, SierraType, Storage},
+    compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
     statements::create_fn_signature,
 };
 
@@ -65,6 +65,13 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
+                }
+                "struct_deconstruct" => {
+                    self.create_libfunc_struct_deconstruct(
+                        func_decl,
+                        parent_block,
+                        storage.clone(),
+                    )?;
                 }
                 "store_temp" | "rename" => {
                     self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
@@ -182,6 +189,74 @@ impl<'ctx> Compiler<'ctx> {
 
         parent_block.append_operation(func);
 
+        Ok(())
+    }
+
+    /// Extract (destructure) each struct member (in order) into variables.
+    pub fn create_libfunc_struct_deconstruct(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> Result<()> {
+        let mut storage = storage.borrow_mut();
+
+        let struct_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[0] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("handler other types (error?)"),
+            })
+            .expect("struct type not found");
+        let (struct_ty, field_types) = match struct_type {
+            SierraType::Struct { ty, field_types } => (*ty, field_types.as_slice()),
+            _ => todo!("handle non-struct types (error)"),
+        };
+
+        let region = Region::new();
+        region.append_block({
+            let block = Block::new(&[(struct_ty, Location::unknown(&self.context))]);
+
+            let struct_value = block.argument(0)?;
+
+            let mut result_ops = Vec::with_capacity(field_types.len());
+            for (i, arg_ty) in field_types.iter().enumerate() {
+                let op_ref =
+                    self.op_llvm_extractvalue(&block, i, struct_value.into(), arg_ty.get_type())?;
+                result_ops.push(op_ref);
+            }
+
+            let result_values: Vec<_> = result_ops
+                .iter()
+                .map(|x| x.result(0).map(Into::into))
+                .try_collect()?;
+            self.op_return(&block, &result_values);
+
+            block
+        });
+
+        let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
+        let fn_ty = create_fn_signature(
+            &[struct_ty],
+            field_types
+                .iter()
+                .map(|x| x.get_type())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
+        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+
+        let return_types = field_types.to_vec();
+        let struct_type = struct_type.clone();
+        storage.functions.insert(
+            fn_id.into_owned(),
+            FunctionDef {
+                args: vec![struct_type],
+                return_types,
+            },
+        );
+
+        parent_block.append_operation(fn_op);
         Ok(())
     }
 
@@ -335,7 +410,6 @@ impl<'ctx> Compiler<'ctx> {
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
-        dbg!(func_decl);
 
         let region = Region::new();
         let block = Block::new(&[felt_type_location, felt_type_location]);
@@ -357,7 +431,72 @@ impl<'ctx> Compiler<'ctx> {
         };
         let res_result = res.result(0)?;
 
-        let res = self.op_felt_modulo(&block, res_result.into())?;
+        let res = match binary_op {
+            BinaryOp::Add => {
+                let prime = self.prime_constant(&block);
+                let prime_value = prime.result(0)?;
+
+                let cmp_op = self.op_cmp(
+                    &block,
+                    CmpOp::UnsignedGreaterEqual,
+                    res_result.into(),
+                    prime_value.into(),
+                );
+                let cmp_op_value = cmp_op.result(0)?;
+
+                self.op_cond_br(
+                    &block,
+                    cmp_op_value.into(),
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        let res = self.op_sub(&block, res_result.into(), prime_value.into());
+                        let res_value = res.result(0)?;
+
+                        self.op_return(&block, &[res_value.into()]);
+                        block
+                    },
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        block
+                    },
+                )?
+            }
+            BinaryOp::Sub => {
+                let prime = self.prime_constant(&block);
+                let prime_value = prime.result(0)?;
+
+                let cmp_op = self.op_cmp(&block, CmpOp::UnsignedLess, lhs.into(), rhs.into());
+                let cmp_op_value = cmp_op.result(0)?;
+
+                self.op_cond_br(
+                    &block,
+                    cmp_op_value.into(),
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        let res = self.op_add(&block, res_result.into(), prime_value.into());
+                        let res_value = res.result(0)?;
+
+                        self.op_return(&block, &[res_value.into()]);
+                        block
+                    },
+                    &{
+                        let block =
+                            Block::new(&[(self.felt_type(), Location::unknown(&self.context))]);
+
+                        self.op_return(&block, &[block.argument(0)?.into()]);
+                        block
+                    },
+                )?
+            }
+            _ => self.op_felt_modulo(&block, res_result.into())?,
+        };
         let res_result = res.result(0)?;
 
         self.op_return(&block, &[res_result.into()]);

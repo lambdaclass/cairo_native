@@ -249,15 +249,22 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Only the MLIR op.
     ///
-    /// todo adapt to all predicates, probs with a enum
-    ///
-    /// https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
-    pub fn op_eq<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
+    /// > Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
+    pub fn op_cmp<'a>(
+        &self,
+        block: &'a Block,
+        cmp_op: CmpOp,
+        lhs: Value,
+        rhs: Value,
+    ) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
-                .add_attributes(&[
-                    NamedAttribute::new_parsed(&self.context, "predicate", "0").unwrap()
-                ]) // 0 -> eq
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "predicate",
+                    cmp_op.to_mlir_val(),
+                )
+                .unwrap()])
                 .add_operands(&[lhs, rhs])
                 .add_results(&[Type::integer(&self.context, 1)])
                 .build(),
@@ -643,7 +650,7 @@ impl<'ctx> Compiler<'ctx> {
             // prepare the if comparision: n == 0
             let zero = self.op_felt_const(&fib_block, "0");
             let zero_res = zero.result(0)?.into();
-            let eq = self.op_eq(&fib_block, arg_n.into(), zero_res);
+            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
 
             // if else regions
             let if_region = Region::new();
@@ -767,7 +774,7 @@ impl<'ctx> Compiler<'ctx> {
             // prepare the if comparision: n == 0
             let zero = self.op_felt_const(&fib_block, "0");
             let zero_res = zero.result(0)?.into();
-            let eq = self.op_eq(&fib_block, arg_n.into(), zero_res);
+            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
 
             // if else regions
             let if_region = Region::new();
@@ -1028,6 +1035,26 @@ impl<'ctx> Compiler<'ctx> {
             Ok(op)
         } else {
             Err(color_eyre::eyre::eyre!("error verifiying"))
+        }
+    }
+}
+
+// TODO: Add other supported comparisons.
+//   Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum CmpOp {
+    #[default]
+    Equal,
+    UnsignedGreaterEqual,
+    UnsignedLess,
+}
+
+impl CmpOp {
+    pub const fn to_mlir_val(&self) -> &'static str {
+        match self {
+            Self::Equal => "0",
+            Self::UnsignedGreaterEqual => "9",
+            Self::UnsignedLess => "6",
         }
     }
 }

@@ -16,14 +16,6 @@ use std::{fs, path::PathBuf, time::Instant};
     long_about = r#"A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR."#
 )]
 struct Args {
-    /// The input sierra file.
-    #[arg(short, long)]
-    input: PathBuf,
-
-    /// Output optimized MLIR.
-    #[arg(short, long)]
-    optimize: bool,
-
     #[command(subcommand)]
     command: Commands,
 }
@@ -32,6 +24,13 @@ struct Args {
 enum Commands {
     /// Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
     Compile {
+        /// The input sierra file.
+        input: PathBuf,
+
+        /// Output optimized MLIR.
+        #[arg(long)]
+        optimize: bool,
+
         /// The output file. If not specified its output will be stdout.
         #[arg(short, long)]
         output: Option<PathBuf>,
@@ -46,6 +45,9 @@ enum Commands {
     },
     /// Compile and run a program. The entry point must be a function without arguments.
     Run {
+        /// The input sierra file.
+        input: PathBuf,
+
         /// The function to run. Can only run functions without arguments and return types.
         #[arg(short, long)]
         function: String,
@@ -57,15 +59,16 @@ fn main() -> color_eyre::Result<()> {
     tracing_subscriber::fmt::init();
     let args = Args::parse();
 
-    let code = fs::read_to_string(args.input)?;
-
     match args.command {
         Commands::Compile {
+            input,
+            optimize,
             output,
             debug,
             main_print,
         } => {
-            let mlir_output = sierra2mlir::compile(&code, args.optimize, debug, main_print)?;
+            let code = fs::read_to_string(input)?;
+            let mlir_output = sierra2mlir::compile(&code, optimize, debug, main_print)?;
 
             if let Some(output) = output {
                 fs::write(output, mlir_output);
@@ -73,7 +76,8 @@ fn main() -> color_eyre::Result<()> {
                 println!("{mlir_output}");
             }
         }
-        Commands::Run { function } => {
+        Commands::Run { function, input } => {
+            let code = fs::read_to_string(input)?;
             let engine = sierra2mlir::execute(&code)?;
 
             unsafe {
