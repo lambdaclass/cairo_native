@@ -41,7 +41,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
                         test_name,
                         llvm_result[i],
                         casm_values[i],
-                        prime.clone() - casm_values[i].to_biguint()
+                        prime - casm_values[i].to_biguint()
                     );
                     assert_eq!(
                         casm_values[i].to_biguint(),
@@ -52,7 +52,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
                         casm_values[i],
                         llvm_result[i],
                         prime.clone() - casm_values[i].to_biguint(),
-                        prime.clone() - llvm_result[i].clone()
+                        prime - llvm_result[i].clone()
                     )
                 }
             }
@@ -116,7 +116,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
         .wait_with_output()
         .unwrap();
 
-    if mlir_output.stdout.len() > 0 || mlir_output.stderr.len() > 0 {
+    if !mlir_output.stdout.is_empty() || !mlir_output.stderr.is_empty() {
         println!(
             "Mlir_output:\n    stdout: {}\n    stderr: {}",
             String::from_utf8(mlir_output.stdout).unwrap(),
@@ -132,7 +132,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
         .unwrap();
     let lli_output = lli_cmd.wait_with_output().unwrap();
 
-    if lli_output.stderr.len() > 0 {
+    if !lli_output.stderr.is_empty() {
         return Err(format!(
             "lli failed with output: {}",
             String::from_utf8(lli_output.stderr).unwrap()
@@ -141,7 +141,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
 
     let output = std::str::from_utf8(&lli_output.stdout).unwrap().trim();
 
-    return Ok(parse_llvm_result(output));
+    Ok(parse_llvm_result(output))
 }
 
 // Parses the human-readable output from running the llir code into a raw list of outputs
@@ -153,7 +153,7 @@ fn parse_llvm_result(res: &str) -> Vec<BigUint> {
     );
     return res
         .split('\n')
-        .filter(|s| s.len() > 0)
+        .filter(|s| !s.is_empty())
         .map(|x| BigUint::from_str_radix(x, 16).unwrap())
         .collect();
 }

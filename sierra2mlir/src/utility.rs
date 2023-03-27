@@ -139,13 +139,13 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let region = Region::new();
         let block = region.append_block(Block::new(&[(
-            *struct_type.get_type(),
+            struct_type.get_type(),
             Location::unknown(&self.context),
         )]));
 
         let arg = block.argument(0)?;
 
-        let function_type = create_fn_signature(&[*struct_type.get_type()], &[]);
+        let function_type = create_fn_signature(&[struct_type.get_type()], &[]);
 
         let struct_name = sierra_type_declaration.id.debug_name.unwrap();
 
@@ -158,16 +158,15 @@ impl<'ctx> Compiler<'ctx> {
                 ),
             });
 
-        let field_types = match struct_type {
-            SierraType::Simple(_) => panic!("Attempted to create struct print for simple type"),
-            SierraType::Struct { ty: _, field_types } => field_types,
-        };
+        let field_types = struct_type
+            .get_field_types()
+            .expect("Attempted to create struct print for simple type");
 
         for (index, component_type_id) in component_type_ids.enumerate() {
             let component_type_name = component_type_id.debug_name.as_ref().unwrap();
-            let component_type = field_types[index];
+            let component_type = &field_types[index];
             let extract_op =
-                self.op_llvm_extractvalue(&block, index, arg.into(), component_type)?;
+                self.op_llvm_extractvalue(&block, index, arg.into(), *component_type)?;
             let component_value = extract_op.result(0)?;
             self.op_func_call(
                 &block,
