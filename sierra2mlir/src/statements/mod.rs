@@ -123,7 +123,7 @@ impl<'ctx> Compiler<'ctx> {
                         let name_without_generics = name.split('<').next().unwrap();
                         let mut jump_processed = false;
                         match name_without_generics {
-                            "disable_ap_tracking" | "drop" | "branch_align" => continue,
+                            "disable_ap_tracking" | "drop" | "branch_align" => {},
                             "felt252_const" => {
                                 let felt_const =
                                     storage.felt_consts.get(&id).expect("constant should exist");
