@@ -11,16 +11,6 @@ define internal i256 @"store_temp<felt252>"(i256 %0) {
   ret i256 %0
 }
 
-define i256 @print_test_print_test_main() {
-  %1 = call i256 @"store_temp<felt252>"(i256 24)
-  ret i256 %1
-}
-
-define i256 @_mlir_ciface_print_test_print_test_main() {
-  %1 = call i256 @print_test_print_test_main()
-  ret i256 %1
-}
-
 define internal void @print_felt252(i256 %0) {
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
@@ -76,6 +66,14 @@ define void @main() {
 define void @_mlir_ciface_main() {
   call void @main()
   ret void
+}
+
+define internal i256 @print_test_print_test_main() {
+  br label %1
+
+1:                                                ; preds = %0
+  %2 = call i256 @"store_temp<felt252>"(i256 24)
+  ret i256 %2
 }
 
 !llvm.module.flags = !{!0}
