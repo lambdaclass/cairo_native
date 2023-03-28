@@ -99,6 +99,7 @@ impl<'ctx> Compiler<'ctx> {
 
                     // in case the enum has variants with the same type, just store a uniqued one.
                     let mut unique_enum_types = HashSet::new();
+                    let mut enum_variant_types = vec![];
 
                     let _user_type = match &type_decl.long_id.generic_args[0] {
                         GenericArg::UserType(x) => x,
@@ -113,21 +114,22 @@ impl<'ctx> Compiler<'ctx> {
                             GenericArg::UserType(user_type_id) => user_type_id.id.to_string(),
                             _ => todo!(),
                         };
-                        unique_enum_types.insert(gen_arg_type_id);
+                        unique_enum_types.insert(gen_arg_type_id.clone());
+                        enum_variant_types.push(storage.types.get(&gen_arg_type_id).cloned().expect("type should exist"));
                     }
 
                     let enum_variant_sierra_types = unique_enum_types
                         .iter()
                         .map(|x| storage.types.get(x).cloned().expect("type should exist"))
                         .collect_vec();
-                    let enum_variant_types =
+                    let unique_enum_variant_types =
                         enum_variant_sierra_types.iter().map(SierraType::get_type).collect_vec();
 
                     // The enum is a struct consiting of the tag and enough memory to allocate the biggest element.
 
-                    let mut biggest_type = enum_variant_types.first().unwrap();
+                    let mut biggest_type = unique_enum_variant_types.first().unwrap();
 
-                    for ty in enum_variant_types.iter() {
+                    for ty in unique_enum_variant_types.iter() {
                         if ty.get_width() > biggest_type.get_width() {
                             biggest_type = ty;
                         }
@@ -146,9 +148,12 @@ impl<'ctx> Compiler<'ctx> {
                     )
                     .expect("error making enum type");
 
-                    let enum_sierra_type = SierraType::Struct {
+                    let enum_sierra_type = SierraType::Enum {
                         ty: enum_type,
-                        field_types: enum_variant_sierra_types,
+                        tag_type: self.u16_type(),
+                        storage_bytes_len: bytes,
+                        storage_type: enum_memory_array,
+                        variants_types: enum_variant_types,
                     };
 
                     storage.types.insert(id.to_string(), enum_sierra_type);

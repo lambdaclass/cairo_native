@@ -11,6 +11,8 @@ use crate::{
     statements::create_fn_signature,
 };
 
+pub mod sierra_enum;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     Add,
@@ -62,6 +64,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;
+                }
+                "enum_init" => {
+                    self.create_libfunc_enum_init(func_decl, parent_block, storage.clone())?;
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
@@ -138,11 +143,8 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .cloned()
-                    .expect("type to exist");
+                let ty =
+                    storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist");
 
                 ty
             }
@@ -151,33 +153,28 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::Libfunc(_) => todo!(),
         };
 
-        let args = arg_type
-            .get_field_types()
-            .expect("arg should be a struct type and have field types");
-        let args_with_location = args
-            .iter()
-            .map(|x| (*x, Location::unknown(&self.context)))
-            .collect_vec();
+        let args =
+            arg_type.get_field_types().expect("arg should be a struct type and have field types");
+        let args_with_location =
+            args.iter().map(|x| (*x, Location::unknown(&self.context))).collect_vec();
 
         let region = Region::new();
 
         let block = Block::new(&args_with_location);
 
-        let struct_llvm_type = self.struct_type_string(&args);
         let mut struct_type_op = self.op_llvm_struct(&block, &args);
 
         for i in 0..block.argument_count() {
             let arg = block.argument(i)?;
             let struct_value = struct_type_op.result(0)?.into();
             struct_type_op =
-                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), &struct_llvm_type)?;
+                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), arg_type.get_type())?;
         }
 
         let struct_value: Value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let return_type = Type::parse(&self.context, &struct_llvm_type).unwrap();
-        let function_type = create_fn_signature(&args, &[return_type]);
+        let function_type = create_fn_signature(&args, &[arg_type.get_type()]);
 
         region.append_block(block);
 
@@ -233,10 +230,8 @@ impl<'ctx> Compiler<'ctx> {
                 result_ops.push(op_ref);
             }
 
-            let result_values: Vec<_> = result_ops
-                .iter()
-                .map(|x| x.result(0).map(Into::into))
-                .try_collect()?;
+            let result_values: Vec<_> =
+                result_ops.iter().map(|x| x.result(0).map(Into::into)).try_collect()?;
             self.op_return(&block, &result_values);
 
             block
@@ -245,23 +240,15 @@ impl<'ctx> Compiler<'ctx> {
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
         let fn_ty = create_fn_signature(
             &[struct_ty],
-            field_types
-                .iter()
-                .map(|x| x.get_type())
-                .collect::<Vec<_>>()
-                .as_slice(),
+            field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
         );
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage.functions.insert(
-            fn_id.into_owned(),
-            FunctionDef {
-                args: vec![struct_type],
-                return_types,
-            },
-        );
+        storage
+            .functions
+            .insert(fn_id.into_owned(), FunctionDef { args: vec![struct_type], return_types });
 
         parent_block.append_operation(fn_op);
         Ok(())
@@ -282,10 +269,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -320,10 +304,7 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
             storage.functions.insert(
                 id,
-                FunctionDef {
-                    args: vec![arg_type.clone()],
-                    return_types: vec![arg_type],
-                },
+                FunctionDef { args: vec![arg_type.clone()], return_types: vec![arg_type] },
             );
         }
 
@@ -344,10 +325,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -611,12 +589,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.bitwise_type(), self.u128_type(), self.u128_type()];
-        let data_out = &[
-            self.bitwise_type(),
-            self.u128_type(),
-            self.u128_type(),
-            self.u128_type(),
-        ];
+        let data_out = &[self.bitwise_type(), self.u128_type(), self.u128_type(), self.u128_type()];
 
         let region = Region::new();
         region.append_block({
@@ -636,11 +609,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.op_return(
                 &block,
-                &[
-                    and_ref.result(0)?.into(),
-                    xor_ref.result(0)?.into(),
-                    or_ref.result(0)?.into(),
-                ],
+                &[and_ref.result(0)?.into(), xor_ref.result(0)?.into(), or_ref.result(0)?.into()],
             );
 
             block
@@ -688,11 +657,7 @@ impl<'ctx> Compiler<'ctx> {
         let src_type = src_sierra_type.get_type();
         let dst_type = dst_sierra_type.get_type();
 
-        match src_type
-            .get_width()
-            .unwrap()
-            .cmp(&dst_type.get_width().unwrap())
-        {
+        match src_type.get_width().unwrap().cmp(&dst_type.get_width().unwrap()) {
             Ordering::Less => {
                 let region = Region::new();
                 let block = Block::new(&[(src_type, Location::unknown(&self.context))]);

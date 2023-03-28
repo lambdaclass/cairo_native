@@ -32,6 +32,13 @@ pub enum SierraType<'ctx> {
         ty: Type<'ctx>,
         field_types: Vec<Self>,
     },
+    Enum {
+        ty: Type<'ctx>,
+        tag_type: Type<'ctx>,
+        storage_bytes_len: u32,
+        storage_type: Type<'ctx>, // the array
+        variants_types: Vec<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -45,6 +52,13 @@ impl<'ctx> SierraType<'ctx> {
                 }
                 width
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: storage_type_len,
+                storage_type: _,
+                variants_types: _,
+            } => tag_type.get_width().unwrap() + (storage_type_len * 8),
         }
     }
 
@@ -53,6 +67,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             Self::Simple(ty) => *ty,
             Self::Struct { ty, field_types: _ } => *ty,
+            Self::Enum {
+                ty,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types: _,
+            } => *ty,
         }
     }
 
@@ -61,6 +82,13 @@ impl<'ctx> SierraType<'ctx> {
             match self {
                 Self::Simple(ty) => *ty,
                 Self::Struct { ty, field_types: _ } => *ty,
+                Self::Enum {
+                    ty,
+                    tag_type: _,
+                    storage_bytes_len: _,
+                    storage_type: _,
+                    variants_types: _,
+                } => *ty,
             },
             Location::unknown(context),
         )
@@ -73,6 +101,13 @@ impl<'ctx> SierraType<'ctx> {
             SierraType::Struct { ty: _, field_types } => {
                 Some(field_types.iter().map(|x| x.get_type()).collect_vec())
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types.iter().map(|x| x.get_type()).collect()),
         }
     }
 
@@ -80,6 +115,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             SierraType::Simple(_) => None,
             SierraType::Struct { ty: _, field_types } => Some(field_types),
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types),
         }
     }
 }
@@ -141,13 +183,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self {
-            code,
-            program,
-            context,
-            module,
-            main_print,
-        })
+        Ok(Self { code, program, context, module, main_print })
     }
 }
 
@@ -425,16 +461,8 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
-        attrs.push(NamedAttribute::new_parsed(
-            &self.context,
-            "function_type",
-            function_type,
-        )?);
-        attrs.push(NamedAttribute::new_parsed(
-            &self.context,
-            "sym_name",
-            &format!("\"{name}\""),
-        )?);
+        attrs.push(NamedAttribute::new_parsed(&self.context, "function_type", function_type)?);
+        attrs.push(NamedAttribute::new_parsed(&self.context, "sym_name", &format!("\"{name}\""))?);
 
         if !public {
             attrs.push(NamedAttribute::new_parsed(
@@ -445,19 +473,13 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         if emit_c_interface {
-            attrs.push(NamedAttribute::new_parsed(
-                &self.context,
-                "llvm.emit_c_interface",
-                "unit",
-            )?);
+            attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.emit_c_interface", "unit")?);
         }
 
-        Ok(
-            operation::Builder::new("func.func", Location::unknown(&self.context))
-                .add_attributes(&attrs)
-                .add_regions(regions)
-                .build(),
-        )
+        Ok(operation::Builder::new("func.func", Location::unknown(&self.context))
+            .add_attributes(&attrs)
+            .add_regions(regions)
+            .build())
     }
 
     pub fn op_return<'a>(&self, block: &'a Block, result: &[Value]) -> OperationRef<'a> {
@@ -486,11 +508,7 @@ impl<'ctx> Compiler<'ctx> {
         array_size: usize,
         // align: usize,
     ) -> Result<OperationRef<'a>> {
-        let size = self.op_const(
-            block,
-            &array_size.to_string(),
-            Type::integer(&self.context, 64),
-        );
+        let size = self.op_const(block, &array_size.to_string(), Type::integer(&self.context, 64));
         let size_res = size.result(0)?.into();
         Ok(block.append_operation(
             operation::Builder::new("llvm.alloca", Location::unknown(&self.context))
@@ -596,7 +614,7 @@ impl<'ctx> Compiler<'ctx> {
         index: usize,
         struct_value: Value,
         value: Value,
-        struct_llvm_type: &str,
+        struct_llvm_type: Type,
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
@@ -604,7 +622,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("position", &format!("array<i64: {}>", index))?
                 ])
                 .add_operands(&[struct_value, value])
-                .add_results(&[Type::parse(&self.context, struct_llvm_type).unwrap()])
+                .add_results(&[struct_llvm_type])
                 .build(),
         ))
     }
@@ -780,11 +798,7 @@ impl<'ctx> Compiler<'ctx> {
                 let func_call = self.op_func_call(
                     &else_block,
                     "fib",
-                    &[
-                        arg_b.into(),
-                        a_plus_b_mod_res.into(),
-                        n_minus_1_mod_res.into(),
-                    ],
+                    &[arg_b.into(), a_plus_b_mod_res.into(), n_minus_1_mod_res.into()],
                     &[felt_type, felt_type],
                 )?;
 
@@ -1078,10 +1092,7 @@ impl<'ctx> Compiler<'ctx> {
                         &self.context,
                         &[
                             ("kernel", "@kernels::@kernel1"),
-                            (
-                                "operand_segment_sizes",
-                                "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>",
-                            ),
+                            ("operand_segment_sizes", "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>"),
                         ],
                     )?)
                     .add_operands(&[
