@@ -6,32 +6,26 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %2 : !llvm.struct<(i256, i256)>
   }
   llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
-    %0 = llvm.sext %arg0 : i256 to i512
-    %1 = llvm.sext %arg1 : i256 to i512
-    %2 = llvm.add %0, %1  : i512
-    %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
-    %4 = llvm.icmp "uge" %2, %3 : i512
-    llvm.cond_br %4, ^bb1, ^bb2(%2 : i512)
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.sub %2, %3  : i512
-    llvm.br ^bb2(%5 : i512) {operand_segment_sizes = array<i32: 1>}
-  ^bb2(%6: i512):  // 2 preds: ^bb0, ^bb1
-    %7 = llvm.trunc %6 : i512 to i256
-    llvm.return %7 : i256
+    %0 = llvm.add %arg0, %arg1  : i256
+    %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
+    %2 = llvm.icmp "uge" %0, %1 : i256
+    llvm.cond_br %2, ^bb2, ^bb1(%0 : i256)
+  ^bb1(%3: i256):  // 2 preds: ^bb0, ^bb2
+    llvm.return %3 : i256
+  ^bb2:  // pred: ^bb0
+    %4 = llvm.sub %0, %1  : i256
+    llvm.br ^bb1(%4 : i256) {operand_segment_sizes = array<i32: 1>}
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
-    %0 = llvm.sext %arg0 : i256 to i512
-    %1 = llvm.sext %arg1 : i256 to i512
-    %2 = llvm.sub %0, %1  : i512
-    %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
-    %4 = llvm.icmp "ult" %0, %1 : i512
-    llvm.cond_br %4, ^bb1, ^bb2(%2 : i512)
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.add %2, %3  : i512
-    llvm.br ^bb2(%5 : i512) {operand_segment_sizes = array<i32: 1>}
-  ^bb2(%6: i512):  // 2 preds: ^bb0, ^bb1
-    %7 = llvm.trunc %6 : i512 to i256
-    llvm.return %7 : i256
+    %0 = llvm.sub %arg0, %arg1  : i256
+    %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
+    %2 = llvm.icmp "ult" %arg0, %arg1 : i256
+    llvm.cond_br %2, ^bb2, ^bb1(%0 : i256)
+  ^bb1(%3: i256):  // 2 preds: ^bb0, ^bb2
+    llvm.return %3 : i256
+  ^bb2:  // pred: ^bb0
+    %4 = llvm.sub %0, %1  : i256
+    llvm.br ^bb1(%4 : i256) {operand_segment_sizes = array<i32: 1>}
   }
   llvm.func internal @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
