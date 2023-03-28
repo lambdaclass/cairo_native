@@ -1,557 +1,675 @@
 use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
+    cell::RefCell,
+    collections::{BTreeMap, HashMap, HashSet},
     rc::Rc,
 };
 
-use cairo_lang_sierra::{
-    ids::ConcreteTypeId,
-    program::{GenBranchTarget, GenStatement, GenericArg, Program, TypeDeclaration},
+use std::ops::Bound::Included;
+
+use cairo_lang_sierra::program::{
+    GenBranchTarget, GenFunction, GenStatement, Program, StatementIdx,
 };
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, OperationRef, Region, Type, Value};
-use tracing::{debug, error};
+use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 
-use crate::compiler::{CmpOp, Compiler, Storage};
+use crate::{
+    compiler::{CmpOp, Compiler, SierraType, Storage},
+    utility::create_fn_signature,
+};
 
-#[derive(Debug, Clone, Copy)]
-enum VariableValue<'c> {
-    Local {
-        op: OperationRef<'c>,
-        result_idx: usize,
-    },
-    Param {
-        argument_idx: usize,
-    },
+pub struct BlockInfo<'ctx> {
+    pub variables_at_start: HashMap<u64, SierraType<'ctx>>,
+    // pub(crate) variables_available_at_end: HashSet<u64>,
+    pub block: Block<'ctx>,
+    pub end: usize,
+}
+
+struct BlockFlow {
+    pub start: usize,
+    pub end: usize,
+    pub successors: HashSet<usize>,
+    pub predecessors: HashSet<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Variable<'c> {
-    value: VariableValue<'c>,
-    block: BlockRef<'c>,
+pub enum Variable<'c> {
+    Local { op: OperationRef<'c>, result_idx: usize },
+    Param { argument: Argument<'c> },
 }
 
 impl<'c> Variable<'c> {
-    pub const fn local(op: OperationRef<'c>, result_idx: usize, block: BlockRef<'c>) -> Self {
-        Self {
-            value: VariableValue::Local { op, result_idx },
-            block,
-        }
-    }
-
-    pub const fn param(argument_idx: usize, block: BlockRef<'c>) -> Self {
-        Self {
-            value: VariableValue::Param { argument_idx },
-            block,
-        }
-    }
-
     pub fn get_value(&self) -> Value {
-        match &self.value {
-            VariableValue::Local { op, result_idx } => {
+        match &self {
+            Variable::Local { op, result_idx } => {
                 let res = op.result(*result_idx).unwrap();
                 res.into()
             }
-            VariableValue::Param { argument_idx } => self
-                .block
-                .argument(*argument_idx)
-                .expect("couldn't get argument")
-                .into(),
+            Variable::Param { argument } => (*argument).into(),
         }
     }
+}
+
+// The information about dataflow needed to process statements
+struct DataFlow<'ctx> {
+    input_variables: HashMap<u64, SierraType<'ctx>>,
+    block_flow: BlockFlow,
+}
+
+// The data required to calculate dataflow
+struct DataFlowInfo<'ctx> {
+    required_args: HashMap<u64, SierraType<'ctx>>,
+    variables_created: HashSet<u64>,
+    block_flow: BlockFlow,
 }
 
 impl<'ctx> Compiler<'ctx> {
-    #[allow(clippy::cognitive_complexity)]
-    pub fn process_functions(&self, storage_cell: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
-        for func in &self.program.funcs {
-            debug!(?func, "processing func");
+    // Process the statements of the sierra program by breaking flow up into basic blocks and processing one at a time
+    pub fn process_statements(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+        // Calculate the basic block structure in each function
+        let block_ranges_per_function = calculate_block_ranges_per_function(&self.program);
 
-            let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
-
-            let should_create_wrapper = self.main_print && should_create_wrapper(raw_func_name);
-            let name = Self::normalize_func_name(raw_func_name).to_string();
-
-            let entry = func.entry_point.0;
-            let mut param_types = vec![];
-            let mut return_types = vec![];
-            let mut return_sierra_types = vec![];
-
-            let storage = storage_cell.borrow();
-
-            for param in &func.params {
-                let ty = storage
-                    .types
-                    .get(&param.ty.id.to_string())
-                    .expect("type for param should exist");
-
-                param_types.push(ty.get_type());
-            }
-            let param_types = param_types;
-
-            for ret in &func.signature.ret_types {
-                let ty = storage
-                    .types
-                    .get(&ret.id.to_string())
-                    .expect("type for param should exist")
-                    .get_type();
-
-                return_types.push(ty);
-                return_sierra_types.push((ty, ret.clone()));
-            }
-            let return_sierra_types = return_sierra_types;
-            let return_types = return_types;
-
-            // The varid -> operation ref which holds the variable value in the result at index.
-            let mut variables: HashMap<u64, Variable> = HashMap::new();
-
-            let region = Region::new();
-            let param_types_with_locations = param_types
-                .iter()
-                .map(|t| (*t, Location::unknown(&self.context)))
-                .collect::<Vec<_>>();
-            let function_block = region.append_block(Block::new(&param_types_with_locations));
-
-            for (i, param) in func.params.iter().enumerate() {
-                variables.insert(param.id.id, Variable::param(i, function_block));
-            }
-
-            let statements_entry = self.program.statements.iter().enumerate().skip(entry);
-
-            // create blocks at each jump destination
-            let mut jump_dests = HashMap::new();
-
-            for (i, s) in statements_entry.clone() {
-                match s {
-                    GenStatement::Invocation(inv) => {
-                        let mut had_jump = false;
-                        let mut had_fall_through = false;
-                        for branch in &inv.branches {
-                            match branch.target {
-                                GenBranchTarget::Fallthrough => {
-                                    had_fall_through = true;
-                                }
-                                GenBranchTarget::Statement(statement_id) => {
-                                    debug!(from = i, to = statement_id.0, "added jump");
-                                    jump_dests.insert(
-                                        statement_id.0,
-                                        region.append_block(Block::new(&[])),
-                                    );
-                                    had_jump = true;
-                                }
-                            }
-                        }
-
-                        // next statement from the jump needs a block, because this is a conditional jump
-                        // where one condition simply follows through
-                        if had_jump && had_fall_through {
-                            jump_dests.insert(i + 1, region.append_block(Block::new(&[])));
-                        }
-                    }
-                    GenStatement::Return(_) => break,
-                }
-            }
-
-            let mut current_statements_iter = statements_entry.clone();
-            let mut current_block = &function_block;
-
-            // Use a loop so we can change the iterator in the middle of it in case of jumps.
-            loop {
-                if let Some((statement_id, statement)) = current_statements_iter.next() {
-                    if let Some(block) = jump_dests.get(&statement_id) {
-                        debug!(statement_id, "changed current block");
-                        current_block = block;
-                    }
-
-                    // We need to add a terminator in case there is a block on the next statement and
-                    // we didn't branch jump on this statement.
-                    let mut had_jump = false;
-
-                    match statement {
-                        GenStatement::Invocation(inv) => {
-                            let name = inv.libfunc_id.debug_name.as_ref().unwrap().as_str();
-                            let id = Self::normalize_func_name(
-                                inv.libfunc_id.debug_name.as_ref().unwrap().as_str(),
-                            )
-                            .to_string();
-                            debug!(name, "processing statement: invocation");
-
-                            let name_without_generics = name.split('<').next().unwrap();
-
-                            match name_without_generics {
-                                "disable_ap_tracking" | "drop" | "branch_align" => continue,
-                                "felt252_const" => {
-                                    let felt_const = storage
-                                        .felt_consts
-                                        .get(&id)
-                                        .expect("constant should exist");
-                                    let op = self.op_felt_const(current_block, felt_const);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                "jump" => {
-                                    let target_block = match &inv.branches[0].target {
-                                        GenBranchTarget::Fallthrough => {
-                                            unreachable!("jump should never be fallthrough")
-                                        }
-                                        GenBranchTarget::Statement(id) => {
-                                            jump_dests.get(&(id.0)).unwrap()
-                                        }
-                                    };
-                                    self.op_br(current_block, target_block, &[])?;
-                                    had_jump = true;
-                                }
-                                "u8_const" => {
-                                    let value = storage
-                                        .u8_consts
-                                        .get(&id)
-                                        .expect("constant value not found");
-                                    let op = self.op_u8_const(current_block, value);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                "u16_const" => {
-                                    let value = storage
-                                        .u16_consts
-                                        .get(&id)
-                                        .expect("constant value not found");
-                                    let op = self.op_u16_const(current_block, value);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                "u32_const" => {
-                                    let value = storage
-                                        .u32_consts
-                                        .get(&id)
-                                        .expect("constant value not found");
-                                    let op = self.op_u32_const(current_block, value);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                "u64_const" => {
-                                    let value = storage
-                                        .u64_consts
-                                        .get(&id)
-                                        .expect("constant value not found");
-                                    let op = self.op_u64_const(current_block, value);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                "u128_const" => {
-                                    let value = storage
-                                        .u128_consts
-                                        .get(&id)
-                                        .expect("constant value not found");
-                                    let op = self.op_u128_const(current_block, value);
-                                    let var_id = &inv.branches[0].results[0];
-                                    variables
-                                        .insert(var_id.id, Variable::local(op, 0, *current_block));
-                                }
-                                name if inv.branches.len() > 1 => {
-                                    match name {
-                                        "felt252_is_zero" => {
-                                            let felt_op_zero =
-                                                self.op_felt_const(current_block, "0");
-                                            let zero = felt_op_zero.result(0)?.into();
-
-                                            let var = &inv.args[0];
-                                            let felt_val = variables
-                                                .get(&var.id)
-                                                .expect("couldn't find variable")
-                                                .get_value();
-                                            let eq_op = self.op_cmp(
-                                                current_block,
-                                                CmpOp::Equal,
-                                                felt_val,
-                                                zero,
-                                            );
-                                            let eq = eq_op.result(0)?;
-
-                                            let next_block = jump_dests
-                                                .get(&(statement_id + 1))
-                                                .expect(
-                                                "there should be a block next to this statement",
-                                            );
-                                            let true_block = match &inv.branches[0].target {
-                                                GenBranchTarget::Fallthrough => next_block,
-                                                GenBranchTarget::Statement(statement_id) => {
-                                                    jump_dests.get(&statement_id.0).unwrap()
-                                                }
-                                            };
-
-                                            let false_block = match &inv.branches[1].target {
-                                                GenBranchTarget::Fallthrough => next_block,
-                                                GenBranchTarget::Statement(statement_id) => {
-                                                    jump_dests.get(&statement_id.0).unwrap()
-                                                }
-                                            };
-
-                                            self.op_cond_br(
-                                                current_block,
-                                                eq.into(),
-                                                true_block,
-                                                false_block,
-                                                &[],
-                                                &[],
-                                            )?;
-
-                                            had_jump = true;
-                                        }
-                                        _ => {
-                                            todo!("Branching function {} not implemented yet", name)
-                                        }
-                                    };
-                                }
-                                name => {
-                                    let func_def =
-                                        if let Some(func_def) = storage.functions.get(&id) {
-                                            func_def
-                                        } else {
-                                            error!(
-                                                id,
-                                                name, "encountered undefined libfunc invocation"
-                                            );
-                                            continue;
-                                        };
-                                    let mut args = vec![];
-
-                                    for var in &inv.args {
-                                        let res = variables
-                                            .get(&var.id)
-                                            .expect("couldn't find variable")
-                                            .get_value();
-                                        args.push(res);
-                                    }
-
-                                    let return_types = func_def
-                                        .return_types
-                                        .iter()
-                                        .map(|x| x.get_type())
-                                        .collect_vec();
-
-                                    debug!(id, "creating func call");
-                                    let op = self.op_func_call(
-                                        current_block,
-                                        &id,
-                                        &args,
-                                        &return_types,
-                                    )?;
-                                    debug!("created");
-
-                                    for (i, var_id) in inv.branches[0].results.iter().enumerate() {
-                                        variables.insert(
-                                            var_id.id,
-                                            Variable::local(op, i, *current_block),
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                        GenStatement::Return(ret) => {
-                            let mut ret_values: Vec<Value> = vec![];
-
-                            for var in ret {
-                                let val = variables
-                                    .get(&var.id)
-                                    .expect("couldn't find variable")
-                                    .get_value();
-                                ret_values.push(val);
-                            }
-
-                            self.op_return(current_block, &ret_values);
-                            debug!(?ret, "processing statement: return");
-                            break;
-                        }
-                    }
-
-                    // All blocks need a terminator.
-                    if !had_jump {
-                        if let Some(next_block) = jump_dests.get(&(statement_id + 1)) {
-                            self.op_br(current_block, next_block, &[])?;
-                        }
-                    }
-                }
-            }
-
-            let function_type = create_fn_signature(&param_types, &return_types);
-
-            let op = self.op_func(&name, &function_type, vec![region], true, true)?;
-
-            self.module.body().append_operation(op);
-
-            if should_create_wrapper {
-                self.create_felt_representation_wrapper(
-                    &name,
-                    &param_types,
-                    &return_sierra_types,
-                    storage_cell.borrow(),
-                )?;
-            }
+        // Process the blocks for each function
+        for (func_start, (func, block_flows)) in block_ranges_per_function {
+            self.process_statements_for_function(func, func_start, block_flows, storage.clone())?;
         }
+
         Ok(())
     }
 
-    pub fn create_felt_representation_wrapper(
+    fn process_statements_for_function(
         &'ctx self,
-        wrapped_func_name: &str,
-        arg_types: &[Type],
-        ret_types: &[(Type, ConcreteTypeId)],
-        storage: Ref<Storage<'ctx>>,
+        func: &GenFunction<StatementIdx>,
+        func_start: usize,
+        block_flows: BTreeMap<usize, BlockFlow>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
-        // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
-        // This is especially important for enums
-        let ret_type_declarations = ret_types
-            .iter()
-            .map(|(mlir_type, type_id)| {
-                (
-                    mlir_type,
-                    self.program
-                        .type_declarations
-                        .iter()
-                        .find(|decl| decl.id == *type_id)
-                        .unwrap(),
-                )
-            })
-            .collect_vec();
-
-        // Create a list of types for which to generate print functions, with no duplicates
-        // For complex types, their components types must be added to the list before them
-        let types_to_print = get_all_types_to_print(
-            &ret_type_declarations
-                .iter()
-                .map(|(_t, decl)| (*decl).clone())
-                .collect_vec(),
-            &self.program,
-        );
-
-        for type_decl in types_to_print {
-            let type_category = type_decl.long_id.generic_id.0.as_str();
-            match type_category {
-                "felt252" => self.create_print_felt()?,
-                "NonZero" => todo!("Print box felt representation"),
-                "Box" => todo!("Print box felt representation"),
-                "Struct" => {
-                    let arg_type = storage
-                        .types
-                        .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_struct(arg_type, type_decl.clone())?
-                }
-                "Enum" => todo!("Print enum felt representation"),
-                _ => todo!("Felt representation for {}", type_category),
-            }
-        }
-
         let region = Region::new();
-        let arg_types_with_locations = arg_types
-            .iter()
-            .map(|t| (*t, Location::unknown(&self.context)))
-            .collect::<Vec<_>>();
-        let block = Block::new(&arg_types_with_locations);
+        let user_func_name =
+            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
 
-        let mut arg_values: Vec<_> = vec![];
-        for i in 0..block.argument_count() {
-            let arg = block.argument(i)?;
-            arg_values.push(arg.into());
-        }
-        let arg_values = arg_values;
-        let mlir_ret_types = ret_types.iter().map(|(t, _id)| *t).collect_vec();
-
-        let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
-        for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
-            let result_val = raw_res.result(position)?;
-            self.op_func_call(
-                &block,
-                &format!(
-                    "print_{}",
-                    type_decl.id.debug_name.as_ref().unwrap().as_str()
-                ),
-                &[result_val.into()],
-                &[],
-            )?;
-        }
-
-        self.op_return(&block, &[]);
-
-        region.append_block(block);
-
-        // Currently this wrapper is only put on the entrypoint, so we call it main
-        // We might want to change this in the future
-        let op = self.op_func(
-            "main",
-            create_fn_signature(arg_types, &[]).as_str(),
-            vec![region],
-            true,
-            true,
+        let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage.clone());
+        self.create_function_entry_block(
+            &region,
+            user_func_name.as_str(),
+            func_start,
+            func,
+            &blocks,
+            storage.clone(),
         )?;
 
-        self.module.body().append_operation(op);
+        // We process statements one block at a time
+        for (block_start, block_info) in blocks.iter() {
+            let block = &block_info.block;
 
-        Ok(())
-    }
-}
-
-pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
-    format!(
-        "({}) -> {}",
-        params.iter().map(|x| x.to_string()).join(", "),
-        &format!(
-            "({})",
-            return_types.iter().map(|x| x.to_string()).join(", ")
-        ),
-    )
-}
-
-// Currently this checks whether the function in question is the main function,
-// but it could be switched for anything later
-fn should_create_wrapper(raw_func_name: &str) -> bool {
-    let parts = raw_func_name.split("::").collect::<Vec<_>>();
-    parts.len() == 3 && parts[0] == parts[1] && parts[2] == "main"
-}
-
-// Produces an ordered list of all types and component types
-fn get_all_types_to_print(
-    type_declarations: &[TypeDeclaration],
-    program: &Program,
-) -> Vec<TypeDeclaration> {
-    let mut types_to_print = vec![];
-    for type_decl in type_declarations {
-        let type_category = type_decl.long_id.generic_id.0.as_str();
-        match type_category {
-            "felt252" => {
-                if !types_to_print.contains(type_decl) {
-                    types_to_print.push(type_decl.clone());
-                }
+            // Variables holds the most recent value associated with a variable id as we progress through the block
+            // Initially it only holds the blocks arguments
+            let mut variables: HashMap<u64, Variable> = HashMap::new();
+            for (arg_position, var_id) in block_info.variables_at_start.keys().sorted().enumerate()
+            {
+                let argument = block.argument(arg_position)?;
+                variables.insert(*var_id, Variable::Param { argument });
             }
-            "NonZero" => todo!("Print box felt representation"),
-            "Box" => todo!("Print box felt representation"),
-            "Struct" => {
-                let field_type_declarations = type_decl.long_id.generic_args[1..].iter().map(|member_type| match member_type {
-                    GenericArg::Type(type_id) => type_id,
-                    _ => panic!("Struct type declaration arguments after the first should all be resolved"),
-                }).map(|member_type_id| program.type_declarations.iter().find(|decl| decl.id == *member_type_id).unwrap())
-                .map(|component_type_decl| get_all_types_to_print(&[component_type_decl.clone()], program));
 
-                for type_decls in field_type_declarations {
-                    for type_decl in type_decls {
-                        if !types_to_print.contains(&type_decl) {
-                            types_to_print.push(type_decl);
+            for statement_idx in *block_start..block_info.end {
+                let storage = storage.borrow();
+                match &self.program.statements[statement_idx] {
+                    GenStatement::Invocation(invocation) => {
+                        let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
+                        let id = Self::normalize_func_name(
+                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
+                        )
+                        .to_string();
+                        let name_without_generics = name.split('<').next().unwrap();
+                        let mut jump_processed = false;
+                        match name_without_generics {
+                            "disable_ap_tracking" | "drop" | "branch_align" => {}
+                            "felt252_const" => {
+                                let felt_const =
+                                    storage.felt_consts.get(&id).expect("constant should exist");
+                                let op = self.op_felt_const(block, felt_const);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "jump" => {
+                                let target_block_info = match &invocation.branches[0].target {
+                                    GenBranchTarget::Fallthrough => {
+                                        unreachable!("jump should never be fallthrough")
+                                    }
+                                    GenBranchTarget::Statement(id) => blocks.get(&(id.0)).unwrap(),
+                                };
+                                let mut operand_indices =
+                                    target_block_info.variables_at_start.keys().collect_vec();
+                                operand_indices.sort_unstable();
+                                let operand_values = operand_indices
+                                    .iter()
+                                    .map(|id| variables.get(id).unwrap().get_value())
+                                    .collect_vec();
+                                self.op_br(block, &target_block_info.block, &operand_values);
+                                jump_processed = true;
+                            }
+                            "u8_const" => {
+                                let value =
+                                    storage.u8_consts.get(&id).expect("constant value not found");
+                                let op = self.op_u8_const(block, value);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "u16_const" => {
+                                let value =
+                                    storage.u16_consts.get(&id).expect("constant value not found");
+                                let op = self.op_u16_const(block, value);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "u32_const" => {
+                                let value =
+                                    storage.u32_consts.get(&id).expect("constant value not found");
+                                let op = self.op_u32_const(block, value);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "u64_const" => {
+                                let value =
+                                    storage.u64_consts.get(&id).expect("constant value not found");
+                                let op = self.op_u64_const(block, value);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "u128_const" => {
+                                let value =
+                                    storage.u128_consts.get(&id).expect("constant value not found");
+                                let op = self.op_u128_const(block, value);
+                                let var_id = &invocation.branches[0].results[0];
+                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
+                            }
+                            "felt252_is_zero" => {
+                                let felt_op_zero = self.op_felt_const(block, "0");
+                                let zero = felt_op_zero.result(0)?.into();
+
+                                let input = variables
+                                    .get(&invocation.args[0].id)
+                                    .expect("Variable should be registered before use")
+                                    .get_value();
+                                let eq_op = self.op_cmp(block, CmpOp::Equal, input, zero);
+                                let eq = eq_op.result(0)?;
+
+                                // felt_is_zero forwards its argument to the non-zero branch
+                                // Since no processing is done, we can simply assign to the variable here
+                                variables.insert(
+                                    invocation.branches[1].results[0].id,
+                                    *variables.get(&invocation.args[0].id).unwrap(),
+                                );
+                                let target_blocks = invocation
+                                    .branches
+                                    .iter()
+                                    .map(|branch| match branch.target {
+                                        GenBranchTarget::Fallthrough => statement_idx + 1,
+                                        GenBranchTarget::Statement(idx) => idx.0,
+                                    })
+                                    .map(|idx| {
+                                        let target_block_info = blocks.get(&idx).unwrap();
+                                        let mut operand_indices = target_block_info
+                                            .variables_at_start
+                                            .keys()
+                                            .collect_vec();
+                                        operand_indices.sort_unstable();
+                                        let operand_values = operand_indices
+                                            .iter()
+                                            .map(|id| variables.get(id).unwrap().get_value())
+                                            .collect_vec();
+                                        (&target_block_info.block, operand_values)
+                                    })
+                                    .collect_vec();
+
+                                let (zero_block, zero_vars) = &target_blocks[0];
+                                let (nonzero_block, nonzero_vars) = &target_blocks[1];
+
+                                self.op_cond_br(
+                                    block,
+                                    eq.into(),
+                                    zero_block,
+                                    nonzero_block,
+                                    zero_vars,
+                                    nonzero_vars,
+                                )?;
+
+                                jump_processed = true;
+                            }
+                            "function_call" => {
+                                let callee_name = id
+                                    .strip_prefix("function_call<user@")
+                                    .unwrap()
+                                    .strip_suffix('>')
+                                    .unwrap();
+                                let callee_def = storage
+                                    .userfuncs
+                                    .get(callee_name)
+                                    .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
+                                let args = invocation
+                                    .args
+                                    .iter()
+                                    .map(|id| variables.get(&id.id).unwrap().get_value())
+                                    .collect_vec();
+                                let return_types = callee_def
+                                    .return_types
+                                    .iter()
+                                    .map(|t| t.get_type())
+                                    .collect_vec();
+                                let op =
+                                    self.op_func_call(block, callee_name, &args, &return_types)?;
+                                variables.extend(
+                                    invocation.branches[0].results.iter().enumerate().map(
+                                        |(result_pos, var_id)| {
+                                            (
+                                                var_id.id,
+                                                Variable::Local { op, result_idx: result_pos },
+                                            )
+                                        },
+                                    ),
+                                );
+                            }
+                            _ => {
+                                let libfunc_def = storage
+                                    .libfuncs
+                                    .get(&id)
+                                    .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
+                                let args = invocation
+                                    .args
+                                    .iter()
+                                    .map(|id| variables.get(&id.id).unwrap().get_value())
+                                    .collect_vec();
+                                let return_types = libfunc_def
+                                    .return_types
+                                    .iter()
+                                    .map(|t| t.get_type())
+                                    .collect_vec();
+                                let op = self.op_func_call(block, &id, &args, &return_types)?;
+                                variables.extend(
+                                    invocation.branches[0].results.iter().enumerate().map(
+                                        |(result_pos, var_id)| {
+                                            (
+                                                var_id.id,
+                                                Variable::Local { op, result_idx: result_pos },
+                                            )
+                                        },
+                                    ),
+                                );
+                            }
+                        }
+
+                        if statement_idx == block_info.end - 1 && !jump_processed {
+                            let target = blocks
+                                .get(&(statement_idx + 1))
+                                .expect("Block should be registered for fallthrough successor");
+
+                            let mut operand_indices =
+                                target.variables_at_start.keys().collect_vec();
+                            operand_indices.sort_unstable();
+                            let operand_values = operand_indices
+                                .iter()
+                                .map(|id| variables.get(id).unwrap().get_value())
+                                .collect_vec();
+                            self.op_br(block, &target.block, &operand_values);
                         }
                     }
-                }
-                if !types_to_print.contains(type_decl) {
-                    types_to_print.push(type_decl.clone());
+                    GenStatement::Return(ret_args) => {
+                        let ret_values = ret_args
+                            .iter()
+                            .map(|id| {
+                                variables
+                                    .get(&id.id)
+                                    .expect("Variable should be registered before return")
+                                    .get_value()
+                            })
+                            .collect_vec();
+
+                        self.op_return(block, &ret_values);
+                    }
                 }
             }
-            "Enum" => todo!("Print enum felt representation"),
-            _ => todo!("Felt representation for {}", type_category),
+        }
+
+        for (_block_start, block_info) in blocks {
+            region.append_block(block_info.block);
+        }
+
+        let storage = storage.borrow();
+        let user_func_def = storage.userfuncs.get(user_func_name.as_str()).unwrap();
+        let function_type = create_fn_signature(
+            &user_func_def.args.iter().map(|t| t.get_type()).collect_vec(),
+            &user_func_def.return_types.iter().map(|t| t.get_type()).collect_vec(),
+        );
+        let func = self.op_func(&user_func_name, &function_type, vec![region], false, false)?;
+        self.module.body().append_operation(func);
+        Ok(())
+    }
+
+    fn get_blocks_with_mapped_inputs(
+        &'ctx self,
+        func: &GenFunction<StatementIdx>,
+        block_flows: BTreeMap<usize, BlockFlow>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> BTreeMap<usize, BlockInfo<'ctx>> {
+        self.calculate_dataflow_per_function(func, block_flows, storage.clone())
+            .iter()
+            .map(|(block_start, data_flow)| {
+                let block = Block::new(&[]);
+                (
+                    *block_start,
+                    BlockInfo {
+                        variables_at_start: data_flow.input_variables.clone(),
+                        block,
+                        end: data_flow.block_flow.end,
+                    },
+                )
+            })
+            .map(|(block_start, block_info)| {
+                for (_, var_type) in block_info.variables_at_start.iter() {
+                    block_info
+                        .block
+                        .add_argument(var_type.get_type(), Location::unknown(&self.context));
+                }
+                (block_start, block_info)
+            })
+            .collect::<BTreeMap<_, _>>()
+    }
+
+    fn create_function_entry_block(
+        &'ctx self,
+        region: &Region,
+        user_func_name: &str,
+        func_start: usize,
+        func: &GenFunction<StatementIdx>,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> Result<()> {
+        let storage = storage.borrow();
+        let arg_types = &storage.userfuncs.get(user_func_name).unwrap().args;
+        let entry_block = Block::new(
+            &arg_types
+                .iter()
+                .map(|t| (t.get_type(), Location::unknown(&self.context)))
+                .collect_vec(),
+        );
+        let block_info = &blocks.get(&func_start).unwrap();
+
+        let mut args_to_pass = vec![];
+        for (position, param) in func.params.iter().enumerate() {
+            if block_info.variables_at_start.contains_key(&param.id.id) {
+                let arg = entry_block.argument(position)?;
+                args_to_pass.push(arg.into());
+            }
+        }
+        self.op_br(&entry_block, &block_info.block, &args_to_pass);
+        region.append_block(entry_block);
+        Ok(())
+    }
+
+    fn calculate_dataflow_per_function(
+        &'ctx self,
+        func: &GenFunction<StatementIdx>,
+        block_flows: BTreeMap<usize, BlockFlow>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) -> BTreeMap<usize, DataFlow> {
+        let user_func_name =
+            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
+
+        let mut block_infos: BTreeMap<usize, DataFlowInfo> = BTreeMap::new();
+
+        // Collect the variables required by the invocations in each block, and those produced by the invocations
+        for (block_start, block_flow) in block_flows {
+            let mut required_args = HashMap::new();
+            let mut variables_created = HashSet::new();
+
+            for statement in self.program.statements[block_start..block_flow.end].iter() {
+                let storage = storage.borrow();
+                let vars_used = match statement {
+                    GenStatement::Invocation(invocation) => {
+                        let id = Self::normalize_func_name(
+                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
+                        )
+                        .to_string();
+
+                        let name_without_generics = id.split('<').next().unwrap();
+
+                        // We ignore drop functions, even though they take arguments in sierra, since they are ignored during statement processing and don't propagate data
+                        if name_without_generics == "drop" {
+                            continue;
+                        } else if name_without_generics == "function_call" {
+                            let callee_name = id
+                                .strip_prefix("function_call<user@")
+                                .unwrap()
+                                .strip_suffix('>')
+                                .unwrap();
+                            let arg_types = &storage
+                                .userfuncs
+                                .get(callee_name)
+                                .expect("UserFunc should have been registered")
+                                .args;
+                            let arg_indices = &invocation.args;
+                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                        } else {
+                            let arg_types = &storage
+                                .libfuncs
+                                .get(&id)
+                                .unwrap_or_else(|| {
+                                    panic!("LibFunc {id} should have been registered")
+                                })
+                                .args;
+                            let arg_indices = &invocation.args;
+                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                        }
+                    }
+                    GenStatement::Return(ret) => {
+                        let func_ret_types =
+                            &storage.userfuncs.get(&user_func_name).unwrap().return_types;
+                        ret.iter().zip_eq(func_ret_types.iter()).collect_vec()
+                    }
+                };
+
+                for (var_id, var_type) in vars_used {
+                    if !variables_created.contains(&var_id.id) {
+                        required_args.insert(var_id.id, var_type.clone());
+                    }
+                }
+
+                if let GenStatement::Invocation(invocation) = statement {
+                    variables_created.extend(
+                        invocation
+                            .branches
+                            .iter()
+                            .flat_map(|branch| branch.results.iter().map(|v| v.id)),
+                    );
+                }
+            }
+
+            block_infos
+                .insert(block_start, DataFlowInfo { required_args, variables_created, block_flow });
+        }
+
+        let block_infos = propagate_required_vars(block_infos);
+
+        block_infos
+            .into_iter()
+            .map(|(block_start, data_flow)| {
+                (
+                    block_start,
+                    DataFlow {
+                        input_variables: data_flow.required_args,
+                        block_flow: data_flow.block_flow,
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>()
+    }
+}
+
+fn calculate_block_ranges_per_function(
+    program: &Program,
+) -> BTreeMap<usize, (&GenFunction<StatementIdx>, BTreeMap<usize, BlockFlow>)> {
+    let block_flows = get_block_flow(program);
+
+    // Collecting the functions into a btreemap by entry points means we can easily sort the blocks into their containing functions
+    let mut funcs_by_entry = program
+        .funcs
+        .iter()
+        .map(|func| (func.entry_point.0, (func, BTreeMap::new())))
+        .collect::<BTreeMap<_, _>>();
+
+    for block_flow in block_flows {
+        let (_, (_, blocks)) = funcs_by_entry
+            .range_mut((Included(0), Included(block_flow.start)))
+            .next_back()
+            .unwrap();
+
+        blocks.insert(block_flow.start, block_flow);
+    }
+
+    funcs_by_entry
+}
+
+fn get_block_flow(program: &Program) -> Vec<BlockFlow> {
+    // Initially we can say that all function entry points are block entry points
+    let func_starts = program.funcs.iter().map(|func| func.entry_point.0);
+
+    // We can also say that all jump targets are block entry points
+    let block_starts = func_starts.chain(get_jump_targets(program).into_iter()).collect_vec();
+
+    // Next, scan forward from each block entry point for anything that would terminate a block
+    // This produces block flows without predecessors filled in
+    let mut block_flows = block_starts
+        .iter()
+        .map(|start| {
+            let (end, successors) = program
+                .statements
+                .iter()
+                .enumerate()
+                .skip(*start)
+                .find_map(|(statement_id, statement)| {
+                    match statement {
+                        GenStatement::Invocation(invocation) => {
+                            let targets = invocation
+                                .branches
+                                .iter()
+                                .map(|branch| match branch.target {
+                                    GenBranchTarget::Fallthrough => statement_id + 1,
+                                    GenBranchTarget::Statement(target_id) => target_id.0,
+                                })
+                                .collect_vec();
+
+                            if targets.is_empty() {
+                                unreachable!("invocations always have at least one target")
+                            } else if (targets.len() == 1 && block_starts.contains(&targets[0]))
+                                || targets.len() > 1
+                            {
+                                Some((statement_id + 1, HashSet::from_iter(targets.into_iter())))
+                            } else {
+                                None
+                            }
+                        }
+                        // Returns terminate a block with no successors
+                        GenStatement::Return(_) => Some((statement_id + 1, HashSet::new())),
+                    }
+                })
+                .unwrap();
+
+            BlockFlow { start: *start, end, successors, predecessors: HashSet::new() }
+        })
+        .collect_vec();
+
+    // Finally, fill in the predecessors
+    let mut preds: HashMap<usize, HashSet<usize>> = HashMap::new();
+    for block_flow in block_flows.iter_mut() {
+        for succ in block_flow.successors.iter() {
+            if let Some(set) = preds.get_mut(succ) {
+                set.insert(block_flow.start);
+            } else {
+                preds.insert(*succ, HashSet::from([block_flow.start]));
+            }
         }
     }
-    types_to_print
+    for block_flow in block_flows.iter_mut() {
+        if let Some(block_preds) = preds.get(&block_flow.start) {
+            block_flow.predecessors = block_preds.clone();
+        }
+    }
+
+    block_flows
+}
+
+fn get_jump_targets(program: &Program) -> HashSet<usize> {
+    program
+        .statements
+        .iter()
+        .enumerate()
+        // Filter out returns since they aren't relevant to dataflow within a function
+        .filter_map(|(id, statement)| match statement {
+            GenStatement::Invocation(invocation) => Some((id, invocation)),
+            GenStatement::Return(_) => None,
+        })
+        // Filter out single target fallthroughs only. Fallthroughs from multi-target invocations must remain
+        .filter(|(_id, invocation)| {
+            invocation.branches.len() > 1
+                || invocation.branches[0].target != GenBranchTarget::Fallthrough
+        })
+        // Get the target index for each jump
+        .flat_map(|(id, invocation)| {
+            invocation
+                .branches
+                .iter()
+                .map(move |branch| match branch.target {
+                    GenBranchTarget::Fallthrough => id + 1,
+                    GenBranchTarget::Statement(statement_id) => statement_id.0,
+                })
+        })
+        .collect::<HashSet<_>>()
+}
+
+// Loop through the block flows, propagating forward required variables
+// If a block's successor requires variable 3, but the block does not produce variable 3, then the block also requires variable 3
+// This process is repeated until all transitive requirements are satisfied
+fn propagate_required_vars(
+    mut block_infos: BTreeMap<usize, DataFlowInfo>,
+) -> BTreeMap<usize, DataFlowInfo> {
+    // Since this algorithm uses a loop clause, we calculate a simple upper bound on the number of steps and assert that it should never exceed this
+    let iteration_limit =
+        block_infos.values().map(|x| x.required_args.len()).max().unwrap_or(1) * block_infos.len();
+
+    loop {
+        let mut iteration_count = 0;
+        let mut variables_to_add: HashMap<usize, HashMap<u64, SierraType>> = HashMap::new();
+        for (block_start, DataFlowInfo { required_args, variables_created, block_flow }) in
+            block_infos.iter()
+        {
+            let variables_required_by_successors = block_flow
+                .successors
+                .iter()
+                .flat_map(|succ| block_infos[succ].required_args.clone())
+                .filter(|(var_id, _var_type)| {
+                    !variables_created.contains(var_id) && !required_args.contains_key(var_id)
+                })
+                .collect::<HashMap<_, _>>();
+
+            if !variables_required_by_successors.is_empty() {
+                variables_to_add.insert(*block_start, variables_required_by_successors);
+            }
+        }
+
+        // Once every block's predeccesors provide all the variables it needs we can stop iterating
+        if variables_to_add.is_empty() {
+            break;
+        } else {
+            for (block_start, vars) in variables_to_add {
+                block_infos.get_mut(&block_start).unwrap().required_args.extend(vars.into_iter());
+            }
+        }
+
+        iteration_count += 1;
+        if iteration_count > iteration_limit {
+            panic!("Bug found in dataflow propagation algorithm, iteration limit exceeded");
+        }
+    }
+
+    block_infos
 }

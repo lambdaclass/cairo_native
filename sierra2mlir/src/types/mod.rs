@@ -54,10 +54,7 @@ impl<'ctx> Compiler<'ctx> {
 
                         storage.types.insert(
                             id.to_string(),
-                            SierraType::Struct {
-                                ty: struct_type,
-                                field_types: types,
-                            },
+                            SierraType::Struct { ty: struct_type, field_types: types },
                         );
                     }
                 }
@@ -93,10 +90,7 @@ impl<'ctx> Compiler<'ctx> {
 
                     storage.types.insert(
                         id.to_string(),
-                        SierraType::Struct {
-                            ty: struct_type,
-                            field_types: types,
-                        },
+                        SierraType::Struct { ty: struct_type, field_types: types },
                     );
                 }
                 "u8" => {

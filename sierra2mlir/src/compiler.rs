@@ -81,9 +81,9 @@ impl<'ctx> SierraType<'ctx> {
     }
 }
 
+// TODO split into libfuncdef and userfuncdef and model branching return types for libfuncdef
 #[derive(Debug, Clone)]
 pub struct FunctionDef<'ctx> {
-    #[allow(unused)]
     pub(crate) args: Vec<SierraType<'ctx>>,
     pub(crate) return_types: Vec<SierraType<'ctx>>,
 }
@@ -99,7 +99,8 @@ pub struct Storage<'ctx> {
     pub(crate) u64_consts: HashMap<String, String>,
     pub(crate) u128_consts: HashMap<String, String>,
     pub(crate) felt_consts: HashMap<String, String>,
-    pub(crate) functions: HashMap<String, FunctionDef<'ctx>>,
+    pub(crate) libfuncs: HashMap<String, FunctionDef<'ctx>>,
+    pub(crate) userfuncs: HashMap<String, FunctionDef<'ctx>>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -543,19 +544,14 @@ impl<'ctx> Compiler<'ctx> {
         &self,
         block: &'a Block,
         target_block: &Block,
-        args: &[Value],
-    ) -> Result<OperationRef<'a>> {
-        Ok(block.append_operation(
+        block_args: &[Value],
+    ) -> OperationRef<'a> {
+        block.append_operation(
             operation::Builder::new("cf.br", Location::unknown(&self.context))
-                .add_operands(args)
-                .add_attributes(&[NamedAttribute::new_parsed(
-                    &self.context,
-                    "operand_segment_sizes",
-                    &format!("array<i32: {}>", args.len()),
-                )?])
+                .add_operands(block_args)
                 .add_successors(&[target_block])
                 .build(),
-        ))
+        )
     }
 
     /// inserts a value into the specified struct.
@@ -659,7 +655,8 @@ impl<'ctx> Compiler<'ctx> {
         let storage = Rc::new(RefCell::new(Storage::default()));
         self.process_types(storage.clone())?;
         self.process_libfuncs(storage.clone())?;
-        self.process_functions(storage)?;
+        self.process_functions(storage.clone())?;
+        self.process_statements(storage)?;
         Ok(self.module.as_operation())
     }
 
