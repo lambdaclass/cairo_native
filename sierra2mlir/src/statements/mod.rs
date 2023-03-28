@@ -433,7 +433,7 @@ impl<'ctx> Compiler<'ctx> {
 
                         let name_without_generics = id.split('<').next().unwrap();
 
-                        // We ignore drop functions, even though they take arguments in sierra, since they are ignored during statement processing
+                        // We ignore drop functions, even though they take arguments in sierra, since they are ignored during statement processing and don't propagate data
                         if name_without_generics == "drop" {
                             continue;
                         } else if name_without_generics == "function_call" {
@@ -453,7 +453,9 @@ impl<'ctx> Compiler<'ctx> {
                             let arg_types = &storage
                                 .libfuncs
                                 .get(&id)
-                                .expect("LibFunc should have been registered")
+                                .unwrap_or_else(|| {
+                                    panic!("LibFunc {id} should have been registered")
+                                })
                                 .args;
                             let arg_indices = &invocation.args;
                             arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()

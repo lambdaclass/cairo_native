@@ -84,22 +84,22 @@ impl<'ctx> Compiler<'ctx> {
                     )?;
                 }
                 "store_temp" | "rename" => {
-                    self.create_libfunc_store_temp(func_decl, parent_block, storage.clone())?;
+                    self.create_identity_function(func_decl, parent_block, storage.clone())?;
                 }
                 "u8_const" => {
-                    self.create_libfunc_u8_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u8_const(func_decl, storage.clone());
                 }
                 "u16_const" => {
-                    self.create_libfunc_u16_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u16_const(func_decl, storage.clone());
                 }
                 "u32_const" => {
-                    self.create_libfunc_u32_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u32_const(func_decl, storage.clone());
                 }
                 "u64_const" => {
-                    self.create_libfunc_u64_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u64_const(func_decl, storage.clone());
                 }
                 "u128_const" => {
-                    self.create_libfunc_u128_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_u128_const(func_decl, storage.clone());
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
@@ -109,7 +109,7 @@ impl<'ctx> Compiler<'ctx> {
                     )?;
                 }
                 "upcast" => {
-                    self.create_libfunc_upcast(func_decl, parent_block, &mut storage.borrow_mut())?;
+                    self.create_libfunc_upcast(func_decl, parent_block, storage.clone())?;
                 }
                 _ => debug!(?func_decl, "unhandled libfunc"),
             }
@@ -277,7 +277,7 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Returns the given value, needed so its handled nicely when processing statements
     /// and the variable id gets assigned to the returned value.
-    pub fn create_libfunc_store_temp(
+    pub fn create_identity_function(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         parent_block: BlockRef<'ctx>,
@@ -542,14 +542,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_u8_const(
         &self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
+        self.register_nop(func_decl, storage.clone());
+
         let arg = match func_decl.long_id.generic_args.as_slice() {
             [GenericArg::Value(value)] => value.to_string(),
             _ => todo!(),
         };
 
-        storage.u8_consts.insert(
+        storage.borrow_mut().u8_consts.insert(
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
@@ -558,14 +560,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_u16_const(
         &self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
+        self.register_nop(func_decl, storage.clone());
+
         let arg = match func_decl.long_id.generic_args.as_slice() {
             [GenericArg::Value(value)] => value.to_string(),
             _ => todo!(),
         };
 
-        storage.u16_consts.insert(
+        storage.borrow_mut().u16_consts.insert(
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
@@ -574,14 +578,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_u32_const(
         &self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
+        self.register_nop(func_decl, storage.clone());
+
         let arg = match func_decl.long_id.generic_args.as_slice() {
             [GenericArg::Value(value)] => value.to_string(),
             _ => todo!(),
         };
 
-        storage.u32_consts.insert(
+        storage.borrow_mut().u32_consts.insert(
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
@@ -590,14 +596,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_u64_const(
         &self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
+        self.register_nop(func_decl, storage.clone());
+
         let arg = match func_decl.long_id.generic_args.as_slice() {
             [GenericArg::Value(value)] => value.to_string(),
             _ => todo!(),
         };
 
-        storage.u64_consts.insert(
+        storage.borrow_mut().u64_consts.insert(
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
@@ -606,14 +614,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_u128_const(
         &self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
+        self.register_nop(func_decl, storage.clone());
+
         let arg = match func_decl.long_id.generic_args.as_slice() {
             [GenericArg::Value(value)] => value.to_string(),
             _ => todo!(),
         };
 
-        storage.u128_consts.insert(
+        storage.borrow_mut().u128_consts.insert(
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
@@ -669,27 +679,31 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn create_libfunc_upcast(
-        &self,
+        &'ctx self,
         func_decl: &LibfuncDeclaration,
         parent_block: BlockRef<'ctx>,
-        storage: &mut Storage<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
 
         let src_sierra_type = storage
+            .borrow()
             .types
             .get(&match &func_decl.long_id.generic_args[0] {
                 GenericArg::Type(x) => x.id.to_string(),
                 _ => todo!("invalid generic kind"),
             })
-            .expect("type to exist");
+            .expect("type to exist")
+            .clone();
         let dst_sierra_type = storage
+            .borrow()
             .types
             .get(&match &func_decl.long_id.generic_args[1] {
                 GenericArg::Type(x) => x.id.to_string(),
                 _ => todo!("invalid generic kind"),
             })
-            .expect("type to exist");
+            .expect("type to exist")
+            .clone();
 
         let src_type = src_sierra_type.get_type();
         let dst_type = dst_sierra_type.get_type();
@@ -712,17 +726,20 @@ impl<'ctx> Compiler<'ctx> {
                     false,
                 )?;
 
-                storage.libfuncs.insert(
+                storage.borrow_mut().libfuncs.insert(
                     id,
                     FunctionDef {
-                        args: vec![src_sierra_type.clone()],
-                        return_types: vec![dst_sierra_type.clone()],
+                        args: vec![src_sierra_type],
+                        return_types: vec![dst_sierra_type],
                     },
                 );
 
                 parent_block.append_operation(func);
             }
-            Ordering::Equal => {}
+            Ordering::Equal => {
+                // Similar to store_local and rename, create an identity function for ease of dataflow processing, under the assumption the optimiser will optimise it out
+                self.create_identity_function(func_decl, parent_block, storage.clone())?;
+            }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }
 
