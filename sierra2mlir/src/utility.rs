@@ -7,7 +7,7 @@ use melior_next::ir::{
 
 use crate::{
     compiler::{Compiler, SierraType},
-    statements::{create_fn_signature, Variable},
+    statements::Variable,
 };
 use color_eyre::Result;
 
@@ -84,7 +84,8 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&args_types_with_locations);
         let block = region.append_block(block);
 
-        let mut current_value = Variable::param(0, block);
+        let argument = block.argument(0)?;
+        let mut current_value = Variable::Param { argument };
         let mut value_type = self.felt_type();
 
         let mut bit_width = current_value.get_value().r#type().get_width().unwrap();
@@ -95,7 +96,7 @@ impl<'ctx> Compiler<'ctx> {
         if bit_width != rounded_up_bitwidth {
             value_type = Type::integer(&self.context, rounded_up_bitwidth);
             let res = self.op_zext(&block, current_value.get_value(), value_type);
-            current_value = Variable::local(res, 0, block);
+            current_value = Variable::Local { op: res, result_idx: 0 };
         }
 
         bit_width = rounded_up_bitwidth;
@@ -193,4 +194,12 @@ impl<'ctx> Compiler<'ctx> {
         self.op_func_call(&block, "print_felt", &[value], &[])?;
         Ok(())
     }
+}
+
+pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
+    format!(
+        "({}) -> {}",
+        params.iter().map(|x| x.to_string()).join(", "),
+        &format!("({})", return_types.iter().map(|x| x.to_string()).join(", ")),
+    )
 }
