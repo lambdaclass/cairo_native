@@ -15,6 +15,7 @@ pub mod compiler;
 mod libfuncs;
 mod statements;
 pub mod types;
+mod userfuncs;
 mod utility;
 
 pub fn compile(

@@ -49,21 +49,19 @@ define internal { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i2
   ret { i256, i256 } %0
 }
 
-define { i256, i256 } @simple_simple_something(i256 %0) {
-  %2 = call { i256, i256 } @"dup<felt252>"(i256 %0)
-  %3 = extractvalue { i256, i256 } %2, 0
-  %4 = extractvalue { i256, i256 } %2, 1
-  %5 = call i256 @felt252_add(i256 %4, i256 2)
-  %6 = call i256 @felt252_sub(i256 %3, i256 2)
-  %7 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %5, i256 %6)
-  %8 = call { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %7)
-  ret { i256, i256 } %8
-}
+define internal { i256, i256 } @simple_simple_something(i256 %0) {
+  br label %2
 
-define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
-  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
-  store { i256, i256 } %3, ptr %0, align 4
-  ret void
+2:                                                ; preds = %1
+  %3 = phi i256 [ %0, %1 ]
+  %4 = call { i256, i256 } @"dup<felt252>"(i256 %3)
+  %5 = extractvalue { i256, i256 } %4, 0
+  %6 = extractvalue { i256, i256 } %4, 1
+  %7 = call i256 @felt252_add(i256 %6, i256 2)
+  %8 = call i256 @felt252_sub(i256 %5, i256 2)
+  %9 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %7, i256 %8)
+  %10 = call { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %9)
+  ret { i256, i256 } %10
 }
 
 !llvm.module.flags = !{!0}

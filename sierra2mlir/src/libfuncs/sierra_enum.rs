@@ -8,7 +8,7 @@ use tracing::debug;
 
 use crate::{
     compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
-    statements::create_fn_signature,
+    utility::create_fn_signature,
 };
 
 impl<'ctx> Compiler<'ctx> {
@@ -86,9 +86,13 @@ impl<'ctx> Compiler<'ctx> {
 
             {
                 let mut storage = storage.borrow_mut();
-                storage
-                    .functions
-                    .insert(id, FunctionDef { args: vec![arg_sierra_type.clone()], return_types: vec![enum_arg_type] });
+                storage.libfuncs.insert(
+                    id,
+                    FunctionDef {
+                        args: vec![arg_sierra_type.clone()],
+                        return_types: vec![enum_arg_type],
+                    },
+                );
             }
 
             parent_block.append_operation(func);

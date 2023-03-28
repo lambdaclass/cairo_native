@@ -115,7 +115,13 @@ impl<'ctx> Compiler<'ctx> {
                             _ => todo!(),
                         };
                         unique_enum_types.insert(gen_arg_type_id.clone());
-                        enum_variant_types.push(storage.types.get(&gen_arg_type_id).cloned().expect("type should exist"));
+                        enum_variant_types.push(
+                            storage
+                                .types
+                                .get(&gen_arg_type_id)
+                                .cloned()
+                                .expect("type should exist"),
+                        );
                     }
 
                     let enum_variant_sierra_types = unique_enum_types

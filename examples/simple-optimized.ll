@@ -49,7 +49,7 @@ define internal { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i2
   ret { i256, i256 } %0
 }
 
-define { i256, i256 } @simple_simple_something(i256 %0) {
+define internal { i256, i256 } @simple_simple_something(i256 %0) {
   %2 = call { i256, i256 } @"dup<felt252>"(i256 %0)
   %3 = extractvalue { i256, i256 } %2, 0
   %4 = extractvalue { i256, i256 } %2, 1
@@ -58,12 +58,6 @@ define { i256, i256 } @simple_simple_something(i256 %0) {
   %7 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %5, i256 %6)
   %8 = call { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %7)
   ret { i256, i256 } %8
-}
-
-define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
-  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
-  store { i256, i256 } %3, ptr %0, align 4
-  ret void
 }
 
 !llvm.module.flags = !{!0}

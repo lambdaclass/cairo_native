@@ -14,7 +14,7 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %3 : i256
   ^bb2:  // pred: ^bb0
     %4 = llvm.sub %0, %1  : i256
-    llvm.br ^bb1(%4 : i256) {operand_segment_sizes = array<i32: 1>}
+    llvm.br ^bb1(%4 : i256)
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.sub %arg0, %arg1  : i256
@@ -25,7 +25,7 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %3 : i256
   ^bb2:  // pred: ^bb0
     %4 = llvm.sub %0, %1  : i256
-    llvm.br ^bb1(%4 : i256) {operand_segment_sizes = array<i32: 1>}
+    llvm.br ^bb1(%4 : i256)
   }
   llvm.func internal @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
@@ -36,21 +36,18 @@ module attributes {llvm.data_layout = ""} {
   llvm.func internal @"store_temp<Tuple<felt252, felt252>>"(%arg0: !llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)> {
     llvm.return %arg0 : !llvm.struct<(i256, i256)>
   }
-  llvm.func @simple_simple_something(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.emit_c_interface} {
-    %0 = llvm.mlir.constant(2 : i256) : i256
-    %1 = llvm.call @"dup<felt252>"(%arg0) : (i256) -> !llvm.struct<(i256, i256)>
-    %2 = llvm.extractvalue %1[0] : !llvm.struct<(i256, i256)> 
-    %3 = llvm.extractvalue %1[1] : !llvm.struct<(i256, i256)> 
-    %4 = llvm.call @felt252_add(%3, %0) : (i256, i256) -> i256
-    %5 = llvm.mlir.constant(2 : i256) : i256
-    %6 = llvm.call @felt252_sub(%2, %5) : (i256, i256) -> i256
-    %7 = llvm.call @"struct_construct<Tuple<felt252, felt252>>"(%4, %6) : (i256, i256) -> !llvm.struct<(i256, i256)>
-    %8 = llvm.call @"store_temp<Tuple<felt252, felt252>>"(%7) : (!llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)>
-    llvm.return %8 : !llvm.struct<(i256, i256)>
-  }
-  llvm.func @_mlir_ciface_simple_simple_something(%arg0: !llvm.ptr<struct<(i256, i256)>>, %arg1: i256) attributes {llvm.emit_c_interface} {
-    %0 = llvm.call @simple_simple_something(%arg1) : (i256) -> !llvm.struct<(i256, i256)>
-    llvm.store %0, %arg0 : !llvm.ptr<struct<(i256, i256)>>
-    llvm.return
+  llvm.func internal @simple_simple_something(%arg0: i256) -> !llvm.struct<(i256, i256)> {
+    llvm.br ^bb1(%arg0 : i256)
+  ^bb1(%0: i256):  // pred: ^bb0
+    %1 = llvm.mlir.constant(2 : i256) : i256
+    %2 = llvm.call @"dup<felt252>"(%0) : (i256) -> !llvm.struct<(i256, i256)>
+    %3 = llvm.extractvalue %2[0] : !llvm.struct<(i256, i256)> 
+    %4 = llvm.extractvalue %2[1] : !llvm.struct<(i256, i256)> 
+    %5 = llvm.call @felt252_add(%4, %1) : (i256, i256) -> i256
+    %6 = llvm.mlir.constant(2 : i256) : i256
+    %7 = llvm.call @felt252_sub(%3, %6) : (i256, i256) -> i256
+    %8 = llvm.call @"struct_construct<Tuple<felt252, felt252>>"(%5, %7) : (i256, i256) -> !llvm.struct<(i256, i256)>
+    %9 = llvm.call @"store_temp<Tuple<felt252, felt252>>"(%8) : (!llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)>
+    llvm.return %9 : !llvm.struct<(i256, i256)>
   }
 }

@@ -7,7 +7,7 @@ use melior_next::ir::{
 
 use crate::{
     compiler::{Compiler, SierraType},
-    statements::{create_fn_signature, Variable},
+    statements::Variable,
 };
 use color_eyre::Result;
 
@@ -44,11 +44,8 @@ impl<'ctx> Compiler<'ctx> {
         let fmt_len = fmt.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
-        let arr_ty = Type::parse(
-            &self.context,
-            &format!("!llvm.array<{fmt_len} x {i8_type}>"),
-        )
-        .unwrap();
+        let arr_ty =
+            Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
         let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
@@ -85,7 +82,8 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&args_types_with_locations);
         let block = region.append_block(block);
 
-        let mut current_value = Variable::param(0, block);
+        let argument = block.argument(0)?;
+        let mut current_value = Variable::Param { argument };
         let mut value_type = self.felt_type();
 
         let mut bit_width = current_value.get_value().r#type().get_width().unwrap();
@@ -96,17 +94,14 @@ impl<'ctx> Compiler<'ctx> {
         if bit_width != rounded_up_bitwidth {
             value_type = Type::integer(&self.context, rounded_up_bitwidth);
             let res = self.op_zext(&block, current_value.get_value(), value_type);
-            current_value = Variable::local(res, 0, block);
+            current_value = Variable::Local { op: res, result_idx: 0 };
         }
 
         bit_width = rounded_up_bitwidth;
 
         while bit_width > 0 {
-            let shift_by_constant_op = self.op_const(
-                &block,
-                &bit_width.saturating_sub(32).to_string(),
-                value_type,
-            );
+            let shift_by_constant_op =
+                self.op_const(&block, &bit_width.saturating_sub(32).to_string(), value_type);
             let shift_by = shift_by_constant_op.result(0)?.into();
 
             let shift_op = self.op_shrs(&block, current_value.get_value(), shift_by);
@@ -149,13 +144,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let struct_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
-            .iter()
-            .map(|member_type| match member_type {
-                GenericArg::Type(type_id) => type_id,
-                _ => panic!(
-                    "Struct type declaration arguments after the first should all be resolved"
-                ),
+        let component_type_ids =
+            sierra_type_declaration.long_id.generic_args[1..].iter().map(|member_type| {
+                match member_type {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                }
             });
 
         let field_types = struct_type
@@ -206,4 +202,12 @@ const fn round_up(value: u32) -> u32 {
         power *= 2;
     }
     power
+}
+
+pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
+    format!(
+        "({}) -> {}",
+        params.iter().map(|x| x.to_string()).join(", "),
+        &format!("({})", return_types.iter().map(|x| x.to_string()).join(", ")),
+    )
 }

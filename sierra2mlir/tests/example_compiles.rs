@@ -25,5 +25,5 @@ impl_tests!(
     program,
     simple,
     types,
-    simple_enum,
+    simple_enum
 );

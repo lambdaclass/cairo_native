@@ -26,18 +26,14 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     let mut result: i32 = -1;
     unsafe {
-        engine
-            .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
-            .unwrap();
+        engine.invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()]).unwrap();
     };
 
     c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
         b.iter(|| {
             let mut result: i32 = -1;
             unsafe {
-                engine
-                    .invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()])
-                    .ok();
+                engine.invoke_packed("main", &mut [&mut result as *mut i32 as *mut ()]).ok();
                 black_box(result)
             };
         });
