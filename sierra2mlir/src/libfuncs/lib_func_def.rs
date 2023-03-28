@@ -7,7 +7,7 @@ use crate::compiler::SierraType;
 #[derive(Debug, Clone)]
 pub struct LibFuncArg<'ctx> {
     pub(crate) loc: usize,
-    pub(crate) ty: SierraType<'ctx>
+    pub(crate) ty: SierraType<'ctx>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,19 +31,28 @@ pub enum SierraLibFunc<'ctx> {
 
 impl<'ctx> SierraLibFunc<'ctx> {
     pub fn create_constant(ty: SierraType<'ctx>, value: String) -> SierraLibFunc<'ctx> {
-        Self::Constant(ConstantLibFunc{ty, value})
+        Self::Constant(ConstantLibFunc { ty, value })
     }
 
-    pub fn create_simple(args: Vec<SierraType<'ctx>>, return_types: Vec<SierraType<'ctx>>) -> SierraLibFunc<'ctx> {
-        Self::Function(LibFuncDef{
-            args: args.iter().enumerate().map(|(loc, ty)| LibFuncArg{loc, ty: ty.clone()}).collect_vec(),
+    pub fn create_simple(
+        args: Vec<SierraType<'ctx>>,
+        return_types: Vec<SierraType<'ctx>>,
+    ) -> SierraLibFunc<'ctx> {
+        Self::Function(LibFuncDef {
+            args: args
+                .iter()
+                .enumerate()
+                .map(|(loc, ty)| LibFuncArg { loc, ty: ty.clone() })
+                .collect_vec(),
             return_types: vec![return_types],
         })
     }
 
     pub fn get_args(&self) -> Vec<&LibFuncArg> {
         match self {
-            SierraLibFunc::Function(LibFuncDef{ args, return_types: _ }) => args.iter().collect_vec(),
+            SierraLibFunc::Function(LibFuncDef { args, return_types: _ }) => {
+                args.iter().collect_vec()
+            }
             SierraLibFunc::Constant(_) => vec![],
         }
     }

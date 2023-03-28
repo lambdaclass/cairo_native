@@ -15,7 +15,8 @@ use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Va
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
-    utility::create_fn_signature, libfuncs::lib_func_def::{SierraLibFunc, ConstantLibFunc, LibFuncDef},
+    libfuncs::lib_func_def::{ConstantLibFunc, LibFuncDef, SierraLibFunc},
+    utility::create_fn_signature,
 };
 
 pub struct BlockInfo<'ctx> {
@@ -233,27 +234,49 @@ impl<'ctx> Compiler<'ctx> {
                                     .get(&id)
                                     .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
                                 match libfunc_def {
-                                    SierraLibFunc::Function(LibFuncDef{args, return_types}) => {
-                                        let arg_values = args.iter().map(|a| variables.get(&invocation.args[a.loc].id).unwrap().get_value()).collect_vec();
+                                    SierraLibFunc::Function(LibFuncDef { args, return_types }) => {
+                                        let arg_values = args
+                                            .iter()
+                                            .map(|a| {
+                                                variables
+                                                    .get(&invocation.args[a.loc].id)
+                                                    .unwrap()
+                                                    .get_value()
+                                            })
+                                            .collect_vec();
                                         assert_eq!(return_types.len(), 1, "Libfunc with abnormal number of returns not handled properly");
-                                        let return_types = return_types[0].iter().map(SierraType::get_type).collect_vec();
-                                        let op = self.op_func_call(block, &id, &arg_values, &return_types)?;
+                                        let return_types = return_types[0]
+                                            .iter()
+                                            .map(SierraType::get_type)
+                                            .collect_vec();
+                                        let op = self.op_func_call(
+                                            block,
+                                            &id,
+                                            &arg_values,
+                                            &return_types,
+                                        )?;
                                         variables.extend(
                                             invocation.branches[0].results.iter().enumerate().map(
                                                 |(result_pos, var_id)| {
                                                     (
                                                         var_id.id,
-                                                        Variable::Local { op, result_idx: result_pos },
+                                                        Variable::Local {
+                                                            op,
+                                                            result_idx: result_pos,
+                                                        },
                                                     )
                                                 },
                                             ),
                                         );
-                                    },
-                                    SierraLibFunc::Constant(ConstantLibFunc{ty, value}) => {
+                                    }
+                                    SierraLibFunc::Constant(ConstantLibFunc { ty, value }) => {
                                         let op = self.op_const(block, value, ty.get_type());
                                         let var_id = &invocation.branches[0].results[0];
-                                        variables.insert(var_id.id, Variable::Local{ op, result_idx: 0});
-                                    },
+                                        variables.insert(
+                                            var_id.id,
+                                            Variable::Local { op, result_idx: 0 },
+                                        );
+                                    }
                                 }
                             }
                         }
