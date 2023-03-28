@@ -8,7 +8,7 @@ use tracing::debug;
 
 use crate::{
     compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
-    statements::create_fn_signature,
+    utility::create_fn_signature,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,9 +30,15 @@ impl<'ctx> Compiler<'ctx> {
 
             match name {
                 // no-ops
-                "revoke_ap_tracking" => continue,
-                "disable_ap_tracking" => continue,
-                "drop" => continue,
+                // NOTE jump stops being a nop if return types are stored
+                "branch_align"
+                | "revoke_ap_tracking"
+                | "disable_ap_tracking"
+                | "drop"
+                | "jump"
+                | "alloc_local"
+                | "finalize_locals" => self.register_nop(func_decl, storage.clone()),
+                "function_call" => continue, // Skip function call because it works differently than all the others
                 "felt252_const" => {
                     self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
                 }
@@ -59,6 +65,10 @@ impl<'ctx> Compiler<'ctx> {
                         storage.clone(),
                         BinaryOp::Mul,
                     )?;
+                }
+                "felt252_is_zero" => {
+                    // Note no actual function is created here, however types are registered
+                    self.register_libfunc_felt252_is_zero(func_decl, storage.clone());
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;
@@ -109,8 +119,17 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: Rc<RefCell<Storage<'ctx>>>) {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+        storage
+            .borrow_mut()
+            .libfuncs
+            .insert(id, FunctionDef { args: vec![], return_types: vec![] });
+    }
+
     pub fn create_libfunc_felt_const(
-        &self,
+        &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) {
@@ -119,10 +138,15 @@ impl<'ctx> Compiler<'ctx> {
             _ => unimplemented!("should always be value"),
         };
 
-        storage.felt_consts.insert(
+        let normalized_name =
             Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-                .to_string(),
-            arg,
+                .to_string();
+
+        storage.felt_consts.insert(normalized_name.clone(), arg);
+
+        storage.libfuncs.insert(
+            normalized_name,
+            FunctionDef { args: vec![], return_types: vec![SierraType::Simple(self.felt_type())] },
         );
     }
 
@@ -138,11 +162,8 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .cloned()
-                    .expect("type to exist");
+                let ty =
+                    storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist");
 
                 ty
             }
@@ -151,13 +172,10 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::Libfunc(_) => todo!(),
         };
 
-        let args = arg_type
-            .get_field_types()
-            .expect("arg should be a struct type and have field types");
-        let args_with_location = args
-            .iter()
-            .map(|x| (*x, Location::unknown(&self.context)))
-            .collect_vec();
+        let args =
+            arg_type.get_field_types().expect("arg should be a struct type and have field types");
+        let args_with_location =
+            args.iter().map(|x| (*x, Location::unknown(&self.context))).collect_vec();
 
         let region = Region::new();
 
@@ -185,7 +203,7 @@ impl<'ctx> Compiler<'ctx> {
 
         {
             let mut storage = storage.borrow_mut();
-            storage.functions.insert(
+            storage.libfuncs.insert(
                 id,
                 FunctionDef {
                     args: arg_type.get_field_sierra_types().unwrap().to_vec(),
@@ -233,10 +251,8 @@ impl<'ctx> Compiler<'ctx> {
                 result_ops.push(op_ref);
             }
 
-            let result_values: Vec<_> = result_ops
-                .iter()
-                .map(|x| x.result(0).map(Into::into))
-                .try_collect()?;
+            let result_values: Vec<_> =
+                result_ops.iter().map(|x| x.result(0).map(Into::into)).try_collect()?;
             self.op_return(&block, &result_values);
 
             block
@@ -245,23 +261,15 @@ impl<'ctx> Compiler<'ctx> {
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
         let fn_ty = create_fn_signature(
             &[struct_ty],
-            field_types
-                .iter()
-                .map(|x| x.get_type())
-                .collect::<Vec<_>>()
-                .as_slice(),
+            field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
         );
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage.functions.insert(
-            fn_id.into_owned(),
-            FunctionDef {
-                args: vec![struct_type],
-                return_types,
-            },
-        );
+        storage
+            .libfuncs
+            .insert(fn_id.into_owned(), FunctionDef { args: vec![struct_type], return_types });
 
         parent_block.append_operation(fn_op);
         Ok(())
@@ -277,15 +285,13 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
+        println!("Registering {}", id);
 
         let arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -318,12 +324,9 @@ impl<'ctx> Compiler<'ctx> {
 
         {
             let mut storage = storage.borrow_mut();
-            storage.functions.insert(
+            storage.libfuncs.insert(
                 id,
-                FunctionDef {
-                    args: vec![arg_type.clone()],
-                    return_types: vec![arg_type],
-                },
+                FunctionDef { args: vec![arg_type.clone()], return_types: vec![arg_type] },
             );
         }
 
@@ -344,10 +347,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -391,7 +391,7 @@ impl<'ctx> Compiler<'ctx> {
 
         {
             let mut storage = storage.borrow_mut();
-            storage.functions.insert(
+            storage.libfuncs.insert(
                 id,
                 FunctionDef {
                     args: vec![arg_type.clone()],
@@ -459,7 +459,7 @@ impl<'ctx> Compiler<'ctx> {
                     let res = self.op_sub(&block, res_result.into(), prime_value.into());
                     let res_value = res.result(0)?;
 
-                    self.op_br(&block, &end_block, &[res_value.into()])?;
+                    self.op_br(&block, &end_block, &[res_value.into()]);
                     block
                 });
 
@@ -485,7 +485,7 @@ impl<'ctx> Compiler<'ctx> {
                     let res = self.op_sub(&block, res_result.into(), prime_value.into());
                     let res_value = res.result(0)?;
 
-                    self.op_br(&block, &end_block, &[res_value.into()])?;
+                    self.op_br(&block, &end_block, &[res_value.into()]);
                     block
                 });
 
@@ -500,7 +500,7 @@ impl<'ctx> Compiler<'ctx> {
             }
             _ => {
                 let res = self.op_felt_modulo(&entry_block, res_result.into())?;
-                self.op_br(&entry_block, &end_block, &[res.result(0)?.into()])?;
+                self.op_br(&entry_block, &end_block, &[res.result(0)?.into()]);
             }
         };
 
@@ -512,7 +512,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        storage.borrow_mut().functions.insert(
+        storage.borrow_mut().libfuncs.insert(
             id,
             FunctionDef {
                 args: vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
@@ -522,6 +522,22 @@ impl<'ctx> Compiler<'ctx> {
 
         parent_block.append_operation(func);
         Ok(())
+    }
+
+    pub fn register_libfunc_felt252_is_zero(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: Rc<RefCell<Storage<'ctx>>>,
+    ) {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+        storage.borrow_mut().libfuncs.insert(
+            id,
+            FunctionDef {
+                args: vec![SierraType::Simple(self.felt_type())],
+                return_types: vec![], //TODO branching return types for libfuncs
+            },
+        );
     }
 
     pub fn create_libfunc_u8_const(
@@ -611,12 +627,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.bitwise_type(), self.u128_type(), self.u128_type()];
-        let data_out = &[
-            self.bitwise_type(),
-            self.u128_type(),
-            self.u128_type(),
-            self.u128_type(),
-        ];
+        let data_out = &[self.bitwise_type(), self.u128_type(), self.u128_type(), self.u128_type()];
 
         let region = Region::new();
         region.append_block({
@@ -636,11 +647,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.op_return(
                 &block,
-                &[
-                    and_ref.result(0)?.into(),
-                    xor_ref.result(0)?.into(),
-                    or_ref.result(0)?.into(),
-                ],
+                &[and_ref.result(0)?.into(), xor_ref.result(0)?.into(), or_ref.result(0)?.into()],
             );
 
             block
@@ -650,7 +657,7 @@ impl<'ctx> Compiler<'ctx> {
         let fn_ty = create_fn_signature(data_in, data_out);
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
-        storage.functions.insert(
+        storage.libfuncs.insert(
             fn_id.into_owned(),
             FunctionDef {
                 args: data_in.iter().copied().map(SierraType::Simple).collect(),
@@ -688,11 +695,7 @@ impl<'ctx> Compiler<'ctx> {
         let src_type = src_sierra_type.get_type();
         let dst_type = dst_sierra_type.get_type();
 
-        match src_type
-            .get_width()
-            .unwrap()
-            .cmp(&dst_type.get_width().unwrap())
-        {
+        match src_type.get_width().unwrap().cmp(&dst_type.get_width().unwrap()) {
             Ordering::Less => {
                 let region = Region::new();
                 let block = Block::new(&[(src_type, Location::unknown(&self.context))]);
@@ -710,7 +713,7 @@ impl<'ctx> Compiler<'ctx> {
                     false,
                 )?;
 
-                storage.functions.insert(
+                storage.libfuncs.insert(
                     id,
                     FunctionDef {
                         args: vec![src_sierra_type.clone()],

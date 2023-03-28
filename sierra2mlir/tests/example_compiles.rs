@@ -15,14 +15,4 @@ macro_rules! impl_tests {
     };
 }
 
-impl_tests!(
-    casts,
-    destructure,
-    felt_is_zero,
-    fib,
-    fib_simple,
-    print_test,
-    program,
-    simple,
-    types,
-);
+impl_tests!(casts, destructure, felt_is_zero, fib, fib_simple, print_test, program, simple, types,);
