@@ -138,11 +138,8 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .cloned()
-                    .expect("type to exist");
+                let ty =
+                    storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist");
 
                 ty
             }
@@ -151,13 +148,10 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::Libfunc(_) => todo!(),
         };
 
-        let args = arg_type
-            .get_field_types()
-            .expect("arg should be a struct type and have field types");
-        let args_with_location = args
-            .iter()
-            .map(|x| (*x, Location::unknown(&self.context)))
-            .collect_vec();
+        let args =
+            arg_type.get_field_types().expect("arg should be a struct type and have field types");
+        let args_with_location =
+            args.iter().map(|x| (*x, Location::unknown(&self.context))).collect_vec();
 
         let region = Region::new();
 
@@ -233,10 +227,8 @@ impl<'ctx> Compiler<'ctx> {
                 result_ops.push(op_ref);
             }
 
-            let result_values: Vec<_> = result_ops
-                .iter()
-                .map(|x| x.result(0).map(Into::into))
-                .try_collect()?;
+            let result_values: Vec<_> =
+                result_ops.iter().map(|x| x.result(0).map(Into::into)).try_collect()?;
             self.op_return(&block, &result_values);
 
             block
@@ -245,23 +237,15 @@ impl<'ctx> Compiler<'ctx> {
         let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
         let fn_ty = create_fn_signature(
             &[struct_ty],
-            field_types
-                .iter()
-                .map(|x| x.get_type())
-                .collect::<Vec<_>>()
-                .as_slice(),
+            field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
         );
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage.functions.insert(
-            fn_id.into_owned(),
-            FunctionDef {
-                args: vec![struct_type],
-                return_types,
-            },
-        );
+        storage
+            .functions
+            .insert(fn_id.into_owned(), FunctionDef { args: vec![struct_type], return_types });
 
         parent_block.append_operation(fn_op);
         Ok(())
@@ -282,10 +266,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -320,10 +301,7 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
             storage.functions.insert(
                 id,
-                FunctionDef {
-                    args: vec![arg_type.clone()],
-                    return_types: vec![arg_type],
-                },
+                FunctionDef { args: vec![arg_type.clone()], return_types: vec![arg_type] },
             );
         }
 
@@ -344,10 +322,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
-                let ty = storage
-                    .types
-                    .get(&type_id.id.to_string())
-                    .expect("type to exist");
+                let ty = storage.types.get(&type_id.id.to_string()).expect("type to exist");
 
                 ty.clone()
             }
@@ -428,7 +403,11 @@ impl<'ctx> Compiler<'ctx> {
         let res = match binary_op {
             BinaryOp::Add => self.op_add(&entry_block, lhs.into(), rhs.into()),
             BinaryOp::Sub => self.op_sub(&entry_block, lhs.into(), rhs.into()),
-            BinaryOp::Mul => self.op_mul(&entry_block, lhs.into(), rhs.into()),
+            BinaryOp::Mul => {
+                let lhs_zext = self.op_zext(&entry_block, lhs.into(), self.double_felt_type());
+                let rhs_zext = self.op_zext(&entry_block, rhs.into(), self.double_felt_type());
+                self.op_mul(&entry_block, lhs_zext.result(0)?.into(), rhs_zext.result(0)?.into())
+            }
             BinaryOp::Div => todo!(),
         };
         let res_result = res.result(0)?;
@@ -500,6 +479,15 @@ impl<'ctx> Compiler<'ctx> {
             }
             _ => {
                 let res = self.op_felt_modulo(&entry_block, res_result.into())?;
+
+                // Truncate to i256 after a multiplication.
+                let res = match binary_op {
+                    BinaryOp::Mul => {
+                        self.op_trunc(&entry_block, res.result(0)?.into(), self.felt_type())
+                    }
+                    _ => res,
+                };
+
                 self.op_br(&entry_block, &end_block, &[res.result(0)?.into()])?;
             }
         };
@@ -611,12 +599,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.bitwise_type(), self.u128_type(), self.u128_type()];
-        let data_out = &[
-            self.bitwise_type(),
-            self.u128_type(),
-            self.u128_type(),
-            self.u128_type(),
-        ];
+        let data_out = &[self.bitwise_type(), self.u128_type(), self.u128_type(), self.u128_type()];
 
         let region = Region::new();
         region.append_block({
@@ -636,11 +619,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.op_return(
                 &block,
-                &[
-                    and_ref.result(0)?.into(),
-                    xor_ref.result(0)?.into(),
-                    or_ref.result(0)?.into(),
-                ],
+                &[and_ref.result(0)?.into(), xor_ref.result(0)?.into(), or_ref.result(0)?.into()],
             );
 
             block
@@ -688,11 +667,7 @@ impl<'ctx> Compiler<'ctx> {
         let src_type = src_sierra_type.get_type();
         let dst_type = dst_sierra_type.get_type();
 
-        match src_type
-            .get_width()
-            .unwrap()
-            .cmp(&dst_type.get_width().unwrap())
-        {
+        match src_type.get_width().unwrap().cmp(&dst_type.get_width().unwrap()) {
             Ordering::Less => {
                 let region = Region::new();
                 let block = Block::new(&[(src_type, Location::unknown(&self.context))]);

@@ -28,10 +28,7 @@ pub struct Compiler<'ctx> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
-    Struct {
-        ty: Type<'ctx>,
-        field_types: Vec<Self>,
-    },
+    Struct { ty: Type<'ctx>, field_types: Vec<Self> },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -141,13 +138,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self {
-            code,
-            program,
-            context,
-            module,
-            main_print,
-        })
+        Ok(Self { code, program, context, module, main_print })
     }
 }
 
@@ -396,9 +387,9 @@ impl<'ctx> Compiler<'ctx> {
     /// Does modulo prime.
     pub fn op_felt_modulo<'a>(&self, block: &'a Block, val: Value) -> Result<OperationRef<'a>> {
         let prime = self.prime_constant(block);
-        let prime_val = prime.result(0)?.into();
+        let prime_val: Value = prime.result(0)?.into();
 
-        Ok(match val.r#type().get_width().unwrap().cmp(&252) {
+        Ok(match val.r#type().get_width().unwrap().cmp(&prime_val.r#type().get_width().unwrap()) {
             // If num_bits(value) < 252, then no modulo is needed (already in range).
             Ordering::Less => {
                 // TODO: Remove this modulo when  (it is not necessary).
@@ -425,16 +416,8 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
-        attrs.push(NamedAttribute::new_parsed(
-            &self.context,
-            "function_type",
-            function_type,
-        )?);
-        attrs.push(NamedAttribute::new_parsed(
-            &self.context,
-            "sym_name",
-            &format!("\"{name}\""),
-        )?);
+        attrs.push(NamedAttribute::new_parsed(&self.context, "function_type", function_type)?);
+        attrs.push(NamedAttribute::new_parsed(&self.context, "sym_name", &format!("\"{name}\""))?);
 
         if !public {
             attrs.push(NamedAttribute::new_parsed(
@@ -445,19 +428,13 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         if emit_c_interface {
-            attrs.push(NamedAttribute::new_parsed(
-                &self.context,
-                "llvm.emit_c_interface",
-                "unit",
-            )?);
+            attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.emit_c_interface", "unit")?);
         }
 
-        Ok(
-            operation::Builder::new("func.func", Location::unknown(&self.context))
-                .add_attributes(&attrs)
-                .add_regions(regions)
-                .build(),
-        )
+        Ok(operation::Builder::new("func.func", Location::unknown(&self.context))
+            .add_attributes(&attrs)
+            .add_regions(regions)
+            .build())
     }
 
     pub fn op_return<'a>(&self, block: &'a Block, result: &[Value]) -> OperationRef<'a> {
@@ -486,11 +463,7 @@ impl<'ctx> Compiler<'ctx> {
         array_size: usize,
         // align: usize,
     ) -> Result<OperationRef<'a>> {
-        let size = self.op_const(
-            block,
-            &array_size.to_string(),
-            Type::integer(&self.context, 64),
-        );
+        let size = self.op_const(block, &array_size.to_string(), Type::integer(&self.context, 64));
         let size_res = size.result(0)?.into();
         Ok(block.append_operation(
             operation::Builder::new("llvm.alloca", Location::unknown(&self.context))
@@ -780,11 +753,7 @@ impl<'ctx> Compiler<'ctx> {
                 let func_call = self.op_func_call(
                     &else_block,
                     "fib",
-                    &[
-                        arg_b.into(),
-                        a_plus_b_mod_res.into(),
-                        n_minus_1_mod_res.into(),
-                    ],
+                    &[arg_b.into(), a_plus_b_mod_res.into(), n_minus_1_mod_res.into()],
                     &[felt_type, felt_type],
                 )?;
 
@@ -1078,10 +1047,7 @@ impl<'ctx> Compiler<'ctx> {
                         &self.context,
                         &[
                             ("kernel", "@kernels::@kernel1"),
-                            (
-                                "operand_segment_sizes",
-                                "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>",
-                            ),
+                            ("operand_segment_sizes", "array<i32: 0, 1, 1, 1, 1, 1, 1, 1, 2>"),
                         ],
                     )?)
                     .add_operands(&[
