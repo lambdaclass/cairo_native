@@ -29,4 +29,3 @@ rename<felt252>([4]) -> ([7]);
 return([7]);
 
 felt_is_zero::felt_is_zero::mul_if_not_zero@0([0]: felt252) -> (felt252);
-

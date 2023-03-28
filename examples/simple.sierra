@@ -18,4 +18,3 @@ store_temp<Tuple<felt252, felt252>>([6]) -> ([7]);
 return([7]);
 
 simple::simple::something@0([0]: felt252) -> (Tuple<felt252, felt252>);
-
