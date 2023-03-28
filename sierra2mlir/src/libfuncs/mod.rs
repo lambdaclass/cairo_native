@@ -3,7 +3,7 @@ use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, TypeLike, Value};
 use tracing::debug;
 
 use crate::{

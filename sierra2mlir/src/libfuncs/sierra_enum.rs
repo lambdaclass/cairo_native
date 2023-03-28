@@ -1,13 +1,11 @@
-use std::{cell::RefCell, cmp::Ordering, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
-use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
-use tracing::debug;
+use melior_next::ir::{Block, BlockRef, Region, Value};
 
 use crate::{
-    compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
+    compiler::{Compiler, FunctionDef, SierraType, Storage},
     utility::create_fn_signature,
 };
 
