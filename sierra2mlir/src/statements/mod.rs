@@ -105,7 +105,7 @@ impl<'ctx> Compiler<'ctx> {
             // Variables holds the most recent value associated with a variable id as we progress through the block
             // Initially it only holds the blocks arguments
             let mut variables: HashMap<u64, Variable> = HashMap::new();
-            for (arg_position, var_id) in block_info.variables_at_start.keys().enumerate() {
+            for (arg_position, var_id) in block_info.variables_at_start.keys().sorted().enumerate() {
                 let argument = block.argument(arg_position)?;
                 variables.insert(*var_id, Variable::Param { argument });
             }
