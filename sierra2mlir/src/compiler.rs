@@ -390,7 +390,7 @@ impl<'ctx> Compiler<'ctx> {
         let prime = self.prime_constant(block);
         let prime_val: Value = prime.result(0)?.into();
 
-        Ok(match val.r#type().get_width().unwrap().cmp(&252) {
+        Ok(match val.r#type().get_width().unwrap().cmp(&prime_val.r#type().get_width().unwrap()) {
             // If num_bits(value) < 252, then no modulo is needed (already in range).
             Ordering::Less => {
                 // TODO: Remove this modulo when  (it is not necessary).
