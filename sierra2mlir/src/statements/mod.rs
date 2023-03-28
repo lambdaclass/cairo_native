@@ -15,7 +15,7 @@ use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Va
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
-    utility::create_fn_signature,
+    utility::create_fn_signature, libfuncs::lib_func_def::{SierraLibFunc, ConstantLibFunc, LibFuncDef},
 };
 
 pub struct BlockInfo<'ctx> {
@@ -124,13 +124,6 @@ impl<'ctx> Compiler<'ctx> {
                         let mut jump_processed = false;
                         match name_without_generics {
                             "disable_ap_tracking" | "drop" | "branch_align" => {}
-                            "felt252_const" => {
-                                let felt_const =
-                                    storage.felt_consts.get(&id).expect("constant should exist");
-                                let op = self.op_felt_const(block, felt_const);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
                             "jump" => {
                                 let target_block_info = match &invocation.branches[0].target {
                                     GenBranchTarget::Fallthrough => {
@@ -147,41 +140,6 @@ impl<'ctx> Compiler<'ctx> {
                                     .collect_vec();
                                 self.op_br(block, &target_block_info.block, &operand_values);
                                 jump_processed = true;
-                            }
-                            "u8_const" => {
-                                let value =
-                                    storage.u8_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u8_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u16_const" => {
-                                let value =
-                                    storage.u16_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u16_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u32_const" => {
-                                let value =
-                                    storage.u32_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u32_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u64_const" => {
-                                let value =
-                                    storage.u64_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u64_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u128_const" => {
-                                let value =
-                                    storage.u128_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u128_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
                             }
                             "felt252_is_zero" => {
                                 let felt_op_zero = self.op_felt_const(block, "0");
@@ -274,27 +232,29 @@ impl<'ctx> Compiler<'ctx> {
                                     .libfuncs
                                     .get(&id)
                                     .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
-                                let args = invocation
-                                    .args
-                                    .iter()
-                                    .map(|id| variables.get(&id.id).unwrap().get_value())
-                                    .collect_vec();
-                                let return_types = libfunc_def
-                                    .return_types
-                                    .iter()
-                                    .map(|t| t.get_type())
-                                    .collect_vec();
-                                let op = self.op_func_call(block, &id, &args, &return_types)?;
-                                variables.extend(
-                                    invocation.branches[0].results.iter().enumerate().map(
-                                        |(result_pos, var_id)| {
-                                            (
-                                                var_id.id,
-                                                Variable::Local { op, result_idx: result_pos },
-                                            )
-                                        },
-                                    ),
-                                );
+                                match libfunc_def {
+                                    SierraLibFunc::Function(LibFuncDef{args, return_types}) => {
+                                        let arg_values = args.iter().map(|a| variables.get(&invocation.args[a.loc].id).unwrap().get_value()).collect_vec();
+                                        assert_eq!(return_types.len(), 1, "Libfunc with abnormal number of returns not handled properly");
+                                        let return_types = return_types[0].iter().map(SierraType::get_type).collect_vec();
+                                        let op = self.op_func_call(block, &id, &arg_values, &return_types)?;
+                                        variables.extend(
+                                            invocation.branches[0].results.iter().enumerate().map(
+                                                |(result_pos, var_id)| {
+                                                    (
+                                                        var_id.id,
+                                                        Variable::Local { op, result_idx: result_pos },
+                                                    )
+                                                },
+                                            ),
+                                        );
+                                    },
+                                    SierraLibFunc::Constant(ConstantLibFunc{ty, value}) => {
+                                        let op = self.op_const(block, value, ty.get_type());
+                                        let var_id = &invocation.branches[0].results[0];
+                                        variables.insert(var_id.id, Variable::Local{ op, result_idx: 0});
+                                    },
+                                }
                             }
                         }
 
@@ -433,10 +393,7 @@ impl<'ctx> Compiler<'ctx> {
 
                         let name_without_generics = id.split('<').next().unwrap();
 
-                        // We ignore drop functions, even though they take arguments in sierra, since they are ignored during statement processing and don't propagate data
-                        if name_without_generics == "drop" {
-                            continue;
-                        } else if name_without_generics == "function_call" {
+                        if name_without_generics == "function_call" {
                             let callee_name = id
                                 .strip_prefix("function_call<user@")
                                 .unwrap()
@@ -450,15 +407,16 @@ impl<'ctx> Compiler<'ctx> {
                             let arg_indices = &invocation.args;
                             arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
                         } else {
-                            let arg_types = &storage
+                            storage
                                 .libfuncs
                                 .get(&id)
                                 .unwrap_or_else(|| {
                                     panic!("LibFunc {id} should have been registered")
                                 })
-                                .args;
-                            let arg_indices = &invocation.args;
-                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                                .get_args()
+                                .iter()
+                                .map(|arg| (&invocation.args[arg.loc], &arg.ty))
+                                .collect_vec()
                         }
                     }
                     GenStatement::Return(ret) => {

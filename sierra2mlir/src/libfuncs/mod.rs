@@ -7,9 +7,13 @@ use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
 use tracing::debug;
 
 use crate::{
-    compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
+    compiler::{CmpOp, Compiler, SierraType, Storage},
     utility::create_fn_signature,
 };
+
+use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
+
+pub mod lib_func_def;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
@@ -40,7 +44,7 @@ impl<'ctx> Compiler<'ctx> {
                 | "finalize_locals" => self.register_nop(func_decl, storage.clone()),
                 "function_call" => continue, // Skip function call because it works differently than all the others
                 "felt252_const" => {
-                    self.create_libfunc_felt_const(func_decl, &mut storage.borrow_mut());
+                    self.create_libfunc_int_const(func_decl, self.felt_type(), storage.clone());
                 }
                 "felt252_add" => {
                     self.create_libfunc_felt_binary_op(
@@ -87,19 +91,19 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_identity_function(func_decl, parent_block, storage.clone())?;
                 }
                 "u8_const" => {
-                    self.create_libfunc_u8_const(func_decl, storage.clone());
+                    self.create_libfunc_int_const(func_decl, self.u8_type(), storage.clone());
                 }
                 "u16_const" => {
-                    self.create_libfunc_u16_const(func_decl, storage.clone());
+                    self.create_libfunc_int_const(func_decl, self.u16_type(), storage.clone());
                 }
                 "u32_const" => {
-                    self.create_libfunc_u32_const(func_decl, storage.clone());
+                    self.create_libfunc_int_const(func_decl, self.u32_type(), storage.clone());
                 }
                 "u64_const" => {
-                    self.create_libfunc_u64_const(func_decl, storage.clone());
+                    self.create_libfunc_int_const(func_decl, self.u64_type(), storage.clone());
                 }
                 "u128_const" => {
-                    self.create_libfunc_u128_const(func_decl, storage.clone());
+                    self.create_libfunc_int_const(func_decl, self.u128_type(), storage.clone());
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
@@ -122,31 +126,25 @@ impl<'ctx> Compiler<'ctx> {
     fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: Rc<RefCell<Storage<'ctx>>>) {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
-        storage
-            .borrow_mut()
-            .libfuncs
-            .insert(id, FunctionDef { args: vec![], return_types: vec![] });
+        storage.borrow_mut().libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![]));
     }
 
-    pub fn create_libfunc_felt_const(
+    pub fn create_libfunc_int_const(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        storage: &mut Storage<'ctx>,
+        ty: Type<'ctx>,
+        storage: Rc<RefCell<Storage<'ctx>>>,
     ) {
-        let arg = match &func_decl.long_id.generic_args[0] {
-            GenericArg::Value(value) => value.to_string(),
-            _ => unimplemented!("should always be value"),
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => unreachable!("Expected generic arg of const creation function to be a Value"),
         };
 
-        let normalized_name =
-            Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-                .to_string();
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
 
-        storage.felt_consts.insert(normalized_name.clone(), arg);
-
-        storage.libfuncs.insert(
-            normalized_name,
-            FunctionDef { args: vec![], return_types: vec![SierraType::Simple(self.felt_type())] },
+        storage.borrow_mut().libfuncs.insert(
+            id,
+            SierraLibFunc::create_constant(SierraType::Simple(ty), arg)
         );
     }
 
@@ -205,10 +203,10 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
             storage.libfuncs.insert(
                 id,
-                FunctionDef {
-                    args: arg_type.get_field_sierra_types().unwrap().to_vec(),
-                    return_types: vec![arg_type],
-                },
+                SierraLibFunc::create_simple(
+                    arg_type.get_field_sierra_types().unwrap().to_vec(),
+                    vec![arg_type],
+                ),
             );
         }
 
@@ -267,9 +265,10 @@ impl<'ctx> Compiler<'ctx> {
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage
-            .libfuncs
-            .insert(fn_id.into_owned(), FunctionDef { args: vec![struct_type], return_types });
+        storage.libfuncs.insert(
+            fn_id.into_owned(),
+            SierraLibFunc::create_simple(vec![struct_type], return_types),
+        );
 
         parent_block.append_operation(fn_op);
         Ok(())
@@ -323,10 +322,9 @@ impl<'ctx> Compiler<'ctx> {
 
         {
             let mut storage = storage.borrow_mut();
-            storage.libfuncs.insert(
-                id,
-                FunctionDef { args: vec![arg_type.clone()], return_types: vec![arg_type] },
-            );
+            storage
+                .libfuncs
+                .insert(id, SierraLibFunc::create_simple(vec![arg_type.clone()], vec![arg_type]));
         }
 
         parent_block.append_operation(func);
@@ -392,10 +390,10 @@ impl<'ctx> Compiler<'ctx> {
             let mut storage = storage.borrow_mut();
             storage.libfuncs.insert(
                 id,
-                FunctionDef {
-                    args: vec![arg_type.clone()],
-                    return_types: vec![arg_type.clone(), arg_type],
-                },
+                SierraLibFunc::create_simple(
+                    vec![arg_type.clone()],
+                    vec![arg_type.clone(), arg_type],
+                ),
             );
         }
 
@@ -526,10 +524,10 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.borrow_mut().libfuncs.insert(
             id,
-            FunctionDef {
-                args: vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
-                return_types: vec![sierra_felt_type],
-            },
+            SierraLibFunc::create_simple(
+                vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
+                vec![sierra_felt_type],
+            ),
         );
 
         parent_block.append_operation(func);
@@ -545,100 +543,10 @@ impl<'ctx> Compiler<'ctx> {
             .to_string();
         storage.borrow_mut().libfuncs.insert(
             id,
-            FunctionDef {
-                args: vec![SierraType::Simple(self.felt_type())],
-                return_types: vec![], //TODO branching return types for libfuncs
-            },
-        );
-    }
-
-    pub fn create_libfunc_u8_const(
-        &self,
-        func_decl: &LibfuncDeclaration,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) {
-        self.register_nop(func_decl, storage.clone());
-
-        let arg = match func_decl.long_id.generic_args.as_slice() {
-            [GenericArg::Value(value)] => value.to_string(),
-            _ => todo!(),
-        };
-
-        storage.borrow_mut().u8_consts.insert(
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
-            arg,
-        );
-    }
-
-    pub fn create_libfunc_u16_const(
-        &self,
-        func_decl: &LibfuncDeclaration,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) {
-        self.register_nop(func_decl, storage.clone());
-
-        let arg = match func_decl.long_id.generic_args.as_slice() {
-            [GenericArg::Value(value)] => value.to_string(),
-            _ => todo!(),
-        };
-
-        storage.borrow_mut().u16_consts.insert(
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
-            arg,
-        );
-    }
-
-    pub fn create_libfunc_u32_const(
-        &self,
-        func_decl: &LibfuncDeclaration,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) {
-        self.register_nop(func_decl, storage.clone());
-
-        let arg = match func_decl.long_id.generic_args.as_slice() {
-            [GenericArg::Value(value)] => value.to_string(),
-            _ => todo!(),
-        };
-
-        storage.borrow_mut().u32_consts.insert(
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
-            arg,
-        );
-    }
-
-    pub fn create_libfunc_u64_const(
-        &self,
-        func_decl: &LibfuncDeclaration,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) {
-        self.register_nop(func_decl, storage.clone());
-
-        let arg = match func_decl.long_id.generic_args.as_slice() {
-            [GenericArg::Value(value)] => value.to_string(),
-            _ => todo!(),
-        };
-
-        storage.borrow_mut().u64_consts.insert(
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
-            arg,
-        );
-    }
-
-    pub fn create_libfunc_u128_const(
-        &self,
-        func_decl: &LibfuncDeclaration,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) {
-        self.register_nop(func_decl, storage.clone());
-
-        let arg = match func_decl.long_id.generic_args.as_slice() {
-            [GenericArg::Value(value)] => value.to_string(),
-            _ => todo!(),
-        };
-
-        storage.borrow_mut().u128_consts.insert(
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
-            arg,
+            SierraLibFunc::Function(LibFuncDef {
+                args: vec![LibFuncArg { loc: 0, ty: SierraType::Simple(self.felt_type()) }],
+                return_types: vec![vec![], vec![SierraType::Simple(self.felt_type())]],
+            }),
         );
     }
 
@@ -648,16 +556,12 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let data_in = &[self.bitwise_type(), self.u128_type(), self.u128_type()];
-        let data_out = &[self.bitwise_type(), self.u128_type(), self.u128_type(), self.u128_type()];
+        let data_in = &[self.u128_type(), self.u128_type()];
+        let data_out = &[self.u128_type(), self.u128_type(), self.u128_type()];
 
         let region = Region::new();
         region.append_block({
-            let block = Block::new(&[
-                (data_in[0], Location::unknown(&self.context)),
-                (data_in[1], Location::unknown(&self.context)),
-                (data_in[2], Location::unknown(&self.context)),
-            ]);
+            let block = self.new_block(data_in);
 
             let lhs = block.argument(0)?;
             let rhs = block.argument(1)?;
@@ -681,10 +585,10 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             fn_id.into_owned(),
-            FunctionDef {
-                args: data_in.iter().copied().map(SierraType::Simple).collect(),
-                return_types: data_out.iter().copied().map(SierraType::Simple).collect(),
-            },
+            SierraLibFunc::Function(LibFuncDef{
+                args: vec![LibFuncArg{loc: 1, ty: SierraType::Simple(data_in[0])}, LibFuncArg{loc: 2, ty: SierraType::Simple(data_in[1])}],
+                return_types: vec![data_out.iter().copied().map(SierraType::Simple).collect_vec()],
+            }),
         );
 
         parent_block.append_operation(fn_op);
@@ -741,10 +645,10 @@ impl<'ctx> Compiler<'ctx> {
 
                 storage.borrow_mut().libfuncs.insert(
                     id,
-                    FunctionDef {
-                        args: vec![src_sierra_type],
-                        return_types: vec![dst_sierra_type],
-                    },
+                    SierraLibFunc::create_simple(
+                        vec![src_sierra_type],
+                        vec![dst_sierra_type],
+                    ),
                 );
 
                 parent_block.append_operation(func);
