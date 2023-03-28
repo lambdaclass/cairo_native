@@ -450,7 +450,6 @@ impl<'ctx> Compiler<'ctx> {
                             let arg_indices = &invocation.args;
                             arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
                         } else {
-                            println!("Searching for {id}");
                             let arg_types = &storage
                                 .libfuncs
                                 .get(&id)

@@ -285,7 +285,6 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
-        println!("Registering {}", id);
 
         let arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
