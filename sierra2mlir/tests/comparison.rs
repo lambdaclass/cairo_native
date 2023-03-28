@@ -73,7 +73,7 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
     let sierra_program = ProgramParser::new().parse(sierra_code).unwrap();
 
     let runner =
-        SierraCasmRunner::new(sierra_program, None).with_context(|| "Failed setting up runner.")?;
+        SierraCasmRunner::new(sierra_program, false).with_context(|| "Failed setting up runner.")?;
 
     runner
         .run_function("::main", &[], None)
