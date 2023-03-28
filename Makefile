@@ -22,9 +22,11 @@ build-examples: check-mlir
 	cargo r -- compile examples/print_test.sierra -o examples/print_test.mlir -m
 	cargo r -- compile examples/simple.sierra -o examples/simple.mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
+	cargo r -- compile examples/felt_is_zero.sierra -o examples/felt_is_zero.mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir -o examples/simple.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir -o examples/simple-optimized.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/print_test.mlir -o examples/print_test.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/felt_is_zero.mlir -o examples/felt_is_zero.ll
 
 book:
 	mdbook serve docs
