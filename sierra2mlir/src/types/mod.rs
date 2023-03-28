@@ -95,10 +95,10 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "Enum" => {
                     // https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/basic-constructs/unions.html#tagged-unions
-                    dbg!(type_decl);
 
                     // in case the enum has variants with the same type, just store a uniqued one.
                     let mut unique_enum_types = HashSet::new();
+                    // all the enum variant types, even repeated, for later use when storing the variant value.
                     let mut enum_variant_types = vec![];
 
                     let _user_type = match &type_decl.long_id.generic_args[0] {

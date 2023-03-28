@@ -192,6 +192,10 @@ impl<'ctx> Compiler<'ctx> {
         Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
     }
 
+    pub fn llvm_ptr_type(&self) -> Type {
+        Type::parse(&self.context, "!llvm.ptr").unwrap()
+    }
+
     pub fn felt_type(&self) -> Type {
         Type::integer(&self.context, 256)
     }
@@ -501,6 +505,38 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    /// creates a llvm struct allocating on the stack
+    ///
+    /// use getelementptr instead of extractvalue
+    pub fn op_llvm_struct_alloca<'a>(
+        &self,
+        block: &'a Block,
+        types: &[Type],
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_alloca(
+            block,
+            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
+            1,
+        )
+    }
+
+    /// bitcasts a type into another
+    ///
+    /// https://mlir.llvm.org/docs/Dialects/LLVM/#llvmbitcast-mlirllvmbitcastop
+    pub fn op_llvm_bitcast<'a>(
+        &self,
+        block: &'a Block,
+        value: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.bitcast", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
     pub fn op_llvm_alloca<'a>(
         &self,
         block: &'a Block,
@@ -520,7 +556,7 @@ impl<'ctx> Compiler<'ctx> {
                     ],
                 )?)
                 .add_operands(&[size_res])
-                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .add_results(&[self.llvm_ptr_type()])
                 .build(),
         ))
     }
@@ -549,6 +585,21 @@ impl<'ctx> Compiler<'ctx> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.store", Location::unknown(&self.context))
                 .add_operands(&[value, addr])
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_load<'a>(
+        &self,
+        block: &'a Block,
+        addr: Value,
+        value_type: Type,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.load", Location::unknown(&self.context))
+                .add_operands(&[addr])
+                .add_results(&[value_type])
                 .build(),
         ))
     }
@@ -643,6 +694,27 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("position", &format!("array<i64: {}>", index))?
                 ])
                 .add_operands(&[struct_value])
+                .add_results(&[value_type])
+                .build(),
+        ))
+    }
+
+    /// llvm getelementptr with a constant offset
+    pub fn op_llvm_gep<'a>(
+        &self,
+        block: &'a Block,
+        index: usize,
+        struct_value: Value,
+        value_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
+                .add_attributes(&[
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", index))?,
+                    self.named_attribute("elem_type", &value_type.to_string())?,
+                    self.named_attribute("inbounds", "unit")?,
+                ])
+                .add_operands(&[struct_value]) // base
                 .add_results(&[value_type])
                 .build(),
         ))

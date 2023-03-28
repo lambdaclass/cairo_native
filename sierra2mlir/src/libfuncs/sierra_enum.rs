@@ -58,19 +58,27 @@ impl<'ctx> Compiler<'ctx> {
             let block = region
                 .append_block(Block::new(&[arg_sierra_type.get_type_location(&self.context)]));
 
-            let enum_alloca_op = self.op_llvm_struct(&block, &[*tag_type, *storage_type]);
-            let enum_value: Value = enum_alloca_op.result(0)?.into();
+            let enum_variant_value = block.argument(0)?;
+
+            let enum_alloca_op = self.op_llvm_struct_alloca(&block, &[*tag_type, *storage_type])?;
+            let enum_ptr: Value = enum_alloca_op.result(0)?.into();
 
             let tag_op = self.op_const(&block, &enum_tag, *tag_type);
             let tag_op_value = tag_op.result(0)?;
 
-            self.op_llvm_insertvalue(&block, 0, enum_value, tag_op_value.into(), *ty)?;
+            let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, self.llvm_ptr_type())?;
+            let tag_ptr = tag_ptr_op.result(0)?;
 
-            // TODO: store the provided value, bitcasting to the array.
+            self.op_llvm_store(&block, tag_op_value.into(), tag_ptr.into())?;
 
-            self.op_return(&block, &[enum_value]);
+            let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, self.llvm_ptr_type())?;
+            let variant_ptr = variant_ptr_op.result(0)?;
 
-            // get the variant type for this init, it will be the type of the argument.
+            self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;
+
+            let enum_value_op = self.op_llvm_load(&block, enum_ptr, *ty)?;
+
+            self.op_return(&block, &[enum_value_op.result(0)?.into()]);
 
             let function_type = create_fn_signature(&[arg_sierra_type.get_type()], &[*ty]);
 
@@ -80,7 +88,7 @@ impl<'ctx> Compiler<'ctx> {
                 let mut storage = storage.borrow_mut();
                 storage
                     .functions
-                    .insert(id, FunctionDef { args: vec![], return_types: vec![enum_arg_type] });
+                    .insert(id, FunctionDef { args: vec![arg_sierra_type.clone()], return_types: vec![enum_arg_type] });
             }
 
             parent_block.append_operation(func);
