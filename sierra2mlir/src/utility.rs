@@ -21,8 +21,8 @@ impl<'ctx> Compiler<'ctx> {
             .add_attributes(&NamedAttribute::new_parsed_vec(
                 &self.context,
                 &[
-                    ("sym_name", "\"printf\""),
-                    ("function_type", "!llvm.func<i32 (!llvm.ptr, ...)>"),
+                    ("sym_name", "\"dprintf\""),
+                    ("function_type", "!llvm.func<i32 (i32, !llvm.ptr, ...)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -44,11 +44,8 @@ impl<'ctx> Compiler<'ctx> {
         let fmt_len = fmt.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
-        let arr_ty = Type::parse(
-            &self.context,
-            &format!("!llvm.array<{fmt_len} x {i8_type}>"),
-        )
-        .unwrap();
+        let arr_ty =
+            Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
         let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
@@ -68,10 +65,12 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
 
-        let mut args = vec![addr];
+        let target_fd = self.op_u32_const(&block, "1");
+
+        let mut args = vec![target_fd.result(0)?.into(), addr];
         args.extend(values);
 
-        self.op_llvm_call(&block, "printf", &args, &[i32_type])?;
+        self.op_llvm_call(&block, "dprintf", &args, &[i32_type])?;
         Ok(())
     }
 
@@ -91,7 +90,7 @@ impl<'ctx> Compiler<'ctx> {
         let mut bit_width = current_value.get_value().r#type().get_width().unwrap();
 
         // We need to make sure the bit width is a power of 2.
-        let rounded_up_bitwidth = round_up(bit_width);
+        let rounded_up_bitwidth = bit_width.next_power_of_two();
 
         if bit_width != rounded_up_bitwidth {
             value_type = Type::integer(&self.context, rounded_up_bitwidth);
@@ -102,11 +101,8 @@ impl<'ctx> Compiler<'ctx> {
         bit_width = rounded_up_bitwidth;
 
         while bit_width > 0 {
-            let shift_by_constant_op = self.op_const(
-                &block,
-                &bit_width.saturating_sub(32).to_string(),
-                value_type,
-            );
+            let shift_by_constant_op =
+                self.op_const(&block, &bit_width.saturating_sub(32).to_string(), value_type);
             let shift_by = shift_by_constant_op.result(0)?.into();
 
             let shift_op = self.op_shrs(&block, current_value.get_value(), shift_by);
@@ -149,13 +145,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let struct_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
-            .iter()
-            .map(|member_type| match member_type {
-                GenericArg::Type(type_id) => type_id,
-                _ => panic!(
-                    "Struct type declaration arguments after the first should all be resolved"
-                ),
+        let component_type_ids =
+            sierra_type_declaration.long_id.generic_args[1..].iter().map(|member_type| {
+                match member_type {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                }
             });
 
         let field_types = struct_type
@@ -196,14 +193,4 @@ impl<'ctx> Compiler<'ctx> {
         self.op_func_call(&block, "print_felt", &[value], &[])?;
         Ok(())
     }
-}
-
-/// rounds to the nearest power of 2 up.
-#[inline]
-const fn round_up(value: u32) -> u32 {
-    let mut power = 1;
-    while power < value {
-        power *= 2;
-    }
-    power
 }

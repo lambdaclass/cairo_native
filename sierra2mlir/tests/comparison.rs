@@ -95,7 +95,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
         .display()
         .to_string();
 
-    let compiled_code = compile(sierra_code, false, false, true).unwrap();
+    let compiled_code = compile(sierra_code, false, false, Some(1)).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();

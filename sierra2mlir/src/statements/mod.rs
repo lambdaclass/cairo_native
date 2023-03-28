@@ -17,13 +17,8 @@ use crate::compiler::{CmpOp, Compiler, Storage};
 
 #[derive(Debug, Clone, Copy)]
 enum VariableValue<'c> {
-    Local {
-        op: OperationRef<'c>,
-        result_idx: usize,
-    },
-    Param {
-        argument_idx: usize,
-    },
+    Local { op: OperationRef<'c>, result_idx: usize },
+    Param { argument_idx: usize },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,17 +29,11 @@ pub struct Variable<'c> {
 
 impl<'c> Variable<'c> {
     pub const fn local(op: OperationRef<'c>, result_idx: usize, block: BlockRef<'c>) -> Self {
-        Self {
-            value: VariableValue::Local { op, result_idx },
-            block,
-        }
+        Self { value: VariableValue::Local { op, result_idx }, block }
     }
 
     pub const fn param(argument_idx: usize, block: BlockRef<'c>) -> Self {
-        Self {
-            value: VariableValue::Param { argument_idx },
-            block,
-        }
+        Self { value: VariableValue::Param { argument_idx }, block }
     }
 
     pub fn get_value(&self) -> Value {
@@ -53,11 +42,9 @@ impl<'c> Variable<'c> {
                 let res = op.result(*result_idx).unwrap();
                 res.into()
             }
-            VariableValue::Param { argument_idx } => self
-                .block
-                .argument(*argument_idx)
-                .expect("couldn't get argument")
-                .into(),
+            VariableValue::Param { argument_idx } => {
+                self.block.argument(*argument_idx).expect("couldn't get argument").into()
+            }
         }
     }
 }
@@ -70,7 +57,8 @@ impl<'ctx> Compiler<'ctx> {
 
             let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
-            let should_create_wrapper = self.main_print && should_create_wrapper(raw_func_name);
+            let should_create_wrapper =
+                self.main_print.is_some() && should_create_wrapper(raw_func_name);
             let name = Self::normalize_func_name(raw_func_name).to_string();
 
             let entry = func.entry_point.0;
@@ -411,11 +399,7 @@ impl<'ctx> Compiler<'ctx> {
             .map(|(mlir_type, type_id)| {
                 (
                     mlir_type,
-                    self.program
-                        .type_declarations
-                        .iter()
-                        .find(|decl| decl.id == *type_id)
-                        .unwrap(),
+                    self.program.type_declarations.iter().find(|decl| decl.id == *type_id).unwrap(),
                 )
             })
             .collect_vec();
@@ -423,10 +407,7 @@ impl<'ctx> Compiler<'ctx> {
         // Create a list of types for which to generate print functions, with no duplicates
         // For complex types, their components types must be added to the list before them
         let types_to_print = get_all_types_to_print(
-            &ret_type_declarations
-                .iter()
-                .map(|(_t, decl)| (*decl).clone())
-                .collect_vec(),
+            &ret_type_declarations.iter().map(|(_t, decl)| (*decl).clone()).collect_vec(),
             &self.program,
         );
 
@@ -449,10 +430,8 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         let region = Region::new();
-        let arg_types_with_locations = arg_types
-            .iter()
-            .map(|t| (*t, Location::unknown(&self.context)))
-            .collect::<Vec<_>>();
+        let arg_types_with_locations =
+            arg_types.iter().map(|t| (*t, Location::unknown(&self.context))).collect::<Vec<_>>();
         let block = Block::new(&arg_types_with_locations);
 
         let mut arg_values: Vec<_> = vec![];
@@ -468,10 +447,7 @@ impl<'ctx> Compiler<'ctx> {
             let result_val = raw_res.result(position)?;
             self.op_func_call(
                 &block,
-                &format!(
-                    "print_{}",
-                    type_decl.id.debug_name.as_ref().unwrap().as_str()
-                ),
+                &format!("print_{}", type_decl.id.debug_name.as_ref().unwrap().as_str()),
                 &[result_val.into()],
                 &[],
             )?;
@@ -501,10 +477,7 @@ pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
     format!(
         "({}) -> {}",
         params.iter().map(|x| x.to_string()).join(", "),
-        &format!(
-            "({})",
-            return_types.iter().map(|x| x.to_string()).join(", ")
-        ),
+        &format!("({})", return_types.iter().map(|x| x.to_string()).join(", ")),
     )
 }
 
