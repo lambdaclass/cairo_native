@@ -146,6 +146,49 @@ impl<'ctx> Compiler<'ctx> {
                         self.u128_type(),
                     )?;
                 }
+                "u8_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u8_type(),
+                        self.u16_type(),
+                    )?;
+                }
+                "u16_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u16_type(),
+                        self.u32_type(),
+                    )?;
+                }
+                "u32_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u32_type(),
+                        self.u64_type(),
+                    )?;
+                }
+                "u64_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u64_type(),
+                        self.u128_type(),
+                    )?;
+                }
+                "u128_wide_mul" => {
+                    self.create_libfunc_u128_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                    )?;
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
                         func_decl,
@@ -714,6 +757,114 @@ impl<'ctx> Compiler<'ctx> {
             FunctionDef {
                 args: vec![SierraType::Simple(src_type)],
                 return_types: vec![SierraType::Simple(self.felt_type())],
+            },
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_uint_wide_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+        src_type: Type<'ctx>,
+        dst_type: Type<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[
+            (src_type, Location::unknown(&self.context)),
+            (src_type, Location::unknown(&self.context)),
+        ]));
+
+        let op_zext_lhs = self.op_zext(&block, block.argument(0)?.into(), dst_type);
+        let op_zext_rhs = self.op_zext(&block, block.argument(1)?.into(), dst_type);
+
+        let op_mul =
+            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+        self.op_return(&block, &[op_mul.result(0)?.into()]);
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[src_type, src_type], &[dst_type]),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            FunctionDef {
+                args: vec![SierraType::Simple(src_type), SierraType::Simple(src_type)],
+                return_types: vec![SierraType::Simple(dst_type)],
+            },
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_u128_wide_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[
+            (self.range_check_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+        ]));
+
+        let op_zext_lhs = self.op_zext(&block, block.argument(1)?.into(), self.u256_type());
+        let op_zext_rhs = self.op_zext(&block, block.argument(2)?.into(), self.u256_type());
+
+        let op_mul =
+            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+
+        let op_mul_hi = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
+        let op_mul_lo = {
+            let op_const = self.op_const(&block, "128", self.u8_type());
+            let op_shru =
+                self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
+            self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
+        };
+
+        self.op_return(
+            &block,
+            &[block.argument(0)?.into(), op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()],
+        );
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(
+                &[self.range_check_type(), self.u128_type(), self.u128_type()],
+                &[self.range_check_type(), self.u128_type(), self.u128_type()],
+            ),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            FunctionDef {
+                args: vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::Simple(self.u128_type()),
+                ],
+                return_types: vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::Simple(self.u128_type()),
+                ],
             },
         );
         parent_block.append_operation(func);
