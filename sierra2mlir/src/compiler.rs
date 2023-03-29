@@ -501,10 +501,26 @@ impl<'ctx> Compiler<'ctx> {
         // }
 
         let init_block = block;
-        let loop_before_condition_block = region.append_block(Block::new(&[]));
-        let loop_after_condition_block = region.append_block(Block::new(&[]));
-        let loop_step_block = region.append_block(Block::new(&[]));
-        let loop_after_step_block = region.append_block(Block::new(&[]));
+        let loop_before_condition_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_after_condition_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_step_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_after_step_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
 
         let const_one = self.op_felt_const(&init_block, "1");
         let const_zero = self.op_felt_const(&init_block, "0");
