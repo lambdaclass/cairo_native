@@ -68,12 +68,17 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define internal i256 @print_test_print_test_main() {
+define i256 @print_test_print_test_main() {
   br label %1
 
 1:                                                ; preds = %0
   %2 = call i256 @"store_temp<felt252>"(i256 24)
   ret i256 %2
+}
+
+define i256 @_mlir_ciface_print_test_print_test_main() {
+  %1 = call i256 @print_test_print_test_main()
+  ret i256 %1
 }
 
 !llvm.module.flags = !{!0}

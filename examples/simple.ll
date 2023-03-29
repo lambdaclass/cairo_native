@@ -5,8 +5,6 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
-declare i32 @dprintf(i32, ptr, ...)
-
 define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
   %2 = insertvalue { i256, i256 } undef, i256 %0, 0
   %3 = insertvalue { i256, i256 } %2, i256 %0, 1
@@ -51,7 +49,7 @@ define internal { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i2
   ret { i256, i256 } %0
 }
 
-define internal { i256, i256 } @simple_simple_something(i256 %0) {
+define { i256, i256 } @simple_simple_something(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -64,6 +62,12 @@ define internal { i256, i256 } @simple_simple_something(i256 %0) {
   %9 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %7, i256 %8)
   %10 = call { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %9)
   ret { i256, i256 } %10
+}
+
+define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
+  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
+  store { i256, i256 } %3, ptr %0, align 4
+  ret void
 }
 
 !llvm.module.flags = !{!0}
