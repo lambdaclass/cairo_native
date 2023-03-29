@@ -28,7 +28,17 @@ pub struct Compiler<'ctx> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
-    Struct { ty: Type<'ctx>, field_types: Vec<Self> },
+    Struct {
+        ty: Type<'ctx>,
+        field_types: Vec<Self>,
+    },
+    Enum {
+        ty: Type<'ctx>,
+        tag_type: Type<'ctx>,
+        storage_bytes_len: u32,
+        storage_type: Type<'ctx>, // the array
+        variants_types: Vec<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -42,6 +52,13 @@ impl<'ctx> SierraType<'ctx> {
                 }
                 width
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: storage_type_len,
+                storage_type: _,
+                variants_types: _,
+            } => tag_type.get_width().unwrap() + (storage_type_len * 8),
         }
     }
 
@@ -50,6 +67,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             Self::Simple(ty) => *ty,
             Self::Struct { ty, field_types: _ } => *ty,
+            Self::Enum {
+                ty,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types: _,
+            } => *ty,
         }
     }
 
@@ -58,6 +82,13 @@ impl<'ctx> SierraType<'ctx> {
             match self {
                 Self::Simple(ty) => *ty,
                 Self::Struct { ty, field_types: _ } => *ty,
+                Self::Enum {
+                    ty,
+                    tag_type: _,
+                    storage_bytes_len: _,
+                    storage_type: _,
+                    variants_types: _,
+                } => *ty,
             },
             Location::unknown(context),
         )
@@ -70,6 +101,13 @@ impl<'ctx> SierraType<'ctx> {
             SierraType::Struct { ty: _, field_types } => {
                 Some(field_types.iter().map(|x| x.get_type()).collect_vec())
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types.iter().map(|x| x.get_type()).collect()),
         }
     }
 
@@ -77,6 +115,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             SierraType::Simple(_) => None,
             SierraType::Struct { ty: _, field_types } => Some(field_types),
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types),
         }
     }
 }
@@ -146,6 +191,10 @@ impl<'ctx> Compiler<'ctx> {
 impl<'ctx> Compiler<'ctx> {
     pub fn named_attribute(&self, name: &str, attribute: &str) -> Result<NamedAttribute> {
         Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
+    }
+
+    pub fn llvm_ptr_type(&self) -> Type {
+        Type::parse(&self.context, "!llvm.ptr").unwrap()
     }
 
     pub fn felt_type(&self) -> Type {
@@ -457,6 +506,38 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    /// creates a llvm struct allocating on the stack
+    ///
+    /// use getelementptr instead of extractvalue
+    pub fn op_llvm_struct_alloca<'a>(
+        &self,
+        block: &'a Block,
+        types: &[Type],
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_alloca(
+            block,
+            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
+            1,
+        )
+    }
+
+    /// bitcasts a type into another
+    ///
+    /// https://mlir.llvm.org/docs/Dialects/LLVM/#llvmbitcast-mlirllvmbitcastop
+    pub fn op_llvm_bitcast<'a>(
+        &self,
+        block: &'a Block,
+        value: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.bitcast", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
     pub fn op_llvm_alloca<'a>(
         &self,
         block: &'a Block,
@@ -476,7 +557,7 @@ impl<'ctx> Compiler<'ctx> {
                     ],
                 )?)
                 .add_operands(&[size_res])
-                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .add_results(&[self.llvm_ptr_type()])
                 .build(),
         ))
     }
@@ -505,6 +586,21 @@ impl<'ctx> Compiler<'ctx> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.store", Location::unknown(&self.context))
                 .add_operands(&[value, addr])
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_load<'a>(
+        &self,
+        block: &'a Block,
+        addr: Value,
+        value_type: Type,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.load", Location::unknown(&self.context))
+                .add_operands(&[addr])
+                .add_results(&[value_type])
                 .build(),
         ))
     }
@@ -565,7 +661,7 @@ impl<'ctx> Compiler<'ctx> {
         index: usize,
         struct_value: Value,
         value: Value,
-        struct_llvm_type: &str,
+        struct_llvm_type: Type,
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
@@ -573,7 +669,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("position", &format!("array<i64: {}>", index))?
                 ])
                 .add_operands(&[struct_value, value])
-                .add_results(&[Type::parse(&self.context, struct_llvm_type).unwrap()])
+                .add_results(&[struct_llvm_type])
                 .build(),
         ))
     }
@@ -594,6 +690,27 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("position", &format!("array<i64: {}>", index))?
                 ])
                 .add_operands(&[struct_value])
+                .add_results(&[value_type])
+                .build(),
+        ))
+    }
+
+    /// llvm getelementptr with a constant offset
+    pub fn op_llvm_gep<'a>(
+        &self,
+        block: &'a Block,
+        index: usize,
+        struct_value: Value,
+        value_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
+                .add_attributes(&[
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", index))?,
+                    self.named_attribute("elem_type", &value_type.to_string())?,
+                    self.named_attribute("inbounds", "unit")?,
+                ])
+                .add_operands(&[struct_value]) // base
                 .add_results(&[value_type])
                 .build(),
         ))

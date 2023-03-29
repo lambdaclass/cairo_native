@@ -7,6 +7,7 @@
 #![warn(unused)]
 
 use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
+use tracing::debug;
 
 use crate::compiler::Compiler;
 
@@ -32,7 +33,7 @@ pub fn compile(
 
     compiler.compile()?;
 
-    println!("{}", compiler.module.as_operation());
+    debug!("mlir before pass:\n{}", compiler.module.as_operation());
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
 

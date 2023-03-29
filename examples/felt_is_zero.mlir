@@ -9,12 +9,16 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %arg0 : i256
   }
   llvm.func internal @felt252_mul(%arg0: i256, %arg1: i256) -> i256 {
-    %0 = llvm.mul %arg0, %arg1  : i256
-    %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
-    %2 = llvm.srem %0, %1  : i256
-    llvm.br ^bb1(%2 : i256)
-  ^bb1(%3: i256):  // pred: ^bb0
-    llvm.return %3 : i256
+    %0 = llvm.zext %arg0 : i256 to i512
+    %1 = llvm.zext %arg1 : i256 to i512
+    %2 = llvm.mul %0, %1  : i512
+    %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
+    %4 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
+    %5 = llvm.srem %2, %4  : i512
+    %6 = llvm.trunc %5 : i512 to i256
+    llvm.br ^bb1(%6 : i256)
+  ^bb1(%7: i256):  // pred: ^bb0
+    llvm.return %7 : i256
   }
   llvm.func internal @"rename<felt252>"(%arg0: i256) -> i256 {
     llvm.return %arg0 : i256
