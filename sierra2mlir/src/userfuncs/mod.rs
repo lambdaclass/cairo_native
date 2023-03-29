@@ -35,7 +35,7 @@ impl<'ctx> Compiler<'ctx> {
 
             let userfunc_def = storage.borrow().userfuncs.get(&name).unwrap().clone();
 
-            if self.main_print && should_create_wrapper(raw_func_name) {
+            if self.main_print.is_some() && should_create_wrapper(raw_func_name) {
                 let raw_arg_types =
                     userfunc_def.args.iter().map(SierraType::get_type).collect_vec();
                 let ret_types = userfunc_def
