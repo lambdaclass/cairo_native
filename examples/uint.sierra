@@ -1,0 +1,42 @@
+type u8 = u8;
+type u16 = u16;
+type u32 = u32;
+type u64 = u64;
+type u128 = u128;
+type felt252 = felt252;
+type Unit = Struct<ut@Tuple>;
+
+libfunc u8_const<0> = u8_const<0>;
+libfunc u16_const<0> = u16_const<0>;
+libfunc u32_const<0> = u32_const<0>;
+libfunc u64_const<0> = u64_const<0>;
+libfunc u128_const<0> = u128_const<0>;
+libfunc u8_to_felt252 = u8_to_felt252;
+libfunc drop<felt252> = drop<felt252>;
+libfunc u16_to_felt252 = u16_to_felt252;
+libfunc u32_to_felt252 = u32_to_felt252;
+libfunc u64_to_felt252 = u64_to_felt252;
+libfunc u128_to_felt252 = u128_to_felt252;
+libfunc struct_construct<Unit> = struct_construct<Unit>;
+libfunc store_temp<Unit> = store_temp<Unit>;
+
+u8_const<0>() -> ([0]);
+u16_const<0>() -> ([1]);
+u32_const<0>() -> ([2]);
+u64_const<0>() -> ([3]);
+u128_const<0>() -> ([4]);
+u8_to_felt252([0]) -> ([5]);
+drop<felt252>([5]) -> ();
+u16_to_felt252([1]) -> ([6]);
+drop<felt252>([6]) -> ();
+u32_to_felt252([2]) -> ([7]);
+drop<felt252>([7]) -> ();
+u64_to_felt252([3]) -> ([8]);
+drop<felt252>([8]) -> ();
+u128_to_felt252([4]) -> ([9]);
+drop<felt252>([9]) -> ();
+struct_construct<Unit>() -> ([10]);
+store_temp<Unit>([10]) -> ([11]);
+return([11]);
+
+uint::uint::main@0() -> (Unit);
