@@ -21,7 +21,7 @@ pub struct Compiler<'ctx> {
     pub program: Program,
     pub context: Context,
     pub module: Module<'ctx>,
-    pub main_print: bool,
+    pub main_print: Option<i32>,
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
@@ -104,7 +104,7 @@ pub struct Storage<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn new(code: &str, main_print: bool) -> color_eyre::Result<Self> {
+    pub fn new(code: &str, main_print: Option<i32>) -> color_eyre::Result<Self> {
         let code = code.to_string();
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
