@@ -20,7 +20,6 @@ impl<'ctx> Compiler<'ctx> {
             .to_string();
 
         let enum_arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 let storage = RefCell::borrow(&*storage);
                 let ty =
@@ -28,17 +27,12 @@ impl<'ctx> Compiler<'ctx> {
 
                 ty
             }
-            GenericArg::Value(_) => unreachable!(),
-            GenericArg::UserFunc(_) => unreachable!(),
-            GenericArg::Libfunc(_) => unreachable!(),
+            _ => unreachable!(),
         };
 
         let enum_tag = match &func_decl.long_id.generic_args[1] {
-            GenericArg::UserType(_) => unreachable!(),
-            GenericArg::Type(_) => unreachable!(),
             GenericArg::Value(tag) => tag.to_string(),
-            GenericArg::UserFunc(_) => unreachable!(),
-            GenericArg::Libfunc(_) => unreachable!(),
+            _ => unreachable!(),
         };
 
         if let SierraType::Enum {

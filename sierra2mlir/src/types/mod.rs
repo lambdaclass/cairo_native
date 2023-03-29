@@ -111,8 +111,7 @@ impl<'ctx> Compiler<'ctx> {
                     for gen_arg in type_decl.long_id.generic_args.iter().skip(1) {
                         let gen_arg_type_id = match gen_arg {
                             GenericArg::Type(gen_arg_typeid) => gen_arg_typeid.id.to_string(),
-                            GenericArg::UserType(user_type_id) => user_type_id.id.to_string(),
-                            _ => todo!(),
+                            _ => unreachable!("should always be a type"),
                         };
                         unique_enum_types.insert(gen_arg_type_id.clone());
                         enum_variant_types.push(
