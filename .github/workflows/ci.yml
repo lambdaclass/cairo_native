@@ -15,7 +15,7 @@ jobs:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -44,7 +44,7 @@ jobs:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup rust env
         uses: actions-rs/toolchain@v1
         with:
@@ -70,7 +70,7 @@ jobs:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -90,7 +90,7 @@ jobs:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       RUSTUP_TOOLCHAIN: nightly
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         name: "Rust Toolchain Setup"
         with:
@@ -118,6 +118,6 @@ jobs:
     steps:
       - name: Install deps
         run: sudo apt-get install curl ripgrep jq
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check cairo release
         run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'
