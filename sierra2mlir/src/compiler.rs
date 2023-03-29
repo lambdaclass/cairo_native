@@ -522,8 +522,8 @@ impl<'ctx> Compiler<'ctx> {
             (self.felt_type(), Location::unknown(&self.context)),
         ]));
 
-        let const_one = self.op_felt_const(&init_block, "1");
-        let const_zero = self.op_felt_const(&init_block, "0");
+        let const_one = self.op_felt_const(init_block, "1");
+        let const_zero = self.op_felt_const(init_block, "0");
 
         // Block loop_before_condition:
         //   Args: [result, base, exponent].
@@ -680,11 +680,11 @@ impl<'ctx> Compiler<'ctx> {
         block: &'a Block,
         value: Value,
     ) -> Result<OperationRef<'a>> {
-        let const_p = self.prime_constant(&block);
-        let const_two = self.op_felt_const(&block, "2");
-        let p_minus_2 = self.op_sub(&block, const_p.result(0)?.into(), const_two.result(0)?.into());
+        let const_p = self.prime_constant(block);
+        let const_two = self.op_felt_const(block, "2");
+        let p_minus_2 = self.op_sub(block, const_p.result(0)?.into(), const_two.result(0)?.into());
 
-        Ok(self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())?)
+        self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())
     }
 
     /// Perform a felt divison (not euclidean, but modular).
