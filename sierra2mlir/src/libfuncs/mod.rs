@@ -3,13 +3,15 @@ use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, TypeLike, Value};
 use tracing::debug;
 
 use crate::{
     compiler::{CmpOp, Compiler, FunctionDef, SierraType, Storage},
     utility::create_fn_signature,
 };
+
+pub mod sierra_enum;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
@@ -72,6 +74,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;
+                }
+                "enum_init" => {
+                    self.create_libfunc_enum_init(func_decl, parent_block, storage.clone())?;
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
@@ -181,21 +186,19 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&args_with_location);
 
-        let struct_llvm_type = self.struct_type_string(&args);
         let mut struct_type_op = self.op_llvm_struct(&block, &args);
 
         for i in 0..block.argument_count() {
             let arg = block.argument(i)?;
             let struct_value = struct_type_op.result(0)?.into();
             struct_type_op =
-                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), &struct_llvm_type)?;
+                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), arg_type.get_type())?;
         }
 
         let struct_value: Value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let return_type = Type::parse(&self.context, &struct_llvm_type).unwrap();
-        let function_type = create_fn_signature(&args, &[return_type]);
+        let function_type = create_fn_signature(&args, &[arg_type.get_type()]);
 
         region.append_block(block);
 
