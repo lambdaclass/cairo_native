@@ -828,7 +828,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let op_mul_hi = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
         let op_mul_lo = {
-            let op_const = self.op_const(&block, "128", self.u8_type());
+            let op_const = self.op_const(&block, "128", self.u256_type());
             let op_shru =
                 self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
             self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
