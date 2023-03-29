@@ -476,6 +476,225 @@ impl<'ctx> Compiler<'ctx> {
         })
     }
 
+    /// Perform modular exponentiation using the binary RTL method.
+    ///
+    /// > Source: https://en.wikipedia.org/wiki/Modular_exponentiation
+    pub fn op_felt_pow<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        base: Value,
+        exponent: Value,
+    ) -> Result<OperationRef<'a>> {
+        // <in block> <- setup
+        // <new block> <- loop before cond
+        // <new block> <- loop after cond
+        // <new block> <- final (returned)
+
+        // result = 1
+        // while exponent != 0 {
+        //     if lsb(exponent) {}
+        //         result = (result * base) % prime
+        //     }
+        //     exponent = exponent >> 1
+        //     base = (base * base) % prime
+        // }
+
+        let init_block = block;
+        let loop_before_condition_block = region.append_block(Block::new(&[]));
+        let loop_after_condition_block = region.append_block(Block::new(&[]));
+        let loop_step_block = region.append_block(Block::new(&[]));
+        let loop_after_step_block = region.append_block(Block::new(&[]));
+
+        let const_one = self.op_felt_const(&init_block, "1");
+        let const_zero = self.op_felt_const(&init_block, "0");
+
+        // Block loop_before_condition:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forwarded).
+        {
+            // Compare exponent with zero.
+            let loop_cmp_op = self.op_cmp(
+                &loop_before_condition_block,
+                CmpOp::Equal,
+                loop_before_condition_block.argument(2)?.into(),
+                const_zero.result(0)?.into(),
+            );
+
+            // Run `scf.condition` operation.
+            loop_before_condition_block.append_operation(
+                operation::Builder::new("scf.condition", Location::unknown(&self.context))
+                    .add_operands(&[
+                        loop_cmp_op.result(0)?.into(),
+                        loop_before_condition_block.argument(0)?.into(),
+                        loop_before_condition_block.argument(1)?.into(),
+                        loop_before_condition_block.argument(2)?.into(),
+                    ])
+                    .build(),
+            );
+        }
+
+        // Block loop_after_condition:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forward).
+        {
+            // Compare LSB of exponent.
+            let masked_exponent = self.op_and(
+                &loop_after_condition_block,
+                loop_after_condition_block.argument(2)?.into(),
+                const_one.result(0)?.into(),
+                self.felt_type(),
+            );
+            let lsb_bit = self.op_cmp(
+                &loop_after_condition_block,
+                CmpOp::Equal,
+                masked_exponent.result(0)?.into(),
+                const_zero.result(0)?.into(),
+            );
+
+            // Jump to either loop_step or loop_after_step.
+            self.op_cond_br(
+                &loop_after_condition_block,
+                lsb_bit.result(0)?.into(),
+                &loop_after_step_block,
+                &loop_step_block,
+                &[
+                    loop_after_condition_block.argument(0)?.into(),
+                    loop_after_condition_block.argument(1)?.into(),
+                    loop_after_condition_block.argument(2)?.into(),
+                ],
+                &[
+                    loop_after_condition_block.argument(0)?.into(),
+                    loop_after_condition_block.argument(1)?.into(),
+                    loop_after_condition_block.argument(2)?.into(),
+                ],
+            )?;
+        }
+
+        // Block loop_step:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forward after update).
+        {
+            // result = (result * base) % modulus.
+            let lhs = self.op_zext(
+                &loop_step_block,
+                loop_step_block.argument(0)?.into(),
+                self.double_felt_type(),
+            );
+            let rhs = self.op_zext(
+                &loop_step_block,
+                loop_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+
+            let op_mul =
+                self.op_mul(&loop_step_block, lhs.result(0)?.into(), rhs.result(0)?.into());
+            let op_mod = self.op_felt_modulo(&loop_step_block, op_mul.result(0)?.into())?;
+            let op_trunc =
+                self.op_trunc(&loop_step_block, op_mod.result(0)?.into(), self.felt_type());
+
+            // Jump to loop_after_step.
+            self.op_br(
+                &loop_step_block,
+                &loop_after_step_block,
+                &[
+                    op_trunc.result(0)?.into(),
+                    loop_step_block.argument(1)?.into(),
+                    loop_step_block.argument(2)?.into(),
+                ],
+            );
+        }
+
+        // Block loop_after_step:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (next step after update).
+        {
+            // exponent = exponent >> 1.
+            let shifted_exponent = self.op_shru(
+                &loop_after_step_block,
+                loop_after_step_block.argument(2)?.into(),
+                const_one.result(0)?.into(),
+            );
+
+            // base = (base * base) % modulus.
+            let lhs = self.op_zext(
+                &loop_after_step_block,
+                loop_after_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+            let rhs = self.op_zext(
+                &loop_after_step_block,
+                loop_after_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+
+            let op_mul =
+                self.op_mul(&loop_after_step_block, lhs.result(0)?.into(), rhs.result(0)?.into());
+            let op_mod = self.op_felt_modulo(&loop_after_step_block, op_mul.result(0)?.into())?;
+            let op_trunc =
+                self.op_trunc(&loop_after_step_block, op_mod.result(0)?.into(), self.felt_type());
+
+            // scf.yield
+            loop_after_step_block.append_operation(
+                operation::Builder::new("scf.yield", Location::unknown(&self.context))
+                    .add_operands(&[
+                        loop_after_step_block.argument(0)?.into(),
+                        op_trunc.result(0)?.into(),
+                        shifted_exponent.result(0)?.into(),
+                    ])
+                    .build(),
+            );
+        }
+
+        Ok(init_block.append_operation(
+            operation::Builder::new("scf.while", Location::unknown(&self.context))
+                .add_operands(&[const_one.result(0)?.into(), base, exponent])
+                .add_successors(&[&loop_before_condition_block, &loop_after_condition_block])
+                .add_results(&[self.felt_type(), self.felt_type(), self.felt_type()])
+                .build(),
+        ))
+    }
+
+    /// Compute the multiplicative inverse of a felt.
+    ///
+    /// > Source: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+    pub fn op_felt_inverse<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        value: Value,
+    ) -> Result<OperationRef<'a>> {
+        let const_p = self.prime_constant(&block);
+        let const_two = self.op_felt_const(&block, "2");
+        let p_minus_2 = self.op_sub(&block, const_p.result(0)?.into(), const_two.result(0)?.into());
+
+        Ok(self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())?)
+    }
+
+    /// Perform a felt divison (not euclidean, but modular).
+    ///
+    /// In other words, find x in `a / b = x` such that `x * b = a` in modulo prime.
+    pub fn op_felt_div<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        dividend: Value,
+        divisor: Value,
+    ) -> Result<OperationRef<'a>> {
+        // Find the multiplicative inverse of the divisor.
+        let divisor_inverse = self.op_felt_inverse(region, block, divisor)?;
+
+        // Multiply by the dividend to find the quotient.
+        let lhs = self.op_zext(block, dividend, self.double_felt_type());
+        let rhs = self.op_zext(block, divisor_inverse.result(0)?.into(), self.double_felt_type());
+
+        let op_mul = self.op_mul(block, lhs.result(0)?.into(), rhs.result(0)?.into());
+        let op_mod = self.op_felt_modulo(block, op_mul.result(0)?.into())?;
+        let op_trunc = self.op_trunc(block, op_mod.result(0)?.into(), self.felt_type());
+
+        Ok(op_trunc)
+    }
+
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func<'a>(
         &'a self,
