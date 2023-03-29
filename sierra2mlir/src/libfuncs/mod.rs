@@ -518,7 +518,7 @@ impl<'ctx> Compiler<'ctx> {
                 let rhs_zext = self.op_zext(&entry_block, rhs.into(), self.double_felt_type());
                 self.op_mul(&entry_block, lhs_zext.result(0)?.into(), rhs_zext.result(0)?.into())
             }
-            BinaryOp::Div => todo!(),
+            BinaryOp::Div => self.op_felt_div(&region, &entry_block, lhs.into(), rhs.into())?,
         };
         let res_result = res.result(0)?;
 
