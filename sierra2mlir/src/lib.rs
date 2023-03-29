@@ -21,11 +21,12 @@ pub fn compile(
     code: &str,
     optimized: bool,
     debug_info: bool,
-    main_print: bool,
+    // TODO: Make this an enum with either: stdout, stderr, a path to a file, or a raw fd (pipes?).
+    main_print: Option<i32>,
 ) -> Result<String, color_eyre::Report> {
     let mut compiler = Compiler::new(code, main_print)?;
 
-    if main_print {
+    if main_print.is_some() {
         compiler.create_printf()?;
     }
 
@@ -66,8 +67,8 @@ pub fn compile(
     }
 }
 
-pub fn execute(code: &str) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(code, false)?;
+pub fn execute(code: &str, main_print: Option<i32>) -> Result<ExecutionEngine, color_eyre::Report> {
+    let mut compiler = Compiler::new(code, main_print)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);

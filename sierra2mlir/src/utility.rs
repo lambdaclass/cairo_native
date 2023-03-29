@@ -21,8 +21,8 @@ impl<'ctx> Compiler<'ctx> {
             .add_attributes(&NamedAttribute::new_parsed_vec(
                 &self.context,
                 &[
-                    ("sym_name", "\"printf\""),
-                    ("function_type", "!llvm.func<i32 (!llvm.ptr, ...)>"),
+                    ("sym_name", "\"dprintf\""),
+                    ("function_type", "!llvm.func<i32 (i32, !llvm.ptr, ...)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -65,10 +65,12 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
 
-        let mut args = vec![addr];
+        let target_fd = self.op_u32_const(&block, "1");
+
+        let mut args = vec![target_fd.result(0)?.into(), addr];
         args.extend(values);
 
-        self.op_llvm_call(&block, "printf", &args, &[i32_type])?;
+        self.op_llvm_call(&block, "dprintf", &args, &[i32_type])?;
         Ok(())
     }
 
@@ -89,7 +91,7 @@ impl<'ctx> Compiler<'ctx> {
         let mut bit_width = current_value.get_value().r#type().get_width().unwrap();
 
         // We need to make sure the bit width is a power of 2.
-        let rounded_up_bitwidth = round_up(bit_width);
+        let rounded_up_bitwidth = bit_width.next_power_of_two();
 
         if bit_width != rounded_up_bitwidth {
             value_type = Type::integer(&self.context, rounded_up_bitwidth);
@@ -192,16 +194,6 @@ impl<'ctx> Compiler<'ctx> {
         self.op_func_call(&block, "print_felt", &[value], &[])?;
         Ok(())
     }
-}
-
-/// rounds to the nearest power of 2 up.
-#[inline]
-const fn round_up(value: u32) -> u32 {
-    let mut power = 1;
-    while power < value {
-        power *= 2;
-    }
-    power
 }
 
 pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
