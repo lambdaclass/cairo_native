@@ -5,6 +5,8 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare i32 @dprintf(i32, ptr, ...)
+
 define internal { i16, [2 x i8] } @"enum_init<simple_enum_simple_enum_MyEnum, 0>"(i8 %0) {
   %2 = alloca { i16, [2 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds ptr, ptr %2, i32 0

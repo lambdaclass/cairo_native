@@ -19,7 +19,7 @@ compile-example-optimized: check-mlir
 	RUST_LOG="debug" cargo r -- compile examples/simple.sierra --optimize
 
 build-examples: check-mlir
-	cargo r -- compile examples/print_test.sierra -o examples/print_test.mlir -m -p 1
+	cargo r -- compile examples/print_test.sierra -o examples/print_test.mlir -m
 	cargo r -- compile examples/simple.sierra -o examples/simple.mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
 	cargo r -- compile examples/simple_enum.sierra -o examples/simple_enum.mlir

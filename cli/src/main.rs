@@ -85,7 +85,7 @@ fn main() -> color_eyre::Result<()> {
         Commands::Compile { input, optimize, output, debug, main_print, print_target } => {
             let code = fs::read_to_string(input)?;
             let mlir_output =
-                sierra2mlir::compile(&code, optimize, debug, main_print.then_some(print_target))?;
+                sierra2mlir::compile(&code, optimize, debug, main_print, print_target)?;
 
             if let Some(output) = output {
                 fs::write(output, mlir_output);
@@ -95,7 +95,7 @@ fn main() -> color_eyre::Result<()> {
         }
         Commands::Run { function, input, main_print, print_target } => {
             let code = fs::read_to_string(input)?;
-            let engine = sierra2mlir::execute(&code, main_print.then_some(print_target))?;
+            let engine = sierra2mlir::execute(&code, main_print, print_target)?;
 
             unsafe {
                 engine.invoke_packed(&function, &mut [])?;

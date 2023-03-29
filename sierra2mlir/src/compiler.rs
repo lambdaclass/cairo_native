@@ -21,7 +21,8 @@ pub struct Compiler<'ctx> {
     pub program: Program,
     pub context: Context,
     pub module: Module<'ctx>,
-    pub main_print: Option<i32>,
+    pub main_print: bool,
+    pub print_fd: i32,
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
@@ -149,7 +150,7 @@ pub struct Storage<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn new(code: &str, main_print: Option<i32>) -> color_eyre::Result<Self> {
+    pub fn new(code: &str, main_print: bool, print_fd: i32) -> color_eyre::Result<Self> {
         let code = code.to_string();
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
@@ -184,7 +185,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self { code, program, context, module, main_print })
+        Ok(Self { code, program, context, module, main_print, print_fd })
     }
 }
 
@@ -769,270 +770,15 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        if self.print_fd > 0 {
+            self.create_printf()?;
+        }
         let storage = Rc::new(RefCell::new(Storage::default()));
         self.process_types(storage.clone())?;
         self.process_libfuncs(storage.clone())?;
         self.process_functions(storage.clone())?;
         self.process_statements(storage)?;
         Ok(self.module.as_operation())
-    }
-
-    pub fn compile_hardcoded_fib(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        // hardcoded fib
-
-        /*
-        fn fib(a: felt, b: felt, n: felt) -> felt {
-            match n {
-                0 => a,
-                _ => fib(b, a + b, n - 1),
-            }
-        }
-        fn fib_mid(n: felt) {
-            match n {
-                0 => (),
-                _ => {
-                    fib(0, 1, 500);
-                    fib_mid(n - 1);
-                },
-            }
-        }
-        fn main(a: felt) {
-            fib_mid(100);
-        }
-         */
-
-        let felt_type = self.felt_type();
-        let location = Location::unknown(&self.context);
-        let prime = DEFAULT_PRIME;
-
-        let fib_function = {
-            let fib_region = Region::new();
-            // arguments: a: felt, n: felt
-            let fib_block = self.new_block(&[felt_type, felt_type, felt_type]);
-            let arg_a = fib_block.argument(0)?;
-            let arg_b = fib_block.argument(1)?;
-            let arg_n = fib_block.argument(2)?;
-
-            // prepare the if comparision: n == 0
-            let zero = self.op_felt_const(&fib_block, "0");
-            let zero_res = zero.result(0)?.into();
-            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
-
-            // if else regions
-            let if_region = Region::new();
-            let else_region = Region::new();
-
-            // if
-            {
-                //  0 => (a, 0),
-                let if_block = self.new_block(&[]);
-
-                if_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .add_operands(&[arg_a.into(), zero_res])
-                        .build(),
-                );
-
-                if_region.append_block(if_block);
-            }
-
-            // else
-            {
-                /*
-                    let (v, count) = fib(b, a + b, n - 1);
-                    return (v, count + 1)
-                */
-
-                let else_block = self.new_block(&[]);
-
-                let prime = self.op_felt_const(&else_block, prime);
-                let prime_res = prime.result(0)?;
-
-                let a_plus_b = self.op_add(&else_block, arg_a.into(), arg_b.into());
-                let a_plus_b_res = a_plus_b.result(0).unwrap();
-
-                let a_plus_b_mod = self.op_rem(&else_block, a_plus_b_res.into(), prime_res.into());
-                let a_plus_b_mod_res = a_plus_b_mod.result(0)?;
-
-                let one = self.op_felt_const(&fib_block, "1");
-                let one_res = one.result(0)?.into();
-
-                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
-                let n_minus_1_res = n_minus_1.result(0).unwrap();
-
-                let n_minus_1_mod =
-                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
-                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
-
-                let func_call = self.op_func_call(
-                    &else_block,
-                    "fib",
-                    &[arg_b.into(), a_plus_b_mod_res.into(), n_minus_1_mod_res.into()],
-                    &[felt_type, felt_type],
-                )?;
-
-                let value = func_call.result(0)?;
-                let count = func_call.result(1)?;
-
-                let count_plus_1 = self.op_add(&else_block, count.into(), one_res);
-                let count_plus_1_res = count_plus_1.result(0).unwrap();
-
-                let count_plus_1_mod =
-                    self.op_rem(&else_block, count_plus_1_res.into(), prime_res.into());
-                let count_plus_1_mod_res = count_plus_1_mod.result(0)?;
-
-                else_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .add_operands(&[value.into(), count_plus_1_mod_res.into()])
-                        .build(),
-                );
-
-                else_region.append_block(else_block);
-            }
-
-            let isif = fib_block.append_operation(
-                operation::Builder::new("scf.if", location)
-                    .add_operands(&[eq.result(0)?.into()])
-                    .add_results(&[felt_type, felt_type])
-                    .add_regions(vec![if_region, else_region])
-                    .build(),
-            );
-
-            let value = isif.result(0)?;
-            let count = isif.result(1)?;
-
-            self.op_return(&fib_block, &[value.into(), count.into()]);
-
-            fib_region.append_block(fib_block);
-
-            self.op_func(
-                "fib",
-                "(i256, i256, i256) -> (i256, i256)",
-                vec![fib_region],
-                false,
-                true,
-            )?
-        };
-
-        self.module.body().append_operation(fib_function);
-
-        let fib_mid_function = {
-            /*
-            fn fib_mid(n: felt) {
-                match n {
-                    0 => (),
-                    _ => {
-                        fib(0, 1, 500);
-                        fib_mid(n - 1);
-                    },
-                }
-            }
-            */
-            let fib_mid_region = Region::new();
-            // arguments: a: felt, n: felt
-            let fib_block = self.new_block(&[felt_type]);
-            let arg_n = fib_block.argument(0)?;
-
-            // prepare the if comparision: n == 0
-            let zero = self.op_felt_const(&fib_block, "0");
-            let zero_res = zero.result(0)?.into();
-            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
-
-            // if else regions
-            let if_region = Region::new();
-            let else_region = Region::new();
-
-            // if
-            {
-                //  0 => (),
-                let if_block = self.new_block(&[]);
-
-                if_block.append_operation(operation::Builder::new("scf.yield", location).build());
-
-                if_region.append_block(if_block);
-            }
-
-            // else
-            {
-                /*
-                    fib(0, 1, 500);
-                    fib_mid(n - 1);
-                */
-
-                let else_block = self.new_block(&[]);
-
-                let one = self.op_felt_const(&fib_block, "1");
-                let one_res = one.result(0)?.into();
-                let times = self.op_felt_const(&fib_block, "500");
-                let times_res = times.result(0)?.into();
-
-                self.op_func_call(
-                    &else_block,
-                    "fib",
-                    &[zero_res, one_res, times_res],
-                    &[felt_type, felt_type],
-                )?;
-
-                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
-                let n_minus_1_res = n_minus_1.result(0).unwrap();
-
-                let prime = self.op_felt_const(&else_block, prime);
-                let prime_res = prime.result(0)?;
-
-                let n_minus_1_mod =
-                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
-                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
-
-                self.op_func_call(&else_block, "fib_mid", &[n_minus_1_mod_res.into()], &[])?;
-
-                else_block.append_operation(operation::Builder::new("scf.yield", location).build());
-
-                else_region.append_block(else_block);
-            }
-
-            fib_block.append_operation(
-                operation::Builder::new("scf.if", location)
-                    .add_operands(&[eq.result(0)?.into()])
-                    .add_results(&[])
-                    .add_regions(vec![if_region, else_region])
-                    .build(),
-            );
-
-            self.op_return(&fib_block, &[]);
-
-            fib_mid_region.append_block(fib_block);
-
-            self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region], false, true)?
-        };
-
-        self.module.body().append_operation(fib_mid_function);
-
-        let main_function = {
-            let region = Region::new();
-            let block = Block::new(&[]);
-
-            let n_arg = self.op_felt_const(&block, "100");
-            let n_arg_res = n_arg.result(0)?.into();
-
-            self.op_func_call(&block, "fib_mid", &[n_arg_res], &[])?;
-
-            let main_ret = self.op_const(&block, "0", self.i32_type());
-
-            self.op_return(&block, &[main_ret.result(0)?.into()]);
-
-            region.append_block(block);
-
-            self.op_func("main", "() -> i32", vec![region], true, true)?
-        };
-
-        self.module.body().append_operation(main_function);
-        let op = self.module.as_operation();
-
-        if op.verify() {
-            Ok(op)
-        } else {
-            Err(color_eyre::eyre::eyre!("error verifiying"))
-        }
     }
 
     pub fn compile_hardcoded_gpu(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {

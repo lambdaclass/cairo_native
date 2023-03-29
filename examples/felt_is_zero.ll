@@ -5,6 +5,8 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare i32 @dprintf(i32, ptr, ...)
+
 define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
   %2 = insertvalue { i256, i256 } undef, i256 %0, 0
   %3 = insertvalue { i256, i256 } %2, i256 %0, 1

@@ -9,7 +9,7 @@ macro_rules! impl_tests {
                 let sierra_source =
                     read_to_string(program_path).expect("Could not read Sierra source code");
 
-                sierra2mlir::compile(&sierra_source, false, false, None).expect("Error compiling sierra program");
+                sierra2mlir::compile(&sierra_source, false, false, false, 1).expect("Error compiling sierra program");
             }
         )*
     };
