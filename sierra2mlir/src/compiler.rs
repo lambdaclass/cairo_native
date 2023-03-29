@@ -699,8 +699,12 @@ impl<'ctx> Compiler<'ctx> {
                             ),
                         ),
                         (
+                            // what is this exactly?
+                            // from my little findings, it seems to specify the amount of
+                            // arguments each case has? if we don't set it for each case
+                            // we get some errors sometimes.
                             "case_operand_segments",
-                            "array<i32: 0>", // what is this exactly?
+                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
                         ),
                         (
                             "operand_segment_sizes",

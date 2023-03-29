@@ -238,6 +238,9 @@ impl<'ctx> Compiler<'ctx> {
 
             self.op_llvm_store(&entry_block, enum_value.into(), enum_ptr)?;
 
+            let value_ptr_op = self.op_llvm_gep(&entry_block, 1, enum_ptr, *ty)?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
             let case_values =
                 variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
@@ -256,8 +259,6 @@ impl<'ctx> Compiler<'ctx> {
 
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
                 let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
-                let value_ptr_op = self.op_llvm_gep(block, 1, enum_ptr, *ty)?;
-                let value_ptr = value_ptr_op.result(0)?.into();
                 let value_op = self.op_llvm_load(block, value_ptr, var_ty.get_type())?;
                 let value = value_op.result(0)?.into();
                 self.op_func_call(block, &format!("print_{}", component_type_name), &[value], &[])?;
