@@ -70,6 +70,11 @@ pub fn compile(
 
 pub fn execute(code: &str, main_print: Option<i32>) -> Result<ExecutionEngine, color_eyre::Report> {
     let mut compiler = Compiler::new(code, main_print)?;
+
+    if main_print.is_some() {
+        compiler.create_printf()?;
+    }
+
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);

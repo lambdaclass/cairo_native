@@ -1,4 +1,5 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"enum_init<simple_enum_simple_enum_MyEnum, 0>"(%arg0: i8) -> !llvm.struct<(i16, array<2 x i8>)> {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<2 x i8>)> : (i64) -> !llvm.ptr

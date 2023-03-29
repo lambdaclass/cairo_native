@@ -1,4 +1,5 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
@@ -39,6 +40,18 @@ module attributes {llvm.data_layout = ""} {
   }
   llvm.func internal @"store_temp<Unit>"(%arg0: !llvm.struct<()>) -> !llvm.struct<()> {
     llvm.return %arg0 : !llvm.struct<()>
+  }
+  llvm.func internal @print_Unit(%arg0: !llvm.struct<()>) {
+    llvm.return
+  }
+  llvm.func @main(%arg0: i256) attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @fib_fib_main(%arg0) : (i256) -> !llvm.struct<()>
+    llvm.call @print_Unit(%0) : (!llvm.struct<()>) -> ()
+    llvm.return
+  }
+  llvm.func @_mlir_ciface_main(%arg0: i256) attributes {llvm.emit_c_interface} {
+    llvm.call @main(%arg0) : (i256) -> ()
+    llvm.return
   }
   llvm.func internal @fib_fib_fib(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 {
     llvm.br ^bb1(%arg0, %arg1, %arg2 : i256, i256, i256)

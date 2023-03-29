@@ -1,4 +1,5 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 

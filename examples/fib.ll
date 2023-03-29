@@ -5,6 +5,8 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare i32 @dprintf(i32, ptr, ...)
+
 define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
   %2 = insertvalue { i256, i256 } undef, i256 %0, 0
   %3 = insertvalue { i256, i256 } %2, i256 %0, 1
@@ -53,6 +55,21 @@ define internal {} @"struct_construct<Unit>"() {
 
 define internal {} @"store_temp<Unit>"({} %0) {
   ret {} %0
+}
+
+define internal void @print_Unit({} %0) {
+  ret void
+}
+
+define void @main(i256 %0) {
+  %2 = call {} @fib_fib_main(i256 %0)
+  call void @print_Unit({} %2)
+  ret void
+}
+
+define void @_mlir_ciface_main(i256 %0) {
+  call void @main(i256 %0)
+  ret void
 }
 
 define internal i256 @fib_fib_fib(i256 %0, i256 %1, i256 %2) {
