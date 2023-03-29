@@ -3,7 +3,7 @@ use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, TypeLike, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
 use tracing::debug;
 
 use crate::{
@@ -105,6 +105,46 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_const" => {
                     self.create_libfunc_u128_const(func_decl, storage.clone());
+                }
+                "u8_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u8_type(),
+                    )?;
+                }
+                "u16_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u16_type(),
+                    )?;
+                }
+                "u32_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u32_type(),
+                    )?;
+                }
+                "u64_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u64_type(),
+                    )?;
+                }
+                "u128_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u128_type(),
+                    )?;
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
@@ -643,6 +683,42 @@ impl<'ctx> Compiler<'ctx> {
             Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned(),
             arg,
         );
+    }
+
+    pub fn create_libfunc_uint_to_felt252(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+        src_type: Type<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block =
+            region.append_block(Block::new(&[(src_type, Location::unknown(&self.context))]));
+
+        let op_zext = self.op_zext(&block, block.argument(0)?.into(), self.felt_type());
+        self.op_return(&block, &[op_zext.result(0)?.into()]);
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[src_type], &[self.felt_type()]),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            FunctionDef {
+                args: vec![SierraType::Simple(src_type)],
+                return_types: vec![SierraType::Simple(self.felt_type())],
+            },
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
     }
 
     pub fn create_libfunc_bitwise(

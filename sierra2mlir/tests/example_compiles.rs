@@ -26,4 +26,5 @@ impl_tests!(
     simple,
     simple_enum,
     types,
+    uint,
 );
