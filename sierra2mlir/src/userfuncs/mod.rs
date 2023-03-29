@@ -97,7 +97,20 @@ impl<'ctx> Compiler<'ctx> {
                         .expect("Type should be registered");
                     self.create_print_struct(arg_type, type_decl.clone())?
                 }
-                "Enum" => todo!("Print enum felt representation"),
+                "Enum" => {
+                    let arg_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered");
+                    self.create_print_enum(arg_type, type_decl.clone())?
+                }
+                "u8" | "u16" | "u32" | "u64" | "u128" => {
+                    let uint_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered");
+                    self.create_print_uint(uint_type, type_decl)?
+                }
                 _ => todo!("Felt representation for {}", type_category),
             }
         }
@@ -227,7 +240,29 @@ fn get_all_types_to_print(
                     types_to_print.push(type_decl.clone());
                 }
             }
-            "Enum" => todo!("Print enum felt representation"),
+            "Enum" => {
+                let field_type_declarations = type_decl.long_id.generic_args[1..].iter().map(|member_type| match member_type {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!("Struct type declaration arguments after the first should all be resolved"),
+                }).map(|member_type_id| program.type_declarations.iter().find(|decl| decl.id == *member_type_id).unwrap())
+                .map(|component_type_decl| get_all_types_to_print(&[component_type_decl.clone()], program));
+
+                for type_decls in field_type_declarations {
+                    for type_decl in type_decls {
+                        if !types_to_print.contains(&type_decl) {
+                            types_to_print.push(type_decl);
+                        }
+                    }
+                }
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "u8" | "u16" | "u32" | "u64" | "u128" => {
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
             _ => todo!("Felt representation for {}", type_category),
         }
     }

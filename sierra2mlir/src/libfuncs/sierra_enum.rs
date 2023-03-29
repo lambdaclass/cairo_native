@@ -44,11 +44,11 @@ impl<'ctx> Compiler<'ctx> {
         } = &enum_arg_type
         {
             let enum_tag_idx: usize = enum_tag.parse().unwrap();
-            let arg_sierra_type = &variants_types[enum_tag_idx];
+            let variant_sierra_type = &variants_types[enum_tag_idx];
 
             let region = Region::new();
             let block = region
-                .append_block(Block::new(&[arg_sierra_type.get_type_location(&self.context)]));
+                .append_block(Block::new(&[variant_sierra_type.get_type_location(&self.context)]));
 
             let enum_variant_value = block.argument(0)?;
 
@@ -58,12 +58,12 @@ impl<'ctx> Compiler<'ctx> {
             let tag_op = self.op_const(&block, &enum_tag, *tag_type);
             let tag_op_value = tag_op.result(0)?;
 
-            let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, self.llvm_ptr_type())?;
+            let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, *ty)?;
             let tag_ptr = tag_ptr_op.result(0)?;
 
             self.op_llvm_store(&block, tag_op_value.into(), tag_ptr.into())?;
 
-            let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, self.llvm_ptr_type())?;
+            let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
             let variant_ptr = variant_ptr_op.result(0)?;
 
             self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;
@@ -72,7 +72,7 @@ impl<'ctx> Compiler<'ctx> {
 
             self.op_return(&block, &[enum_value_op.result(0)?.into()]);
 
-            let function_type = create_fn_signature(&[arg_sierra_type.get_type()], &[*ty]);
+            let function_type = create_fn_signature(&[variant_sierra_type.get_type()], &[*ty]);
 
             let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
@@ -81,7 +81,7 @@ impl<'ctx> Compiler<'ctx> {
                 storage.libfuncs.insert(
                     id,
                     FunctionDef {
-                        args: vec![arg_sierra_type.clone()],
+                        args: vec![variant_sierra_type.clone()],
                         return_types: vec![enum_arg_type],
                     },
                 );
