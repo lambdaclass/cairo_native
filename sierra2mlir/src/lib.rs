@@ -77,12 +77,12 @@ pub fn execute(code: &str, main_print: Option<i32>) -> Result<ExecutionEngine, c
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
+    register_all_passes();
     pass_manager.add_pass(pass::transform::canonicalizer());
     pass_manager.add_pass(pass::transform::inliner());
     pass_manager.add_pass(pass::transform::symbol_dce());
     pass_manager.add_pass(pass::transform::cse());
     pass_manager.add_pass(pass::transform::sccp());
-    register_all_passes();
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
