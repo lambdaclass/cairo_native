@@ -25,6 +25,10 @@ impl<'ctx> Compiler<'ctx> {
                     let ty = self.bitwise_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
                 }
+                "RangeCheck" => {
+                    let ty = self.range_check_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
                 "felt252" => {
                     let ty = self.felt_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));

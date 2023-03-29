@@ -234,9 +234,19 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 128)
     }
 
+    pub fn u256_type(&self) -> Type {
+        Type::integer(&self.context, 256)
+    }
+
     /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
     /// classic segments this type makes no sense, therefore it's implemented as `()`.
     pub fn bitwise_type(&self) -> Type {
+        Type::none(&self.context)
+    }
+
+    /// Type `Bitwise`. Points to the range check builtin pointer. Since we're not respecting the
+    /// classic segments this type makes no sense, therefore it's implemented as `()`.
+    pub fn range_check_type(&self) -> Type {
         Type::none(&self.context)
     }
 
@@ -288,6 +298,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_shrs<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.shrsi", Location::unknown(&self.context))
+                .add_operands(&[value, shift_by])
+                .add_results(&[value.r#type()])
+                .build(),
+        )
+    }
+
+    /// Shift right unsigned.
+    pub fn op_shru<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.shrui", Location::unknown(&self.context))
                 .add_operands(&[value, shift_by])
                 .add_results(&[value.r#type()])
                 .build(),
