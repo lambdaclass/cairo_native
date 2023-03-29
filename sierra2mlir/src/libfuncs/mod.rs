@@ -430,7 +430,11 @@ impl<'ctx> Compiler<'ctx> {
         let res = match binary_op {
             BinaryOp::Add => self.op_add(&entry_block, lhs.into(), rhs.into()),
             BinaryOp::Sub => self.op_sub(&entry_block, lhs.into(), rhs.into()),
-            BinaryOp::Mul => self.op_mul(&entry_block, lhs.into(), rhs.into()),
+            BinaryOp::Mul => {
+                let lhs_zext = self.op_zext(&entry_block, lhs.into(), self.double_felt_type());
+                let rhs_zext = self.op_zext(&entry_block, rhs.into(), self.double_felt_type());
+                self.op_mul(&entry_block, lhs_zext.result(0)?.into(), rhs_zext.result(0)?.into())
+            }
             BinaryOp::Div => todo!(),
         };
         let res_result = res.result(0)?;
@@ -502,6 +506,15 @@ impl<'ctx> Compiler<'ctx> {
             }
             _ => {
                 let res = self.op_felt_modulo(&entry_block, res_result.into())?;
+
+                // Truncate to i256 after a multiplication.
+                let res = match binary_op {
+                    BinaryOp::Mul => {
+                        self.op_trunc(&entry_block, res.result(0)?.into(), self.felt_type())
+                    }
+                    _ => res,
+                };
+
                 self.op_br(&entry_block, &end_block, &[res.result(0)?.into()]);
             }
         };

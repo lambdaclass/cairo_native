@@ -8,4 +8,3 @@ store_temp<felt252>([0]) -> ([1]);
 return([1]);
 
 print_test::print_test::main@0() -> (felt252);
-
