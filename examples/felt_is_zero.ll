@@ -5,6 +5,8 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare i32 @dprintf(i32, ptr, ...)
+
 define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
   %2 = insertvalue { i256, i256 } undef, i256 %0, 0
   %3 = insertvalue { i256, i256 } %2, i256 %0, 1
@@ -32,7 +34,7 @@ define internal i256 @"rename<felt252>"(i256 %0) {
   ret i256 %0
 }
 
-define internal i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
+define i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -57,6 +59,11 @@ define internal i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
   %15 = phi i256 [ %13, %10 ], [ %9, %8 ]
   %16 = call i256 @"rename<felt252>"(i256 %15)
   ret i256 %16
+}
+
+define i256 @_mlir_ciface_felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
+  %2 = call i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0)
+  ret i256 %2
 }
 
 !llvm.module.flags = !{!0}

@@ -1,4 +1,5 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
@@ -40,7 +41,7 @@ module attributes {llvm.data_layout = ""} {
   llvm.func internal @"store_temp<Unit>"(%arg0: !llvm.struct<()>) -> !llvm.struct<()> {
     llvm.return %arg0 : !llvm.struct<()>
   }
-  llvm.func internal @fib_fib_fib(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 {
+  llvm.func @fib_fib_fib(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0, %arg1, %arg2 : i256, i256, i256)
   ^bb1(%0: i256, %1: i256, %2: i256):  // pred: ^bb0
     %3 = llvm.call @"dup<felt252>"(%2) : (i256) -> !llvm.struct<(i256, i256)>
@@ -69,7 +70,11 @@ module attributes {llvm.data_layout = ""} {
     %25 = llvm.call @"rename<felt252>"(%24) : (i256) -> i256
     llvm.return %25 : i256
   }
-  llvm.func internal @fib_fib_fib_mid(%arg0: i256) -> !llvm.struct<()> {
+  llvm.func @_mlir_ciface_fib_fib_fib(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @fib_fib_fib(%arg0, %arg1, %arg2) : (i256, i256, i256) -> i256
+    llvm.return %0 : i256
+  }
+  llvm.func @fib_fib_fib_mid(%arg0: i256) -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0 : i256)
   ^bb1(%0: i256):  // pred: ^bb0
     %1 = llvm.call @"dup<felt252>"(%0) : (i256) -> !llvm.struct<(i256, i256)>
@@ -98,7 +103,12 @@ module attributes {llvm.data_layout = ""} {
     %19 = llvm.call @"store_temp<Unit>"(%18) : (!llvm.struct<()>) -> !llvm.struct<()>
     llvm.return %19 : !llvm.struct<()>
   }
-  llvm.func internal @fib_fib_main(%arg0: i256) -> !llvm.struct<()> {
+  llvm.func @_mlir_ciface_fib_fib_fib_mid(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @fib_fib_fib_mid(%arg1) : (i256) -> !llvm.struct<()>
+    llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
+    llvm.return
+  }
+  llvm.func @fib_fib_main(%arg0: i256) -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(100 : i256) : i256
@@ -107,5 +117,10 @@ module attributes {llvm.data_layout = ""} {
     %3 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
     %4 = llvm.call @"store_temp<Unit>"(%3) : (!llvm.struct<()>) -> !llvm.struct<()>
     llvm.return %4 : !llvm.struct<()>
+  }
+  llvm.func @_mlir_ciface_fib_fib_main(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @fib_fib_main(%arg1) : (i256) -> !llvm.struct<()>
+    llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
+    llvm.return
   }
 }

@@ -23,14 +23,10 @@ pub fn compile(
     optimized: bool,
     debug_info: bool,
     // TODO: Make this an enum with either: stdout, stderr, a path to a file, or a raw fd (pipes?).
-    main_print: Option<i32>,
+    main_print: bool,
+    print_fd: i32,
 ) -> Result<String, color_eyre::Report> {
-    let mut compiler = Compiler::new(code, main_print)?;
-
-    if main_print.is_some() {
-        compiler.create_printf()?;
-    }
-
+    let mut compiler = Compiler::new(code, main_print, print_fd)?;
     compiler.compile()?;
 
     debug!("mlir before pass:\n{}", compiler.module.as_operation());
@@ -38,12 +34,11 @@ pub fn compile(
     register_all_passes();
 
     if optimized {
-        // the inliner sometimes slows things down, need to investigate
-        // pass_manager.add_pass(pass::transform::inliner());
-        pass_manager.add_pass(pass::transform::sccp());
-        pass_manager.add_pass(pass::transform::cse());
-        pass_manager.add_pass(pass::transform::symbol_dce());
         pass_manager.add_pass(pass::transform::canonicalizer());
+        pass_manager.add_pass(pass::transform::inliner());
+        pass_manager.add_pass(pass::transform::symbol_dce());
+        pass_manager.add_pass(pass::transform::cse());
+        pass_manager.add_pass(pass::transform::sccp());
     }
 
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
@@ -68,12 +63,21 @@ pub fn compile(
     }
 }
 
-pub fn execute(code: &str, main_print: Option<i32>) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(code, main_print)?;
+pub fn execute(
+    code: &str,
+    main_print: bool,
+    print_fd: i32,
+) -> Result<ExecutionEngine, color_eyre::Report> {
+    let mut compiler = Compiler::new(code, main_print, print_fd)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
+    pass_manager.add_pass(pass::transform::canonicalizer());
+    pass_manager.add_pass(pass::transform::inliner());
+    pass_manager.add_pass(pass::transform::symbol_dce());
+    pass_manager.add_pass(pass::transform::cse());
+    pass_manager.add_pass(pass::transform::sccp());
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
