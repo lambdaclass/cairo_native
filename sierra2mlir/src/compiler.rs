@@ -14,7 +14,7 @@ use melior_next::{
 use regex::Regex;
 use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
 
-use crate::types::DEFAULT_PRIME;
+use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
 pub struct Compiler<'ctx> {
     pub code: String,
@@ -127,9 +127,8 @@ impl<'ctx> SierraType<'ctx> {
     }
 }
 
-// TODO split into libfuncdef and userfuncdef and model branching return types for libfuncdef
 #[derive(Debug, Clone)]
-pub struct FunctionDef<'ctx> {
+pub struct UserFuncDef<'ctx> {
     pub(crate) args: Vec<SierraType<'ctx>>,
     pub(crate) return_types: Vec<SierraType<'ctx>>,
 }
@@ -139,14 +138,8 @@ pub struct FunctionDef<'ctx> {
 #[derive(Debug, Default, Clone)]
 pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
-    pub(crate) u8_consts: HashMap<String, String>,
-    pub(crate) u16_consts: HashMap<String, String>,
-    pub(crate) u32_consts: HashMap<String, String>,
-    pub(crate) u64_consts: HashMap<String, String>,
-    pub(crate) u128_consts: HashMap<String, String>,
-    pub(crate) felt_consts: HashMap<String, String>,
-    pub(crate) libfuncs: HashMap<String, FunctionDef<'ctx>>,
-    pub(crate) userfuncs: HashMap<String, FunctionDef<'ctx>>,
+    pub(crate) libfuncs: HashMap<String, SierraLibFunc<'ctx>>,
+    pub(crate) userfuncs: HashMap<String, UserFuncDef<'ctx>>,
 }
 
 impl<'ctx> Compiler<'ctx> {

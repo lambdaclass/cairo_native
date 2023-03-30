@@ -3,9 +3,11 @@ use color_eyre::Result;
 use melior_next::ir::{Block, BlockRef, Region, Value};
 
 use crate::{
-    compiler::{Compiler, FunctionDef, SierraType, Storage},
+    compiler::{Compiler, SierraType, Storage},
     utility::create_fn_signature,
 };
+
+use super::lib_func_def::SierraLibFunc;
 
 impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_enum_init(
@@ -72,10 +74,10 @@ impl<'ctx> Compiler<'ctx> {
 
             storage.libfuncs.insert(
                 id,
-                FunctionDef {
-                    args: vec![variant_sierra_type.clone()],
-                    return_types: vec![enum_arg_type],
-                },
+                SierraLibFunc::create_simple(
+                    vec![variant_sierra_type.clone()],
+                    vec![enum_arg_type],
+                ),
             );
 
             parent_block.append_operation(func);
