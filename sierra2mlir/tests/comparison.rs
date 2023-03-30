@@ -17,6 +17,7 @@ use test_case::test_case;
 
 #[test_case("simple_return")]
 #[test_case("tuple_return")]
+#[test_case("enum_return")]
 #[test_case("fib_counter")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
@@ -86,7 +87,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let mlir_file = tmp_dir.join(format!("{test_name}.mlir")).display().to_string();
     let output_file = tmp_dir.join(format!("{test_name}.ll")).display().to_string();
 
-    let compiled_code = compile(sierra_code, false, false, true).unwrap();
+    let compiled_code = compile(sierra_code, false, false, true, 1).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();

@@ -5,14 +5,14 @@ use melior_next::{
     dialect,
     ir::{
         operation::{self},
-        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, TypeLike,
-        Value, ValueLike,
+        Block, BlockRef, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
+        TypeLike, Value, ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
 use regex::Regex;
-use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
@@ -22,13 +22,24 @@ pub struct Compiler<'ctx> {
     pub context: Context,
     pub module: Module<'ctx>,
     pub main_print: bool,
+    pub print_fd: i32,
 }
 
 // We represent a struct as a contiguous list of types, like sierra does, for now.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SierraType<'ctx> {
     Simple(Type<'ctx>),
-    Struct { ty: Type<'ctx>, field_types: Vec<Self> },
+    Struct {
+        ty: Type<'ctx>,
+        field_types: Vec<Self>,
+    },
+    Enum {
+        ty: Type<'ctx>,
+        tag_type: Type<'ctx>,
+        storage_bytes_len: u32,
+        storage_type: Type<'ctx>, // the array
+        variants_types: Vec<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -42,6 +53,13 @@ impl<'ctx> SierraType<'ctx> {
                 }
                 width
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: storage_type_len,
+                storage_type: _,
+                variants_types: _,
+            } => tag_type.get_width().unwrap() + (storage_type_len * 8),
         }
     }
 
@@ -50,6 +68,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             Self::Simple(ty) => *ty,
             Self::Struct { ty, field_types: _ } => *ty,
+            Self::Enum {
+                ty,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types: _,
+            } => *ty,
         }
     }
 
@@ -58,6 +83,13 @@ impl<'ctx> SierraType<'ctx> {
             match self {
                 Self::Simple(ty) => *ty,
                 Self::Struct { ty, field_types: _ } => *ty,
+                Self::Enum {
+                    ty,
+                    tag_type: _,
+                    storage_bytes_len: _,
+                    storage_type: _,
+                    variants_types: _,
+                } => *ty,
             },
             Location::unknown(context),
         )
@@ -70,6 +102,13 @@ impl<'ctx> SierraType<'ctx> {
             SierraType::Struct { ty: _, field_types } => {
                 Some(field_types.iter().map(|x| x.get_type()).collect_vec())
             }
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types.iter().map(|x| x.get_type()).collect()),
         }
     }
 
@@ -77,6 +116,13 @@ impl<'ctx> SierraType<'ctx> {
         match self {
             SierraType::Simple(_) => None,
             SierraType::Struct { ty: _, field_types } => Some(field_types),
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => Some(variants_types),
         }
     }
 }
@@ -103,7 +149,7 @@ pub struct Storage<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn new(code: &str, main_print: bool) -> color_eyre::Result<Self> {
+    pub fn new(code: &str, main_print: bool, print_fd: i32) -> color_eyre::Result<Self> {
         let code = code.to_string();
         let program: Program = ProgramParser::new().parse(&code).unwrap();
 
@@ -138,13 +184,17 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self { code, program, context, module, main_print })
+        Ok(Self { code, program, context, module, main_print, print_fd })
     }
 }
 
 impl<'ctx> Compiler<'ctx> {
     pub fn named_attribute(&self, name: &str, attribute: &str) -> Result<NamedAttribute> {
         Ok(NamedAttribute::new_parsed(&self.context, name, attribute)?)
+    }
+
+    pub fn llvm_ptr_type(&self) -> Type {
+        Type::parse(&self.context, "!llvm.ptr").unwrap()
     }
 
     pub fn felt_type(&self) -> Type {
@@ -183,9 +233,19 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 128)
     }
 
+    pub fn u256_type(&self) -> Type {
+        Type::integer(&self.context, 256)
+    }
+
     /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
     /// classic segments this type makes no sense, therefore it's implemented as `()`.
     pub fn bitwise_type(&self) -> Type {
+        Type::none(&self.context)
+    }
+
+    /// Type `Bitwise`. Points to the range check builtin pointer. Since we're not respecting the
+    /// classic segments this type makes no sense, therefore it's implemented as `()`.
+    pub fn range_check_type(&self) -> Type {
         Type::none(&self.context)
     }
 
@@ -237,6 +297,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_shrs<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.shrsi", Location::unknown(&self.context))
+                .add_operands(&[value, shift_by])
+                .add_results(&[value.r#type()])
+                .build(),
+        )
+    }
+
+    /// Shift right unsigned.
+    pub fn op_shru<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.shrui", Location::unknown(&self.context))
                 .add_operands(&[value, shift_by])
                 .add_results(&[value.r#type()])
                 .build(),
@@ -405,6 +475,241 @@ impl<'ctx> Compiler<'ctx> {
         })
     }
 
+    /// Perform modular exponentiation using the binary RTL method.
+    ///
+    /// > Source: https://en.wikipedia.org/wiki/Modular_exponentiation
+    pub fn op_felt_pow<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        base: Value,
+        exponent: Value,
+    ) -> Result<OperationRef<'a>> {
+        // <in block> <- setup
+        // <new block> <- loop before cond
+        // <new block> <- loop after cond
+        // <new block> <- final (returned)
+
+        // result = 1
+        // while exponent != 0 {
+        //     if lsb(exponent) {}
+        //         result = (result * base) % prime
+        //     }
+        //     exponent = exponent >> 1
+        //     base = (base * base) % prime
+        // }
+
+        let init_block = block;
+        let loop_before_condition_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_after_condition_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_step_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+        let loop_after_step_block = region.append_block(Block::new(&[
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+            (self.felt_type(), Location::unknown(&self.context)),
+        ]));
+
+        let const_one = self.op_felt_const(init_block, "1");
+        let const_zero = self.op_felt_const(init_block, "0");
+
+        // Block loop_before_condition:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forwarded).
+        {
+            // Compare exponent with zero.
+            let loop_cmp_op = self.op_cmp(
+                &loop_before_condition_block,
+                CmpOp::Equal,
+                loop_before_condition_block.argument(2)?.into(),
+                const_zero.result(0)?.into(),
+            );
+
+            // Run `scf.condition` operation.
+            loop_before_condition_block.append_operation(
+                operation::Builder::new("scf.condition", Location::unknown(&self.context))
+                    .add_operands(&[
+                        loop_cmp_op.result(0)?.into(),
+                        loop_before_condition_block.argument(0)?.into(),
+                        loop_before_condition_block.argument(1)?.into(),
+                        loop_before_condition_block.argument(2)?.into(),
+                    ])
+                    .build(),
+            );
+        }
+
+        // Block loop_after_condition:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forward).
+        {
+            // Compare LSB of exponent.
+            let masked_exponent = self.op_and(
+                &loop_after_condition_block,
+                loop_after_condition_block.argument(2)?.into(),
+                const_one.result(0)?.into(),
+                self.felt_type(),
+            );
+            let lsb_bit = self.op_cmp(
+                &loop_after_condition_block,
+                CmpOp::Equal,
+                masked_exponent.result(0)?.into(),
+                const_zero.result(0)?.into(),
+            );
+
+            // Jump to either loop_step or loop_after_step.
+            self.op_cond_br(
+                &loop_after_condition_block,
+                lsb_bit.result(0)?.into(),
+                &loop_after_step_block,
+                &loop_step_block,
+                &[
+                    loop_after_condition_block.argument(0)?.into(),
+                    loop_after_condition_block.argument(1)?.into(),
+                    loop_after_condition_block.argument(2)?.into(),
+                ],
+                &[
+                    loop_after_condition_block.argument(0)?.into(),
+                    loop_after_condition_block.argument(1)?.into(),
+                    loop_after_condition_block.argument(2)?.into(),
+                ],
+            )?;
+        }
+
+        // Block loop_step:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (forward after update).
+        {
+            // result = (result * base) % modulus.
+            let lhs = self.op_zext(
+                &loop_step_block,
+                loop_step_block.argument(0)?.into(),
+                self.double_felt_type(),
+            );
+            let rhs = self.op_zext(
+                &loop_step_block,
+                loop_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+
+            let op_mul =
+                self.op_mul(&loop_step_block, lhs.result(0)?.into(), rhs.result(0)?.into());
+            let op_mod = self.op_felt_modulo(&loop_step_block, op_mul.result(0)?.into())?;
+            let op_trunc =
+                self.op_trunc(&loop_step_block, op_mod.result(0)?.into(), self.felt_type());
+
+            // Jump to loop_after_step.
+            self.op_br(
+                &loop_step_block,
+                &loop_after_step_block,
+                &[
+                    op_trunc.result(0)?.into(),
+                    loop_step_block.argument(1)?.into(),
+                    loop_step_block.argument(2)?.into(),
+                ],
+            );
+        }
+
+        // Block loop_after_step:
+        //   Args: [result, base, exponent].
+        //   Rets: [result, base, exponent] (next step after update).
+        {
+            // exponent = exponent >> 1.
+            let shifted_exponent = self.op_shru(
+                &loop_after_step_block,
+                loop_after_step_block.argument(2)?.into(),
+                const_one.result(0)?.into(),
+            );
+
+            // base = (base * base) % modulus.
+            let lhs = self.op_zext(
+                &loop_after_step_block,
+                loop_after_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+            let rhs = self.op_zext(
+                &loop_after_step_block,
+                loop_after_step_block.argument(1)?.into(),
+                self.double_felt_type(),
+            );
+
+            let op_mul =
+                self.op_mul(&loop_after_step_block, lhs.result(0)?.into(), rhs.result(0)?.into());
+            let op_mod = self.op_felt_modulo(&loop_after_step_block, op_mul.result(0)?.into())?;
+            let op_trunc =
+                self.op_trunc(&loop_after_step_block, op_mod.result(0)?.into(), self.felt_type());
+
+            // scf.yield
+            loop_after_step_block.append_operation(
+                operation::Builder::new("scf.yield", Location::unknown(&self.context))
+                    .add_operands(&[
+                        loop_after_step_block.argument(0)?.into(),
+                        op_trunc.result(0)?.into(),
+                        shifted_exponent.result(0)?.into(),
+                    ])
+                    .build(),
+            );
+        }
+
+        Ok(init_block.append_operation(
+            operation::Builder::new("scf.while", Location::unknown(&self.context))
+                .add_operands(&[const_one.result(0)?.into(), base, exponent])
+                .add_successors(&[&loop_before_condition_block, &loop_after_condition_block])
+                .add_results(&[self.felt_type(), self.felt_type(), self.felt_type()])
+                .build(),
+        ))
+    }
+
+    /// Compute the multiplicative inverse of a felt.
+    ///
+    /// > Source: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+    pub fn op_felt_inverse<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        value: Value,
+    ) -> Result<OperationRef<'a>> {
+        let const_p = self.prime_constant(block);
+        let const_two = self.op_felt_const(block, "2");
+        let p_minus_2 = self.op_sub(block, const_p.result(0)?.into(), const_two.result(0)?.into());
+
+        self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())
+    }
+
+    /// Perform a felt divison (not euclidean, but modular).
+    ///
+    /// In other words, find x in `a / b = x` such that `x * b = a` in modulo prime.
+    pub fn op_felt_div<'a>(
+        &self,
+        region: &'a Region,
+        block: &'a Block,
+        dividend: Value,
+        divisor: Value,
+    ) -> Result<OperationRef<'a>> {
+        // Find the multiplicative inverse of the divisor.
+        let divisor_inverse = self.op_felt_inverse(region, block, divisor)?;
+
+        // Multiply by the dividend to find the quotient.
+        let lhs = self.op_zext(block, dividend, self.double_felt_type());
+        let rhs = self.op_zext(block, divisor_inverse.result(0)?.into(), self.double_felt_type());
+
+        let op_mul = self.op_mul(block, lhs.result(0)?.into(), rhs.result(0)?.into());
+        let op_mod = self.op_felt_modulo(block, op_mul.result(0)?.into())?;
+        let op_trunc = self.op_trunc(block, op_mod.result(0)?.into(), self.felt_type());
+
+        Ok(op_trunc)
+    }
+
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func<'a>(
         &'a self,
@@ -456,6 +761,38 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    /// creates a llvm struct allocating on the stack
+    ///
+    /// use getelementptr instead of extractvalue
+    pub fn op_llvm_struct_alloca<'a>(
+        &self,
+        block: &'a Block,
+        types: &[Type],
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_alloca(
+            block,
+            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
+            1,
+        )
+    }
+
+    /// bitcasts a type into another
+    ///
+    /// https://mlir.llvm.org/docs/Dialects/LLVM/#llvmbitcast-mlirllvmbitcastop
+    pub fn op_llvm_bitcast<'a>(
+        &self,
+        block: &'a Block,
+        value: Value,
+        to: Type,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.bitcast", Location::unknown(&self.context))
+                .add_operands(&[value])
+                .add_results(&[to])
+                .build(),
+        )
+    }
+
     pub fn op_llvm_alloca<'a>(
         &self,
         block: &'a Block,
@@ -475,7 +812,7 @@ impl<'ctx> Compiler<'ctx> {
                     ],
                 )?)
                 .add_operands(&[size_res])
-                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .add_results(&[self.llvm_ptr_type()])
                 .build(),
         ))
     }
@@ -504,6 +841,21 @@ impl<'ctx> Compiler<'ctx> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.store", Location::unknown(&self.context))
                 .add_operands(&[value, addr])
+                .build(),
+        ))
+    }
+
+    pub fn op_llvm_load<'a>(
+        &self,
+        block: &'a Block,
+        addr: Value,
+        value_type: Type,
+        // align: usize,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.load", Location::unknown(&self.context))
+                .add_operands(&[addr])
+                .add_results(&[value_type])
                 .build(),
         ))
     }
@@ -553,6 +905,50 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    /// cf switch
+    ///
+    /// used in enum print
+    pub fn op_switch<'a>(
+        &self,
+        block: &'a Block,
+        case_values: &[String],
+        flag: Value,
+        default_dest: BlockRef,
+        case_dests: &[BlockRef],
+    ) -> Result<OperationRef<'a>> {
+        let mut dests = vec![default_dest];
+        dests.extend(case_dests);
+        Ok(block.append_operation(
+            operation::Builder::new("cf.switch", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        (
+                            "case_values",
+                            &format!(
+                                "dense<[{}]> : tensor<{} x {}>",
+                                case_values.iter().join(", "),
+                                case_values.len(),
+                                flag.r#type()
+                            ),
+                        ),
+                        (
+                            // number of operands passed to each case
+                            "case_operand_segments",
+                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
+                        ),
+                        (
+                            "operand_segment_sizes",
+                            "array<i32: 1, 0, 0>", // flag, defaultops, caseops
+                        ),
+                    ],
+                )?)
+                .add_operands(&[flag])
+                .add_successors(dests.iter().map(|x| x.deref()).collect_vec().as_slice())
+                .build(),
+        ))
+    }
+
     /// inserts a value into the specified struct.
     ///
     /// The struct_llvm_type is made from `struct_type_string`
@@ -564,7 +960,7 @@ impl<'ctx> Compiler<'ctx> {
         index: usize,
         struct_value: Value,
         value: Value,
-        struct_llvm_type: &str,
+        struct_llvm_type: Type,
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
@@ -572,7 +968,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("position", &format!("array<i64: {}>", index))?
                 ])
                 .add_operands(&[struct_value, value])
-                .add_results(&[Type::parse(&self.context, struct_llvm_type).unwrap()])
+                .add_results(&[struct_llvm_type])
                 .build(),
         ))
     }
@@ -594,6 +990,28 @@ impl<'ctx> Compiler<'ctx> {
                 ])
                 .add_operands(&[struct_value])
                 .add_results(&[value_type])
+                .build(),
+        ))
+    }
+
+    /// llvm getelementptr with a constant offset
+    pub fn op_llvm_gep<'a>(
+        &self,
+        block: &'a Block,
+        index: usize,
+        struct_ptr: Value,
+        struct_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
+                .add_attributes(&[
+                    // 0 is the base offset, check out gep docs for more info
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: 0, {}>", index))?,
+                    self.named_attribute("elem_type", &struct_type.to_string())?,
+                    self.named_attribute("inbounds", "unit")?,
+                ])
+                .add_operands(&[struct_ptr]) // base addr
+                .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type
                 .build(),
         ))
     }
@@ -651,270 +1069,15 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        if self.print_fd > 0 {
+            self.create_printf()?;
+        }
         let storage = Rc::new(RefCell::new(Storage::default()));
         self.process_types(storage.clone())?;
         self.process_libfuncs(storage.clone())?;
         self.process_functions(storage.clone())?;
         self.process_statements(storage)?;
         Ok(self.module.as_operation())
-    }
-
-    pub fn compile_hardcoded_fib(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        // hardcoded fib
-
-        /*
-        fn fib(a: felt, b: felt, n: felt) -> felt {
-            match n {
-                0 => a,
-                _ => fib(b, a + b, n - 1),
-            }
-        }
-        fn fib_mid(n: felt) {
-            match n {
-                0 => (),
-                _ => {
-                    fib(0, 1, 500);
-                    fib_mid(n - 1);
-                },
-            }
-        }
-        fn main(a: felt) {
-            fib_mid(100);
-        }
-         */
-
-        let felt_type = self.felt_type();
-        let location = Location::unknown(&self.context);
-        let prime = DEFAULT_PRIME;
-
-        let fib_function = {
-            let fib_region = Region::new();
-            // arguments: a: felt, n: felt
-            let fib_block = self.new_block(&[felt_type, felt_type, felt_type]);
-            let arg_a = fib_block.argument(0)?;
-            let arg_b = fib_block.argument(1)?;
-            let arg_n = fib_block.argument(2)?;
-
-            // prepare the if comparision: n == 0
-            let zero = self.op_felt_const(&fib_block, "0");
-            let zero_res = zero.result(0)?.into();
-            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
-
-            // if else regions
-            let if_region = Region::new();
-            let else_region = Region::new();
-
-            // if
-            {
-                //  0 => (a, 0),
-                let if_block = self.new_block(&[]);
-
-                if_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .add_operands(&[arg_a.into(), zero_res])
-                        .build(),
-                );
-
-                if_region.append_block(if_block);
-            }
-
-            // else
-            {
-                /*
-                    let (v, count) = fib(b, a + b, n - 1);
-                    return (v, count + 1)
-                */
-
-                let else_block = self.new_block(&[]);
-
-                let prime = self.op_felt_const(&else_block, prime);
-                let prime_res = prime.result(0)?;
-
-                let a_plus_b = self.op_add(&else_block, arg_a.into(), arg_b.into());
-                let a_plus_b_res = a_plus_b.result(0).unwrap();
-
-                let a_plus_b_mod = self.op_rem(&else_block, a_plus_b_res.into(), prime_res.into());
-                let a_plus_b_mod_res = a_plus_b_mod.result(0)?;
-
-                let one = self.op_felt_const(&fib_block, "1");
-                let one_res = one.result(0)?.into();
-
-                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
-                let n_minus_1_res = n_minus_1.result(0).unwrap();
-
-                let n_minus_1_mod =
-                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
-                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
-
-                let func_call = self.op_func_call(
-                    &else_block,
-                    "fib",
-                    &[arg_b.into(), a_plus_b_mod_res.into(), n_minus_1_mod_res.into()],
-                    &[felt_type, felt_type],
-                )?;
-
-                let value = func_call.result(0)?;
-                let count = func_call.result(1)?;
-
-                let count_plus_1 = self.op_add(&else_block, count.into(), one_res);
-                let count_plus_1_res = count_plus_1.result(0).unwrap();
-
-                let count_plus_1_mod =
-                    self.op_rem(&else_block, count_plus_1_res.into(), prime_res.into());
-                let count_plus_1_mod_res = count_plus_1_mod.result(0)?;
-
-                else_block.append_operation(
-                    operation::Builder::new("scf.yield", location)
-                        .add_operands(&[value.into(), count_plus_1_mod_res.into()])
-                        .build(),
-                );
-
-                else_region.append_block(else_block);
-            }
-
-            let isif = fib_block.append_operation(
-                operation::Builder::new("scf.if", location)
-                    .add_operands(&[eq.result(0)?.into()])
-                    .add_results(&[felt_type, felt_type])
-                    .add_regions(vec![if_region, else_region])
-                    .build(),
-            );
-
-            let value = isif.result(0)?;
-            let count = isif.result(1)?;
-
-            self.op_return(&fib_block, &[value.into(), count.into()]);
-
-            fib_region.append_block(fib_block);
-
-            self.op_func(
-                "fib",
-                "(i256, i256, i256) -> (i256, i256)",
-                vec![fib_region],
-                false,
-                true,
-            )?
-        };
-
-        self.module.body().append_operation(fib_function);
-
-        let fib_mid_function = {
-            /*
-            fn fib_mid(n: felt) {
-                match n {
-                    0 => (),
-                    _ => {
-                        fib(0, 1, 500);
-                        fib_mid(n - 1);
-                    },
-                }
-            }
-            */
-            let fib_mid_region = Region::new();
-            // arguments: a: felt, n: felt
-            let fib_block = self.new_block(&[felt_type]);
-            let arg_n = fib_block.argument(0)?;
-
-            // prepare the if comparision: n == 0
-            let zero = self.op_felt_const(&fib_block, "0");
-            let zero_res = zero.result(0)?.into();
-            let eq = self.op_cmp(&fib_block, CmpOp::Equal, arg_n.into(), zero_res);
-
-            // if else regions
-            let if_region = Region::new();
-            let else_region = Region::new();
-
-            // if
-            {
-                //  0 => (),
-                let if_block = self.new_block(&[]);
-
-                if_block.append_operation(operation::Builder::new("scf.yield", location).build());
-
-                if_region.append_block(if_block);
-            }
-
-            // else
-            {
-                /*
-                    fib(0, 1, 500);
-                    fib_mid(n - 1);
-                */
-
-                let else_block = self.new_block(&[]);
-
-                let one = self.op_felt_const(&fib_block, "1");
-                let one_res = one.result(0)?.into();
-                let times = self.op_felt_const(&fib_block, "500");
-                let times_res = times.result(0)?.into();
-
-                self.op_func_call(
-                    &else_block,
-                    "fib",
-                    &[zero_res, one_res, times_res],
-                    &[felt_type, felt_type],
-                )?;
-
-                let n_minus_1 = self.op_sub(&else_block, arg_n.into(), one_res);
-                let n_minus_1_res = n_minus_1.result(0).unwrap();
-
-                let prime = self.op_felt_const(&else_block, prime);
-                let prime_res = prime.result(0)?;
-
-                let n_minus_1_mod =
-                    self.op_rem(&else_block, n_minus_1_res.into(), prime_res.into());
-                let n_minus_1_mod_res = n_minus_1_mod.result(0)?;
-
-                self.op_func_call(&else_block, "fib_mid", &[n_minus_1_mod_res.into()], &[])?;
-
-                else_block.append_operation(operation::Builder::new("scf.yield", location).build());
-
-                else_region.append_block(else_block);
-            }
-
-            fib_block.append_operation(
-                operation::Builder::new("scf.if", location)
-                    .add_operands(&[eq.result(0)?.into()])
-                    .add_results(&[])
-                    .add_regions(vec![if_region, else_region])
-                    .build(),
-            );
-
-            self.op_return(&fib_block, &[]);
-
-            fib_mid_region.append_block(fib_block);
-
-            self.op_func("fib_mid", "(i256) -> ()", vec![fib_mid_region], false, true)?
-        };
-
-        self.module.body().append_operation(fib_mid_function);
-
-        let main_function = {
-            let region = Region::new();
-            let block = Block::new(&[]);
-
-            let n_arg = self.op_felt_const(&block, "100");
-            let n_arg_res = n_arg.result(0)?.into();
-
-            self.op_func_call(&block, "fib_mid", &[n_arg_res], &[])?;
-
-            let main_ret = self.op_const(&block, "0", self.i32_type());
-
-            self.op_return(&block, &[main_ret.result(0)?.into()]);
-
-            region.append_block(block);
-
-            self.op_func("main", "() -> i32", vec![region], true, true)?
-        };
-
-        self.module.body().append_operation(main_function);
-        let op = self.module.as_operation();
-
-        if op.verify() {
-            Ok(op)
-        } else {
-            Err(color_eyre::eyre::eyre!("error verifiying"))
-        }
     }
 
     pub fn compile_hardcoded_gpu(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {

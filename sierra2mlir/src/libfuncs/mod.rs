@@ -14,6 +14,7 @@ use crate::{
 use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
 
 pub mod lib_func_def;
+pub mod sierra_enum;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
@@ -70,12 +71,23 @@ impl<'ctx> Compiler<'ctx> {
                         BinaryOp::Mul,
                     )?;
                 }
+                "felt252_div" => {
+                    self.create_libfunc_felt_binary_op(
+                        func_decl,
+                        parent_block,
+                        storage.clone(),
+                        BinaryOp::Div,
+                    )?;
+                }
                 "felt252_is_zero" => {
                     // Note no actual function is created here, however types are registered
                     self.register_libfunc_felt252_is_zero(func_decl, storage.clone());
                 }
                 "dup" => {
                     self.create_libfunc_dup(func_decl, parent_block, storage.clone())?;
+                }
+                "enum_init" => {
+                    self.create_libfunc_enum_init(func_decl, parent_block, storage.clone())?;
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage.clone())?;
@@ -104,6 +116,89 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_const" => {
                     self.create_libfunc_int_const(func_decl, self.u128_type(), storage.clone());
+                }
+                "u8_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u8_type(),
+                    )?;
+                }
+                "u16_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u16_type(),
+                    )?;
+                }
+                "u32_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u32_type(),
+                    )?;
+                }
+                "u64_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u64_type(),
+                    )?;
+                }
+                "u128_to_felt252" => {
+                    self.create_libfunc_uint_to_felt252(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u128_type(),
+                    )?;
+                }
+                "u8_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u8_type(),
+                        self.u16_type(),
+                    )?;
+                }
+                "u16_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u16_type(),
+                        self.u32_type(),
+                    )?;
+                }
+                "u32_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u32_type(),
+                        self.u64_type(),
+                    )?;
+                }
+                "u64_wide_mul" => {
+                    self.create_libfunc_uint_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u64_type(),
+                        self.u128_type(),
+                    )?;
+                }
+                "u128_wide_mul" => {
+                    self.create_libfunc_u128_wide_mul(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                    )?;
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
@@ -179,21 +274,19 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&args_with_location);
 
-        let struct_llvm_type = self.struct_type_string(&args);
         let mut struct_type_op = self.op_llvm_struct(&block, &args);
 
         for i in 0..block.argument_count() {
             let arg = block.argument(i)?;
             let struct_value = struct_type_op.result(0)?.into();
             struct_type_op =
-                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), &struct_llvm_type)?;
+                self.op_llvm_insertvalue(&block, i, struct_value, arg.into(), arg_type.get_type())?;
         }
 
         let struct_value: Value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let return_type = Type::parse(&self.context, &struct_llvm_type).unwrap();
-        let function_type = create_fn_signature(&args, &[return_type]);
+        let function_type = create_fn_signature(&args, &[arg_type.get_type()]);
 
         region.append_block(block);
 
@@ -430,7 +523,7 @@ impl<'ctx> Compiler<'ctx> {
                 let rhs_zext = self.op_zext(&entry_block, rhs.into(), self.double_felt_type());
                 self.op_mul(&entry_block, lhs_zext.result(0)?.into(), rhs_zext.result(0)?.into())
             }
-            BinaryOp::Div => todo!(),
+            BinaryOp::Div => self.op_felt_div(&region, &entry_block, lhs.into(), rhs.into())?,
         };
         let res_result = res.result(0)?;
 
@@ -548,6 +641,150 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![vec![], vec![SierraType::Simple(self.felt_type())]],
             }),
         );
+    }
+
+    pub fn create_libfunc_uint_to_felt252(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+        src_type: Type<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block =
+            region.append_block(Block::new(&[(src_type, Location::unknown(&self.context))]));
+
+        let op_zext = self.op_zext(&block, block.argument(0)?.into(), self.felt_type());
+        self.op_return(&block, &[op_zext.result(0)?.into()]);
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[src_type], &[self.felt_type()]),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![SierraType::Simple(src_type)],
+                vec![SierraType::Simple(self.felt_type())],
+            ),
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_uint_wide_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+        src_type: Type<'ctx>,
+        dst_type: Type<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[
+            (src_type, Location::unknown(&self.context)),
+            (src_type, Location::unknown(&self.context)),
+        ]));
+
+        let op_zext_lhs = self.op_zext(&block, block.argument(0)?.into(), dst_type);
+        let op_zext_rhs = self.op_zext(&block, block.argument(1)?.into(), dst_type);
+
+        let op_mul =
+            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+        self.op_return(&block, &[op_mul.result(0)?.into()]);
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[src_type, src_type], &[dst_type]),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![SierraType::Simple(src_type), SierraType::Simple(src_type)],
+                vec![SierraType::Simple(dst_type)],
+            ),
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_u128_wide_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[
+            (self.range_check_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+            (self.u128_type(), Location::unknown(&self.context)),
+        ]));
+
+        let op_zext_lhs = self.op_zext(&block, block.argument(1)?.into(), self.u256_type());
+        let op_zext_rhs = self.op_zext(&block, block.argument(2)?.into(), self.u256_type());
+
+        let op_mul =
+            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+
+        let op_mul_hi = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
+        let op_mul_lo = {
+            let op_const = self.op_const(&block, "128", self.u256_type());
+            let op_shru =
+                self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
+            self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
+        };
+
+        self.op_return(
+            &block,
+            &[block.argument(0)?.into(), op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()],
+        );
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(
+                &[self.range_check_type(), self.u128_type(), self.u128_type()],
+                &[self.range_check_type(), self.u128_type(), self.u128_type()],
+            ),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::Simple(self.u128_type()),
+                ],
+                vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::Simple(self.u128_type()),
+                ],
+            ),
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
     }
 
     pub fn create_libfunc_bitwise(

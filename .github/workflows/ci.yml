@@ -15,14 +15,11 @@ jobs:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
           components: clippy
       - uses: Swatinem/rust-cache@v2
-
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -31,11 +28,8 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all --all-targets -- -D warnings
+      - name: Clippy
+        run: cargo clippy --all --all-targets -- -D warnings
 
   test:
     name: test
@@ -43,15 +37,13 @@ jobs:
     env:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      RUST_LOG: debug
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup rust env
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
-
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -60,27 +52,18 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
+      - name: cargo test
+        run: cargo test --all -- --nocapture
 
-      - run: cargo test
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all
   fmt:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           components: rustfmt
-          toolchain: stable
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
 
   # Check for unnecessary dependencies.
   udeps:
@@ -90,12 +73,10 @@ jobs:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       RUSTUP_TOOLCHAIN: nightly
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        name: "Rust Toolchain Setup"
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
 
       - name: add llvm deb repository
@@ -118,6 +99,6 @@ jobs:
     steps:
       - name: Install deps
         run: sudo apt-get install curl ripgrep jq
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check cairo release
         run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'

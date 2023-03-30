@@ -1,0 +1,13 @@
+type Unit = Struct<ut@Tuple>;
+type core::bool = Enum<ut@core::bool, Unit, Unit>;
+
+libfunc struct_construct<Unit> = struct_construct<Unit>;
+libfunc enum_init<core::bool, 1> = enum_init<core::bool, 1>;
+libfunc store_temp<core::bool> = store_temp<core::bool>;
+
+struct_construct<Unit>() -> ([0]);
+enum_init<core::bool, 1>([0]) -> ([1]);
+store_temp<core::bool>([1]) -> ([2]);
+return([2]);
+
+boolean::boolean::main@0() -> (core::bool);

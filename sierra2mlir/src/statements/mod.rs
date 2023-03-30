@@ -323,7 +323,7 @@ impl<'ctx> Compiler<'ctx> {
             &user_func_def.args.iter().map(|t| t.get_type()).collect_vec(),
             &user_func_def.return_types.iter().map(|t| t.get_type()).collect_vec(),
         );
-        let func = self.op_func(&user_func_name, &function_type, vec![region], false, false)?;
+        let func = self.op_func(&user_func_name, &function_type, vec![region], true, true)?;
         self.module.body().append_operation(func);
         Ok(())
     }

@@ -1,0 +1,5 @@
+
+
+fn main() -> bool {
+    true
+}
