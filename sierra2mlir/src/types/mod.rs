@@ -144,7 +144,7 @@ impl<'ctx> Compiler<'ctx> {
                         }
                     }
 
-                    let bytes = biggest_type.get_width().unwrap() / 8;
+                    let bytes = biggest_type.get_width().unwrap_or(0) / 8;
                     let enum_memory_array =
                         Type::parse(&self.context, &format!("!llvm.array<{bytes} x i8>",))
                             .expect("create the enum storage type.");
