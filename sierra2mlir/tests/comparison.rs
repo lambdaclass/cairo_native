@@ -154,5 +154,5 @@ fn parse_llvm_result(res: &str) -> Vec<BigUint> {
 }
 
 fn flatten_test_name(test_name: &str) -> String {
-    test_name.replace('_', "__").replace("/", "_")
+    test_name.replace('_', "__").replace('/', "_")
 }
