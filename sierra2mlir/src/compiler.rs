@@ -1245,6 +1245,7 @@ impl<'ctx> Compiler<'ctx> {
 pub enum CmpOp {
     #[default]
     Equal,
+    SignedLessThan,
     UnsignedGreaterEqual,
     UnsignedLess,
 }
@@ -1253,6 +1254,7 @@ impl CmpOp {
     pub const fn to_mlir_val(&self) -> &'static str {
         match self {
             Self::Equal => "0",
+            Self::SignedLessThan => "2",
             Self::UnsignedGreaterEqual => "9",
             Self::UnsignedLess => "6",
         }

@@ -10,23 +10,24 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.add %arg0, %arg1  : i256
     %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
     %2 = llvm.icmp "uge" %0, %1 : i256
-    llvm.cond_br %2, ^bb2, ^bb1(%0 : i256)
-  ^bb1(%3: i256):  // 2 preds: ^bb0, ^bb2
-    llvm.return %3 : i256
+    llvm.cond_br %2, ^bb2, ^bb1
+  ^bb1:  // pred: ^bb0
+    llvm.return %0 : i256
   ^bb2:  // pred: ^bb0
-    %4 = llvm.sub %0, %1  : i256
-    llvm.br ^bb1(%4 : i256)
+    %3 = llvm.sub %0, %1  : i256
+    llvm.return %3 : i256
   }
   llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.sub %arg0, %arg1  : i256
-    %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
-    %2 = llvm.icmp "ult" %arg0, %arg1 : i256
-    llvm.cond_br %2, ^bb2, ^bb1(%0 : i256)
-  ^bb1(%3: i256):  // 2 preds: ^bb0, ^bb2
-    llvm.return %3 : i256
+    %1 = llvm.mlir.constant(0 : i256) : i256
+    %2 = llvm.icmp "slt" %0, %1 : i256
+    llvm.cond_br %2, ^bb2, ^bb1
+  ^bb1:  // pred: ^bb0
+    llvm.return %0 : i256
   ^bb2:  // pred: ^bb0
-    %4 = llvm.sub %0, %1  : i256
-    llvm.br ^bb1(%4 : i256)
+    %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
+    %4 = llvm.add %0, %3  : i256
+    llvm.return %4 : i256
   }
   llvm.func internal @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<(i256, i256)> {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>

@@ -554,15 +554,17 @@ impl<'ctx> Compiler<'ctx> {
         let res = res_op.result(0)?.into();
 
         // lt_zero <=> res_result < 0
-        let prime_op = self.prime_constant(&entry_block);
-        let prime = prime_op.result(0)?.into();
-        let lt_zero_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
+        let zero_op = self.op_const(&entry_block, "0", felt_type);
+        let zero = zero_op.result(0)?.into();
+        let lt_zero_op = self.op_cmp(&entry_block, CmpOp::SignedLessThan, res, zero);
         let lt_zero = lt_zero_op.result(0)?.into();
 
         // if gt_prime
         self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[])?;
 
         //lt zero block
+        let prime_op = self.prime_constant(&lt_zero_block);
+        let prime = prime_op.result(0)?.into();
         let wrapped_res_op = self.op_add(&lt_zero_block, res, prime);
         let wrapped_res = wrapped_res_op.result(0)?.into();
         self.op_return(&lt_zero_block, &[wrapped_res]);
