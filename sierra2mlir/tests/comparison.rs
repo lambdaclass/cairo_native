@@ -19,6 +19,7 @@ use test_case::test_case;
 #[test_case("tuple_return")]
 #[test_case("enum_return")]
 #[test_case("fib_counter")]
+#[test_case("felt_ops/add")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
@@ -84,8 +85,11 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
     let tmp_dir = tempdir::TempDir::new("test_comparison").unwrap().into_path();
 
-    let mlir_file = tmp_dir.join(format!("{test_name}.mlir")).display().to_string();
-    let output_file = tmp_dir.join(format!("{test_name}.ll")).display().to_string();
+    // Allows folders of comparison tests without write producing a file not found
+    let test_file_name = flatten_test_name(test_name);
+
+    let mlir_file = tmp_dir.join(format!("{test_file_name}.mlir")).display().to_string();
+    let output_file = tmp_dir.join(format!("{test_file_name}.ll")).display().to_string();
 
     let compiled_code = compile(sierra_code, false, false, true, 1).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
@@ -142,4 +146,8 @@ fn parse_llvm_result(res: &str) -> Vec<BigUint> {
         .filter(|s| !s.is_empty())
         .map(|x| BigUint::from_str_radix(x, 16).unwrap())
         .collect();
+}
+
+fn flatten_test_name(test_name: &str) -> String {
+    test_name.replace('_', "__").replace("/", "_")
 }
