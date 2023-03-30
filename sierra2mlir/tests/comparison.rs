@@ -17,6 +17,7 @@ use test_case::test_case;
 
 #[test_case("simple_return")]
 #[test_case("tuple_return")]
+#[test_case("enum_return")]
 #[test_case("fib_counter")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
