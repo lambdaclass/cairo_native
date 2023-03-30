@@ -3,7 +3,7 @@
 
 function find_llvm_config() {
     # Find LLVM by the prefix environment variable.
-    LLVM_PREFIX=$(printenv LLVM_SYS_160_PREFIX)
+    LLVM_PREFIX=$(printenv MLIR_SYS_160_PREFIX)
     if [[ $? -eq 0 ]]; then
         if [[ -e "$LLVM_PREFIX/bin/llvm-config" ]]; then
             LLVM_VERSION=$($LLVM_PREFIX/bin/llvm-config --version | cut -d '.' -f 1)

@@ -26,4 +26,4 @@ cmake ../llvm \
 cmake --build .
 cmake --install .
 
-echo "Please set LLVM_SYS_160_PREFIX to $(realpath ../../../dist/)"
+echo "Please set MLIR_SYS_160_PREFIX to $(realpath ../../../dist/)"
