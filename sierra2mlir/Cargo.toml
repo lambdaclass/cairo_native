@@ -19,6 +19,7 @@ color-eyre = "0.6.2"
 melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a742bdc7c211b07df307688f6411a40c"}
 itertools = "0.10.5"
 regex = "1.7.3"
+smol_str = { version = "0.1.25", features = ["serde"] }
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6" }
