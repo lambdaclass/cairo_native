@@ -6,6 +6,7 @@ use crate::compiler::SierraType;
 // As such, each LibFuncArg tracks both the type, and which parameter of the sierra libfunc it corresponds to for dataflow tracking
 #[derive(Debug, Clone)]
 pub struct LibFuncArg<'ctx> {
+    // 0-indexed location of the associated argument of the sierra libfunc
     pub(crate) loc: usize,
     pub(crate) ty: SierraType<'ctx>,
 }
