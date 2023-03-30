@@ -243,7 +243,7 @@ fn get_all_types_to_print(
             "Enum" => {
                 let field_type_declarations = type_decl.long_id.generic_args[1..].iter().map(|member_type| match member_type {
                     GenericArg::Type(type_id) => type_id,
-                    _ => panic!("Struct type declaration arguments after the first should all be resolved"),
+                    _ => panic!("Enum type declaration arguments after the first should all be resolved"),
                 }).map(|member_type_id| program.type_declarations.iter().find(|decl| decl.id == *member_type_id).unwrap())
                 .map(|component_type_decl| get_all_types_to_print(&[component_type_decl.clone()], program));
 
