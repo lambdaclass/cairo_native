@@ -30,7 +30,7 @@ pub enum SierraLibFunc<'ctx> {
 }
 
 impl<'ctx> SierraLibFunc<'ctx> {
-    pub fn create_constant(ty: SierraType<'ctx>, value: String) -> SierraLibFunc<'ctx> {
+    pub const fn create_constant(ty: SierraType<'ctx>, value: String) -> SierraLibFunc<'ctx> {
         Self::Constant(ConstantLibFunc { ty, value })
     }
 
