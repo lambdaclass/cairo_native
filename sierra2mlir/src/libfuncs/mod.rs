@@ -48,7 +48,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_binary_op(
                         func_decl,
                         parent_block,
-                        storage.clone(),
+                        &mut storage.borrow_mut(),
                         BinaryOp::Add,
                     )?;
                 }
@@ -56,7 +56,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_binary_op(
                         func_decl,
                         parent_block,
-                        storage.clone(),
+                        &mut storage.borrow_mut(),
                         BinaryOp::Sub,
                     )?;
                 }
@@ -64,8 +64,16 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_binary_op(
                         func_decl,
                         parent_block,
-                        storage.clone(),
+                        &mut storage.borrow_mut(),
                         BinaryOp::Mul,
+                    )?;
+                }
+                "felt252_div" => {
+                    self.create_libfunc_felt_binary_op(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        BinaryOp::Div,
                     )?;
                 }
                 "felt252_is_zero" => {
@@ -494,7 +502,7 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         parent_block: BlockRef<'ctx>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
         binary_op: BinaryOp,
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
@@ -610,7 +618,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
-        storage.borrow_mut().libfuncs.insert(
+        storage.libfuncs.insert(
             id,
             FunctionDef {
                 args: vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
