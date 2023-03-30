@@ -229,7 +229,8 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_llvm_extractvalue(&entry_block, 0, enum_value.into(), *tag_type)?;
             let tag_value = tag_value_op.result(0)?.into();
 
-            self.call_printf(entry_block, "%hX\n\0", &[tag_value])?;
+            let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
+            self.call_printf(entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
 
             // put the enum in a alloca for easier interpreting
 
@@ -298,15 +299,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let uint_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        let format = match uint_type.get_type().get_width().unwrap() {
-            8 => "%hX\n\0",
-            16 => "%hX\n\0",
-            32 => "%X\n\0",
-            64 => "%lX\n\0",
-            128 => "%lX\n\0",
-            _ => unimplemented!(),
-        };
-        self.call_printf(block, format, &[arg.into()])?;
+        match arg.r#type().get_width().unwrap().cmp(&32) {
+            std::cmp::Ordering::Less => {
+                let value_32bit = self.op_zext(&block, arg.into(), self.u32_type());
+                self.call_printf(block, "%X\n\0", &[value_32bit.result(0)?.into()])?;
+            }
+            std::cmp::Ordering::Equal => self.call_printf(block, "%X\n\0", &[arg.into()])?,
+            std::cmp::Ordering::Greater => self.call_printf(block, "%lX\n\0", &[arg.into()])?,
+        }
 
         self.op_return(&block, &[]);
 
