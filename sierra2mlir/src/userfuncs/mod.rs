@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program::{GenericArg, Program, TypeDeclaration},
@@ -14,9 +12,9 @@ use crate::{
 };
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_functions(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_functions(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         // First, create the user func defs without internal block information
-        self.save_nonflow_function_info_to_storage(&self.program, storage.clone());
+        self.save_nonflow_function_info_to_storage(&self.program, storage);
 
         // Add a wrapper around the main function to print the felt representation of its returns if the option to do so was passed
         self.create_wrappers_if_necessary(storage)?;
@@ -24,16 +22,13 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn create_wrappers_if_necessary(
-        &'ctx self,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) -> Result<()> {
+    pub fn create_wrappers_if_necessary(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for func in self.program.funcs.iter() {
             let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
             let name = Self::normalize_func_name(raw_func_name).to_string();
 
-            let userfunc_def = storage.borrow().userfuncs.get(&name).unwrap().clone();
+            let userfunc_def = storage.userfuncs.get(&name).unwrap().clone();
 
             if self.main_print && should_create_wrapper(raw_func_name) {
                 let raw_arg_types =
@@ -49,7 +44,7 @@ impl<'ctx> Compiler<'ctx> {
                     &name,
                     &raw_arg_types,
                     &ret_types,
-                    storage.clone(),
+                    storage,
                 )?;
             }
         }
@@ -62,9 +57,8 @@ impl<'ctx> Compiler<'ctx> {
         wrapped_func_name: &str,
         arg_types: &[Type],
         ret_types: &[(Type, ConcreteTypeId)],
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let storage = storage.borrow();
         // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
         // This is especially important for enums
         let ret_type_declarations = ret_types
@@ -161,14 +155,12 @@ impl<'ctx> Compiler<'ctx> {
     fn save_nonflow_function_info_to_storage(
         &self,
         program: &Program,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) {
         for func in program.funcs.iter() {
             let func_name =
                 Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str())
                     .to_string();
-
-            let mut storage = storage.borrow_mut();
 
             let param_types = func
                 .params
