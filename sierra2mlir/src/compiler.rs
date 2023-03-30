@@ -5,14 +5,14 @@ use melior_next::{
     dialect,
     ir::{
         operation::{self},
-        Block, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type, TypeLike,
-        Value, ValueLike,
+        Block, BlockRef, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
+        TypeLike, Value, ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
 use regex::Regex;
-use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::types::DEFAULT_PRIME;
 
@@ -906,6 +906,50 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    /// cf switch
+    ///
+    /// used in enum print
+    pub fn op_switch<'a>(
+        &self,
+        block: &'a Block,
+        case_values: &[String],
+        flag: Value,
+        default_dest: BlockRef,
+        case_dests: &[BlockRef],
+    ) -> Result<OperationRef<'a>> {
+        let mut dests = vec![default_dest];
+        dests.extend(case_dests);
+        Ok(block.append_operation(
+            operation::Builder::new("cf.switch", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        (
+                            "case_values",
+                            &format!(
+                                "dense<[{}]> : tensor<{} x {}>",
+                                case_values.iter().join(", "),
+                                case_values.len(),
+                                flag.r#type()
+                            ),
+                        ),
+                        (
+                            // number of operands passed to each case
+                            "case_operand_segments",
+                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
+                        ),
+                        (
+                            "operand_segment_sizes",
+                            "array<i32: 1, 0, 0>", // flag, defaultops, caseops
+                        ),
+                    ],
+                )?)
+                .add_operands(&[flag])
+                .add_successors(dests.iter().map(|x| x.deref()).collect_vec().as_slice())
+                .build(),
+        ))
+    }
+
     /// inserts a value into the specified struct.
     ///
     /// The struct_llvm_type is made from `struct_type_string`
@@ -956,18 +1000,19 @@ impl<'ctx> Compiler<'ctx> {
         &self,
         block: &'a Block,
         index: usize,
-        struct_value: Value,
-        value_type: Type,
+        struct_ptr: Value,
+        struct_type: Type,
     ) -> Result<OperationRef<'a>> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
                 .add_attributes(&[
-                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", index))?,
-                    self.named_attribute("elem_type", &value_type.to_string())?,
+                    // 0 is the base offset, check out gep docs for more info
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: 0, {}>", index))?,
+                    self.named_attribute("elem_type", &struct_type.to_string())?,
                     self.named_attribute("inbounds", "unit")?,
                 ])
-                .add_operands(&[struct_value]) // base
-                .add_results(&[value_type])
+                .add_operands(&[struct_ptr]) // base addr
+                .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type
                 .build(),
         ))
     }

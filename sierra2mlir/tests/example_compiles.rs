@@ -16,6 +16,7 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(
+    boolean,
     casts,
     destructure,
     felt_is_zero,
