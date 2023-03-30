@@ -16,6 +16,7 @@ use crate::{
 
 use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
 
+pub mod inline_funcs;
 pub mod lib_func_def;
 pub mod sierra_enum;
 
@@ -63,6 +64,10 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "enum_init" => {
                     self.create_libfunc_enum_init(func_decl, parent_block, storage)?;
+                }
+                "enum_match" => {
+                    // Note no actual function is created here, however types are registered
+                    self.register_libfunc_enum_match(func_decl, storage);
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, parent_block, storage)?;
@@ -747,6 +752,42 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![vec![], vec![SierraType::Simple(self.felt_type())]],
             }),
         );
+    }
+
+    pub fn register_libfunc_enum_match(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("enum_match argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        if let SierraType::Enum {
+            ty: _,
+            tag_type: _,
+            storage_bytes_len: _,
+            storage_type: _,
+            variants_types,
+        } = arg_type.clone()
+        {
+            storage.libfuncs.insert(
+                id,
+                SierraLibFunc::Function(LibFuncDef {
+                    args: vec![LibFuncArg { loc: 0, ty: arg_type }],
+                    return_types: variants_types.into_iter().map(|x| [x].to_vec()).collect_vec(),
+                }),
+            );
+        } else {
+            panic!("enum_match arg_type should be a enum")
+        }
     }
 
     pub fn create_libfunc_uint_to_felt252(
