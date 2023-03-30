@@ -11,7 +11,6 @@ use num_traits::Num;
 use sierra2mlir::compile;
 use sierra2mlir::types::DEFAULT_PRIME;
 use test_case::test_case;
-use tracing::debug;
 
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
@@ -89,7 +88,6 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let output_file = tmp_dir.join(format!("{test_name}.ll")).display().to_string();
 
     let compiled_code = compile(sierra_code, false, false, true, 1).unwrap();
-    println!("compiled mlir code:\n{}", compiled_code);
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
@@ -115,8 +113,6 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
             String::from_utf8(mlir_output.stderr).unwrap()
         );
     }
-
-    println!("compiled ll code:\n{}", std::fs::read_to_string(&lli_path).unwrap());
 
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
