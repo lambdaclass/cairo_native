@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use melior_next::ir::{Block, BlockRef, Region, Value};
@@ -14,18 +12,14 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         parent_block: BlockRef<'ctx>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
 
         let enum_arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::Type(type_id) => {
-                let storage = RefCell::borrow(&*storage);
-                let ty =
-                    storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist");
-
-                ty
+                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
             _ => unreachable!(),
         };
@@ -76,16 +70,13 @@ impl<'ctx> Compiler<'ctx> {
 
             let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
-            {
-                let mut storage = storage.borrow_mut();
-                storage.libfuncs.insert(
-                    id,
-                    FunctionDef {
-                        args: vec![variant_sierra_type.clone()],
-                        return_types: vec![enum_arg_type],
-                    },
-                );
-            }
+            storage.libfuncs.insert(
+                id,
+                FunctionDef {
+                    args: vec![variant_sierra_type.clone()],
+                    return_types: vec![enum_arg_type],
+                },
+            );
 
             parent_block.append_operation(func);
 

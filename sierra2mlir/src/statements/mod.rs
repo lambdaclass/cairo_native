@@ -1,8 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use std::ops::Bound::Included;
 
@@ -65,13 +61,13 @@ struct DataFlowInfo<'ctx> {
 
 impl<'ctx> Compiler<'ctx> {
     // Process the statements of the sierra program by breaking flow up into basic blocks and processing one at a time
-    pub fn process_statements(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_statements(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         // Calculate the basic block structure in each function
         let block_ranges_per_function = calculate_block_ranges_per_function(&self.program);
 
         // Process the blocks for each function
         for (func_start, (func, block_flows)) in block_ranges_per_function {
-            self.process_statements_for_function(func, func_start, block_flows, storage.clone())?;
+            self.process_statements_for_function(func, func_start, block_flows, storage)?;
         }
 
         Ok(())
@@ -82,20 +78,20 @@ impl<'ctx> Compiler<'ctx> {
         func: &GenFunction<StatementIdx>,
         func_start: usize,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
         let user_func_name =
             Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
 
-        let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage.clone());
+        let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage);
         self.create_function_entry_block(
             &region,
             user_func_name.as_str(),
             func_start,
             func,
             &blocks,
-            storage.clone(),
+            storage,
         )?;
 
         // We process statements one block at a time
@@ -112,7 +108,6 @@ impl<'ctx> Compiler<'ctx> {
             }
 
             for statement_idx in *block_start..block_info.end {
-                let storage = storage.borrow();
                 match &self.program.statements[statement_idx] {
                     GenStatement::Invocation(invocation) => {
                         let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
@@ -334,7 +329,6 @@ impl<'ctx> Compiler<'ctx> {
             region.append_block(block_info.block);
         }
 
-        let storage = storage.borrow();
         let user_func_def = storage.userfuncs.get(user_func_name.as_str()).unwrap();
         let function_type = create_fn_signature(
             &user_func_def.args.iter().map(|t| t.get_type()).collect_vec(),
@@ -349,9 +343,9 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func: &GenFunction<StatementIdx>,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> BTreeMap<usize, BlockInfo<'ctx>> {
-        self.calculate_dataflow_per_function(func, block_flows, storage.clone())
+        self.calculate_dataflow_per_function(func, block_flows, storage)
             .iter()
             .map(|(block_start, data_flow)| {
                 let block = Block::new(&[]);
@@ -382,9 +376,8 @@ impl<'ctx> Compiler<'ctx> {
         func_start: usize,
         func: &GenFunction<StatementIdx>,
         blocks: &BTreeMap<usize, BlockInfo>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let storage = storage.borrow();
         let arg_types = &storage.userfuncs.get(user_func_name).unwrap().args;
         let entry_block = Block::new(
             &arg_types
@@ -410,7 +403,7 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func: &GenFunction<StatementIdx>,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> BTreeMap<usize, DataFlow> {
         let user_func_name =
             Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
@@ -423,7 +416,6 @@ impl<'ctx> Compiler<'ctx> {
             let mut variables_created = HashSet::new();
 
             for statement in self.program.statements[block_start..block_flow.end].iter() {
-                let storage = storage.borrow();
                 let vars_used = match statement {
                     GenStatement::Invocation(invocation) => {
                         let id = Self::normalize_func_name(
