@@ -196,7 +196,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(
                         func_decl,
                         parent_block,
-                        &mut storage.borrow_mut(),
+                        storage,
                         self.u8_type(),
                     )?;
                 }
@@ -204,7 +204,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(
                         func_decl,
                         parent_block,
-                        &mut storage.borrow_mut(),
+                        storage,
                         self.u16_type(),
                     )?;
                 }
@@ -212,7 +212,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(
                         func_decl,
                         parent_block,
-                        &mut storage.borrow_mut(),
+                        storage,
                         self.u32_type(),
                     )?;
                 }
@@ -220,7 +220,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(
                         func_decl,
                         parent_block,
-                        &mut storage.borrow_mut(),
+                        storage,
                         self.u64_type(),
                     )?;
                 }
@@ -228,7 +228,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(
                         func_decl,
                         parent_block,
-                        &mut storage.borrow_mut(),
+                        storage,
                         self.u128_type(),
                     )?;
                 }
@@ -825,18 +825,18 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            FunctionDef {
-                args: vec![
+            SierraLibFunc::create_simple(
+                vec![
                     SierraType::Simple(self.range_check_type()),
                     SierraType::Simple(src_type),
                     SierraType::Simple(src_type),
                 ],
-                return_types: vec![
+                vec![
                     SierraType::Simple(self.range_check_type()),
                     SierraType::Simple(src_type),
                     SierraType::Simple(src_type),
                 ],
-            },
+            ),
         );
         parent_block.append_operation(func);
 
