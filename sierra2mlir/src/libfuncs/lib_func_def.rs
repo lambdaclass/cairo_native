@@ -48,10 +48,10 @@ impl<'ctx> SierraLibFunc<'ctx> {
         })
     }
 
-    pub fn get_args(&self) -> Vec<&LibFuncArg> {
+    pub fn get_args(&self) -> Vec<LibFuncArg<'ctx>> {
         match self {
             SierraLibFunc::Function(LibFuncDef { args, return_types: _ }) => {
-                args.iter().collect_vec()
+                args.iter().cloned().collect_vec()
             }
             SierraLibFunc::Constant(_) => vec![],
         }

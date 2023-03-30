@@ -394,11 +394,11 @@ impl<'ctx> Compiler<'ctx> {
         func: &GenFunction<StatementIdx>,
         block_flows: BTreeMap<usize, BlockFlow>,
         storage: Rc<RefCell<Storage<'ctx>>>,
-    ) -> BTreeMap<usize, DataFlow> {
+    ) -> BTreeMap<usize, DataFlow<'ctx>> {
         let user_func_name =
             Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
 
-        let mut block_infos: BTreeMap<usize, DataFlowInfo> = BTreeMap::new();
+        let mut block_infos: BTreeMap<usize, DataFlowInfo<'ctx>> = BTreeMap::new();
 
         // Collect the variables required by the invocations in each block, and those produced by the invocations
         for (block_start, block_flow) in block_flows {
@@ -425,27 +425,26 @@ impl<'ctx> Compiler<'ctx> {
                             let arg_types = &storage
                                 .userfuncs
                                 .get(callee_name)
+                                .cloned()
                                 .expect("UserFunc should have been registered")
                                 .args;
                             let arg_indices = &invocation.args;
-                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                            arg_indices.iter().zip_eq(arg_types.iter().cloned()).collect_vec()
                         } else {
-                            storage
-                                .libfuncs
-                                .get(&id)
-                                .unwrap_or_else(|| {
-                                    panic!("LibFunc {id} should have been registered")
-                                })
-                                .get_args()
-                                .iter()
-                                .map(|arg| (&invocation.args[arg.loc], &arg.ty))
+                            let libfunc = storage.libfuncs.get(&id).cloned().unwrap_or_else(|| {
+                                panic!("LibFunc {id} should have been registered")
+                            });
+                            let libfunc_args = libfunc.get_args();
+                            libfunc_args
+                                .into_iter()
+                                .map(|arg| (&invocation.args[arg.loc], arg.ty.clone()))
                                 .collect_vec()
                         }
                     }
                     GenStatement::Return(ret) => {
                         let func_ret_types =
                             &storage.userfuncs.get(&user_func_name).unwrap().return_types;
-                        ret.iter().zip_eq(func_ret_types.iter()).collect_vec()
+                        ret.iter().zip_eq(func_ret_types.iter().cloned()).collect_vec()
                     }
                 };
 
