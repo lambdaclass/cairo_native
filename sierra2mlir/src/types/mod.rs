@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use std::collections::HashSet;
 
 use cairo_lang_sierra::program::GenericArg;
 use color_eyre::Result;
@@ -12,13 +12,11 @@ pub const DEFAULT_PRIME: &str =
     "3618502788666131213697322783095070105623107215331596699973092056135872020481";
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn process_types(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_types(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for type_decl in &self.program.type_declarations {
             let id = type_decl.id.id;
             let name = type_decl.long_id.generic_id.0.as_str();
             debug!(name, "processing type decl");
-
-            let mut storage = storage.borrow_mut();
 
             match name {
                 "Bitwise" => {
@@ -144,7 +142,7 @@ impl<'ctx> Compiler<'ctx> {
                         }
                     }
 
-                    let bytes = biggest_type.get_width().unwrap() / 8;
+                    let bytes = biggest_type.get_width().unwrap_or(0) / 8;
                     let enum_memory_array =
                         Type::parse(&self.context, &format!("!llvm.array<{bytes} x i8>",))
                             .expect("create the enum storage type.");

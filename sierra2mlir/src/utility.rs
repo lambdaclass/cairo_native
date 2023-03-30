@@ -189,6 +189,140 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    /// like cairo runner, prints the tag value and then the enum value
+    pub fn create_print_enum(
+        &'ctx self,
+        enum_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let entry_block = region
+            .append_block(Block::new(&[(enum_type.get_type(), Location::unknown(&self.context))]));
+
+        let enum_value = entry_block.argument(0)?;
+
+        let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
+
+        if let SierraType::Enum {
+            ty,
+            tag_type,
+            storage_bytes_len: _,
+            storage_type: _,
+            variants_types,
+        } = enum_type
+        {
+            // create a block for each variant of the enum
+            let mut blocks = vec![];
+
+            for var_ty in variants_types {
+                let block = region.append_block(Block::new(&[]));
+                blocks.push((block, var_ty));
+            }
+
+            let default_block = region.append_block(Block::new(&[]));
+            self.op_return(&default_block, &[]);
+
+            // type is !llvm.struct<(i16, array<N x i8>)>
+
+            // get the tag
+            let tag_value_op =
+                self.op_llvm_extractvalue(&entry_block, 0, enum_value.into(), *tag_type)?;
+            let tag_value = tag_value_op.result(0)?.into();
+
+            let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
+            self.call_printf(entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+
+            // put the enum in a alloca for easier interpreting
+
+            let enum_alloca_op = self.op_llvm_alloca(&entry_block, *ty, 1)?;
+            let enum_ptr = enum_alloca_op.result(0)?.into();
+
+            self.op_llvm_store(&entry_block, enum_value.into(), enum_ptr)?;
+
+            let value_ptr_op = self.op_llvm_gep(&entry_block, 1, enum_ptr, *ty)?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+
+            let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
+            let case_values =
+                variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
+
+            self.op_switch(&entry_block, &case_values, tag_value, default_block, &blockrefs)?;
+
+            let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
+                .iter()
+                .map(|member_type| match member_type {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                })
+                .collect_vec();
+
+            for (i, (block, var_ty)) in blocks.iter().enumerate() {
+                let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
+                let value_op = self.op_llvm_load(block, value_ptr, var_ty.get_type())?;
+                let value = value_op.result(0)?.into();
+                self.op_func_call(block, &format!("print_{}", component_type_name), &[value], &[])?;
+                self.op_return(block, &[]);
+            }
+        } else {
+            panic!("sierra_type_declaration should be a enum")
+        }
+
+        let enum_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let func = self.op_func(
+            &format!("print_{}", enum_name.as_str()),
+            &function_type,
+            vec![region],
+            false,
+            false,
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_print_uint(
+        &'ctx self,
+        uint_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region
+            .append_block(Block::new(&[(uint_type.get_type(), Location::unknown(&self.context))]));
+
+        let arg = block.argument(0)?;
+
+        let function_type = create_fn_signature(&[uint_type.get_type()], &[]);
+
+        let uint_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        match arg.r#type().get_width().unwrap().cmp(&32) {
+            std::cmp::Ordering::Less => {
+                let value_32bit = self.op_zext(&block, arg.into(), self.u32_type());
+                self.call_printf(block, "%X\n\0", &[value_32bit.result(0)?.into()])?;
+            }
+            std::cmp::Ordering::Equal => self.call_printf(block, "%X\n\0", &[arg.into()])?,
+            std::cmp::Ordering::Greater => self.call_printf(block, "%lX\n\0", &[arg.into()])?,
+        }
+
+        self.op_return(&block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", uint_name.as_str()),
+            &function_type,
+            vec![region],
+            false,
+            false,
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// Utility method to create a print_felt call.
     pub fn call_print_felt(&'ctx self, block: BlockRef<'ctx>, value: Value) -> Result<()> {
         self.op_func_call(&block, "print_felt", &[value], &[])?;

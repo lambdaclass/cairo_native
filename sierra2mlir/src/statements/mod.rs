@@ -1,8 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use std::ops::Bound::Included;
 
@@ -15,6 +11,7 @@ use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Va
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
+    libfuncs::lib_func_def::{ConstantLibFunc, LibFuncDef, SierraLibFunc},
     utility::create_fn_signature,
 };
 
@@ -65,13 +62,13 @@ struct DataFlowInfo<'ctx> {
 
 impl<'ctx> Compiler<'ctx> {
     // Process the statements of the sierra program by breaking flow up into basic blocks and processing one at a time
-    pub fn process_statements(&'ctx self, storage: Rc<RefCell<Storage<'ctx>>>) -> Result<()> {
+    pub fn process_statements(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         // Calculate the basic block structure in each function
         let block_ranges_per_function = calculate_block_ranges_per_function(&self.program);
 
         // Process the blocks for each function
         for (func_start, (func, block_flows)) in block_ranges_per_function {
-            self.process_statements_for_function(func, func_start, block_flows, storage.clone())?;
+            self.process_statements_for_function(func, func_start, block_flows, storage)?;
         }
 
         Ok(())
@@ -82,20 +79,20 @@ impl<'ctx> Compiler<'ctx> {
         func: &GenFunction<StatementIdx>,
         func_start: usize,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
         let user_func_name =
             Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
 
-        let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage.clone());
+        let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage);
         self.create_function_entry_block(
             &region,
             user_func_name.as_str(),
             func_start,
             func,
             &blocks,
-            storage.clone(),
+            storage,
         )?;
 
         // We process statements one block at a time
@@ -112,7 +109,6 @@ impl<'ctx> Compiler<'ctx> {
             }
 
             for statement_idx in *block_start..block_info.end {
-                let storage = storage.borrow();
                 match &self.program.statements[statement_idx] {
                     GenStatement::Invocation(invocation) => {
                         let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
@@ -124,13 +120,6 @@ impl<'ctx> Compiler<'ctx> {
                         let mut jump_processed = false;
                         match name_without_generics {
                             "disable_ap_tracking" | "drop" | "branch_align" => {}
-                            "felt252_const" => {
-                                let felt_const =
-                                    storage.felt_consts.get(&id).expect("constant should exist");
-                                let op = self.op_felt_const(block, felt_const);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
                             "jump" => {
                                 let target_block_info = match &invocation.branches[0].target {
                                     GenBranchTarget::Fallthrough => {
@@ -147,41 +136,6 @@ impl<'ctx> Compiler<'ctx> {
                                     .collect_vec();
                                 self.op_br(block, &target_block_info.block, &operand_values);
                                 jump_processed = true;
-                            }
-                            "u8_const" => {
-                                let value =
-                                    storage.u8_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u8_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u16_const" => {
-                                let value =
-                                    storage.u16_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u16_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u32_const" => {
-                                let value =
-                                    storage.u32_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u32_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u64_const" => {
-                                let value =
-                                    storage.u64_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u64_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
-                            }
-                            "u128_const" => {
-                                let value =
-                                    storage.u128_consts.get(&id).expect("constant value not found");
-                                let op = self.op_u128_const(block, value);
-                                let var_id = &invocation.branches[0].results[0];
-                                variables.insert(var_id.id, Variable::Local { op, result_idx: 0 });
                             }
                             "felt252_is_zero" => {
                                 let felt_op_zero = self.op_felt_const(block, "0");
@@ -274,27 +228,51 @@ impl<'ctx> Compiler<'ctx> {
                                     .libfuncs
                                     .get(&id)
                                     .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
-                                let args = invocation
-                                    .args
-                                    .iter()
-                                    .map(|id| variables.get(&id.id).unwrap().get_value())
-                                    .collect_vec();
-                                let return_types = libfunc_def
-                                    .return_types
-                                    .iter()
-                                    .map(|t| t.get_type())
-                                    .collect_vec();
-                                let op = self.op_func_call(block, &id, &args, &return_types)?;
-                                variables.extend(
-                                    invocation.branches[0].results.iter().enumerate().map(
-                                        |(result_pos, var_id)| {
-                                            (
-                                                var_id.id,
-                                                Variable::Local { op, result_idx: result_pos },
-                                            )
-                                        },
-                                    ),
-                                );
+                                match libfunc_def {
+                                    SierraLibFunc::Function(LibFuncDef { args, return_types }) => {
+                                        let arg_values = args
+                                            .iter()
+                                            .map(|a| {
+                                                variables
+                                                    .get(&invocation.args[a.loc].id)
+                                                    .unwrap()
+                                                    .get_value()
+                                            })
+                                            .collect_vec();
+                                        assert_eq!(return_types.len(), 1, "Libfunc with abnormal number of returns not handled properly");
+                                        let return_types = return_types[0]
+                                            .iter()
+                                            .map(SierraType::get_type)
+                                            .collect_vec();
+                                        let op = self.op_func_call(
+                                            block,
+                                            &id,
+                                            &arg_values,
+                                            &return_types,
+                                        )?;
+                                        variables.extend(
+                                            invocation.branches[0].results.iter().enumerate().map(
+                                                |(result_pos, var_id)| {
+                                                    (
+                                                        var_id.id,
+                                                        Variable::Local {
+                                                            op,
+                                                            result_idx: result_pos,
+                                                        },
+                                                    )
+                                                },
+                                            ),
+                                        );
+                                    }
+                                    SierraLibFunc::Constant(ConstantLibFunc { ty, value }) => {
+                                        let op = self.op_const(block, value, ty.get_type());
+                                        let var_id = &invocation.branches[0].results[0];
+                                        variables.insert(
+                                            var_id.id,
+                                            Variable::Local { op, result_idx: 0 },
+                                        );
+                                    }
+                                }
                             }
                         }
 
@@ -334,7 +312,6 @@ impl<'ctx> Compiler<'ctx> {
             region.append_block(block_info.block);
         }
 
-        let storage = storage.borrow();
         let user_func_def = storage.userfuncs.get(user_func_name.as_str()).unwrap();
         let function_type = create_fn_signature(
             &user_func_def.args.iter().map(|t| t.get_type()).collect_vec(),
@@ -349,9 +326,9 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func: &GenFunction<StatementIdx>,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> BTreeMap<usize, BlockInfo<'ctx>> {
-        self.calculate_dataflow_per_function(func, block_flows, storage.clone())
+        self.calculate_dataflow_per_function(func, block_flows, storage)
             .iter()
             .map(|(block_start, data_flow)| {
                 let block = Block::new(&[]);
@@ -382,9 +359,8 @@ impl<'ctx> Compiler<'ctx> {
         func_start: usize,
         func: &GenFunction<StatementIdx>,
         blocks: &BTreeMap<usize, BlockInfo>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let storage = storage.borrow();
         let arg_types = &storage.userfuncs.get(user_func_name).unwrap().args;
         let entry_block = Block::new(
             &arg_types
@@ -410,12 +386,12 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func: &GenFunction<StatementIdx>,
         block_flows: BTreeMap<usize, BlockFlow>,
-        storage: Rc<RefCell<Storage<'ctx>>>,
-    ) -> BTreeMap<usize, DataFlow> {
+        storage: &mut Storage<'ctx>,
+    ) -> BTreeMap<usize, DataFlow<'ctx>> {
         let user_func_name =
             Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
 
-        let mut block_infos: BTreeMap<usize, DataFlowInfo> = BTreeMap::new();
+        let mut block_infos: BTreeMap<usize, DataFlowInfo<'ctx>> = BTreeMap::new();
 
         // Collect the variables required by the invocations in each block, and those produced by the invocations
         for (block_start, block_flow) in block_flows {
@@ -423,7 +399,6 @@ impl<'ctx> Compiler<'ctx> {
             let mut variables_created = HashSet::new();
 
             for statement in self.program.statements[block_start..block_flow.end].iter() {
-                let storage = storage.borrow();
                 let vars_used = match statement {
                     GenStatement::Invocation(invocation) => {
                         let id = Self::normalize_func_name(
@@ -433,10 +408,7 @@ impl<'ctx> Compiler<'ctx> {
 
                         let name_without_generics = id.split('<').next().unwrap();
 
-                        // We ignore drop functions, even though they take arguments in sierra, since they are ignored during statement processing and don't propagate data
-                        if name_without_generics == "drop" {
-                            continue;
-                        } else if name_without_generics == "function_call" {
+                        if name_without_generics == "function_call" {
                             let callee_name = id
                                 .strip_prefix("function_call<user@")
                                 .unwrap()
@@ -445,26 +417,26 @@ impl<'ctx> Compiler<'ctx> {
                             let arg_types = &storage
                                 .userfuncs
                                 .get(callee_name)
+                                .cloned()
                                 .expect("UserFunc should have been registered")
                                 .args;
                             let arg_indices = &invocation.args;
-                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                            arg_indices.iter().zip_eq(arg_types.iter().cloned()).collect_vec()
                         } else {
-                            let arg_types = &storage
-                                .libfuncs
-                                .get(&id)
-                                .unwrap_or_else(|| {
-                                    panic!("LibFunc {id} should have been registered")
-                                })
-                                .args;
-                            let arg_indices = &invocation.args;
-                            arg_indices.iter().zip_eq(arg_types.iter()).collect_vec()
+                            let libfunc = storage.libfuncs.get(&id).cloned().unwrap_or_else(|| {
+                                panic!("LibFunc {id} should have been registered")
+                            });
+                            let libfunc_args = libfunc.get_args();
+                            libfunc_args
+                                .into_iter()
+                                .map(|arg| (&invocation.args[arg.loc], arg.ty.clone()))
+                                .collect_vec()
                         }
                     }
                     GenStatement::Return(ret) => {
                         let func_ret_types =
                             &storage.userfuncs.get(&user_func_name).unwrap().return_types;
-                        ret.iter().zip_eq(func_ret_types.iter()).collect_vec()
+                        ret.iter().zip_eq(func_ret_types.iter().cloned()).collect_vec()
                     }
                 };
 
