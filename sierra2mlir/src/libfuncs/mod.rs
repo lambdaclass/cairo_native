@@ -189,6 +189,46 @@ impl<'ctx> Compiler<'ctx> {
                         &mut storage.borrow_mut(),
                     )?;
                 }
+                "u8_safe_divmod" => {
+                    self.create_libfunc_uint_safe_divmod(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u8_type(),
+                    )?;
+                }
+                "u16_safe_divmod" => {
+                    self.create_libfunc_uint_safe_divmod(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u16_type(),
+                    )?;
+                }
+                "u32_safe_divmod" => {
+                    self.create_libfunc_uint_safe_divmod(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u32_type(),
+                    )?;
+                }
+                "u64_safe_divmod" => {
+                    self.create_libfunc_uint_safe_divmod(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u64_type(),
+                    )?;
+                }
+                "u128_safe_divmod" => {
+                    self.create_libfunc_uint_safe_divmod(
+                        func_decl,
+                        parent_block,
+                        &mut storage.borrow_mut(),
+                        self.u128_type(),
+                    )?;
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(
                         func_decl,
@@ -864,6 +904,61 @@ impl<'ctx> Compiler<'ctx> {
                     SierraType::Simple(self.range_check_type()),
                     SierraType::Simple(self.u128_type()),
                     SierraType::Simple(self.u128_type()),
+                ],
+            },
+        );
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_uint_safe_divmod(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+        src_type: Type<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[
+            (self.range_check_type(), Location::unknown(&self.context)),
+            (src_type, Location::unknown(&self.context)),
+            (src_type, Location::unknown(&self.context)),
+        ]));
+
+        let op_div = self.op_div(&block, block.argument(1)?.into(), block.argument(2)?.into());
+        let op_rem = self.op_rem(&block, block.argument(1)?.into(), block.argument(2)?.into());
+
+        self.op_return(
+            &block,
+            &[block.argument(0)?.into(), op_div.result(0)?.into(), op_rem.result(0)?.into()],
+        );
+
+        let id =
+            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(
+                &[self.range_check_type(), src_type, src_type],
+                &[self.range_check_type(), src_type, src_type],
+            ),
+            vec![region],
+            false,
+            false,
+        )?;
+
+        storage.libfuncs.insert(
+            id,
+            FunctionDef {
+                args: vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(src_type),
+                    SierraType::Simple(src_type),
+                ],
+                return_types: vec![
+                    SierraType::Simple(self.range_check_type()),
+                    SierraType::Simple(src_type),
+                    SierraType::Simple(src_type),
                 ],
             },
         );
