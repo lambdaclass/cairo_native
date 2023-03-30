@@ -138,12 +138,6 @@ pub struct UserFuncDef<'ctx> {
 #[derive(Debug, Default, Clone)]
 pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
-    // pub(crate) u8_consts: HashMap<String, String>,
-    // pub(crate) u16_consts: HashMap<String, String>,
-    // pub(crate) u32_consts: HashMap<String, String>,
-    // pub(crate) u64_consts: HashMap<String, String>,
-    // pub(crate) u128_consts: HashMap<String, String>,
-    // pub(crate) felt_consts: HashMap<String, String>,
     pub(crate) libfuncs: HashMap<String, SierraLibFunc<'ctx>>,
     pub(crate) userfuncs: HashMap<String, UserFuncDef<'ctx>>,
 }
