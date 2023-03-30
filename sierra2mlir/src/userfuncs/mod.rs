@@ -9,7 +9,7 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region, Type};
 
 use crate::{
-    compiler::{Compiler, FunctionDef, SierraType, Storage},
+    compiler::{Compiler, SierraType, Storage, UserFuncDef},
     utility::create_fn_signature,
 };
 
@@ -194,7 +194,7 @@ impl<'ctx> Compiler<'ctx> {
                 })
                 .collect_vec();
 
-            storage.userfuncs.insert(func_name, FunctionDef { args: param_types, return_types });
+            storage.userfuncs.insert(func_name, UserFuncDef { args: param_types, return_types });
         }
     }
 }
