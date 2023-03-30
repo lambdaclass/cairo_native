@@ -229,7 +229,7 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_llvm_extractvalue(&entry_block, 0, enum_value.into(), *tag_type)?;
             let tag_value = tag_value_op.result(0)?.into();
 
-            self.call_printf(entry_block, "%X\n\0", &[tag_value])?;
+            self.call_printf(entry_block, "%04hhhhX\n\0", &[tag_value])?;
 
             // put the enum in a alloca for easier interpreting
 
@@ -298,7 +298,15 @@ impl<'ctx> Compiler<'ctx> {
 
         let uint_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        self.call_printf(block, "%X\n\0", &[arg.into()])?;
+        let format = match uint_type.get_type().get_width().unwrap() {
+            8 => "%02hhX\n\0",
+            16 => "%04hhhhX\n\0",
+            32 => "%X\n\0",
+            64 => "%lX\n\0",
+            128 => "%lX\n\0",
+            _ => unimplemented!(),
+        };
+        self.call_printf(block, format, &[arg.into()])?;
 
         self.op_return(&block, &[]);
 

@@ -89,7 +89,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let output_file = tmp_dir.join(format!("{test_name}.ll")).display().to_string();
 
     let compiled_code = compile(sierra_code, false, false, true, 1).unwrap();
-    debug!("compiled mlir code:\n{}", compiled_code);
+    println!("compiled mlir code:\n{}", compiled_code);
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
@@ -116,7 +116,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
         );
     }
 
-    debug!("compiled ll code:\n{}", std::fs::read_to_string(&lli_path).unwrap());
+    println!("compiled ll code:\n{}", std::fs::read_to_string(&lli_path).unwrap());
 
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
