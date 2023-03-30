@@ -20,6 +20,8 @@ melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a74
 itertools = "0.10.5"
 regex = "1.7.3"
 smol_str = { version = "0.1.25", features = ["serde"] }
+num-bigint = "0.4.3"
+num-traits = "0.2.15"
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6" }

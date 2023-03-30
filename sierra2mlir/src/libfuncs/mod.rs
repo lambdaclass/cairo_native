@@ -4,10 +4,13 @@ use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
+use num_bigint::BigInt;
+use num_traits::Signed;
 use tracing::debug;
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
+    types::DEFAULT_PRIME,
     utility::create_fn_signature,
 };
 
@@ -15,14 +18,6 @@ use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
 
 pub mod lib_func_def;
 pub mod sierra_enum;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinaryOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_libfuncs(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
@@ -45,39 +40,19 @@ impl<'ctx> Compiler<'ctx> {
                 | "finalize_locals" => self.register_nop(func_decl, storage),
                 "function_call" => continue, // Skip function call because it works differently than all the others
                 "felt252_const" => {
-                    self.create_libfunc_int_const(func_decl, self.felt_type(), storage);
+                    self.create_libfunc_felt_const(func_decl, self.felt_type(), storage)?;
                 }
                 "felt252_add" => {
-                    self.create_libfunc_felt_binary_op(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BinaryOp::Add,
-                    )?;
+                    self.create_libfunc_felt_add(func_decl, parent_block, storage)?;
                 }
                 "felt252_sub" => {
-                    self.create_libfunc_felt_binary_op(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BinaryOp::Sub,
-                    )?;
+                    self.create_libfunc_felt_sub(func_decl, parent_block, storage)?;
                 }
                 "felt252_mul" => {
-                    self.create_libfunc_felt_binary_op(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BinaryOp::Mul,
-                    )?;
+                    self.create_libfunc_felt_mul(func_decl, parent_block, storage)?;
                 }
                 "felt252_div" => {
-                    self.create_libfunc_felt_binary_op(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BinaryOp::Div,
-                    )?;
+                    self.create_libfunc_felt_div(func_decl, parent_block, storage)?;
                 }
                 "felt252_is_zero" => {
                     // Note no actual function is created here, however types are registered
@@ -99,19 +74,19 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_identity_function(func_decl, parent_block, storage)?;
                 }
                 "u8_const" => {
-                    self.create_libfunc_int_const(func_decl, self.u8_type(), storage);
+                    self.create_libfunc_uint_const(func_decl, self.u8_type(), storage);
                 }
                 "u16_const" => {
-                    self.create_libfunc_int_const(func_decl, self.u16_type(), storage);
+                    self.create_libfunc_uint_const(func_decl, self.u16_type(), storage);
                 }
                 "u32_const" => {
-                    self.create_libfunc_int_const(func_decl, self.u32_type(), storage);
+                    self.create_libfunc_uint_const(func_decl, self.u32_type(), storage);
                 }
                 "u64_const" => {
-                    self.create_libfunc_int_const(func_decl, self.u64_type(), storage);
+                    self.create_libfunc_uint_const(func_decl, self.u64_type(), storage);
                 }
                 "u128_const" => {
-                    self.create_libfunc_int_const(func_decl, self.u128_type(), storage);
+                    self.create_libfunc_uint_const(func_decl, self.u128_type(), storage);
                 }
                 "u8_to_felt252" => {
                     self.create_libfunc_uint_to_felt252(
@@ -198,7 +173,10 @@ impl<'ctx> Compiler<'ctx> {
                 "upcast" => {
                     self.create_libfunc_upcast(func_decl, parent_block, storage)?;
                 }
-                _ => debug!(?func_decl, "unhandled libfunc"),
+                _ => todo!(
+                    "unhandled libfunc: {:?}",
+                    func_decl.id.debug_name.as_ref().unwrap().as_str()
+                ),
             }
         }
 
@@ -212,7 +190,35 @@ impl<'ctx> Compiler<'ctx> {
         storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![]));
     }
 
-    pub fn create_libfunc_int_const(
+    pub fn create_libfunc_felt_const(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        ty: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let arg = match func_decl.long_id.generic_args.as_slice() {
+            [GenericArg::Value(value)] => value.to_string(),
+            _ => unreachable!("Expected generic arg of const creation function to be a Value"),
+        };
+
+        let arg_value = arg.parse::<BigInt>()?;
+        let wrapped_arg_value = if arg_value.is_negative() {
+            DEFAULT_PRIME.parse::<BigInt>()? + arg_value
+        } else {
+            arg_value
+        };
+
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_constant(SierraType::Simple(ty), wrapped_arg_value.to_string()),
+        );
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_uint_const(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         ty: Type<'ctx>,
@@ -456,12 +462,11 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn create_libfunc_felt_binary_op(
+    pub fn create_libfunc_felt_add(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
-        binary_op: BinaryOp,
     ) -> Result<()> {
         let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
             .to_string();
@@ -470,104 +475,39 @@ impl<'ctx> Compiler<'ctx> {
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
         let region = Region::new();
+        // Block in which the calculation occurs
         let entry_block = Block::new(&[felt_type_location, felt_type_location]);
-        let entry_block = region.append_block(entry_block);
+        // Block for wrapping values >= PRIME
+        let gte_prime_block = Block::new(&[]);
+        // Block for returning values < PRIME
+        let in_range_block = Block::new(&[]);
 
-        let lhs = entry_block.argument(0)?;
-        let rhs = entry_block.argument(1)?;
+        // res = lhs + rhs
+        let lhs = entry_block.argument(0)?.into();
+        let rhs = entry_block.argument(1)?.into();
+        let res_op = self.op_add(&entry_block, lhs, rhs);
+        let res = res_op.result(0)?.into();
 
-        let res = match binary_op {
-            BinaryOp::Add => self.op_add(&entry_block, lhs.into(), rhs.into()),
-            BinaryOp::Sub => self.op_sub(&entry_block, lhs.into(), rhs.into()),
-            BinaryOp::Mul => {
-                let lhs_zext = self.op_zext(&entry_block, lhs.into(), self.double_felt_type());
-                let rhs_zext = self.op_zext(&entry_block, rhs.into(), self.double_felt_type());
-                self.op_mul(&entry_block, lhs_zext.result(0)?.into(), rhs_zext.result(0)?.into())
-            }
-            BinaryOp::Div => self.op_felt_div(&region, &entry_block, lhs.into(), rhs.into())?,
-        };
-        let res_result = res.result(0)?;
+        // gt_prime <=> res_result >= PRIME
+        let prime_op = self.prime_constant(&entry_block);
+        let prime = prime_op.result(0)?.into();
+        let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
+        let gte_prime = gte_prime_op.result(0)?.into();
 
-        let end_block = region.append_block({
-            let block = Block::new(&[(felt_type, Location::unknown(&self.context))]);
+        // if gt_prime
+        self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[])?;
 
-            self.op_return(&block, &[block.argument(0)?.into()]);
-            block
-        });
+        //gt prime block
+        let wrapped_res_op = self.op_sub(&gte_prime_block, res, prime);
+        let wrapped_res = wrapped_res_op.result(0)?.into();
+        self.op_return(&gte_prime_block, &[wrapped_res]);
 
-        match binary_op {
-            BinaryOp::Add => {
-                let prime = self.prime_constant(&entry_block);
-                let prime_value = prime.result(0)?;
+        //in range block
+        self.op_return(&in_range_block, &[res]);
 
-                let cmp_op = self.op_cmp(
-                    &entry_block,
-                    CmpOp::UnsignedGreaterEqual,
-                    res_result.into(),
-                    prime_value.into(),
-                );
-                let cmp_op_value = cmp_op.result(0)?;
-
-                let mod_block = region.append_block({
-                    let block = Block::new(&[]);
-
-                    let res = self.op_sub(&block, res_result.into(), prime_value.into());
-                    let res_value = res.result(0)?;
-
-                    self.op_br(&block, &end_block, &[res_value.into()]);
-                    block
-                });
-
-                self.op_cond_br(
-                    &entry_block,
-                    cmp_op_value.into(),
-                    &mod_block,
-                    &end_block,
-                    &[],
-                    &[res_result.into()],
-                )?;
-            }
-            BinaryOp::Sub => {
-                let prime = self.prime_constant(&entry_block);
-                let prime_value = prime.result(0)?;
-
-                let cmp_op = self.op_cmp(&entry_block, CmpOp::UnsignedLess, lhs.into(), rhs.into());
-                let cmp_op_value = cmp_op.result(0)?;
-
-                let mod_block = region.append_block({
-                    let block = Block::new(&[]);
-
-                    let res = self.op_sub(&block, res_result.into(), prime_value.into());
-                    let res_value = res.result(0)?;
-
-                    self.op_br(&block, &end_block, &[res_value.into()]);
-                    block
-                });
-
-                self.op_cond_br(
-                    &entry_block,
-                    cmp_op_value.into(),
-                    &mod_block,
-                    &end_block,
-                    &[],
-                    &[res_result.into()],
-                )?;
-            }
-            _ => {
-                let res = self.op_felt_modulo(&entry_block, res_result.into())?;
-
-                // Truncate to i256 after a multiplication.
-                let res = match binary_op {
-                    BinaryOp::Mul => {
-                        self.op_trunc(&entry_block, res.result(0)?.into(), self.felt_type())
-                    }
-                    _ => res,
-                };
-
-                self.op_br(&entry_block, &end_block, &[res.result(0)?.into()]);
-            }
-        };
-
+        region.append_block(entry_block);
+        region.append_block(in_range_block);
+        region.append_block(gte_prime_block);
         let func = self.op_func(
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
@@ -576,6 +516,7 @@ impl<'ctx> Compiler<'ctx> {
             false,
         )?;
 
+        parent_block.append_operation(func);
         storage.libfuncs.insert(
             id,
             SierraLibFunc::create_simple(
@@ -583,8 +524,170 @@ impl<'ctx> Compiler<'ctx> {
                 vec![sierra_felt_type],
             ),
         );
+        Ok(())
+    }
+
+    pub fn create_libfunc_felt_sub(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+        let sierra_felt_type = SierraType::Simple(self.felt_type());
+        let felt_type = sierra_felt_type.get_type();
+        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
+
+        let region = Region::new();
+        // Block in which the calculation occurs
+        let entry_block = Block::new(&[felt_type_location, felt_type_location]);
+        // Block for wrapping values < 0
+        let lt_zero_block = Block::new(&[]);
+        // Block for returning values >= 0
+        let in_range_block = Block::new(&[]);
+
+        // res = lhs - rhs
+        let lhs = entry_block.argument(0)?.into();
+        let rhs = entry_block.argument(1)?.into();
+        let res_op = self.op_sub(&entry_block, lhs, rhs);
+        let res = res_op.result(0)?.into();
+
+        // lt_zero <=> res_result < 0
+        let prime_op = self.prime_constant(&entry_block);
+        let prime = prime_op.result(0)?.into();
+        let lt_zero_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
+        let lt_zero = lt_zero_op.result(0)?.into();
+
+        // if gt_prime
+        self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[])?;
+
+        //lt zero block
+        let wrapped_res_op = self.op_add(&lt_zero_block, res, prime);
+        let wrapped_res = wrapped_res_op.result(0)?.into();
+        self.op_return(&lt_zero_block, &[wrapped_res]);
+
+        //in range block
+        self.op_return(&in_range_block, &[res]);
+
+        region.append_block(entry_block);
+        region.append_block(in_range_block);
+        region.append_block(lt_zero_block);
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
+            vec![region],
+            false,
+            false,
+        )?;
 
         parent_block.append_operation(func);
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
+                vec![sierra_felt_type],
+            ),
+        );
+        Ok(())
+    }
+
+    pub fn create_libfunc_felt_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+        let sierra_felt_type = SierraType::Simple(self.felt_type());
+        let felt_type = sierra_felt_type.get_type();
+        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
+
+        let region = Region::new();
+        let block = Block::new(&[felt_type_location, felt_type_location]);
+
+        // Need to first widen arguments so we can accurately calculate the non-modular product before wrapping it back into range
+        let wide_type = self.double_felt_type();
+        let lhs = block.argument(0)?.into();
+        let rhs = block.argument(1)?.into();
+        let lhs_wide_op = self.op_zext(&block, lhs, wide_type);
+        let rhs_wide_op = self.op_zext(&block, rhs, wide_type);
+        let lhs_wide = lhs_wide_op.result(0)?.into();
+        let rhs_wide = rhs_wide_op.result(0)?.into();
+
+        // res_wide = lhs_wide * rhs_wide
+        let res_wide_op = self.op_mul(&block, lhs_wide, rhs_wide);
+        let res_wide = res_wide_op.result(0)?.into();
+
+        //res = res_wide mod PRIME
+        let in_range_op = self.op_felt_modulo(&block, res_wide)?;
+        let in_range = in_range_op.result(0)?.into();
+        let res_op = self.op_trunc(&block, in_range, felt_type);
+        let res = res_op.result(0)?.into();
+
+        self.op_return(&block, &[res]);
+
+        region.append_block(block);
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
+            vec![region],
+            false,
+            false,
+        )?;
+        parent_block.append_operation(func);
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
+                vec![sierra_felt_type],
+            ),
+        );
+        Ok(())
+    }
+
+    pub fn create_libfunc_felt_div(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
+            .to_string();
+        let sierra_felt_type = SierraType::Simple(self.felt_type());
+        let felt_type = sierra_felt_type.get_type();
+        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
+
+        let region = Region::new();
+        let block = Block::new(&[felt_type_location, felt_type_location]);
+
+        // res = lhs / rhs (where / is modular division)
+        let lhs = block.argument(0)?.into();
+        let rhs = block.argument(1)?.into();
+        let res_op = self.op_felt_div(&region, &block, lhs, rhs)?;
+        let res = res_op.result(0)?.into();
+
+        self.op_return(&block, &[res]);
+
+        region.append_block(block);
+        let func = self.op_func(
+            &id,
+            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
+            vec![region],
+            false,
+            false,
+        )?;
+        parent_block.append_operation(func);
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(
+                vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
+                vec![sierra_felt_type],
+            ),
+        );
         Ok(())
     }
 

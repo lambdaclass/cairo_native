@@ -449,6 +449,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Does modulo prime.
+    /// val can be wider that felt, the result will be in felt range, but the same type width
     pub fn op_felt_modulo<'a>(&self, block: &'a Block, val: Value) -> Result<OperationRef<'a>> {
         let prime = self.prime_constant(block);
         let prime_val: Value = prime.result(0)?.into();
@@ -667,6 +668,7 @@ impl<'ctx> Compiler<'ctx> {
     /// Compute the multiplicative inverse of a felt.
     ///
     /// > Source: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+    /// TODO replace with extended euclidean algorithm
     pub fn op_felt_inverse<'a>(
         &self,
         region: &'a Region,

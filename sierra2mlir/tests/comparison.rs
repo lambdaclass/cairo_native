@@ -20,6 +20,10 @@ use test_case::test_case;
 #[test_case("enum_return")]
 #[test_case("fib_counter")]
 #[test_case("felt_ops/add")]
+#[test_case("felt_ops/sub")]
+#[test_case("felt_ops/mul")]
+#[test_case("felt_ops/negation")]
+// #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
@@ -30,6 +34,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     match casm_result {
         Ok(result) => match result.value {
             cairo_lang_runner::RunResultValue::Success(casm_values) => {
+                println!("Casm result: {:?}\n", casm_values);
                 assert_eq!(
                     casm_values.len(),
                     llvm_result.len(),
@@ -49,7 +54,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
                     assert_eq!(
                         casm_values[i].to_biguint(),
                         llvm_result[i],
-                        "Test no. {} of {} failed. {} != {} (-{} != -{})",
+                        "Test no. {} of {} failed. {}(casm) != {}(llvm) (-{} != -{})",
                         i + 1,
                         test_name,
                         casm_values[i],
