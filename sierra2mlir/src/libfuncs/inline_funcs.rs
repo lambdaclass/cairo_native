@@ -6,7 +6,7 @@ use std::{
 use cairo_lang_sierra::program::{GenBranchTarget, Invocation};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Region, Value, ValueLike};
+use melior_next::ir::{Block, BlockRef, Region, Value, ValueLike};
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
@@ -97,15 +97,15 @@ impl<'ctx> Compiler<'ctx> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn inline_enum_match(
-        &'ctx self,
+        &self,
         invocation: &Invocation,
-        region: &Region,
         block: &Block<'ctx>,
         storage: &Storage,
-        variables: &mut HashMap<u64, Variable<'ctx>>,
-        blocks: &'ctx BTreeMap<usize, BlockInfo<'ctx>>,
+        variables: &mut HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
         statement_idx: usize,
-    ) -> Result<()> {
+    ) -> Result<Vec<Block>> {
+        let mut added_blocks = vec![];
         dbg!(invocation);
         let libfunc_id = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
         let libfunc = storage.libfuncs.get(libfunc_id).unwrap();
@@ -121,32 +121,19 @@ impl<'ctx> Compiler<'ctx> {
                 variants_types,
             } = enum_type
             {
+                // make a jump within this function, and then make the actual jumps with the value?
                 dbg!(libfunc);
 
                 // this block should never be reached, only if for some reason the enum tag is invalid.
                 // it will call abort()
-                let default_block = region.append_block(Block::new(&[]));
-                // todo: call abort
+                let default_block = Block::new(&[]);
 
-                let target_blocks = invocation
-                    .branches
-                    .iter()
-                    .map(|branch| match branch.target {
-                        GenBranchTarget::Fallthrough => statement_idx + 1,
-                        GenBranchTarget::Statement(idx) => idx.0,
-                    })
-                    .map(|idx| {
-                        let target_block_info = blocks.get(&idx).unwrap();
-                        let mut operand_indices =
-                            target_block_info.variables_at_start.keys().collect_vec();
-                        operand_indices.sort_unstable();
-                        let operand_values = operand_indices
-                            .iter()
-                            .map(|id| variables.get(id).cloned().unwrap())
-                            .collect_vec();
-                        (&target_block_info.block, operand_values)
-                    })
-                    .collect_vec();
+                let mut enum_blocks = vec![];
+
+                for var_ty in variants_types {
+                    let block = Block::new(&[]);
+                    enum_blocks.push((block, var_ty.clone()));
+                }
 
                 let var = variables
                     .get(&invocation.args[0].id)
@@ -170,34 +157,50 @@ impl<'ctx> Compiler<'ctx> {
                 let case_values =
                     variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
 
-                let target_blocks_with_values = target_blocks
-                    .iter()
-                    .map(|(b, v)| (*b, v.iter().map(|x| x.get_value()).collect_vec()))
-                    .collect_vec();
+                let blockrefs = enum_blocks.iter().map(|x| &x.0).collect_vec();
+                let case_values =
+                    variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
 
                 self.op_switch(
                     block,
                     &case_values,
                     tag_value,
-                    (default_block.deref(), &[]),
-                    //blockrefs.into_iter().map(|x| (x, [].as_slice())).collect_vec().as_slice(),
-                    target_blocks_with_values
-                        .iter()
-                        .map(|(b, v)| (*b, v.as_slice()))
-                        .collect_vec()
-                        .as_slice(),
+                    (&default_block, &[]),
+                    blockrefs.iter().map(|x| (*x, [].as_slice())).collect_vec().as_slice(),
                 )?;
 
-                for (i, (block, var_ty)) in target_blocks.iter().enumerate() {
-                    let value_op =
-                        self.op_llvm_load(block, value_ptr, var_ty[0].get_value().r#type())?;
+                let target_blocks = invocation
+                    .branches
+                    .iter()
+                    .map(|branch| match branch.target {
+                        GenBranchTarget::Fallthrough => statement_idx + 1,
+                        GenBranchTarget::Statement(idx) => idx.0,
+                    })
+                    .map(|idx| {
+                        let target_block_info = blocks.get(&idx).unwrap();
+                        let mut operand_indices =
+                            target_block_info.variables_at_start.keys().collect_vec();
+                        operand_indices.sort_unstable();
+                        let operand_values = operand_indices
+                            .iter()
+                            .map(|id| variables.get(id).unwrap().get_value())
+                            .collect_vec();
+                        (&target_block_info.block, operand_values)
+                    })
+                    .collect_vec();
+
+                for (i, (block, var_ty)) in enum_blocks.into_iter().enumerate() {
+                    let value_op = self.op_llvm_load(&block, value_ptr, var_ty.get_type())?;
+                    //let value = value_op.result(0)?.into();
                     variables.insert(
-                        invocation.branches[i].results[0].id,
+                        invocation.branches[i].results[i].id,
                         Variable::Local { op: value_op, result_idx: 0 },
                     );
+
+                    added_blocks.push(block);
                 }
 
-                Ok(())
+                Ok(added_blocks)
             } else {
                 panic!("should be a enum")
             }
