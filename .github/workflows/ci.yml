@@ -53,7 +53,7 @@ jobs:
       - name: Install LLVM
         run: sudo apt-get install libllvm-16-ocaml-dev libllvm16 llvm-16 llvm-16-dev llvm-16-doc llvm-16-examples llvm-16-runtime clang-16 clang-tools-16 clang-16-doc libclang-common-16-dev libclang-16-dev libclang1-16 lld-16 libpolly-16-dev libclang-rt-16-dev libc++-16-dev libc++abi-16-dev libmlir-16-dev mlir-16-tools
       - name: Fetch corelibs.
-        run: git clone https://github.com/starkware-libs/cairo.git -o starkware-cairo && cp -r starkware-cairo/corelib . && rm -rf starkware-cairo/
+        run: git clone https://github.com/starkware-libs/cairo.git starkware-cairo && cp -r starkware-cairo/corelib . && rm -rf starkware-cairo/
       - name: cargo test
         run: cargo test --all -- --nocapture
 
