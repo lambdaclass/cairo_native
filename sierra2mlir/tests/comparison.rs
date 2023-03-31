@@ -23,6 +23,7 @@ use test_case::test_case;
 #[test_case("felt_ops/felt_is_zero")]
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
+#[test_case("enums/single_value")]
 #[test_case("returns/simple")]
 #[test_case("returns/tuple")]
 #[test_case("returns/enums")]
