@@ -93,7 +93,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    // #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn inline_enum_match(
         &self,
         id: &str,
