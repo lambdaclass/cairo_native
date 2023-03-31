@@ -90,7 +90,7 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
     let program = ProgramParser::new().parse(sierra_code).unwrap();
 
-    let tmp_dir = tempdir::TempDir::new("test_comparison").unwrap().into_path();
+    let tmp_dir = Path::new("./tests/comparison_out");
 
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
