@@ -44,7 +44,7 @@ build:
 	cargo build --release
 
 check:
-	cargo clippy --all-targets
+	cargo clippy --all-targets -- -D warnings
 
 test:
 	cargo test --all-targets
