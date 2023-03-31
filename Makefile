@@ -33,11 +33,11 @@ MLIR_OPT_TARGETS := $(patsubst %.cairo,%.opt.mlir,$(CAIRO_SOURCES))
 %.sierra: %.cairo
 	cairo-compile --replace-ids $< $@
 
-%.mlir: build %.sierra
-	./target/release/cli -o $@ $<
+%.mlir: %.sierra build
+	./target/release/cli compile -o $@ $<
 
-%.opt.mlir: build %.sierra
-	./target/release/cli --optimize -o $@ $<
+%.opt.mlir: %.sierra build
+	./target/release/cli compile --optimize -o $@ $<
 
 
 build:
