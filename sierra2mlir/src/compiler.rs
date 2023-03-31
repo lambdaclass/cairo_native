@@ -12,7 +12,7 @@ use melior_next::{
     Context,
 };
 use regex::Regex;
-use std::{borrow::Cow, cell::RefCell, cmp::Ordering, collections::HashMap, ops::Deref, rc::Rc};
+use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
 
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
@@ -271,6 +271,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("arith.muli", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[lhs.r#type()])
+                .build(),
+        )
+    }
+
+    /// Only the MLIR op.
+    pub fn op_div<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.divui", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
                 .add_results(&[lhs.r#type()])
                 .build(),
@@ -1066,11 +1076,11 @@ impl<'ctx> Compiler<'ctx> {
         if self.print_fd > 0 {
             self.create_printf()?;
         }
-        let storage = Rc::new(RefCell::new(Storage::default()));
-        self.process_types(storage.clone())?;
-        self.process_libfuncs(storage.clone())?;
-        self.process_functions(storage.clone())?;
-        self.process_statements(storage)?;
+        let mut storage = Storage::default();
+        self.process_types(&mut storage)?;
+        self.process_libfuncs(&mut storage)?;
+        self.process_functions(&mut storage)?;
+        self.process_statements(&mut storage)?;
         Ok(self.module.as_operation())
     }
 
