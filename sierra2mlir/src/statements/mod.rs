@@ -491,8 +491,17 @@ fn get_block_flow(program: &Program) -> Vec<BlockFlow> {
 
                             if targets.is_empty() {
                                 unreachable!("invocations always have at least one target")
-                            } else if (targets.len() == 1 && block_starts.contains(&targets[0]))
-                                || targets.len() > 1
+                            } else if targets.len() > 1
+                                || block_starts.contains(&targets[0])
+                                // Special case added for enum match for safety.
+                                // The cairo compiler optimises away single-value enums,
+                                // however just in case manual sierra is written with one this is used so that enum_match is always a block terminator, simplifying the implementation
+                                || invocation
+                                    .libfunc_id
+                                    .debug_name
+                                    .as_ref()
+                                    .unwrap()
+                                    .starts_with("enum_match<")
                             {
                                 Some((statement_id + 1, HashSet::from_iter(targets.into_iter())))
                             } else {
