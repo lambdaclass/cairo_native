@@ -1,0 +1,25 @@
+type felt252 = felt252;
+type Tuple<felt252, felt252> = Struct<ut@Tuple, felt252, felt252>;
+type enum_init::enum_init::MyEnum = Enum<ut@enum_init::enum_init::MyEnum, felt252, Tuple<felt252, felt252>>;
+type Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum> = Struct<ut@Tuple, enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>;
+
+libfunc felt252_const<10> = felt252_const<10>;
+libfunc enum_init<enum_init::enum_init::MyEnum, 0> = enum_init<enum_init::enum_init::MyEnum, 0>;
+libfunc felt252_const<20> = felt252_const<20>;
+libfunc felt252_const<30> = felt252_const<30>;
+libfunc struct_construct<Tuple<felt252, felt252>> = struct_construct<Tuple<felt252, felt252>>;
+libfunc enum_init<enum_init::enum_init::MyEnum, 1> = enum_init<enum_init::enum_init::MyEnum, 1>;
+libfunc struct_construct<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>> = struct_construct<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>>;
+libfunc store_temp<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>> = store_temp<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>>;
+
+felt252_const<10>() -> ([0]);
+enum_init<enum_init::enum_init::MyEnum, 0>([0]) -> ([1]);
+felt252_const<20>() -> ([2]);
+felt252_const<30>() -> ([3]);
+struct_construct<Tuple<felt252, felt252>>([2], [3]) -> ([4]);
+enum_init<enum_init::enum_init::MyEnum, 1>([4]) -> ([5]);
+struct_construct<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>>([1], [5]) -> ([6]);
+store_temp<Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>>([6]) -> ([7]);
+return([7]);
+
+enum_init::enum_init::main@0() -> (Tuple<enum_init::enum_init::MyEnum, enum_init::enum_init::MyEnum>);

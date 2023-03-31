@@ -11,7 +11,6 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use regex::Regex;
 use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
 
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
@@ -59,6 +58,28 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => tag_type.get_width().unwrap() + (storage_type_len * 8),
+        }
+    }
+
+    pub fn get_felt_representation_width(&self) -> usize {
+        match self {
+            SierraType::Simple(_) => 1,
+            SierraType::Struct { ty: _, field_types } => {
+                field_types.iter().map(Self::get_felt_representation_width).sum()
+            }
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => {
+                1 + variants_types
+                    .iter()
+                    .map(Self::get_felt_representation_width)
+                    .max()
+                    .unwrap_or(0)
+            }
         }
     }
 
@@ -752,6 +773,12 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_unreachable<'a>(&self, block: &'a Block) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.unreachable", Location::unknown(&self.context)).build(),
+        )
+    }
+
     /// creates a llvm struct
     pub fn op_llvm_struct<'a>(&self, block: &'a Block, types: &[Type]) -> OperationRef<'a> {
         block.append_operation(
@@ -908,19 +935,16 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// cf switch
-    #[allow(clippy::too_many_arguments)]
     pub fn op_switch<'a>(
         &self,
         block: &'a Block,
-        case_values: &[String], // the flag values
+        case_values: &[String],
         flag: Value,
-        // block, block arguments
-        default_block: (&Block, &[Value]),
-        // block, block arguments
-        case_blocks: &[(&Block, &[Value])],
+        default_dest: BlockRef,
+        case_dests: &[BlockRef],
     ) -> Result<OperationRef<'a>> {
-        let mut dests = vec![default_block];
-        dests.extend(case_blocks);
+        let mut dests = vec![default_dest];
+        dests.extend(case_dests);
         Ok(block.append_operation(
             operation::Builder::new("cf.switch", Location::unknown(&self.context))
                 .add_attributes(&NamedAttribute::new_parsed_vec(
@@ -938,23 +962,16 @@ impl<'ctx> Compiler<'ctx> {
                         (
                             // number of operands passed to each case
                             "case_operand_segments",
-                            &format!(
-                                "array<i32: {}>",
-                                case_blocks.iter().map(|x| x.1.len()).join(", ")
-                            ),
+                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
                         ),
                         (
                             "operand_segment_sizes",
-                            &format!(
-                                "array<i32: 1, {}, {}>",
-                                default_block.1.len(),
-                                case_blocks.iter().map(|x| x.1.len()).sum::<usize>()
-                            ), // flag, defaultops, caseops
+                            "array<i32: 1, 0, 0>", // flag, defaultops, caseops
                         ),
                     ],
                 )?)
                 .add_operands(&[flag])
-                .add_successors(dests.iter().map(|x| x.0.deref()).collect_vec().as_slice())
+                .add_successors(dests.iter().map(|x| x.deref()).collect_vec().as_slice())
                 .build(),
         ))
     }

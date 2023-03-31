@@ -7,4 +7,4 @@ felt252_const<10>() -> ([0]);
 store_temp<felt252>([0]) -> ([1]);
 return([1]);
 
-simple_return::simple_return::main@0() -> (felt252);
+simple::simple::main@0() -> (felt252);
