@@ -16,6 +16,7 @@ Cargo.lock
 llvm/
 
 # Others.
+corelib/
 !.github/scripts
 
 # Compiled stuff.
