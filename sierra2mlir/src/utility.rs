@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
@@ -192,7 +194,7 @@ impl<'ctx> Compiler<'ctx> {
     /// like cairo runner, prints the tag value and then the enum value
     pub fn create_print_enum(
         &'ctx self,
-        enum_type: &SierraType,
+        enum_type: &SierraType<'ctx>,
         sierra_type_declaration: TypeDeclaration,
     ) -> Result<()> {
         let region = Region::new();
@@ -246,7 +248,13 @@ impl<'ctx> Compiler<'ctx> {
             let case_values =
                 variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
 
-            self.op_switch(&entry_block, &case_values, tag_value, default_block, &blockrefs)?;
+            self.op_switch(
+                &entry_block,
+                &case_values,
+                tag_value,
+                (&default_block, &[]),
+                blockrefs.iter().map(|x| (x.deref(), [].as_slice())).collect_vec().as_slice(),
+            )?;
 
             let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
                 .iter()

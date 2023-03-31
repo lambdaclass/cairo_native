@@ -912,18 +912,19 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// cf switch
-    ///
-    /// used in enum print
+    #[allow(clippy::too_many_arguments)]
     pub fn op_switch<'a>(
         &self,
         block: &'a Block,
-        case_values: &[String],
+        case_values: &[String], // the flag values
         flag: Value,
-        default_dest: BlockRef,
-        case_dests: &[BlockRef],
+        // block, block arguments
+        default_block: (&Block, &[Value]),
+        // block, block arguments
+        case_blocks: &[(&Block, &[Value])],
     ) -> Result<OperationRef<'a>> {
-        let mut dests = vec![default_dest];
-        dests.extend(case_dests);
+        let mut dests = vec![default_block];
+        dests.extend(case_blocks);
         Ok(block.append_operation(
             operation::Builder::new("cf.switch", Location::unknown(&self.context))
                 .add_attributes(&NamedAttribute::new_parsed_vec(
@@ -941,16 +942,23 @@ impl<'ctx> Compiler<'ctx> {
                         (
                             // number of operands passed to each case
                             "case_operand_segments",
-                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
+                            &format!(
+                                "array<i32: {}>",
+                                case_blocks.iter().map(|x| x.1.len()).join(", ")
+                            ),
                         ),
                         (
                             "operand_segment_sizes",
-                            "array<i32: 1, 0, 0>", // flag, defaultops, caseops
+                            &format!(
+                                "array<i32: 1, {}, {}>",
+                                default_block.1.len(),
+                                case_blocks.iter().map(|x| x.1.len()).sum::<usize>()
+                            ), // flag, defaultops, caseops
                         ),
                     ],
                 )?)
                 .add_operands(&[flag])
-                .add_successors(dests.iter().map(|x| x.deref()).collect_vec().as_slice())
+                .add_successors(dests.iter().map(|x| x.0.deref()).collect_vec().as_slice())
                 .build(),
         ))
     }
@@ -1069,9 +1077,11 @@ impl<'ctx> Compiler<'ctx> {
     /// Normalizes a function name.
     ///
     /// a::a::name -> a_a_name()
-    pub fn normalize_func_name(name: &str) -> Cow<str> {
-        let re = Regex::new(r"[:-]+").unwrap();
-        re.replace_all(name, "_")
+    pub const fn normalize_func_name(name: &str) -> Cow<str> {
+        Cow::Borrowed(name)
+        // todo: remove as it is not necessary and causes conflicts with type names.
+        //let re = Regex::new(r"[:-]+").unwrap();
+        //re.replace_all(name, "_")
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {

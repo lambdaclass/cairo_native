@@ -15,6 +15,7 @@ use crate::{
     utility::create_fn_signature,
 };
 
+#[derive(Debug)]
 pub struct BlockInfo<'ctx> {
     pub variables_at_start: HashMap<u64, SierraType<'ctx>>,
     // pub(crate) variables_available_at_end: HashSet<u64>,
@@ -137,7 +138,9 @@ impl<'ctx> Compiler<'ctx> {
                             "enum_match" => {
                                 self.inline_enum_match(
                                     invocation,
+                                    &region,
                                     block,
+                                    storage,
                                     &mut variables,
                                     &blocks,
                                     statement_idx,
