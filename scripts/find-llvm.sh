@@ -8,7 +8,7 @@ function find_llvm_config() {
         if [[ -e "$LLVM_PREFIX/bin/llvm-config" ]]; then
             LLVM_VERSION=$($LLVM_PREFIX/bin/llvm-config --version | cut -d '.' -f 1)
             if [[ $LLVM_VERSION == 16 ]]; then
-                echo "$LLVM_VERSION"
+                echo "$LLVM_PREFIX/bin/llvm-config"
                 return 0
             fi
         fi
@@ -26,7 +26,7 @@ function find_llvm_config() {
     if [[ -n "$LLVM_CONFIG_BIN" ]]; then
         LLVM_VERSION=$($LLVM_PREFIX/bin/llvm-config --version | cut -d '.' -f 1)
         if [[ $LLVM_VERSION == 16 ]]; then
-            echo "$LLVM_VERSION"
+            echo "$LLVM_CONFIG_BIN"
             return 0
         fi
     fi
@@ -43,5 +43,6 @@ function find_llvm_prefix() {
 }
 
 
-LLVM_CONFIG_BIN=$(find_llvm_config)
-find_llvm_prefix "$LLVM_CONFIG_BIN"
+# LLVM_CONFIG_BIN=$(find_llvm_config)
+# find_llvm_prefix "$LLVM_CONFIG_BIN"
+find_llvm_config
