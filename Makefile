@@ -10,10 +10,6 @@ ifeq ($(LLVM_PREFIX),)
   $(error Could not find a suitable LLVM 16 toolchain)
 endif
 
-ifeq ($(shell which cairo-compile),)
-  $(error Could not find `cairo-compile`)
-endif
-
 
 #
 # Source sets.
