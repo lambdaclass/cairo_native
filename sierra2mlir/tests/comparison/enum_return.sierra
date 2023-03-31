@@ -12,4 +12,3 @@ store_temp<enum_return::enum_return::MyEnum>([1]) -> ([2]);
 return([2]);
 
 enum_return::enum_return::main@0() -> (enum_return::enum_return::MyEnum);
-
