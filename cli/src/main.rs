@@ -4,9 +4,16 @@
 #![warn(clippy::nursery)]
 #![allow(unused)]
 
+use cairo_lang_compiler::{project::ProjectConfig, CompilerConfig};
+use cairo_lang_sierra::program::Program;
 use clap::{Parser, Subcommand};
 use sierra2mlir::compiler::Compiler;
-use std::{fs, path::PathBuf, time::Instant};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 #[derive(Parser)]
 #[command(
@@ -83,9 +90,9 @@ fn main() -> color_eyre::Result<()> {
 
     match args.command {
         Commands::Compile { input, optimize, output, debug, main_print, print_target } => {
-            let code = fs::read_to_string(input)?;
+            let program = load_program(&input);
             let mlir_output =
-                sierra2mlir::compile(&code, optimize, debug, main_print, print_target)?;
+                sierra2mlir::compile(&program, optimize, debug, main_print, print_target)?;
 
             if let Some(output) = output {
                 fs::write(output, mlir_output);
@@ -94,8 +101,8 @@ fn main() -> color_eyre::Result<()> {
             }
         }
         Commands::Run { function, input, main_print, print_target } => {
-            let code = fs::read_to_string(input)?;
-            let engine = sierra2mlir::execute(&code, main_print, print_target)?;
+            let program = load_program(&input);
+            let engine = sierra2mlir::execute(&program, main_print, print_target)?;
 
             unsafe {
                 engine.invoke_packed(&function, &mut [])?;
@@ -104,4 +111,21 @@ fn main() -> color_eyre::Result<()> {
     }
 
     Ok(())
+}
+
+fn load_program(input: &Path) -> Program {
+    match input.extension().map(|x| x.to_str().unwrap()) {
+        Some("cairo") => Arc::try_unwrap(
+            cairo_lang_compiler::compile_cairo_project_at_path(
+                input,
+                CompilerConfig { replace_ids: true, ..Default::default() },
+            )
+            .unwrap(),
+        )
+        .unwrap(),
+        Some("sierra") => cairo_lang_sierra::ProgramParser::new()
+            .parse(fs::read_to_string(input).unwrap().as_str())
+            .unwrap(),
+        _ => todo!("unknown file extension"),
+    }
 }
