@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
@@ -194,32 +192,30 @@ impl<'ctx> Compiler<'ctx> {
     /// like cairo runner, prints the tag value and then the enum value
     pub fn create_print_enum(
         &'ctx self,
-        enum_type: &SierraType<'ctx>,
+        enum_type: &SierraType,
         sierra_type_declaration: TypeDeclaration,
     ) -> Result<()> {
         let region = Region::new();
         let entry_block = region
             .append_block(Block::new(&[(enum_type.get_type(), Location::unknown(&self.context))]));
 
-        let enum_value = entry_block.argument(0)?;
+        let enum_value = entry_block.argument(0)?.into();
 
         let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
 
         if let SierraType::Enum {
-            ty,
+            ty: _,
             tag_type,
             storage_bytes_len: _,
-            storage_type: _,
+            storage_type,
             variants_types,
         } = enum_type
         {
             // create a block for each variant of the enum
-            let mut blocks = vec![];
-
-            for var_ty in variants_types {
-                let block = region.append_block(Block::new(&[]));
-                blocks.push((block, var_ty));
-            }
+            let blocks = variants_types
+                .iter()
+                .map(|var_ty| (region.append_block(Block::new(&[])), var_ty))
+                .collect_vec();
 
             let default_block = region.append_block(Block::new(&[]));
             self.op_return(&default_block, &[]);
@@ -227,35 +223,28 @@ impl<'ctx> Compiler<'ctx> {
             // type is !llvm.struct<(i16, array<N x i8>)>
 
             // get the tag
-            let tag_value_op =
-                self.op_llvm_extractvalue(&entry_block, 0, enum_value.into(), *tag_type)?;
+            let tag_value_op = self.op_llvm_extractvalue(&entry_block, 0, enum_value, *tag_type)?;
             let tag_value = tag_value_op.result(0)?.into();
 
+            // Print the tag. Extending it to 32 bits allows for better printf portability
             let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
             self.call_printf(entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
 
-            // put the enum in a alloca for easier interpreting
-
-            let enum_alloca_op = self.op_llvm_alloca(&entry_block, *ty, 1)?;
-            let enum_ptr = enum_alloca_op.result(0)?.into();
-
-            self.op_llvm_store(&entry_block, enum_value.into(), enum_ptr)?;
-
-            let value_ptr_op = self.op_llvm_gep(&entry_block, 1, enum_ptr, *ty)?;
-            let value_ptr = value_ptr_op.result(0)?.into();
+            // Store the enum data on the stack, and create a pointer to it
+            // This allows us to interpret a ptr to it as a ptr to any of the variant types
+            let data_alloca_op = self.op_llvm_alloca(&entry_block, *storage_type, 1)?;
+            let data_ptr = data_alloca_op.result(0)?.into();
+            let enum_data_op =
+                self.op_llvm_extractvalue(&entry_block, 1, enum_value, *storage_type)?;
+            let enum_data = enum_data_op.result(0)?.into();
+            self.op_llvm_store(&entry_block, enum_data, data_ptr)?;
 
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
-            let case_values =
-                variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
+            let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
 
-            self.op_switch(
-                &entry_block,
-                &case_values,
-                tag_value,
-                (&default_block, &[]),
-                blockrefs.iter().map(|x| (x.deref(), [].as_slice())).collect_vec().as_slice(),
-            )?;
+            self.op_switch(&entry_block, &case_values, tag_value, default_block, &blockrefs)?;
 
+            // Sierra type id of each variant type, used to work out which print functions to delegate to
             let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
                 .iter()
                 .map(|member_type| match member_type {
@@ -266,9 +255,20 @@ impl<'ctx> Compiler<'ctx> {
                 })
                 .collect_vec();
 
+            let enum_felt_width = enum_type.get_felt_representation_width();
+            println!("Enum felt width: {enum_felt_width}");
+
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
+                let variant_felt_width = var_ty.get_felt_representation_width();
+                println!("variant_felt_width: {variant_felt_width}");
+                let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
+                println!("unused_felt_count: {unused_felt_count}");
+                if unused_felt_count != 0 {
+                    self.call_printf(*block, &"0\n".repeat(unused_felt_count), &[])?;
+                }
+
                 let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
-                let value_op = self.op_llvm_load(block, value_ptr, var_ty.get_type())?;
+                let value_op = self.op_llvm_load(block, data_ptr, var_ty.get_type())?;
                 let value = value_op.result(0)?.into();
                 self.op_func_call(block, &format!("print_{}", component_type_name), &[value], &[])?;
                 self.op_return(block, &[]);

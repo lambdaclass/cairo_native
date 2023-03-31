@@ -1,18 +1,16 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    ops::Deref,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use cairo_lang_sierra::program::{GenBranchTarget, Invocation};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Region, Value, ValueLike};
+use melior_next::ir::{Block, BlockRef, Region};
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
-    libfuncs::lib_func_def::SierraLibFunc,
     statements::{BlockInfo, Variable},
 };
+
+use super::lib_func_def::SierraLibFunc;
 
 /*
    Here are the libfuncs implemented inline,
@@ -95,117 +93,96 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    // #[allow(clippy::too_many_arguments)]
     pub fn inline_enum_match(
         &self,
-        invocation: &Invocation,
-        block: &Block<'ctx>,
-        storage: &Storage,
-        variables: &mut HashMap<u64, Variable>,
-        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        id: &str,
         statement_idx: usize,
-    ) -> Result<Vec<Block>> {
-        let mut added_blocks = vec![];
-        dbg!(invocation);
-        let libfunc_id = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
-        let libfunc = storage.libfuncs.get(libfunc_id).unwrap();
+        region: &Region,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfuncdef = match storage.libfuncs.get(id).unwrap() {
+            SierraLibFunc::Function(d) => d,
+            SierraLibFunc::Constant(_) => {
+                panic!("Enum match unexpectedly registered as constant")
+            }
+        };
 
-        if let SierraLibFunc::Function(libfunc) = libfunc {
-            let enum_type = &libfunc.args[0].ty;
-
-            if let SierraType::Enum {
-                ty,
+        let (tag_type, storage_type, variants_types) = match &libfuncdef.args[0].ty {
+            SierraType::Enum {
+                ty: _,
                 tag_type,
                 storage_bytes_len: _,
-                storage_type: _,
+                storage_type,
                 variants_types,
-            } = enum_type
-            {
-                // make a jump within this function, and then make the actual jumps with the value?
-                dbg!(libfunc);
+            } => (tag_type, storage_type, variants_types),
+            SierraType::Simple(_) => {
+                panic!("Argument of enum match should be an enum")
+            }
+            SierraType::Struct { ty: _, field_types: _ } => {
+                panic!("Argument of enum match should be an enum")
+            }
+        };
 
-                // this block should never be reached, only if for some reason the enum tag is invalid.
-                // it will call abort()
-                let default_block = Block::new(&[]);
+        // Get the argument- the enum to case split upon
+        let enum_value = variables.get(&invocation.args[0].id).unwrap().get_value();
 
-                let mut enum_blocks = vec![];
+        // get the tag
+        let tag_value_op = self.op_llvm_extractvalue(block, 0, enum_value, *tag_type)?;
+        let tag_value = tag_value_op.result(0)?.into();
 
-                for var_ty in variants_types {
-                    let block = Block::new(&[]);
-                    enum_blocks.push((block, var_ty.clone()));
-                }
+        // put the enum's data on the stack and get a pointer to its value
+        let data_op = self.op_llvm_extractvalue(block, 1, enum_value, *storage_type)?;
+        let data = data_op.result(0)?.into();
+        let data_ptr_op = self.op_llvm_alloca(block, *storage_type, 1)?;
+        let data_ptr = data_ptr_op.result(0)?.into();
+        self.op_llvm_store(block, data, data_ptr)?;
 
-                let var = variables
-                    .get(&invocation.args[0].id)
-                    .cloned()
-                    .expect("Variable should be registered before use");
-                let input_enum = var.get_value();
-
-                // get the tag
-                let tag_value_op = self.op_llvm_extractvalue(block, 0, input_enum, *tag_type)?;
-                let tag_value = tag_value_op.result(0)?.into();
-
-                // put the enum on the stack and get a pointer to its value
-                let enum_alloca_op = self.op_llvm_alloca(block, *ty, 1)?;
-                let enum_ptr = enum_alloca_op.result(0)?.into();
-
-                self.op_llvm_store(block, input_enum, enum_ptr)?;
-
-                let value_ptr_op = self.op_llvm_gep(block, 1, enum_ptr, *ty)?;
-                let value_ptr: Value = value_ptr_op.result(0)?.into();
-
-                let case_values =
-                    variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
-
-                let blockrefs = enum_blocks.iter().map(|x| &x.0).collect_vec();
-                let case_values =
-                    variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
-
-                self.op_switch(
-                    block,
-                    &case_values,
-                    tag_value,
-                    (&default_block, &[]),
-                    blockrefs.iter().map(|x| (*x, [].as_slice())).collect_vec().as_slice(),
-                )?;
-
-                let target_blocks = invocation
-                    .branches
-                    .iter()
-                    .map(|branch| match branch.target {
+        // Blocks for the switch statement to jump to. Each extract's the appropriate value and forwards it on
+        let variant_blocks: Vec<BlockRef> = variants_types
+            .iter()
+            .enumerate()
+            .map(|(variant_index, variant_type)| {
+                // Intermediary block in which to extract the correct data from the enum
+                let variant_block = region.append_block(Block::new(&[]));
+                // Target block to jump to as the result of the match
+                let target_block_info = blocks
+                    .get(&match invocation.branches[variant_index].target {
                         GenBranchTarget::Fallthrough => statement_idx + 1,
                         GenBranchTarget::Statement(idx) => idx.0,
                     })
-                    .map(|idx| {
-                        let target_block_info = blocks.get(&idx).unwrap();
-                        let mut operand_indices =
-                            target_block_info.variables_at_start.keys().collect_vec();
-                        operand_indices.sort_unstable();
-                        let operand_values = operand_indices
-                            .iter()
-                            .map(|id| variables.get(id).unwrap().get_value())
-                            .collect_vec();
-                        (&target_block_info.block, operand_values)
-                    })
-                    .collect_vec();
+                    .unwrap();
 
-                for (i, (block, var_ty)) in enum_blocks.into_iter().enumerate() {
-                    let value_op = self.op_llvm_load(&block, value_ptr, var_ty.get_type())?;
-                    //let value = value_op.result(0)?.into();
-                    variables.insert(
-                        invocation.branches[i].results[i].id,
-                        Variable::Local { op: value_op, result_idx: 0 },
-                    );
-
-                    added_blocks.push(block);
+                let mut args_to_target_block = vec![];
+                for var_idx in target_block_info.variables_at_start.keys().sorted() {
+                    if *var_idx == invocation.branches[variant_index].results[0].id {
+                        let load_op =
+                            self.op_llvm_load(&variant_block, data_ptr, variant_type.get_type())?;
+                        args_to_target_block.push(Variable::Local { op: load_op, result_idx: 0 });
+                    } else {
+                        args_to_target_block.push(*variables.get(var_idx).unwrap());
+                    }
                 }
+                let args_to_target_block =
+                    args_to_target_block.iter().map(Variable::get_value).collect_vec();
 
-                Ok(added_blocks)
-            } else {
-                panic!("should be a enum")
-            }
-        } else {
-            panic!("should be a function")
-        }
+                self.op_br(&variant_block, &target_block_info.block, &args_to_target_block);
+
+                Ok(variant_block)
+            })
+            .collect::<Result<Vec<BlockRef>>>()?;
+
+        let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
+        // The default block is unreachable
+        // NOTE To truly guarantee this, we'll need guards on external inputs once we take them
+        let default_block = region.append_block(Block::new(&[]));
+        self.op_unreachable(&default_block);
+        self.op_switch(block, &case_values, tag_value, default_block, &variant_blocks)?;
+
+        Ok(())
     }
 }

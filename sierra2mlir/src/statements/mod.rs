@@ -136,18 +136,16 @@ impl<'ctx> Compiler<'ctx> {
                                 jump_processed = true;
                             }
                             "enum_match" => {
-                                let created_blocks = self.inline_enum_match(
-                                    invocation,
-                                    block,
-                                    storage,
-                                    &mut variables,
-                                    &blocks,
+                                self.inline_enum_match(
+                                    &id,
                                     statement_idx,
+                                    &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
                                 )?;
-
-                                for b in created_blocks {
-                                    region.append_block(b);
-                                }
 
                                 jump_processed = true;
                             }

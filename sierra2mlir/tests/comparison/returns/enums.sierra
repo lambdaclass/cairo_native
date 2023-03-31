@@ -1,0 +1,14 @@
+type u16 = u16;
+type u8 = u8;
+type enums::enums::MyEnum = Enum<ut@enums::enums::MyEnum, u8, u16>;
+
+libfunc u16_const<5> = u16_const<5>;
+libfunc enum_init<enums::enums::MyEnum, 1> = enum_init<enums::enums::MyEnum, 1>;
+libfunc store_temp<enums::enums::MyEnum> = store_temp<enums::enums::MyEnum>;
+
+u16_const<5>() -> ([0]);
+enum_init<enums::enums::MyEnum, 1>([0]) -> ([1]);
+store_temp<enums::enums::MyEnum>([1]) -> ([2]);
+return([2]);
+
+enums::enums::main@0() -> (enums::enums::MyEnum);
