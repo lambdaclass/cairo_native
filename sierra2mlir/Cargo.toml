@@ -16,6 +16,8 @@ cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1
 color-eyre = "0.6.2"
 itertools = "0.10.5"
 melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a742bdc7c211b07df307688f6411a40c"}
+num-bigint = "0.4.3"
+num-traits = "0.2.15"
 regex = "1.7.3"
 tracing = "0.1.37"
 
