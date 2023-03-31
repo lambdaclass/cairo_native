@@ -1,4 +1,4 @@
-use cairo_lang_sierra::{program::Program, ProgramParser};
+use cairo_lang_sierra::program::Program;
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
@@ -17,8 +17,7 @@ use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
 pub struct Compiler<'ctx> {
-    pub code: String,
-    pub program: Program,
+    pub program: &'ctx Program,
     pub context: Context,
     pub module: Module<'ctx>,
     pub main_print: bool,
@@ -143,10 +142,11 @@ pub struct Storage<'ctx> {
 }
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn new(code: &str, main_print: bool, print_fd: i32) -> color_eyre::Result<Self> {
-        let code = code.to_string();
-        let program: Program = ProgramParser::new().parse(&code).unwrap();
-
+    pub fn new(
+        program: &'ctx Program,
+        main_print: bool,
+        print_fd: i32,
+    ) -> color_eyre::Result<Self> {
         let registry = dialect::Registry::new();
         register_all_dialects(&registry);
 
@@ -178,7 +178,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self { code, program, context, module, main_print, print_fd })
+        Ok(Self { program, context, module, main_print, print_fd })
     }
 }
 

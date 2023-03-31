@@ -64,7 +64,7 @@ impl<'ctx> Compiler<'ctx> {
     // Process the statements of the sierra program by breaking flow up into basic blocks and processing one at a time
     pub fn process_statements(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         // Calculate the basic block structure in each function
-        let block_ranges_per_function = calculate_block_ranges_per_function(&self.program);
+        let block_ranges_per_function = calculate_block_ranges_per_function(self.program);
 
         // Process the blocks for each function
         for (func_start, (func, block_flows)) in block_ranges_per_function {
