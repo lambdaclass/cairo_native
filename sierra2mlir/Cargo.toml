@@ -6,19 +6,18 @@ authors = [
     "Edgar <@edg-l>",
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [[bench]]
 name = "execution"
 harness = false
 
 [dependencies]
+cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
 cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
-tracing = "0.1.37"
 color-eyre = "0.6.2"
-melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a742bdc7c211b07df307688f6411a40c"}
 itertools = "0.10.5"
+melior-next = { git = "https://github.com/edg-l/melior-next", rev = "33d89f76a742bdc7c211b07df307688f6411a40c"}
 regex = "1.7.3"
+tracing = "0.1.37"
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6" }
