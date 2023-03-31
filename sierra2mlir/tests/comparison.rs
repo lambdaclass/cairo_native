@@ -23,6 +23,7 @@ use test_case::test_case;
 #[test_case("felt_ops/sub")]
 #[test_case("felt_ops/mul")]
 #[test_case("felt_ops/negation")]
+#[test_case("branching/felt_is_zero")]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
@@ -90,13 +91,13 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
     let program = ProgramParser::new().parse(sierra_code).unwrap();
 
-    let tmp_dir = tempdir::TempDir::new("test_comparison").unwrap().into_path();
+    let out_dir = Path::new(".").join("tests").join("comparison").join("out");
 
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
 
-    let mlir_file = tmp_dir.join(format!("{test_file_name}.mlir")).display().to_string();
-    let output_file = tmp_dir.join(format!("{test_file_name}.ll")).display().to_string();
+    let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
+    let output_file = out_dir.join(format!("{test_file_name}.ll")).display().to_string();
 
     let compiled_code = compile(&program, false, false, true, 1).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();

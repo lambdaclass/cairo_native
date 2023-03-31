@@ -27,5 +27,4 @@ cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1
 criterion = "0.4.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
-tempdir = "0.3.7"
 test-case = "3.0.0"
