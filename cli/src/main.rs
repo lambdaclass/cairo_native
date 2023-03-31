@@ -31,7 +31,7 @@ struct Args {
 enum Commands {
     /// Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
     Compile {
-        /// The input sierra file.
+        /// Path to the Cairo or Sierra source code.
         input: PathBuf,
 
         /// Output optimized MLIR.
@@ -61,7 +61,7 @@ enum Commands {
     },
     /// Compile and run a program. The entry point must be a function without arguments.
     Run {
-        /// The input sierra file.
+        /// Path to the Cairo or Sierra source code.
         input: PathBuf,
 
         /// The function to run. Can only run functions without arguments and return types.
