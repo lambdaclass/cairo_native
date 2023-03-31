@@ -88,6 +88,8 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
 
 // Runs the test file via compiling to mlir, then llir, then invoking lli to run it
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
+    let program = ProgramParser::new().parse(sierra_code).unwrap();
+
     let tmp_dir = tempdir::TempDir::new("test_comparison").unwrap().into_path();
 
     // Allows folders of comparison tests without write producing a file not found
@@ -96,7 +98,7 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
     let mlir_file = tmp_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let output_file = tmp_dir.join(format!("{test_file_name}.ll")).display().to_string();
 
-    let compiled_code = compile(sierra_code, false, false, true, 1).unwrap();
+    let compiled_code = compile(&program, false, false, true, 1).unwrap();
     std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
 
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
