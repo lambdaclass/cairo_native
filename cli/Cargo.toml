@@ -3,10 +3,10 @@ name = "cli"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-sierra2mlir = { version = "0.1.0", path = "../sierra2mlir" }
+cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
+cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
 clap = { version = "4.1.13", features = ["derive"] }
 color-eyre = "0.6.2"
+sierra2mlir = { version = "0.1.0", path = "../sierra2mlir" }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }

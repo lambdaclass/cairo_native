@@ -10,6 +10,7 @@ use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 use tracing::debug;
 
 use crate::compiler::Compiler;
+use cairo_lang_sierra::program::Program;
 
 pub mod compiler;
 mod libfuncs;
@@ -19,14 +20,14 @@ mod userfuncs;
 mod utility;
 
 pub fn compile(
-    code: &str,
+    program: &Program,
     optimized: bool,
     debug_info: bool,
     // TODO: Make this an enum with either: stdout, stderr, a path to a file, or a raw fd (pipes?).
     main_print: bool,
     print_fd: i32,
 ) -> Result<String, color_eyre::Report> {
-    let mut compiler = Compiler::new(code, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd)?;
     compiler.compile()?;
 
     debug!("mlir before pass:\n{}", compiler.module.as_operation());
@@ -64,11 +65,11 @@ pub fn compile(
 }
 
 pub fn execute(
-    code: &str,
+    program: &Program,
     main_print: bool,
     print_fd: i32,
 ) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(code, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);

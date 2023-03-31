@@ -14,7 +14,7 @@ use crate::{
 impl<'ctx> Compiler<'ctx> {
     pub fn process_functions(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         // First, create the user func defs without internal block information
-        self.save_nonflow_function_info_to_storage(&self.program, storage);
+        self.save_nonflow_function_info_to_storage(self.program, storage);
 
         // Add a wrapper around the main function to print the felt representation of its returns if the option to do so was passed
         self.create_wrappers_if_necessary(storage)?;
@@ -75,7 +75,7 @@ impl<'ctx> Compiler<'ctx> {
         // For complex types, their components types must be added to the list before them
         let types_to_print = get_all_types_to_print(
             &ret_type_declarations.iter().map(|(_t, decl)| (*decl).clone()).collect_vec(),
-            &self.program,
+            self.program,
         );
 
         for type_decl in types_to_print {
