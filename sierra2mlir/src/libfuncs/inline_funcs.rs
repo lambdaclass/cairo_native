@@ -95,6 +95,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn inline_enum_match(
         &'ctx self,
         invocation: &Invocation,
@@ -102,7 +103,7 @@ impl<'ctx> Compiler<'ctx> {
         block: &Block<'ctx>,
         storage: &Storage,
         variables: &mut HashMap<u64, Variable<'ctx>>,
-        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        blocks: &'ctx BTreeMap<usize, BlockInfo<'ctx>>,
         statement_idx: usize,
     ) -> Result<()> {
         dbg!(invocation);
@@ -115,8 +116,8 @@ impl<'ctx> Compiler<'ctx> {
             if let SierraType::Enum {
                 ty,
                 tag_type,
-                storage_bytes_len,
-                storage_type,
+                storage_bytes_len: _,
+                storage_type: _,
                 variants_types,
             } = enum_type
             {
@@ -154,32 +155,35 @@ impl<'ctx> Compiler<'ctx> {
                 let input_enum = var.get_value();
 
                 // get the tag
-                let tag_value_op = self.op_llvm_extractvalue(&block, 0, input_enum, *tag_type)?;
+                let tag_value_op = self.op_llvm_extractvalue(block, 0, input_enum, *tag_type)?;
                 let tag_value = tag_value_op.result(0)?.into();
 
                 // put the enum on the stack and get a pointer to its value
-                let enum_alloca_op = self.op_llvm_alloca(&block, *ty, 1)?;
+                let enum_alloca_op = self.op_llvm_alloca(block, *ty, 1)?;
                 let enum_ptr = enum_alloca_op.result(0)?.into();
 
-                self.op_llvm_store(&block, input_enum, enum_ptr)?;
+                self.op_llvm_store(block, input_enum, enum_ptr)?;
 
-                let value_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
+                let value_ptr_op = self.op_llvm_gep(block, 1, enum_ptr, *ty)?;
                 let value_ptr: Value = value_ptr_op.result(0)?.into();
 
                 let case_values =
                     variants_types.iter().enumerate().map(|x| x.0.to_string()).collect_vec();
 
+                let target_blocks_with_values = target_blocks
+                    .iter()
+                    .map(|(b, v)| (*b, v.iter().map(|x| x.get_value()).collect_vec()))
+                    .collect_vec();
+
                 self.op_switch(
-                    &block,
+                    block,
                     &case_values,
                     tag_value,
                     (default_block.deref(), &[]),
                     //blockrefs.into_iter().map(|x| (x, [].as_slice())).collect_vec().as_slice(),
-                    target_blocks
+                    target_blocks_with_values
                         .iter()
-                        .map(|(b, v)| {
-                            (*b, v.iter().map(|x| x.get_value()).collect_vec().as_slice())
-                        })
+                        .map(|(b, v)| (*b, v.as_slice()))
                         .collect_vec()
                         .as_slice(),
                 )?;
