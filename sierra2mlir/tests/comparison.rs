@@ -23,6 +23,7 @@ use test_case::test_case;
 #[test_case("felt_ops/sub")]
 #[test_case("felt_ops/mul")]
 #[test_case("felt_ops/negation")]
+#[test_case("branching/felt_is_zero")]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
@@ -90,7 +91,7 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
 fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
     let program = ProgramParser::new().parse(sierra_code).unwrap();
 
-    let out_dir = Path::new("./tests/comparison/out");
+    let out_dir = Path::new(".").join("tests").join("comparison").join("out");
 
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
