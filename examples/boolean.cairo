@@ -1,3 +1,3 @@
 fn main() -> bool {
-    true | false
+    ((true | false) & !!false) ^ true
 }
