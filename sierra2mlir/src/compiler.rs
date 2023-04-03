@@ -152,12 +152,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let context = Context::new();
         context.append_dialect_registry(&registry);
+        context.load_all_available_dialects();
         register_all_llvm_translations(&context);
-        context.get_or_load_dialect("func");
-        context.get_or_load_dialect("arith");
-        context.get_or_load_dialect("math");
-        context.get_or_load_dialect("cf");
-        context.get_or_load_dialect("scf");
 
         let location = Location::unknown(&context);
 
