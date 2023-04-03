@@ -113,13 +113,9 @@ impl<'ctx> Compiler<'ctx> {
         };
 
         let (tag_type, storage_type, variants_types) = match &libfuncdef.args[0].ty {
-            SierraType::Enum {
-                ty: _,
-                tag_type,
-                storage_bytes_len: _,
-                storage_type,
-                variants_types,
-            } => (tag_type, storage_type, variants_types),
+            SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
+                (tag_type, storage_type, variants_types)
+            }
             SierraType::Simple(_) => {
                 panic!("Argument of enum match should be an enum")
             }

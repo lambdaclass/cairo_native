@@ -203,14 +203,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
 
-        if let SierraType::Enum {
-            ty: _,
-            tag_type,
-            storage_bytes_len: _,
-            storage_type,
-            variants_types,
-        } = enum_type
-        {
+        if let SierraType::Enum { tag_type, storage_type, variants_types, .. } = enum_type {
             // create a block for each variant of the enum
             let blocks = variants_types
                 .iter()
@@ -256,13 +249,10 @@ impl<'ctx> Compiler<'ctx> {
                 .collect_vec();
 
             let enum_felt_width = enum_type.get_felt_representation_width();
-            println!("Enum felt width: {enum_felt_width}");
 
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
                 let variant_felt_width = var_ty.get_felt_representation_width();
-                println!("variant_felt_width: {variant_felt_width}");
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
-                println!("unused_felt_count: {unused_felt_count}");
                 if unused_felt_count != 0 {
                     self.call_printf(*block, &"0\n".repeat(unused_felt_count), &[])?;
                 }
