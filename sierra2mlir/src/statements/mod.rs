@@ -10,11 +10,12 @@ use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 
 use crate::{
-    compiler::{CmpOp, Compiler, SierraType, Storage},
+    compiler::{Compiler, SierraType, Storage},
     libfuncs::lib_func_def::{ConstantLibFunc, LibFuncDef, SierraLibFunc},
     utility::create_fn_signature,
 };
 
+#[derive(Debug)]
 pub struct BlockInfo<'ctx> {
     pub variables_at_start: HashMap<u64, SierraType<'ctx>>,
     // pub(crate) variables_available_at_end: HashSet<u64>,
@@ -82,8 +83,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
-        let user_func_name =
-            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
+        let user_func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
         let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage);
         self.create_function_entry_block(
@@ -112,80 +112,35 @@ impl<'ctx> Compiler<'ctx> {
                 match &self.program.statements[statement_idx] {
                     GenStatement::Invocation(invocation) => {
                         let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
-                        let id = Self::normalize_func_name(
-                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
-                        )
-                        .to_string();
+                        let id = invocation.libfunc_id.debug_name.as_ref().unwrap().to_string();
                         let name_without_generics = name.split('<').next().unwrap();
                         let mut jump_processed = false;
                         match name_without_generics {
                             "disable_ap_tracking" | "drop" | "branch_align" => {}
                             "jump" => {
-                                let target_block_info = match &invocation.branches[0].target {
-                                    GenBranchTarget::Fallthrough => {
-                                        unreachable!("jump should never be fallthrough")
-                                    }
-                                    GenBranchTarget::Statement(id) => blocks.get(&(id.0)).unwrap(),
-                                };
-                                let mut operand_indices =
-                                    target_block_info.variables_at_start.keys().collect_vec();
-                                operand_indices.sort_unstable();
-                                let operand_values = operand_indices
-                                    .iter()
-                                    .map(|id| variables.get(id).unwrap().get_value())
-                                    .collect_vec();
-                                self.op_br(block, &target_block_info.block, &operand_values);
+                                self.inline_jump(invocation, block, &mut variables, &blocks)?;
                                 jump_processed = true;
                             }
                             "felt252_is_zero" => {
-                                let felt_op_zero = self.op_felt_const(block, "0");
-                                let zero = felt_op_zero.result(0)?.into();
-
-                                let input = variables
-                                    .get(&invocation.args[0].id)
-                                    .expect("Variable should be registered before use")
-                                    .get_value();
-                                let eq_op = self.op_cmp(block, CmpOp::Equal, input, zero);
-                                let eq = eq_op.result(0)?;
-
-                                // felt_is_zero forwards its argument to the non-zero branch
-                                // Since no processing is done, we can simply assign to the variable here
-                                variables.insert(
-                                    invocation.branches[1].results[0].id,
-                                    *variables.get(&invocation.args[0].id).unwrap(),
-                                );
-                                let target_blocks = invocation
-                                    .branches
-                                    .iter()
-                                    .map(|branch| match branch.target {
-                                        GenBranchTarget::Fallthrough => statement_idx + 1,
-                                        GenBranchTarget::Statement(idx) => idx.0,
-                                    })
-                                    .map(|idx| {
-                                        let target_block_info = blocks.get(&idx).unwrap();
-                                        let mut operand_indices = target_block_info
-                                            .variables_at_start
-                                            .keys()
-                                            .collect_vec();
-                                        operand_indices.sort_unstable();
-                                        let operand_values = operand_indices
-                                            .iter()
-                                            .map(|id| variables.get(id).unwrap().get_value())
-                                            .collect_vec();
-                                        (&target_block_info.block, operand_values)
-                                    })
-                                    .collect_vec();
-
-                                let (zero_block, zero_vars) = &target_blocks[0];
-                                let (nonzero_block, nonzero_vars) = &target_blocks[1];
-
-                                self.op_cond_br(
+                                self.inline_felt252_is_zero(
+                                    invocation,
                                     block,
-                                    eq.into(),
-                                    zero_block,
-                                    nonzero_block,
-                                    zero_vars,
-                                    nonzero_vars,
+                                    &mut variables,
+                                    &blocks,
+                                    statement_idx,
+                                )?;
+                                jump_processed = true;
+                            }
+                            "enum_match" => {
+                                self.inline_enum_match(
+                                    &id,
+                                    statement_idx,
+                                    &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
                                 )?;
 
                                 jump_processed = true;
@@ -388,8 +343,7 @@ impl<'ctx> Compiler<'ctx> {
         block_flows: BTreeMap<usize, BlockFlow>,
         storage: &mut Storage<'ctx>,
     ) -> BTreeMap<usize, DataFlow<'ctx>> {
-        let user_func_name =
-            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
+        let user_func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
         let mut block_infos: BTreeMap<usize, DataFlowInfo<'ctx>> = BTreeMap::new();
 
@@ -401,10 +355,7 @@ impl<'ctx> Compiler<'ctx> {
             for statement in self.program.statements[block_start..block_flow.end].iter() {
                 let vars_used = match statement {
                     GenStatement::Invocation(invocation) => {
-                        let id = Self::normalize_func_name(
-                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
-                        )
-                        .to_string();
+                        let id = invocation.libfunc_id.debug_name.as_ref().unwrap().to_string();
 
                         let name_without_generics = id.split('<').next().unwrap();
 
@@ -532,8 +483,17 @@ fn get_block_flow(program: &Program) -> Vec<BlockFlow> {
 
                             if targets.is_empty() {
                                 unreachable!("invocations always have at least one target")
-                            } else if (targets.len() == 1 && block_starts.contains(&targets[0]))
-                                || targets.len() > 1
+                            } else if targets.len() > 1
+                                || block_starts.contains(&targets[0])
+                                // Special case added for enum match for safety.
+                                // The cairo compiler optimises away single-value enums,
+                                // however just in case manual sierra is written with one this is used so that enum_match is always a block terminator, simplifying the implementation
+                                || invocation
+                                    .libfunc_id
+                                    .debug_name
+                                    .as_ref()
+                                    .unwrap()
+                                    .starts_with("enum_match<")
                             {
                                 Some((statement_id + 1, HashSet::from_iter(targets.into_iter())))
                             } else {

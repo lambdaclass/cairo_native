@@ -11,8 +11,7 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use regex::Regex;
-use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
+use std::{cmp::Ordering, collections::HashMap, ops::Deref};
 
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
@@ -59,6 +58,28 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => tag_type.get_width().unwrap() + (storage_type_len * 8),
+        }
+    }
+
+    pub fn get_felt_representation_width(&self) -> usize {
+        match self {
+            SierraType::Simple(_) => 1,
+            SierraType::Struct { ty: _, field_types } => {
+                field_types.iter().map(Self::get_felt_representation_width).sum()
+            }
+            SierraType::Enum {
+                ty: _,
+                tag_type: _,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types,
+            } => {
+                1 + variants_types
+                    .iter()
+                    .map(Self::get_felt_representation_width)
+                    .max()
+                    .unwrap_or(0)
+            }
         }
     }
 
@@ -752,6 +773,12 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_unreachable<'a>(&self, block: &'a Block) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.unreachable", Location::unknown(&self.context)).build(),
+        )
+    }
+
     /// creates a llvm struct
     pub fn op_llvm_struct<'a>(&self, block: &'a Block, types: &[Type]) -> OperationRef<'a> {
         block.append_operation(
@@ -908,8 +935,6 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// cf switch
-    ///
-    /// used in enum print
     pub fn op_switch<'a>(
         &self,
         block: &'a Block,
@@ -1060,14 +1085,6 @@ impl<'ctx> Compiler<'ctx> {
         let location = Location::unknown(&self.context);
         let args: Vec<_> = args.iter().map(|x| (*x, location)).collect();
         Block::new(&args)
-    }
-
-    /// Normalizes a function name.
-    ///
-    /// a::a::name -> a_a_name()
-    pub fn normalize_func_name(name: &str) -> Cow<str> {
-        let re = Regex::new(r"[:-]+").unwrap();
-        re.replace_all(name, "_")
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {

@@ -15,15 +15,18 @@ use test_case::test_case;
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
-#[test_case("simple_return")]
-#[test_case("tuple_return")]
-#[test_case("enum_return")]
 #[test_case("fib_counter")]
 #[test_case("felt_ops/add")]
 #[test_case("felt_ops/sub")]
 #[test_case("felt_ops/mul")]
 #[test_case("felt_ops/negation")]
-#[test_case("branching/felt_is_zero")]
+#[test_case("felt_ops/felt_is_zero")]
+#[test_case("enums/enum_init")]
+#[test_case("enums/enum_match")]
+#[test_case("enums/single_value")]
+#[test_case("returns/simple")]
+#[test_case("returns/tuple")]
+#[test_case("returns/enums")]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
