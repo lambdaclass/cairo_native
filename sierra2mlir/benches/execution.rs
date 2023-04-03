@@ -6,13 +6,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let engine = sierra2mlir::execute(&program, false, 1).unwrap();
 
     unsafe {
-        engine.invoke_packed("fib_fib_main", &mut []).unwrap();
+        engine.invoke_packed("fib::fib::main", &mut []).unwrap();
     };
 
     c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
         b.iter(|| {
             unsafe {
-                engine.invoke_packed("fib_fib_main", &mut []).ok();
+                engine.invoke_packed("fib::fib::main", &mut []).ok();
             };
         });
     });
