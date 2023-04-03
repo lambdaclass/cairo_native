@@ -84,7 +84,7 @@ module attributes {llvm.data_layout = ""} {
     llvm.return
   }
   llvm.func @main() attributes {llvm.emit_c_interface} {
-    %0 = llvm.call @print_test_print_test_main() : () -> i256
+    %0 = llvm.call @"print_test::print_test::main"() : () -> i256
     llvm.call @print_felt252(%0) : (i256) -> ()
     llvm.return
   }
@@ -92,15 +92,15 @@ module attributes {llvm.data_layout = ""} {
     llvm.call @main() : () -> ()
     llvm.return
   }
-  llvm.func @print_test_print_test_main() -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"print_test::print_test::main"() -> i256 attributes {llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(24 : i256) : i256
     %1 = llvm.call @"store_temp<felt252>"(%0) : (i256) -> i256
     llvm.return %1 : i256
   }
-  llvm.func @_mlir_ciface_print_test_print_test_main() -> i256 attributes {llvm.emit_c_interface} {
-    %0 = llvm.call @print_test_print_test_main() : () -> i256
+  llvm.func @"_mlir_ciface_print_test::print_test::main"() -> i256 attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @"print_test::print_test::main"() : () -> i256
     llvm.return %0 : i256
   }
 }

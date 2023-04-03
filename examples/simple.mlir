@@ -38,7 +38,7 @@ module attributes {llvm.data_layout = ""} {
   llvm.func internal @"store_temp<Tuple<felt252, felt252>>"(%arg0: !llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)> {
     llvm.return %arg0 : !llvm.struct<(i256, i256)>
   }
-  llvm.func @simple_simple_something(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.emit_c_interface} {
+  llvm.func @"simple::simple::something"(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0 : i256)
   ^bb1(%0: i256):  // pred: ^bb0
     %1 = llvm.mlir.constant(2 : i256) : i256
@@ -52,8 +52,8 @@ module attributes {llvm.data_layout = ""} {
     %9 = llvm.call @"store_temp<Tuple<felt252, felt252>>"(%8) : (!llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)>
     llvm.return %9 : !llvm.struct<(i256, i256)>
   }
-  llvm.func @_mlir_ciface_simple_simple_something(%arg0: !llvm.ptr<struct<(i256, i256)>>, %arg1: i256) attributes {llvm.emit_c_interface} {
-    %0 = llvm.call @simple_simple_something(%arg1) : (i256) -> !llvm.struct<(i256, i256)>
+  llvm.func @"_mlir_ciface_simple::simple::something"(%arg0: !llvm.ptr<struct<(i256, i256)>>, %arg1: i256) attributes {llvm.emit_c_interface} {
+    %0 = llvm.call @"simple::simple::something"(%arg1) : (i256) -> !llvm.struct<(i256, i256)>
     llvm.store %0, %arg0 : !llvm.ptr<struct<(i256, i256)>>
     llvm.return
   }

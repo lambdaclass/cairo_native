@@ -218,6 +218,9 @@ impl<'ctx> Compiler<'ctx> {
                 "upcast" => {
                     self.create_libfunc_upcast(func_decl, parent_block, storage)?;
                 }
+                "bool_or_impl" => {
+                    self.create_libfunc_bool_or_impl(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -304,7 +307,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&args_with_location);
 
-        let mut struct_type_op = self.op_llvm_struct(&block, &args);
+        let mut struct_type_op = self.op_llvm_struct_from_types(&block, &args);
 
         for i in 0..block.argument_count() {
             let arg = block.argument(i)?;
@@ -1082,6 +1085,78 @@ impl<'ctx> Compiler<'ctx> {
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }
 
+        Ok(())
+    }
+
+    /// 2 boolean enums -> 1 bool enum
+    pub fn create_libfunc_bool_or_impl(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let data_in = &[self.boolean_enum_type(), self.boolean_enum_type()];
+        let data_out = &[self.boolean_enum_type()];
+
+        let bool_variant = SierraType::Struct {
+            ty: self.struct_type(&[Type::none(&self.context)]),
+            field_types: vec![],
+        };
+
+        let bool_sierra_type = SierraType::Enum {
+            ty: self.boolean_enum_type(),
+            tag_type: self.u16_type(),
+            storage_bytes_len: 0,
+            storage_type: Type::parse(&self.context, "!llvm.array<0 x i8>").unwrap(),
+            variants_types: vec![bool_variant.clone(), bool_variant],
+        };
+
+        let region = Region::new();
+        region.append_block({
+            let block = self.new_block(data_in);
+
+            let lhs = block.argument(0)?;
+            let rhs = block.argument(1)?;
+
+            let lhs_tag_value_op =
+                self.op_llvm_extractvalue(&block, 0, lhs.into(), self.u16_type())?;
+            let lhs_tag_value: Value = lhs_tag_value_op.result(0)?.into();
+
+            let rhs_tag_value_op =
+                self.op_llvm_extractvalue(&block, 0, rhs.into(), self.u16_type())?;
+            let rhs_tag_value: Value = rhs_tag_value_op.result(0)?.into();
+
+            let or_ref = self.op_or(&block, lhs_tag_value, rhs_tag_value, self.u16_type());
+
+            let enum_op = self.op_llvm_struct(&block, self.boolean_enum_type());
+            let enum_value: Value = enum_op.result(0)?.into();
+
+            let enum_res = self.op_llvm_insertvalue(
+                &block,
+                0,
+                enum_value,
+                or_ref.result(0)?.into(),
+                self.boolean_enum_type(),
+            )?;
+
+            self.op_return(&block, &[enum_res.result(0)?.into()]);
+
+            block
+        });
+
+        let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
+        let fn_ty = create_fn_signature(data_in, data_out);
+        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+
+        storage.libfuncs.insert(
+            fn_id,
+            SierraLibFunc::create_simple(
+                vec![bool_sierra_type.clone(), bool_sierra_type.clone()],
+                vec![bool_sierra_type.clone()],
+            ),
+        );
+
+        parent_block.append_operation(fn_op);
         Ok(())
     }
 }

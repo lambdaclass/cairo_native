@@ -3,11 +3,19 @@ type core::bool = Enum<ut@core::bool, Unit, Unit>;
 
 libfunc struct_construct<Unit> = struct_construct<Unit>;
 libfunc enum_init<core::bool, 1> = enum_init<core::bool, 1>;
+libfunc enum_init<core::bool, 0> = enum_init<core::bool, 0>;
 libfunc store_temp<core::bool> = store_temp<core::bool>;
+libfunc bool_or_impl = bool_or_impl;
 
 struct_construct<Unit>() -> ([0]);
 enum_init<core::bool, 1>([0]) -> ([1]);
-store_temp<core::bool>([1]) -> ([2]);
-return([2]);
+struct_construct<Unit>() -> ([2]);
+enum_init<core::bool, 0>([2]) -> ([3]);
+store_temp<core::bool>([1]) -> ([1]);
+store_temp<core::bool>([3]) -> ([3]);
+bool_or_impl([1], [3]) -> ([4]);
+store_temp<core::bool>([4]) -> ([5]);
+return([5]);
 
 boolean::boolean::main@0() -> (core::bool);
+
