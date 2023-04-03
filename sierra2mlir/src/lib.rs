@@ -34,6 +34,12 @@ pub fn compile(
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
 
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
+    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
+    //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+
     if optimized {
         pass_manager.add_pass(pass::transform::canonicalizer());
         pass_manager.add_pass(pass::transform::inliner());
@@ -41,12 +47,6 @@ pub fn compile(
         pass_manager.add_pass(pass::transform::cse());
         pass_manager.add_pass(pass::transform::sccp());
     }
-
-    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
-    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
-    //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
 
     // pass_manager.add_pass(pass::transform::print_operation_stats());
     pass_manager.enable_verifier(true);
@@ -74,16 +74,18 @@ pub fn execute(
 
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
+    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
+    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
+    //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+
     pass_manager.add_pass(pass::transform::canonicalizer());
     pass_manager.add_pass(pass::transform::inliner());
     pass_manager.add_pass(pass::transform::symbol_dce());
     pass_manager.add_pass(pass::transform::cse());
     pass_manager.add_pass(pass::transform::sccp());
-    pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
-    pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
-    //pass_manager.add_pass(pass::conversion::convert_gpu_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;
 
