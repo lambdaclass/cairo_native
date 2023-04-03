@@ -254,7 +254,7 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
-                    dbg!(&func_decl).id.debug_name.as_ref().unwrap().as_str()
+                    func_decl.id.debug_name.as_ref().unwrap().as_str()
                 ),
             }
         }
