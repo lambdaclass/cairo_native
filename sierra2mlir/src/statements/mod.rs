@@ -83,8 +83,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
-        let user_func_name =
-            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
+        let user_func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
         let blocks = self.get_blocks_with_mapped_inputs(func, block_flows, storage);
         self.create_function_entry_block(
@@ -113,10 +112,7 @@ impl<'ctx> Compiler<'ctx> {
                 match &self.program.statements[statement_idx] {
                     GenStatement::Invocation(invocation) => {
                         let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
-                        let id = Self::normalize_func_name(
-                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
-                        )
-                        .to_string();
+                        let id = invocation.libfunc_id.debug_name.as_ref().unwrap().to_string();
                         let name_without_generics = name.split('<').next().unwrap();
                         let mut jump_processed = false;
                         match name_without_generics {
@@ -347,8 +343,7 @@ impl<'ctx> Compiler<'ctx> {
         block_flows: BTreeMap<usize, BlockFlow>,
         storage: &mut Storage<'ctx>,
     ) -> BTreeMap<usize, DataFlow<'ctx>> {
-        let user_func_name =
-            Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str()).to_string();
+        let user_func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
         let mut block_infos: BTreeMap<usize, DataFlowInfo<'ctx>> = BTreeMap::new();
 
@@ -360,10 +355,7 @@ impl<'ctx> Compiler<'ctx> {
             for statement in self.program.statements[block_start..block_flow.end].iter() {
                 let vars_used = match statement {
                     GenStatement::Invocation(invocation) => {
-                        let id = Self::normalize_func_name(
-                            invocation.libfunc_id.debug_name.as_ref().unwrap().as_str(),
-                        )
-                        .to_string();
+                        let id = invocation.libfunc_id.debug_name.as_ref().unwrap().to_string();
 
                         let name_without_generics = id.split('<').next().unwrap();
 

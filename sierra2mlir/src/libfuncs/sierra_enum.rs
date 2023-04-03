@@ -16,8 +16,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let enum_arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::Type(type_id) => {

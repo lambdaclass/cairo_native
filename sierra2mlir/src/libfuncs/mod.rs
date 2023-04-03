@@ -230,8 +230,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![]));
     }
 
@@ -253,7 +252,7 @@ impl<'ctx> Compiler<'ctx> {
             arg_value
         };
 
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         storage.libfuncs.insert(
             id,
@@ -274,7 +273,7 @@ impl<'ctx> Compiler<'ctx> {
             _ => unreachable!("Expected generic arg of const creation function to be a Value"),
         };
 
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         storage.libfuncs.insert(id, SierraLibFunc::create_constant(SierraType::Simple(ty), arg));
     }
@@ -285,8 +284,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
@@ -376,7 +374,7 @@ impl<'ctx> Compiler<'ctx> {
             block
         });
 
-        let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
+        let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(
             &[struct_ty],
             field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
@@ -385,10 +383,9 @@ impl<'ctx> Compiler<'ctx> {
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage.libfuncs.insert(
-            fn_id.into_owned(),
-            SierraLibFunc::create_simple(vec![struct_type], return_types),
-        );
+        storage
+            .libfuncs
+            .insert(fn_id, SierraLibFunc::create_simple(vec![struct_type], return_types));
 
         parent_block.append_operation(fn_op);
         Ok(())
@@ -402,8 +399,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
@@ -452,8 +448,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
@@ -513,8 +508,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
@@ -578,8 +572,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
@@ -645,8 +638,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
@@ -701,8 +693,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
         let felt_type = sierra_felt_type.get_type();
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
@@ -743,8 +734,7 @@ impl<'ctx> Compiler<'ctx> {
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Function(LibFuncDef {
@@ -759,8 +749,7 @@ impl<'ctx> Compiler<'ctx> {
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_ref().unwrap().as_str())
-            .to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
             x
@@ -804,8 +793,7 @@ impl<'ctx> Compiler<'ctx> {
         let op_zext = self.op_zext(&block, block.argument(0)?.into(), self.felt_type());
         self.op_return(&block, &[op_zext.result(0)?.into()]);
 
-        let id =
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
             &create_fn_signature(&[src_type], &[self.felt_type()]),
@@ -847,8 +835,7 @@ impl<'ctx> Compiler<'ctx> {
             self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
         self.op_return(&block, &[op_mul.result(0)?.into()]);
 
-        let id =
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
             &create_fn_signature(&[src_type, src_type], &[dst_type]),
@@ -901,8 +888,7 @@ impl<'ctx> Compiler<'ctx> {
             &[block.argument(0)?.into(), op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()],
         );
 
-        let id =
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
             &create_fn_signature(
@@ -956,8 +942,7 @@ impl<'ctx> Compiler<'ctx> {
             &[block.argument(0)?.into(), op_div.result(0)?.into(), op_rem.result(0)?.into()],
         );
 
-        let id =
-            Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).into_owned();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
             &create_fn_signature(
@@ -1018,12 +1003,12 @@ impl<'ctx> Compiler<'ctx> {
             block
         });
 
-        let fn_id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap());
+        let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(data_in, data_out);
         let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
 
         storage.libfuncs.insert(
-            fn_id.into_owned(),
+            fn_id,
             SierraLibFunc::Function(LibFuncDef {
                 args: vec![
                     LibFuncArg { loc: 1, ty: SierraType::Simple(data_in[0]) },
@@ -1043,7 +1028,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let id = Self::normalize_func_name(func_decl.id.debug_name.as_deref().unwrap()).to_string();
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let src_sierra_type = storage
             .types

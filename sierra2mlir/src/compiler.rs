@@ -11,7 +11,7 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Deref};
+use std::{cmp::Ordering, collections::HashMap, ops::Deref};
 
 use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
 
@@ -1085,16 +1085,6 @@ impl<'ctx> Compiler<'ctx> {
         let location = Location::unknown(&self.context);
         let args: Vec<_> = args.iter().map(|x| (*x, location)).collect();
         Block::new(&args)
-    }
-
-    /// Normalizes a function name.
-    ///
-    /// a::a::name -> a_a_name()
-    pub const fn normalize_func_name(name: &str) -> Cow<str> {
-        Cow::Borrowed(name)
-        // todo: remove as it is not necessary and causes conflicts with type names.
-        //let re = Regex::new(r"[:-]+").unwrap();
-        //re.replace_all(name, "_")
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {

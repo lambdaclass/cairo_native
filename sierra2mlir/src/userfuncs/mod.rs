@@ -24,13 +24,11 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn create_wrappers_if_necessary(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for func in self.program.funcs.iter() {
-            let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
+            let func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
-            let name = Self::normalize_func_name(raw_func_name).to_string();
+            let userfunc_def = storage.userfuncs.get(func_name).unwrap().clone();
 
-            let userfunc_def = storage.userfuncs.get(&name).unwrap().clone();
-
-            if self.main_print && should_create_wrapper(raw_func_name) {
+            if self.main_print && should_create_wrapper(func_name) {
                 let raw_arg_types =
                     userfunc_def.args.iter().map(SierraType::get_type).collect_vec();
                 let ret_types = userfunc_def
@@ -41,7 +39,7 @@ impl<'ctx> Compiler<'ctx> {
                     .collect_vec();
 
                 self.create_felt_representation_wrapper(
-                    &name,
+                    func_name,
                     &raw_arg_types,
                     &ret_types,
                     storage,
@@ -158,9 +156,7 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) {
         for func in program.funcs.iter() {
-            let func_name =
-                Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str())
-                    .to_string();
+            let func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
             let param_types = func
                 .params
