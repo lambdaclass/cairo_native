@@ -252,6 +252,9 @@ impl<'ctx> Compiler<'ctx> {
                 "bool_not_impl" => {
                     self.create_libfunc_bool_not_impl(func_decl, parent_block, storage)?;
                 }
+                "bool_to_felt252" => {
+                    self.create_libfunc_bool_to_felt252(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -1262,6 +1265,65 @@ impl<'ctx> Compiler<'ctx> {
         storage.libfuncs.insert(
             fn_id,
             SierraLibFunc::create_simple(vec![bool_sierra_type.clone()], vec![bool_sierra_type]),
+        );
+
+        parent_block.append_operation(fn_op);
+        Ok(())
+    }
+
+    /// bool to felt
+    ///
+    /// Sierra:
+    /// `extern fn bool_to_felt252(a: bool) -> felt252 implicits() nopanic;`
+    pub fn create_libfunc_bool_to_felt252(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let data_in = &[self.boolean_enum_type()];
+        let data_out = &[self.felt_type()];
+
+        let bool_variant = SierraType::Struct {
+            ty: self.struct_type(&[Type::none(&self.context)]),
+            field_types: vec![],
+        };
+
+        let bool_sierra_type = SierraType::Enum {
+            ty: self.boolean_enum_type(),
+            tag_type: self.u16_type(),
+            storage_bytes_len: 0,
+            storage_type: Type::parse(&self.context, "!llvm.array<0 x i8>").unwrap(),
+            variants_types: vec![bool_variant.clone()],
+        };
+
+        let region = Region::new();
+        region.append_block({
+            let block = self.new_block(data_in);
+
+            let bool_enum = block.argument(0)?;
+
+            let tag_value_op =
+                self.op_llvm_extractvalue(&block, 0, bool_enum.into(), self.u16_type())?;
+            let tag_value: Value = tag_value_op.result(0)?.into();
+
+            let felt_value = self.op_zext(&block, tag_value, self.felt_type());
+
+            self.op_return(&block, &[felt_value.result(0)?.into()]);
+
+            block
+        });
+
+        let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
+        let fn_ty = create_fn_signature(data_in, data_out);
+        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+
+        storage.libfuncs.insert(
+            fn_id,
+            SierraLibFunc::create_simple(
+                vec![bool_sierra_type],
+                vec![SierraType::Simple(self.felt_type())],
+            ),
         );
 
         parent_block.append_operation(fn_op);

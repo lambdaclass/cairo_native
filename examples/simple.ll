@@ -16,29 +16,27 @@ define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
 define internal i256 @felt252_add(i256 %0, i256 %1) {
   %3 = add i256 %0, %1
   %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br i1 %4, label %7, label %5
+  br i1 %4, label %6, label %5
 
-5:                                                ; preds = %7, %2
-  %6 = phi i256 [ %8, %7 ], [ %3, %2 ]
-  ret i256 %6
+5:                                                ; preds = %2
+  ret i256 %3
 
-7:                                                ; preds = %2
-  %8 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br label %5
+6:                                                ; preds = %2
+  %7 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  ret i256 %7
 }
 
 define internal i256 @felt252_sub(i256 %0, i256 %1) {
   %3 = sub i256 %0, %1
-  %4 = icmp ult i256 %0, %1
-  br i1 %4, label %7, label %5
+  %4 = icmp slt i256 %3, 0
+  br i1 %4, label %6, label %5
 
-5:                                                ; preds = %7, %2
-  %6 = phi i256 [ %8, %7 ], [ %3, %2 ]
-  ret i256 %6
+5:                                                ; preds = %2
+  ret i256 %3
 
-7:                                                ; preds = %2
-  %8 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br label %5
+6:                                                ; preds = %2
+  %7 = add i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  ret i256 %7
 }
 
 define internal { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %0, i256 %1) {
@@ -51,7 +49,7 @@ define internal { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i2
   ret { i256, i256 } %0
 }
 
-define { i256, i256 } @simple_simple_something(i256 %0) {
+define { i256, i256 } @"simple::simple::something"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -66,8 +64,8 @@ define { i256, i256 } @simple_simple_something(i256 %0) {
   ret { i256, i256 } %10
 }
 
-define void @_mlir_ciface_simple_simple_something(ptr %0, i256 %1) {
-  %3 = call { i256, i256 } @simple_simple_something(i256 %1)
+define void @"_mlir_ciface_simple::simple::something"(ptr %0, i256 %1) {
+  %3 = call { i256, i256 } @"simple::simple::something"(i256 %1)
   store { i256, i256 } %3, ptr %0, align 4
   ret void
 }
