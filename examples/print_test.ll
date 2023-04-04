@@ -58,7 +58,7 @@ define internal void @print_felt252(i256 %0) {
 }
 
 define void @main() {
-  %1 = call i256 @print_test_print_test_main()
+  %1 = call i256 @"print_test::print_test::main"()
   call void @print_felt252(i256 %1)
   ret void
 }
@@ -68,7 +68,7 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define i256 @print_test_print_test_main() {
+define i256 @"print_test::print_test::main"() {
   br label %1
 
 1:                                                ; preds = %0
@@ -76,8 +76,8 @@ define i256 @print_test_print_test_main() {
   ret i256 %2
 }
 
-define i256 @_mlir_ciface_print_test_print_test_main() {
-  %1 = call i256 @print_test_print_test_main()
+define i256 @"_mlir_ciface_print_test::print_test::main"() {
+  %1 = call i256 @"print_test::print_test::main"()
   ret i256 %1
 }
 
