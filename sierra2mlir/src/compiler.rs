@@ -269,6 +269,11 @@ impl<'ctx> Compiler<'ctx> {
         Type::parse(&self.context, "!llvm.struct<(i16, array<0 x i8>)>").unwrap()
     }
 
+    /// Creates a llvm array type.
+    pub fn llvm_array_type(&self, len: usize, ty: Type) -> Type {
+        Type::parse(&self.context, &format!("!llvm.array<{len} x {ty}>")).expect("parse type")
+    }
+
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         self.op_const(block, DEFAULT_PRIME, self.felt_type())
     }

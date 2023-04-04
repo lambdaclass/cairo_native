@@ -1,0 +1,12 @@
+type felt252 = felt252;
+type Array<felt252> = Array<felt252>;
+
+libfunc array_new<felt252> = array_new<felt252>;
+libfunc store_temp<Array<felt252>> = store_temp<Array<felt252>>;
+
+array_new<felt252>() -> ([0]);
+store_temp<Array<felt252>>([0]) -> ([1]);
+return([1]);
+
+example_array::example_array::main@0() -> (Array<felt252>);
+
