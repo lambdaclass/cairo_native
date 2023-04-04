@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
+use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
@@ -254,6 +254,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "bool_to_felt252" => {
                     self.create_libfunc_bool_to_felt252(func_decl, parent_block, storage)?;
+                }
+                "array_new" => {
+                    self.create_libfunc_array_new(func_decl, parent_block, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -1327,6 +1330,54 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         parent_block.append_operation(fn_op);
+        Ok(())
+    }
+
+    pub fn create_libfunc_array_new(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = match &func_decl.long_id.generic_args[0] {
+            GenericArg::UserType(_) => todo!(),
+            GenericArg::Type(type_id) => {
+                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
+            }
+            GenericArg::Value(_) => todo!(),
+            GenericArg::UserFunc(_) => todo!(),
+            GenericArg::Libfunc(_) => todo!(),
+        };
+
+        let region = Region::new();
+
+        let block = Block::new(&[]);
+
+        let array_type =
+            self.struct_type(&[self.u32_type(), self.llvm_array_type(0, arg_type.get_type())]);
+        let array_value_op = self.op_llvm_struct(&block, array_type);
+        let array_value: Value = array_value_op.result(0)?.into();
+
+        let array_len_op = self.op_u32_const(&block, "0");
+        let array_len = array_len_op.result(0)?.into();
+
+        let insert_op = self.op_llvm_insertvalue(&block, 0, array_value, array_len, array_type)?;
+
+        self.op_return(&block, &[insert_op.result(0)?.into()]);
+
+        let function_type = create_fn_signature(&[], &[array_type]);
+
+        region.append_block(block);
+
+        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+
+        storage
+            .libfuncs
+            .insert(id, SierraLibFunc::create_simple(vec![], vec![SierraType::Simple(array_type)]));
+
+        parent_block.append_operation(func);
+
         Ok(())
     }
 }
