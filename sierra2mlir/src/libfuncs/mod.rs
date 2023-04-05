@@ -1155,7 +1155,7 @@ impl<'ctx> Compiler<'ctx> {
                 {
                     let tag_ptr =
                         self.op_llvm_gep(&block_none, 0, enum_alloc.result(0)?.into(), enum_type)?;
-                    let tag_value = self.op_const(&block_none, "0", self.u16_type());
+                    let tag_value = self.op_const(&block_none, "1", self.u16_type());
                     self.op_llvm_store(
                         &block_none,
                         tag_value.result(0)?.into(),
@@ -1167,7 +1167,7 @@ impl<'ctx> Compiler<'ctx> {
                 {
                     let tag_ptr =
                         self.op_llvm_gep(&block_some, 0, enum_alloc.result(0)?.into(), enum_type)?;
-                    let tag_value = self.op_const(&block_some, "1", self.u16_type());
+                    let tag_value = self.op_const(&block_some, "0", self.u16_type());
                     self.op_llvm_store(
                         &block_some,
                         tag_value.result(0)?.into(),
@@ -1210,7 +1210,11 @@ impl<'ctx> Compiler<'ctx> {
                                 ty: enum_type,
                                 tag_type: self.u16_type(),
                                 storage_bytes_len: dst_bytes,
-                                storage_type: Type::vector(&[dst_bytes as u64], self.u8_type()),
+                                storage_type: Type::parse(
+                                    &self.context,
+                                    &format!("!llvm.array<{} x {}>", dst_bytes, self.u8_type()),
+                                )
+                                .unwrap(),
                                 variants_types: vec![
                                     SierraType::Simple(Type::none(&self.context)),
                                     dst_sierra_type,

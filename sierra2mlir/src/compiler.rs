@@ -266,11 +266,16 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         let tag_bits = 16;
-        let payload_bits = variants.iter().map(Type::get_width).map(Option::unwrap_or_default).max().unwrap();
+        let payload_bits =
+            variants.iter().map(Type::get_width).map(Option::unwrap_or_default).max().unwrap();
 
         let tag_type = Type::integer(&self.context, tag_bits);
-        let payload_type = Type::vector(&[(payload_bits as u64 + 7) / 8], self.u8_type());
-        
+        let payload_type = Type::parse(
+            &self.context,
+            &format!("!llvm.array<{} x {}>", (payload_bits + 7) / 8, self.u8_type()),
+        )
+        .unwrap();
+
         Type::parse(&self.context, &self.struct_type_string(&[tag_type, payload_type])).unwrap()
 
         //let tag_bits = variants.len().next_power_of_two().trailing_zeros();
