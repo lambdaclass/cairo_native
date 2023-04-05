@@ -24,7 +24,7 @@ impl<'ctx> Compiler<'ctx> {
             }
             _ => unreachable!(),
         };
-
+ 
         let enum_tag = match &func_decl.long_id.generic_args[1] {
             GenericArg::Value(tag) => tag.to_string(),
             _ => unreachable!(),

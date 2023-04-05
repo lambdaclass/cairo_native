@@ -1,11 +1,11 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::Shl};
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value};
-use num_bigint::BigInt;
-use num_traits::Signed;
+use num_bigint::{BigInt, BigUint};
+use num_traits::{FromPrimitive, Signed};
 use tracing::debug;
 
 use crate::{
@@ -217,6 +217,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "upcast" => {
                     self.create_libfunc_upcast(func_decl, parent_block, storage)?;
+                }
+                "downcast" => {
+                    self.create_libfunc_downcast(func_decl, parent_block, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -1080,6 +1083,147 @@ impl<'ctx> Compiler<'ctx> {
                 self.create_identity_function(func_decl, parent_block, storage)?;
             }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
+        }
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_downcast(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+
+        let src_sierra_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[0] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("invalid generic kind"),
+            })
+            .expect("type to exist")
+            .clone();
+        let dst_sierra_type = storage
+            .types
+            .get(&match &func_decl.long_id.generic_args[1] {
+                GenericArg::Type(x) => x.id.to_string(),
+                _ => todo!("invalid generic kind"),
+            })
+            .expect("type to exist")
+            .clone();
+
+        let src_type = src_sierra_type.get_type();
+        let dst_type = dst_sierra_type.get_type();
+
+        match src_type.get_width().unwrap().cmp(&dst_type.get_width().unwrap()) {
+            Ordering::Greater => {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[
+                    (self.range_check_type(), Location::unknown(&self.context)),
+                    (src_type, Location::unknown(&self.context)),
+                ]));
+
+                // TODO: Compare. If fits then truncate and return. If doesn't return None.
+                let max_val = self.op_const(
+                    &block,
+                    &BigUint::from_i32(1).unwrap().shl(dst_type.get_width().unwrap()).to_string(),
+                    src_type,
+                );
+                let cmp_op = self.op_cmp(
+                    &block,
+                    CmpOp::UnsignedGreaterEqual,
+                    block.argument(1)?.into(),
+                    max_val.result(0)?.into(),
+                );
+
+                let enum_type = self.option_type(dst_type);
+                let enum_alloc = self.op_llvm_struct_alloca(&block, &[enum_type, dst_type])?;
+
+                let block_none = region.append_block(Block::new(&[]));
+                let block_some = region.append_block(Block::new(&[]));
+                self.op_cond_br(
+                    &block,
+                    cmp_op.result(0)?.into(),
+                    &block_none,
+                    &block_some,
+                    &[],
+                    &[],
+                )?;
+
+                // None block.
+                {
+                    let tag_ptr =
+                        self.op_llvm_gep(&block_none, 0, enum_alloc.result(0)?.into(), enum_type)?;
+                    let tag_value = self.op_const(&block_none, "0", self.u16_type());
+                    self.op_llvm_store(
+                        &block_none,
+                        tag_value.result(0)?.into(),
+                        tag_ptr.result(0)?.into(),
+                    )?;
+                }
+
+                // Some block.
+                {
+                    let tag_ptr =
+                        self.op_llvm_gep(&block_some, 0, enum_alloc.result(0)?.into(), enum_type)?;
+                    let tag_value = self.op_const(&block_some, "1", self.u16_type());
+                    self.op_llvm_store(
+                        &block_some,
+                        tag_value.result(0)?.into(),
+                        tag_ptr.result(0)?.into(),
+                    )?;
+
+                    let payload_ptr =
+                        self.op_llvm_gep(&block_some, 1, enum_alloc.result(0)?.into(), enum_type)?;
+                    let payload_value =
+                        self.op_trunc(&block_some, block.argument(1)?.into(), dst_type);
+                    self.op_llvm_store(
+                        &block_some,
+                        payload_value.result(0)?.into(),
+                        payload_ptr.result(0)?.into(),
+                    )?;
+                }
+
+                let block = region.append_block(Block::new(&[]));
+                self.op_br(&block_none, &block, &[]);
+                self.op_br(&block_some, &block, &[]);
+
+                let op_load = self.op_llvm_load(&block, enum_alloc.result(0)?.into(), enum_type)?;
+                self.op_return(&block, &[op_load.result(0)?.into()]);
+
+                parent_block.append_operation(self.op_func(
+                    &id,
+                    &create_fn_signature(&[self.range_check_type(), src_type], &[enum_type]),
+                    vec![region],
+                    false,
+                    false,
+                )?);
+                storage.libfuncs.insert(
+                    id.to_string(),
+                    SierraLibFunc::create_simple(
+                        vec![SierraType::Simple(self.range_check_type()), src_sierra_type],
+                        vec![{
+                            let dst_bits = dst_sierra_type.get_width();
+                            let dst_bytes = (dst_bits + 7) / 8;
+                            SierraType::Enum {
+                                ty: enum_type,
+                                tag_type: self.u16_type(),
+                                storage_bytes_len: dst_bytes,
+                                storage_type: Type::vector(&[dst_bytes as u64], self.u8_type()),
+                                variants_types: vec![
+                                    SierraType::Simple(Type::none(&self.context)),
+                                    dst_sierra_type,
+                                ],
+                            }
+                        }],
+                    ),
+                );
+            }
+            Ordering::Equal => {
+                self.create_identity_function(func_decl, parent_block, storage)?;
+            }
+            Ordering::Less => todo!("invalid generics for libfunc `downcast`"),
         }
 
         Ok(())

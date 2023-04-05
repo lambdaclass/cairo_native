@@ -260,6 +260,33 @@ impl<'ctx> Compiler<'ctx> {
         Type::none(&self.context)
     }
 
+    pub fn enum_type(&self, variants: &[Type]) -> Type {
+        if variants.is_empty() {
+            return Type::none(&self.context);
+        }
+
+        let tag_bits = 16;
+        let payload_bits = variants.iter().map(Type::get_width).map(Option::unwrap_or_default).max().unwrap();
+
+        let tag_type = Type::integer(&self.context, tag_bits);
+        let payload_type = Type::vector(&[(payload_bits as u64 + 7) / 8], self.u8_type());
+        
+        Type::parse(&self.context, &self.struct_type_string(&[tag_type, payload_type])).unwrap()
+
+        //let tag_bits = variants.len().next_power_of_two().trailing_zeros();
+        //let payload_bits = variants.iter().map(|x| x.get_width().unwrap()).max().unwrap();
+        //
+        //let enum_type = self.struct_type_string(&[
+        //    Type::integer(&self.context, tag_bits),
+        //    Type::integer(&self.context, payload_bits),
+        //]);
+        //Type::parse(&self.context, &enum_type).unwrap()
+    }
+
+    pub fn option_type(&self, inner: Type) -> Type {
+        self.enum_type(&[Type::none(&self.context), inner])
+    }
+
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         self.op_const(block, DEFAULT_PRIME, self.felt_type())
     }
