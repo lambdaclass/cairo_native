@@ -7,7 +7,7 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region, Type};
 
 use crate::{
-    compiler::{Compiler, SierraType, Storage, UserFuncDef},
+    compiler::{Compiler, FnAttributes, SierraType, Storage, UserFuncDef},
     utility::create_fn_signature,
 };
 
@@ -141,8 +141,7 @@ impl<'ctx> Compiler<'ctx> {
             "main",
             create_fn_signature(arg_types, &[]).as_str(),
             vec![region],
-            true,
-            true,
+            FnAttributes { public: true, emit_c_interface: true, ..Default::default() },
         )?;
 
         self.module.body().append_operation(op);

@@ -3,7 +3,7 @@ use color_eyre::Result;
 use melior_next::ir::{Block, BlockRef, Region, Value};
 
 use crate::{
-    compiler::{Compiler, SierraType, Storage},
+    compiler::{Compiler, FnAttributes, SierraType, Storage},
     utility::create_fn_signature,
 };
 
@@ -69,7 +69,12 @@ impl<'ctx> Compiler<'ctx> {
 
             let function_type = create_fn_signature(&[variant_sierra_type.get_type()], &[*ty]);
 
-            let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+            let func = self.op_func(
+                &id,
+                &function_type,
+                vec![region],
+                FnAttributes::libfunc(false, true),
+            )?;
 
             storage.libfuncs.insert(
                 id,

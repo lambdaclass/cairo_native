@@ -1,15 +1,17 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @malloc(i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
+  llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
     %2 = llvm.insertvalue %arg0, %1[1] : !llvm.struct<(i256, i256)> 
     llvm.return %2 : !llvm.struct<(i256, i256)>
   }
-  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 {
+  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     llvm.return %arg0 : i256
   }
-  llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
+  llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.add %arg0, %arg1  : i256
     %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
     %2 = llvm.icmp "uge" %0, %1 : i256
@@ -20,7 +22,7 @@ module attributes {llvm.data_layout = ""} {
     %3 = llvm.sub %0, %1  : i256
     llvm.return %3 : i256
   }
-  llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 {
+  llvm.func internal @felt252_sub(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.sub %arg0, %arg1  : i256
     %1 = llvm.mlir.constant(0 : i256) : i256
     %2 = llvm.icmp "slt" %0, %1 : i256
@@ -32,17 +34,17 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.add %0, %3  : i256
     llvm.return %4 : i256
   }
-  llvm.func internal @"rename<felt252>"(%arg0: i256) -> i256 {
+  llvm.func internal @"rename<felt252>"(%arg0: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     llvm.return %arg0 : i256
   }
-  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> {
+  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<()>
     llvm.return %0 : !llvm.struct<()>
   }
-  llvm.func internal @"store_temp<Unit>"(%arg0: !llvm.struct<()>) -> !llvm.struct<()> {
+  llvm.func internal @"store_temp<Unit>"(%arg0: !llvm.struct<()>) -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     llvm.return %arg0 : !llvm.struct<()>
   }
-  llvm.func @"fib::fib::fib"(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"fib::fib::fib"(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0, %arg1, %arg2 : i256, i256, i256)
   ^bb1(%0: i256, %1: i256, %2: i256):  // pred: ^bb0
     %3 = llvm.call @"dup<felt252>"(%2) : (i256) -> !llvm.struct<(i256, i256)>
@@ -71,11 +73,11 @@ module attributes {llvm.data_layout = ""} {
     %25 = llvm.call @"rename<felt252>"(%24) : (i256) -> i256
     llvm.return %25 : i256
   }
-  llvm.func @"_mlir_ciface_fib::fib::fib"(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_fib::fib::fib"(%arg0: i256, %arg1: i256, %arg2: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"fib::fib::fib"(%arg0, %arg1, %arg2) : (i256, i256, i256) -> i256
     llvm.return %0 : i256
   }
-  llvm.func @"fib::fib::fib_mid"(%arg0: i256) -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
+  llvm.func @"fib::fib::fib_mid"(%arg0: i256) -> !llvm.struct<()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0 : i256)
   ^bb1(%0: i256):  // pred: ^bb0
     %1 = llvm.call @"dup<felt252>"(%0) : (i256) -> !llvm.struct<(i256, i256)>
@@ -104,12 +106,12 @@ module attributes {llvm.data_layout = ""} {
     %19 = llvm.call @"store_temp<Unit>"(%18) : (!llvm.struct<()>) -> !llvm.struct<()>
     llvm.return %19 : !llvm.struct<()>
   }
-  llvm.func @"_mlir_ciface_fib::fib::fib_mid"(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_fib::fib::fib_mid"(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"fib::fib::fib_mid"(%arg1) : (i256) -> !llvm.struct<()>
     llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
     llvm.return
   }
-  llvm.func @"fib::fib::main"(%arg0: i256) -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
+  llvm.func @"fib::fib::main"(%arg0: i256) -> !llvm.struct<()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(100 : i256) : i256
@@ -119,7 +121,7 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.call @"store_temp<Unit>"(%3) : (!llvm.struct<()>) -> !llvm.struct<()>
     llvm.return %4 : !llvm.struct<()>
   }
-  llvm.func @"_mlir_ciface_fib::fib::main"(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_fib::fib::main"(%arg0: !llvm.ptr<struct<()>>, %arg1: i256) attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"fib::fib::main"(%arg1) : (i256) -> !llvm.struct<()>
     llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
     llvm.return

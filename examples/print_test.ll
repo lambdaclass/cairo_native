@@ -7,11 +7,13 @@ declare void @free(ptr)
 
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i256 @"store_temp<felt252>"(i256 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @"store_temp<felt252>"(i256 %0) #0 {
   ret i256 %0
 }
 
-define internal void @print_felt252(i256 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_felt252(i256 %0) #1 {
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
   %4 = alloca i8, i64 5, align 1
@@ -80,6 +82,9 @@ define i256 @"_mlir_ciface_print_test::print_test::main"() {
   %1 = call i256 @"print_test::print_test::main"()
   ret i256 %1
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

@@ -5,8 +5,8 @@ use melior_next::{
     dialect,
     ir::{
         operation::{self},
-        Block, BlockRef, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
-        TypeLike, Value, ValueLike,
+        Attribute, Block, BlockRef, Identifier, Location, Module, NamedAttribute, Operation,
+        OperationRef, Region, Type, TypeLike, Value, ValueLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
@@ -178,6 +178,47 @@ pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
     pub(crate) libfuncs: HashMap<String, SierraLibFunc<'ctx>>,
     pub(crate) userfuncs: HashMap<String, UserFuncDef<'ctx>>,
+}
+
+/// Function attributes to fine tune the generated definition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FnAttributes {
+    /// the function linkage
+    pub public: bool,
+    pub emit_c_interface: bool,
+    /// true = dso_local https://llvm.org/docs/LangRef.html#runtime-preemption-specifiers
+    pub local: bool,
+    pub inline: bool,
+    /// This function attribute indicates that the function does not call itself either directly or indirectly down any possible call path. This produces undefined behavior at runtime if the function ever does recurse.
+    pub norecurse: bool,
+    /// This function attribute indicates that the function never raises an exception. If the function does raise an exception, its runtime behavior is undefined.
+    pub nounwind: bool, // never raises exception
+}
+
+impl Default for FnAttributes {
+    fn default() -> Self {
+        Self {
+            public: true,
+            emit_c_interface: false,
+            local: true,
+            inline: false,
+            norecurse: false,
+            nounwind: false,
+        }
+    }
+}
+
+impl FnAttributes {
+    pub const fn libfunc(panics: bool, inline: bool) -> Self {
+        Self {
+            public: false,
+            emit_c_interface: false,
+            local: true,
+            inline,
+            norecurse: true,
+            nounwind: !panics,
+        }
+    }
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -775,24 +816,48 @@ impl<'ctx> Compiler<'ctx> {
         name: &str,
         function_type: &str,
         regions: Vec<Region>,
-        emit_c_interface: bool,
-        public: bool,
+        fn_attrs: FnAttributes,
     ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
         attrs.push(NamedAttribute::new_parsed(&self.context, "function_type", function_type)?);
         attrs.push(NamedAttribute::new_parsed(&self.context, "sym_name", &format!("\"{name}\""))?);
 
-        if !public {
+        if !fn_attrs.public {
             attrs.push(NamedAttribute::new_parsed(
                 &self.context,
                 "llvm.linkage",
-                "#llvm.linkage<internal>", // found digging llvm code..
+                "#llvm.linkage<internal>",
             )?);
         }
 
-        if emit_c_interface {
+        if fn_attrs.emit_c_interface {
             attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.emit_c_interface", "unit")?);
+        }
+
+        if fn_attrs.local {
+            attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.dso_local", "unit")?);
+        }
+
+        let mut llvm_attrs = Vec::with_capacity(8);
+
+        if fn_attrs.norecurse {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"norecurse\"").unwrap());
+        }
+
+        if fn_attrs.inline {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"alwaysinline\"").unwrap());
+        }
+
+        if fn_attrs.nounwind {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"nounwind\"").unwrap());
+        }
+
+        if !llvm_attrs.is_empty() {
+            attrs.push(NamedAttribute::new(
+                Identifier::new(&self.context, "passthrough"),
+                Attribute::array(&self.context, &llvm_attrs).unwrap(),
+            )?);
         }
 
         Ok(operation::Builder::new("func.func", Location::unknown(&self.context))
@@ -1305,7 +1370,12 @@ impl<'ctx> Compiler<'ctx> {
             self.op_return(&block, &[main_ret.result(0)?.into()]);
             region.append_block(block);
 
-            self.op_func("main", "() -> i32", vec![region], true, true)?
+            self.op_func(
+                "main",
+                "() -> i32",
+                vec![region],
+                FnAttributes { public: true, emit_c_interface: true, ..Default::default() },
+            )?
         };
 
         self.module.body().append_operation(main_function);

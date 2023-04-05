@@ -9,7 +9,7 @@ use num_traits::Signed;
 use tracing::debug;
 
 use crate::{
-    compiler::{CmpOp, Compiler, SierraType, Storage},
+    compiler::{CmpOp, Compiler, FnAttributes, SierraType, Storage},
     types::DEFAULT_PRIME,
     utility::create_fn_signature,
 };
@@ -363,7 +363,8 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             id,
@@ -422,7 +423,8 @@ impl<'ctx> Compiler<'ctx> {
             &[struct_ty],
             field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
         );
-        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+        let fn_op =
+            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
@@ -474,7 +476,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = create_fn_signature(args, args);
 
-        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage
             .libfuncs
@@ -533,7 +536,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = create_fn_signature(args, &return_types);
 
-        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             id,
@@ -594,8 +598,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         parent_block.append_operation(func);
@@ -660,8 +663,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         parent_block.append_operation(func);
@@ -715,8 +717,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
         parent_block.append_operation(func);
 
@@ -757,8 +758,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
         parent_block.append_operation(func);
 
@@ -841,8 +841,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[src_type], &[self.felt_type()]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         storage.libfuncs.insert(
@@ -883,8 +882,7 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             &create_fn_signature(&[src_type, src_type], &[dst_type]),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         storage.libfuncs.insert(
@@ -939,8 +937,7 @@ impl<'ctx> Compiler<'ctx> {
                 &[self.range_check_type(), self.u128_type(), self.u128_type()],
             ),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         storage.libfuncs.insert(
@@ -993,8 +990,7 @@ impl<'ctx> Compiler<'ctx> {
                 &[self.range_check_type(), src_type, src_type],
             ),
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, true),
         )?;
 
         storage.libfuncs.insert(
@@ -1048,7 +1044,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+        let fn_op =
+            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             fn_id,
@@ -1107,8 +1104,7 @@ impl<'ctx> Compiler<'ctx> {
                     &id,
                     &create_fn_signature(&[src_type], &[dst_type]),
                     vec![region],
-                    false,
-                    false,
+                    FnAttributes::libfunc(false, true),
                 )?;
 
                 storage.libfuncs.insert(
@@ -1197,7 +1193,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+        let fn_op =
+            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             fn_id,
@@ -1266,7 +1263,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+        let fn_op =
+            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             fn_id,
@@ -1322,7 +1320,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op = self.op_func(&fn_id, &fn_ty, vec![region], false, false)?;
+        let fn_op =
+            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
             fn_id,
@@ -1391,7 +1390,8 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![sierra_type]));
 
@@ -1458,7 +1458,8 @@ impl<'ctx> Compiler<'ctx> {
 
         region.append_block(block);
 
-        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![sierra_type]));
 

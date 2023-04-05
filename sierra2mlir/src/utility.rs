@@ -6,7 +6,7 @@ use melior_next::ir::{
 };
 
 use crate::{
-    compiler::{Compiler, SierraType},
+    compiler::{Compiler, FnAttributes, SierraType},
     statements::Variable,
 };
 use color_eyre::Result;
@@ -160,7 +160,12 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = create_fn_signature(&args_types, &[]);
 
-        let func = self.op_func("print_felt252", &function_type, vec![region], false, false)?;
+        let func = self.op_func(
+            "print_felt252",
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
 
         self.module.body().append_operation(func);
 
@@ -218,8 +223,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", struct_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);
@@ -311,8 +315,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", enum_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);
@@ -350,8 +353,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", uint_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);

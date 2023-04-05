@@ -1,15 +1,17 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @malloc(i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
+  llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
     %2 = llvm.insertvalue %arg0, %1[1] : !llvm.struct<(i256, i256)> 
     llvm.return %2 : !llvm.struct<(i256, i256)>
   }
-  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 {
+  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     llvm.return %arg0 : i256
   }
-  llvm.func internal @felt252_mul(%arg0: i256, %arg1: i256) -> i256 {
+  llvm.func internal @felt252_mul(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i256 to i512
     %1 = llvm.zext %arg1 : i256 to i512
     %2 = llvm.mul %0, %1  : i512
@@ -19,10 +21,10 @@ module attributes {llvm.data_layout = ""} {
     %6 = llvm.trunc %5 : i512 to i256
     llvm.return %6 : i256
   }
-  llvm.func internal @"rename<felt252>"(%arg0: i256) -> i256 {
+  llvm.func internal @"rename<felt252>"(%arg0: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     llvm.return %arg0 : i256
   }
-  llvm.func @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0 : i256)
   ^bb1(%0: i256):  // pred: ^bb0
     %1 = llvm.call @"dup<felt252>"(%0) : (i256) -> !llvm.struct<(i256, i256)>
@@ -44,7 +46,7 @@ module attributes {llvm.data_layout = ""} {
     %13 = llvm.call @"rename<felt252>"(%12) : (i256) -> i256
     llvm.return %13 : i256
   }
-  llvm.func @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0) : (i256) -> i256
     llvm.return %0 : i256
   }
