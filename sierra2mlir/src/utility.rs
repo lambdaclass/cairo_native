@@ -12,6 +12,44 @@ use crate::{
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
+    /* Needed for sierra Arrays
+        declare ptr @malloc(i64)
+        declare void @free(ptr)
+    */
+    pub fn create_malloc(&'ctx self) -> Result<()> {
+        let region = Region::new();
+
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"malloc\""),
+                    ("function_type", "!llvm.func<ptr (i64)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+
+        let region = Region::new();
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"free\""),
+                    ("function_type", "!llvm.func<void (ptr)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+        Ok(())
+    }
+
     /// Creates the external function definition for printf.
     pub fn create_printf(&'ctx self) -> Result<()> {
         let region = Region::new();

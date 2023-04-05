@@ -258,6 +258,9 @@ impl<'ctx> Compiler<'ctx> {
                 "array_new" => {
                     self.create_libfunc_array_new(func_decl, parent_block, storage)?;
                 }
+                "array_append" => {
+                    self.create_libfunc_array_append(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -1333,6 +1336,8 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    // `extern fn array_new<T>() -> Array<T> nopanic;`
+    // in sierra: `array_new<felt252>() -> ([0]);`
     pub fn create_libfunc_array_new(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -1354,27 +1359,108 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&[]);
 
-        let array_type =
-            self.struct_type(&[self.u32_type(), self.llvm_array_type(0, arg_type.get_type())]);
-        let array_value_op = self.op_llvm_struct(&block, array_type);
+        let sierra_type = SierraType::Array {
+            ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+            len_type: self.u32_type(),
+            element_type: Box::new(arg_type.clone()),
+        };
+
+        let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
 
         let array_len_op = self.op_u32_const(&block, "0");
         let array_len = array_len_op.result(0)?.into();
 
-        let insert_op = self.op_llvm_insertvalue(&block, 0, array_value, array_len, array_type)?;
+        let insert_op =
+            self.op_llvm_insertvalue(&block, 0, array_value, array_len, sierra_type.get_type())?;
+        let array_value: Value = insert_op.result(0)?.into();
 
-        self.op_return(&block, &[insert_op.result(0)?.into()]);
+        let null_ptr = self.op_llvm_nullptr(&block);
+        let insert_op = self.op_llvm_insertvalue(
+            &block,
+            1,
+            array_value,
+            null_ptr.result(0)?.into(),
+            sierra_type.get_type(),
+        )?;
+        let array_value: Value = insert_op.result(0)?.into();
 
-        let function_type = create_fn_signature(&[], &[array_type]);
+        self.op_return(&block, &[array_value]);
+
+        let function_type = create_fn_signature(&[], &[sierra_type.get_type()]);
 
         region.append_block(block);
 
         let func = self.op_func(&id, &function_type, vec![region], false, false)?;
 
-        storage
-            .libfuncs
-            .insert(id, SierraLibFunc::create_simple(vec![], vec![SierraType::Simple(array_type)]));
+        storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![sierra_type]));
+
+        parent_block.append_operation(func);
+
+        Ok(())
+    }
+
+    // `extern fn array_append<T>(ref arr: Array<T>, value: T) nopanic;`
+    // in sierra `array_append<T>([0], [1]) -> ([2]);`
+    pub fn create_libfunc_array_append(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = match &func_decl.long_id.generic_args[0] {
+            GenericArg::UserType(_) => todo!(),
+            GenericArg::Type(type_id) => {
+                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
+            }
+            GenericArg::Value(_) => todo!(),
+            GenericArg::UserFunc(_) => todo!(),
+            GenericArg::Libfunc(_) => todo!(),
+        };
+
+        let region = Region::new();
+
+        let block = Block::new(&[arg_type.get_type_location(&self.context)]);
+
+        let sierra_type = SierraType::Array {
+            ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+            len_type: self.u32_type(),
+            element_type: Box::new(arg_type.clone()),
+        };
+
+        let array_value = block.argument(0)?;
+        // todo: resize array
+
+        let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
+        let array_value: Value = array_value_op.result(0)?.into();
+
+        let array_len_op = self.op_u32_const(&block, "0");
+        let array_len = array_len_op.result(0)?.into();
+
+        let insert_op =
+            self.op_llvm_insertvalue(&block, 0, array_value, array_len, sierra_type.get_type())?;
+        let array_value: Value = insert_op.result(0)?.into();
+
+        let null_ptr = self.op_llvm_nullptr(&block);
+        let insert_op = self.op_llvm_insertvalue(
+            &block,
+            1,
+            array_value,
+            null_ptr.result(0)?.into(),
+            sierra_type.get_type(),
+        )?;
+        let array_value: Value = insert_op.result(0)?.into();
+
+        self.op_return(&block, &[array_value]);
+
+        let function_type = create_fn_signature(&[], &[sierra_type.get_type()]);
+
+        region.append_block(block);
+
+        let func = self.op_func(&id, &function_type, vec![region], false, false)?;
+
+        storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![sierra_type]));
 
         parent_block.append_operation(func);
 

@@ -140,18 +140,24 @@ impl<'ctx> Compiler<'ctx> {
                     storage.types.insert(id.to_string(), enum_sierra_type);
                 }
                 "Array" => {
+                    // Since the array is growable and a stack array with known size is not possible to pass
+                    // to functions due to signature match requirements
+                    // we allocate in on the stack, and it's dropped on drop, which will no longer be
+                    // a noop in the case of arrays.
+
                     let array_value_type = match &type_decl.long_id.generic_args[0] {
                         GenericArg::Type(x) => {
                             storage.types.get(&x.id.to_string()).expect("array type should exist")
                         }
                         _ => unreachable!("array type is always a type"),
                     };
+
                     // array len type is u32 because sierra usize is u32.
-                    // we consider the array to be a simple sierra type for now (unless we find something wrong).
-                    let sierra_type = SierraType::Simple(self.struct_type(&[
-                        self.u32_type(),
-                        self.llvm_array_type(0, array_value_type.get_type()),
-                    ]));
+                    let sierra_type = SierraType::Array {
+                        ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+                        len_type: self.u32_type(),
+                        element_type: Box::new(array_value_type.clone()),
+                    };
 
                     storage.types.insert(id.to_string(), sierra_type);
                 }

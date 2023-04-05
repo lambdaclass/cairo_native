@@ -38,6 +38,12 @@ pub enum SierraType<'ctx> {
         storage_type: Type<'ctx>, // the array
         variants_types: Vec<Self>,
     },
+    Array {
+        // ty is a llvm struct (u32, ptr)
+        ty: Type<'ctx>,
+        len_type: Type<'ctx>, // u32
+        element_type: Box<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -58,6 +64,11 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => tag_type.get_width().unwrap() + (storage_type_len * 8),
+            SierraType::Array { ty: _, len_type, element_type: _ } => {
+                // 64 is the pointer size, assuming here
+                // TODO: find a better way to find the pointer size? it would require getting the context here
+                len_type.get_width().unwrap() + 64
+            }
         }
     }
 
@@ -80,6 +91,9 @@ impl<'ctx> SierraType<'ctx> {
                     .max()
                     .unwrap_or(0)
             }
+            SierraType::Array { ty: _, len_type, element_type: _ } => {
+                len_type.get_width().unwrap().try_into().unwrap()
+            }
         }
     }
 
@@ -95,6 +109,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => *ty,
+            Self::Array { ty, .. } => *ty,
         }
     }
 
@@ -110,6 +125,7 @@ impl<'ctx> SierraType<'ctx> {
                     storage_type: _,
                     variants_types: _,
                 } => *ty,
+                Self::Array { ty, .. } => *ty,
             },
             Location::unknown(context),
         )
@@ -129,6 +145,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types,
             } => Some(variants_types.iter().map(|x| x.get_type()).collect()),
+            SierraType::Array { .. } => None,
         }
     }
 
@@ -143,6 +160,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types,
             } => Some(variants_types),
+            SierraType::Array { .. } => None,
         }
     }
 }
@@ -887,6 +905,14 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_llvm_nullptr<'a>(&self, block: &'a Block) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.mlir.null", Location::unknown(&self.context))
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        )
+    }
+
     pub fn op_llvm_store<'a>(
         &self,
         block: &'a Block,
@@ -1119,6 +1145,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        self.create_malloc()?;
         if self.print_fd > 0 {
             self.create_printf()?;
         }
