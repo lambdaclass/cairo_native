@@ -39,9 +39,11 @@ pub enum SierraType<'ctx> {
         variants_types: Vec<Self>,
     },
     Array {
-        // ty is a llvm struct (u32, ptr)
+        /// (u32, u32, ptr)
+        ///
+        /// (length, capacity, data)
         ty: Type<'ctx>,
-        len_type: Type<'ctx>, // u32
+        len_type: Type<'ctx>, // type of length and capacity: u32
         element_type: Box<Self>,
     },
 }
@@ -1156,6 +1158,32 @@ impl<'ctx> Compiler<'ctx> {
                     self.named_attribute("inbounds", "unit")?,
                 ])
                 .add_operands(&[struct_ptr]) // base addr
+                .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type
+                .build(),
+        ))
+    }
+
+    /// gep with a offset from a value
+    ///
+    /// https://llvm.org/docs/LangRef.html#getelementptr-instruction
+    pub fn op_llvm_gep_dynamic<'a>(
+        &self,
+        block: &'a Block,
+        indexes: &[Value],
+        base_ptr: Value,
+        ptr_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        let mut operands = vec![base_ptr];
+        operands.extend(indexes);
+
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
+                .add_attributes(&[
+                    //self.named_attribute("rawConstantIndices", &format!("array<i32: -1>"))?,
+                    self.named_attribute("elem_type", &ptr_type.to_string())?,
+                    //self.named_attribute("operand_segment_sizes", "array<i32: 1, 1>")?,
+                ])
+                .add_operands(&operands) // base addr
                 .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type
                 .build(),
         ))

@@ -1,12 +1,23 @@
-type felt252 = felt252;
-type Array<felt252> = Array<felt252>;
+type u64 = u64;
+type Array<u64> = Array<u64>;
+type Unit = Struct<ut@Tuple>;
 
-libfunc array_new<felt252> = array_new<felt252>;
-libfunc store_temp<Array<felt252>> = store_temp<Array<felt252>>;
+libfunc array_new<u64> = array_new<u64>;
+libfunc u64_const<4> = u64_const<4>;
+libfunc store_temp<u64> = store_temp<u64>;
+libfunc array_append<u64> = array_append<u64>;
+libfunc struct_construct<Unit> = struct_construct<Unit>;
+libfunc drop<Unit> = drop<Unit>;
+libfunc store_temp<Array<u64>> = store_temp<Array<u64>>;
 
-array_new<felt252>() -> ([0]);
-store_temp<Array<felt252>>([0]) -> ([1]);
-return([1]);
+array_new<u64>() -> ([0]);
+u64_const<4>() -> ([1]);
+store_temp<u64>([1]) -> ([1]);
+array_append<u64>([0], [1]) -> ([2]);
+struct_construct<Unit>() -> ([3]);
+drop<Unit>([3]) -> ();
+store_temp<Array<u64>>([2]) -> ([4]);
+return([4]);
 
-example_array::example_array::main@0() -> (Array<felt252>);
+example_array::example_array::main@0() -> (Array<u64>);
 

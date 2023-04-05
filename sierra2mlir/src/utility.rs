@@ -2,7 +2,8 @@ use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
 use melior_next::ir::{
-    operation, Block, BlockRef, Location, NamedAttribute, Region, Type, TypeLike, Value, ValueLike,
+    operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
+    Value, ValueLike,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ impl<'ctx> Compiler<'ctx> {
         declare ptr @malloc(i64)
         declare void @free(ptr)
     */
-    pub fn create_malloc(&'ctx self) -> Result<()> {
+    pub fn create_malloc(&self) -> Result<()> {
         let region = Region::new();
 
         let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
@@ -72,26 +73,21 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Utility function to create a printf call.
-    pub fn call_printf(
-        &'ctx self,
-        block: BlockRef<'ctx>,
-        fmt: &str,
-        values: &[Value],
-    ) -> Result<()> {
+    pub fn call_printf(&self, block: &Block, fmt: &str, values: &[Value]) -> Result<()> {
         let i32_type = Type::integer(&self.context, 32);
         let fmt_len = fmt.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
         let arr_ty =
             Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
-        let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
+        let data_op = self.op_llvm_alloca(block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
         // To create a constant array, we need to use a dense array attribute, which has a tensor type,
         // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
-            &block,
+            block,
             &format!(
                 "dense<[{}]> : tensor<{} x {}>",
                 fmt.as_bytes().iter().join(", "),
@@ -101,15 +97,20 @@ impl<'ctx> Compiler<'ctx> {
             arr_ty,
         );
 
-        self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
+        self.op_llvm_store(block, fmt_data.result(0)?.into(), addr)?;
 
-        let target_fd = self.op_u32_const(&block, "1");
+        let target_fd = self.op_u32_const(block, "1");
 
         let mut args = vec![target_fd.result(0)?.into(), addr];
         args.extend(values);
 
-        self.op_llvm_call(&block, "dprintf", &args, &[i32_type])?;
+        self.op_llvm_call(block, "dprintf", &args, &[i32_type])?;
         Ok(())
+    }
+
+    /// value needs to be u64 and is the size in bytes.
+    pub fn call_malloc<'a>(&'a self, block: &'a Block, size: Value) -> Result<OperationRef<'a>> {
+        self.op_llvm_call(block, "malloc", &[size], &[self.llvm_ptr_type()])
     }
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
@@ -149,12 +150,12 @@ impl<'ctx> Compiler<'ctx> {
 
             let truncated_op = self.op_trunc(&block, shift_result, self.i32_type());
             let truncated = truncated_op.result(0)?.into();
-            self.call_printf(block, "%08X\0", &[truncated])?;
+            self.call_printf(&block, "%08X\0", &[truncated])?;
 
             bit_width = bit_width.saturating_sub(32);
         }
 
-        self.call_printf(block, "\n\0", &[])?;
+        self.call_printf(&block, "\n\0", &[])?;
 
         self.op_return(&block, &[]);
 
@@ -263,7 +264,7 @@ impl<'ctx> Compiler<'ctx> {
 
             // Print the tag. Extending it to 32 bits allows for better printf portability
             let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
-            self.call_printf(entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
 
             // Store the enum data on the stack, and create a pointer to it
             // This allows us to interpret a ptr to it as a ptr to any of the variant types
@@ -296,7 +297,7 @@ impl<'ctx> Compiler<'ctx> {
                 let variant_felt_width = var_ty.get_felt_representation_width();
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
                 if unused_felt_count != 0 {
-                    self.call_printf(*block, &"0\n".repeat(unused_felt_count), &[])?;
+                    self.call_printf(block, &"0\n".repeat(unused_felt_count), &[])?;
                 }
 
                 let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
@@ -341,10 +342,10 @@ impl<'ctx> Compiler<'ctx> {
         match arg.r#type().get_width().unwrap().cmp(&32) {
             std::cmp::Ordering::Less => {
                 let value_32bit = self.op_zext(&block, arg.into(), self.u32_type());
-                self.call_printf(block, "%X\n\0", &[value_32bit.result(0)?.into()])?;
+                self.call_printf(&block, "%X\n\0", &[value_32bit.result(0)?.into()])?;
             }
-            std::cmp::Ordering::Equal => self.call_printf(block, "%X\n\0", &[arg.into()])?,
-            std::cmp::Ordering::Greater => self.call_printf(block, "%lX\n\0", &[arg.into()])?,
+            std::cmp::Ordering::Equal => self.call_printf(&block, "%X\n\0", &[arg.into()])?,
+            std::cmp::Ordering::Greater => self.call_printf(&block, "%lX\n\0", &[arg.into()])?,
         }
 
         self.op_return(&block, &[]);

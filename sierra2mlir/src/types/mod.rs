@@ -154,7 +154,11 @@ impl<'ctx> Compiler<'ctx> {
 
                     // array len type is u32 because sierra usize is u32.
                     let sierra_type = SierraType::Array {
-                        ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+                        ty: self.struct_type(&[
+                            self.u32_type(),
+                            self.u32_type(),
+                            self.llvm_ptr_type(),
+                        ]),
                         len_type: self.u32_type(),
                         element_type: Box::new(array_value_type.clone()),
                     };

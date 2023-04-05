@@ -1359,7 +1359,7 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[]);
 
         let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
             len_type: self.u32_type(),
             element_type: Box::new(arg_type.clone()),
         };
@@ -1370,16 +1370,37 @@ impl<'ctx> Compiler<'ctx> {
         let array_len_op = self.op_u32_const(&block, "0");
         let array_len = array_len_op.result(0)?.into();
 
+        let array_capacity_op = self.op_u32_const(&block, "8");
+        let array_capacity = array_capacity_op.result(0)?.into();
+
+        let array_element_size = arg_type.get_width();
+
+        // length
         let insert_op =
             self.op_llvm_insertvalue(&block, 0, array_value, array_len, sierra_type.get_type())?;
         let array_value: Value = insert_op.result(0)?.into();
 
-        let null_ptr = self.op_llvm_nullptr(&block);
+        // capacity
         let insert_op = self.op_llvm_insertvalue(
             &block,
             1,
             array_value,
-            null_ptr.result(0)?.into(),
+            array_capacity,
+            sierra_type.get_type(),
+        )?;
+        let array_value: Value = insert_op.result(0)?.into();
+
+        // 8 here is the capacity
+        let const_arr_size_bites =
+            self.op_const(&block, &(array_element_size * 8).to_string(), self.u64_type());
+        let ptr_op = self.call_malloc(&block, const_arr_size_bites.result(0)?.into())?;
+        let ptr_val = ptr_op.result(0)?;
+
+        let insert_op = self.op_llvm_insertvalue(
+            &block,
+            2,
+            array_value,
+            ptr_val.into(),
             sierra_type.get_type(),
         )?;
         let array_value: Value = insert_op.result(0)?.into();
@@ -1418,50 +1439,109 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserFunc(_) => todo!(),
             GenericArg::Libfunc(_) => todo!(),
         };
-
         let region = Region::new();
 
-        let block = Block::new(&[arg_type.get_type_location(&self.context)]);
-
         let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.llvm_ptr_type()]),
+            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
             len_type: self.u32_type(),
             element_type: Box::new(arg_type.clone()),
         };
 
+        let block = region.append_block(Block::new(&[
+            sierra_type.get_type_location(&self.context),
+            arg_type.get_type_location(&self.context),
+        ]));
+
+        let array_type = sierra_type.get_type();
+        let array_type_with_loc = sierra_type.get_type_location(&self.context);
+
         let array_value = block.argument(0)?;
+        let append_value = block.argument(1)?;
+
+        let const_0_op = self.op_const(&block, "0", self.u32_type());
+        let const_0: Value = const_0_op.result(0)?.into();
+
         // todo: resize array
 
-        let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
-        let array_value: Value = array_value_op.result(0)?.into();
+        // check if len < capacity
+        let array_len_op =
+            self.op_llvm_extractvalue(&block, 0, array_value.into(), self.u32_type())?;
+        let array_len = array_len_op.result(0)?;
 
-        let array_len_op = self.op_u32_const(&block, "0");
-        let array_len = array_len_op.result(0)?.into();
+        let array_capacity_op =
+            self.op_llvm_extractvalue(&block, 1, array_value.into(), self.u32_type())?;
+        let array_capacity = array_capacity_op.result(0)?;
 
-        let insert_op =
-            self.op_llvm_insertvalue(&block, 0, array_value, array_len, sierra_type.get_type())?;
-        let array_value: Value = insert_op.result(0)?.into();
+        let realloc_block = region.append_block(Block::new(&[]));
+        let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
 
-        let null_ptr = self.op_llvm_nullptr(&block);
-        let insert_op = self.op_llvm_insertvalue(
+        let is_less =
+            self.op_cmp(&block, CmpOp::SignedLessThan, array_len.into(), array_capacity.into());
+
+        self.op_cond_br(
             &block,
-            1,
-            array_value,
-            null_ptr.result(0)?.into(),
-            sierra_type.get_type(),
+            is_less.result(0)?.into(),
+            &append_value_block,
+            &realloc_block,
+            &[array_value.into()],
+            &[],
         )?;
-        let array_value: Value = insert_op.result(0)?.into();
 
-        self.op_return(&block, &[array_value]);
+        // reallocate with more capacity
 
-        let function_type = create_fn_signature(&[], &[sierra_type.get_type()]);
+        self.op_br(&realloc_block, &append_value_block, &[array_value.into()]);
 
-        region.append_block(block);
+        // append value and len + 1
+        let array_value = append_value_block.argument(0)?;
+
+        // get the data pointer
+        let data_ptr_op = self.op_llvm_extractvalue(
+            &append_value_block,
+            2,
+            array_value.into(),
+            self.llvm_ptr_type(),
+        )?;
+        let data_ptr: Value = data_ptr_op.result(0)?.into();
+
+        // get the pointer to the data index
+        let value_ptr_op = self.op_llvm_gep_dynamic(
+            &append_value_block,
+            &[array_len.into()],
+            data_ptr,
+            arg_type.get_type(),
+        )?;
+        let value_ptr = value_ptr_op.result(0)?.into();
+        // update the value
+        self.op_llvm_store(&append_value_block, append_value.into(), value_ptr)?;
+
+        // increment the length
+        let const_1 = self.op_const(&append_value_block, "1", array_len.r#type());
+        let len_plus_1 =
+            self.op_add(&append_value_block, array_len.into(), const_1.result(0)?.into());
+
+        let insert_op = self.op_llvm_insertvalue(
+            &append_value_block,
+            0,
+            array_value.into(),
+            len_plus_1.result(0)?.into(),
+            array_type,
+        )?;
+        let array_value = insert_op.result(0)?;
+
+        self.op_return(&append_value_block, &[array_value.into()]);
+
+        let function_type = create_fn_signature(
+            &[sierra_type.get_type(), arg_type.get_type()],
+            &[sierra_type.get_type()],
+        );
 
         let func =
             self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
 
-        storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![sierra_type]));
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::create_simple(vec![sierra_type.clone(), arg_type], vec![sierra_type]),
+        );
 
         parent_block.append_operation(func);
 
