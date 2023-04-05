@@ -289,7 +289,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn option_type(&self, inner: Type) -> Type {
-        self.enum_type(&[Type::none(&self.context), inner])
+        self.enum_type(&[inner, Type::none(&self.context)])
     }
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {

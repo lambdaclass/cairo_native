@@ -1216,8 +1216,8 @@ impl<'ctx> Compiler<'ctx> {
                                 )
                                 .unwrap(),
                                 variants_types: vec![
-                                    SierraType::Simple(Type::none(&self.context)),
                                     dst_sierra_type,
+                                    SierraType::Simple(Type::none(&self.context)),
                                 ],
                             }
                         }],
