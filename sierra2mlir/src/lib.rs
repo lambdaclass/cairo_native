@@ -34,6 +34,7 @@ pub fn compile(
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
 
+    pass_manager.add_pass(pass::conversion::convert_index_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_func_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());

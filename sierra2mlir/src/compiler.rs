@@ -1179,9 +1179,8 @@ impl<'ctx> Compiler<'ctx> {
         Ok(block.append_operation(
             operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
                 .add_attributes(&[
-                    //self.named_attribute("rawConstantIndices", &format!("array<i32: -1>"))?,
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", indexes.iter().map(|_| i32::MIN).join(", ")))?,
                     self.named_attribute("elem_type", &ptr_type.to_string())?,
-                    //self.named_attribute("operand_segment_sizes", "array<i32: 1, 1>")?,
                 ])
                 .add_operands(&operands) // base addr
                 .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type

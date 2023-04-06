@@ -1458,9 +1458,6 @@ impl<'ctx> Compiler<'ctx> {
         let array_value = block.argument(0)?;
         let append_value = block.argument(1)?;
 
-        let const_0_op = self.op_const(&block, "0", self.u32_type());
-        let const_0: Value = const_0_op.result(0)?.into();
-
         // todo: resize array
 
         // check if len < capacity

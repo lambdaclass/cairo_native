@@ -96,6 +96,13 @@ impl<'ctx> Compiler<'ctx> {
                         .expect("Type should be registered");
                     self.create_print_enum(arg_type, type_decl.clone())?
                 }
+                "Array" => {
+                    let arg_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered");
+                    self.create_print_array(arg_type, type_decl.clone())?
+                }
                 "u8" | "u16" | "u32" | "u64" | "u128" => {
                     let uint_type = storage
                         .types
@@ -241,6 +248,30 @@ fn get_all_types_to_print(
                         }
                     }
                 }
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "Array" => {
+                let array_type = match &type_decl.long_id.generic_args[0] {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                };
+
+                for ty in &program.type_declarations {
+                    if ty.id == *array_type {
+                        let types_to_print_here = get_all_types_to_print(&[ty.clone()], program);
+                        for type_decl in types_to_print_here {
+                            if !types_to_print.contains(&type_decl) {
+                                types_to_print.push(type_decl);
+                            }
+                        }
+                        break;
+                    }
+                }
+
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }

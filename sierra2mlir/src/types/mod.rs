@@ -142,7 +142,7 @@ impl<'ctx> Compiler<'ctx> {
                 "Array" => {
                     // Since the array is growable and a stack array with known size is not possible to pass
                     // to functions due to signature match requirements
-                    // we allocate in on the stack, and it's dropped on drop, which will no longer be
+                    // we allocate in on the heap, and it's dropped on drop, which will no longer be
                     // a noop in the case of arrays.
 
                     let array_value_type = match &type_decl.long_id.generic_args[0] {

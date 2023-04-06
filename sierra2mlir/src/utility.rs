@@ -324,6 +324,117 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_print_array(
+        &'ctx self,
+        array_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let entry_block = region
+            .append_block(Block::new(&[(array_type.get_type(), Location::unknown(&self.context))]));
+
+        let function_type = create_fn_signature(&[array_type.get_type()], &[]);
+
+        let array_value_type_id = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::Type(type_id) => type_id,
+            _ => panic!("Struct type declaration arguments after the first should all be resolved"),
+        };
+
+        if let SierraType::Array { ty, len_type, element_type } = array_type {
+            let array_value = entry_block.argument(0)?.into();
+
+            // get the data pointer
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&entry_block, 2, array_value, self.llvm_ptr_type())?;
+            let data_ptr: Value = data_ptr_op.result(0)?.into();
+
+            let lower_bound_op = self.op_const(&entry_block, "0", Type::index(&self.context));
+            let lower_bound = lower_bound_op.result(0)?.into();
+            // looks messy because scf needs a index type, which is u64 in llvm.
+            let upper_bound_op =
+                self.op_llvm_extractvalue(&entry_block, 0, array_value, *len_type)?;
+            let upper_bound = upper_bound_op.result(0)?.into();
+            let upper_bound_idx_op = self.op_zext(&entry_block, upper_bound, self.u64_type());
+            let upper_bound = upper_bound_idx_op.result(0)?.into();
+            let upper_bound_op = entry_block.append_operation(
+                operation::Builder::new(
+                    "builtin.unrealized_conversion_cast",
+                    Location::unknown(&self.context),
+                )
+                .add_operands(&[upper_bound])
+                .add_results(&[Type::index(&self.context)])
+                .build(),
+            );
+            let upper_bound = upper_bound_op.result(0)?.into();
+
+            let step_op = self.op_const(&entry_block, "1", Type::index(&self.context));
+            let step = step_op.result(0)?.into();
+
+            let loop_region = Region::new();
+            let loop_block = loop_region.append_block(Block::new(&[(
+                Type::index(&self.context),
+                Location::unknown(&self.context),
+            )]));
+
+            // for loop body
+            let idx_index = loop_block.argument(0)?.into();
+            let idx_op = loop_block.append_operation(
+                operation::Builder::new(
+                    "builtin.unrealized_conversion_cast",
+                    Location::unknown(&self.context),
+                )
+                .add_operands(&[idx_index])
+                .add_results(&[self.u64_type()])
+                .build(),
+            );
+            let idx = idx_op.result(0)?.into();
+
+            let array_value_type_name = array_value_type_id.debug_name.as_ref().unwrap();
+
+            // get the pointer to the data index
+            let value_ptr_op =
+                self.op_llvm_gep_dynamic(&loop_block, &[idx], data_ptr, element_type.get_type())?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+            let value_load_op =
+                self.op_llvm_load(&loop_block, value_ptr, element_type.get_type())?;
+            let value = value_load_op.result(0)?.into();
+
+            self.op_func_call(
+                &loop_block,
+                &format!("print_{}", array_value_type_name),
+                &[value],
+                &[],
+            )?;
+            loop_block.append_operation(
+                operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
+            );
+
+            entry_block.append_operation(
+                operation::Builder::new("scf.for", Location::unknown(&self.context))
+                    .add_operands(&[lower_bound, upper_bound, step])
+                    .add_regions(vec![loop_region])
+                    .build(),
+            );
+
+            self.op_return(&entry_block, &[]);
+        } else {
+            panic!("sierra_type_declaration should be a array")
+        }
+
+        let enum_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let func = self.op_func(
+            &format!("print_{}", enum_name.as_str()),
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     pub fn create_print_uint(
         &'ctx self,
         uint_type: &SierraType,
