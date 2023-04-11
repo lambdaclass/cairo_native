@@ -89,14 +89,14 @@ impl<'ctx> Compiler<'ctx> {
         let i8_type = Type::integer(&self.context, 8);
         let arr_ty =
             Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
-        let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
+        let data_op = self.op_llvm_alloca(block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
         // To create a constant array, we need to use a dense array attribute, which has a tensor type,
         // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
-            &block,
+            block,
             &format!(
                 "dense<[{}]> : tensor<{} x {}>",
                 terminated_fmt_string.as_bytes().iter().join(", "),

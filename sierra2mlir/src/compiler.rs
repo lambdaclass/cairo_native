@@ -335,7 +335,7 @@ impl<'ctx> Compiler<'ctx> {
         Type::parse(&self.context, &format!("!llvm.array<{len} x {ty}>")).expect("parse type")
     }
 
-    pub fn llvm_struct_type<'a>(&self, types: &[Type]) -> Type {
+    pub fn llvm_struct_type(&self, types: &[Type]) -> Type {
         Type::parse(&self.context, &self.struct_type_string(types)).expect("parse type")
     }
 
