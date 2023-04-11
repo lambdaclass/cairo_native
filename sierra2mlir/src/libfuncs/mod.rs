@@ -476,46 +476,6 @@ impl<'ctx> Compiler<'ctx> {
             ]),
         );
 
-        // let region = Region::new();
-
-        // let args = &[arg_type.get_type()];
-        // let args_with_location = &[arg_type.get_type_location(&self.context)];
-
-        // let block = Block::new(args_with_location);
-
-        // // Return the results, 2 times.
-        // let mut results: Vec<Value> = vec![];
-
-        // for i in 0..block.argument_count() {
-        //     let arg = block.argument(i)?;
-        //     results.push(arg.into());
-        // }
-
-        // // 2 times, duplicate.
-        // for i in 0..block.argument_count() {
-        //     let arg = block.argument(i)?;
-        //     results.push(arg.into());
-        // }
-
-        // self.op_return(&block, &results);
-
-        // region.append_block(block);
-
-        // let mut return_types = Vec::with_capacity(args.len() * 2);
-        // return_types.extend_from_slice(args);
-        // return_types.extend_from_slice(args);
-
-        // let function_type = create_fn_signature(args, &return_types);
-
-        // let func = self.op_func(&id, &function_type, vec![region], false, false)?;
-
-        // storage.libfuncs.insert(
-        //     id,
-        //     SierraLibFunc::create_simple(vec![arg_type.clone()], vec![arg_type.clone(), arg_type]),
-        // );
-
-        // parent_block.append_operation(func);
-
         Ok(())
     }
 
