@@ -23,18 +23,14 @@ define internal i256 @felt252_mul(i256 %0, i256 %1) {
   %5 = mul i512 %3, %4
   %6 = srem i512 %5, 3618502788666131213697322783095070105623107215331596699973092056135872020481
   %7 = trunc i512 %6 to i256
-  br label %8
-
-8:                                                ; preds = %2
-  %9 = phi i256 [ %7, %2 ]
-  ret i256 %9
+  ret i256 %7
 }
 
 define internal i256 @"rename<felt252>"(i256 %0) {
   ret i256 %0
 }
 
-define i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
+define i256 @"felt_is_zero::felt_is_zero::mul_if_not_zero"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -61,8 +57,8 @@ define i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
   ret i256 %16
 }
 
-define i256 @_mlir_ciface_felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0) {
-  %2 = call i256 @felt_is_zero_felt_is_zero_mul_if_not_zero(i256 %0)
+define i256 @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(i256 %0) {
+  %2 = call i256 @"felt_is_zero::felt_is_zero::mul_if_not_zero"(i256 %0)
   ret i256 %2
 }
 

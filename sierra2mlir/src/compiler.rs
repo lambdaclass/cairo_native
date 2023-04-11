@@ -292,6 +292,15 @@ impl<'ctx> Compiler<'ctx> {
         self.enum_type(&[inner, Type::none(&self.context)])
     }
 
+    /// The enum struct type. Needed due to some libfuncs using it.
+    ///
+    /// The tag value is the boolean value: 0, 1
+    ///
+    /// Sierra: type core::bool = Enum<ut@core::bool, Unit, Unit>;
+    pub fn boolean_enum_type(&self) -> Type {
+        Type::parse(&self.context, "!llvm.struct<(i16, array<0 x i8>)>").unwrap()
+    }
+
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
         self.op_const(block, DEFAULT_PRIME, self.felt_type())
     }
@@ -812,12 +821,21 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// creates a llvm struct
-    pub fn op_llvm_struct<'a>(&self, block: &'a Block, types: &[Type]) -> OperationRef<'a> {
+    pub fn op_llvm_struct_from_types<'a>(
+        &self,
+        block: &'a Block,
+        types: &[Type],
+    ) -> OperationRef<'a> {
+        self.op_llvm_struct(
+            block,
+            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
+        )
+    }
+
+    pub fn op_llvm_struct<'a>(&self, block: &'a Block, ty: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
-                .add_results(
-                    &[Type::parse(&self.context, &self.struct_type_string(types)).unwrap()],
-                )
+                .add_results(&[ty])
                 .build(),
         )
     }
@@ -1078,6 +1096,10 @@ impl<'ctx> Compiler<'ctx> {
     pub fn struct_type_string(&self, types: &[Type]) -> String {
         let types = types.iter().map(|x| x.to_string()).join(", ");
         format!("!llvm.struct<({})>", types)
+    }
+
+    pub fn struct_type(&self, types: &[Type]) -> Type {
+        Type::parse(&self.context, &self.struct_type_string(types)).unwrap()
     }
 
     pub fn op_func_call<'a>(

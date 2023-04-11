@@ -20,29 +20,27 @@ define internal i256 @"store_temp<felt252>"(i256 %0) {
 define internal i256 @felt252_add(i256 %0, i256 %1) {
   %3 = add i256 %0, %1
   %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br i1 %4, label %7, label %5
+  br i1 %4, label %6, label %5
 
-5:                                                ; preds = %7, %2
-  %6 = phi i256 [ %8, %7 ], [ %3, %2 ]
-  ret i256 %6
+5:                                                ; preds = %2
+  ret i256 %3
 
-7:                                                ; preds = %2
-  %8 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br label %5
+6:                                                ; preds = %2
+  %7 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  ret i256 %7
 }
 
 define internal i256 @felt252_sub(i256 %0, i256 %1) {
   %3 = sub i256 %0, %1
-  %4 = icmp ult i256 %0, %1
-  br i1 %4, label %7, label %5
+  %4 = icmp slt i256 %3, 0
+  br i1 %4, label %6, label %5
 
-5:                                                ; preds = %7, %2
-  %6 = phi i256 [ %8, %7 ], [ %3, %2 ]
-  ret i256 %6
+5:                                                ; preds = %2
+  ret i256 %3
 
-7:                                                ; preds = %2
-  %8 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
-  br label %5
+6:                                                ; preds = %2
+  %7 = add i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  ret i256 %7
 }
 
 define internal i256 @"rename<felt252>"(i256 %0) {
@@ -57,7 +55,7 @@ define internal {} @"store_temp<Unit>"({} %0) {
   ret {} %0
 }
 
-define i256 @fib_fib_fib(i256 %0, i256 %1, i256 %2) {
+define i256 @"fib::fib::fib"(i256 %0, i256 %1, i256 %2) {
   br label %4
 
 4:                                                ; preds = %3
@@ -87,7 +85,7 @@ define i256 @fib_fib_fib(i256 %0, i256 %1, i256 %2) {
   %24 = call i256 @"store_temp<felt252>"(i256 %20)
   %25 = call i256 @"store_temp<felt252>"(i256 %22)
   %26 = call i256 @"store_temp<felt252>"(i256 %23)
-  %27 = call i256 @fib_fib_fib(i256 %24, i256 %25, i256 %26)
+  %27 = call i256 @"fib::fib::fib"(i256 %24, i256 %25, i256 %26)
   %28 = call i256 @"rename<felt252>"(i256 %27)
   br label %29
 
@@ -97,12 +95,12 @@ define i256 @fib_fib_fib(i256 %0, i256 %1, i256 %2) {
   ret i256 %31
 }
 
-define i256 @_mlir_ciface_fib_fib_fib(i256 %0, i256 %1, i256 %2) {
-  %4 = call i256 @fib_fib_fib(i256 %0, i256 %1, i256 %2)
+define i256 @"_mlir_ciface_fib::fib::fib"(i256 %0, i256 %1, i256 %2) {
+  %4 = call i256 @"fib::fib::fib"(i256 %0, i256 %1, i256 %2)
   ret i256 %4
 }
 
-define {} @fib_fib_fib_mid(i256 %0) {
+define {} @"fib::fib::fib_mid"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -121,10 +119,10 @@ define {} @fib_fib_fib_mid(i256 %0) {
   %11 = call i256 @"store_temp<felt252>"(i256 0)
   %12 = call i256 @"store_temp<felt252>"(i256 1)
   %13 = call i256 @"store_temp<felt252>"(i256 500)
-  %14 = call i256 @fib_fib_fib(i256 %11, i256 %12, i256 %13)
+  %14 = call i256 @"fib::fib::fib"(i256 %11, i256 %12, i256 %13)
   %15 = call i256 @felt252_sub(i256 %10, i256 1)
   %16 = call i256 @"store_temp<felt252>"(i256 %15)
-  %17 = call {} @fib_fib_fib_mid(i256 %16)
+  %17 = call {} @"fib::fib::fib_mid"(i256 %16)
   br label %18
 
 18:                                               ; preds = %8, %9
@@ -133,25 +131,25 @@ define {} @fib_fib_fib_mid(i256 %0) {
   ret {} %20
 }
 
-define void @_mlir_ciface_fib_fib_fib_mid(ptr %0, i256 %1) {
-  %3 = call {} @fib_fib_fib_mid(i256 %1)
+define void @"_mlir_ciface_fib::fib::fib_mid"(ptr %0, i256 %1) {
+  %3 = call {} @"fib::fib::fib_mid"(i256 %1)
   store {} %3, ptr %0, align 1
   ret void
 }
 
-define {} @fib_fib_main(i256 %0) {
+define {} @"fib::fib::main"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
   %3 = call i256 @"store_temp<felt252>"(i256 100)
-  %4 = call {} @fib_fib_fib_mid(i256 %3)
+  %4 = call {} @"fib::fib::fib_mid"(i256 %3)
   %5 = call {} @"struct_construct<Unit>"()
   %6 = call {} @"store_temp<Unit>"({} %5)
   ret {} %6
 }
 
-define void @_mlir_ciface_fib_fib_main(ptr %0, i256 %1) {
-  %3 = call {} @fib_fib_main(i256 %1)
+define void @"_mlir_ciface_fib::fib::main"(ptr %0, i256 %1) {
+  %3 = call {} @"fib::fib::main"(i256 %1)
   store {} %3, ptr %0, align 1
   ret void
 }
