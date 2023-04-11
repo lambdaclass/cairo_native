@@ -10,8 +10,6 @@ use crate::{
     statements::{BlockInfo, Variable},
 };
 
-use super::lib_func_def::SierraLibFunc;
-
 /*
    Here are the libfuncs implemented inline,
    meaning that they are implemented in place where they are called.
@@ -105,12 +103,7 @@ impl<'ctx> Compiler<'ctx> {
         variables: &HashMap<u64, Variable>,
         storage: &Storage,
     ) -> Result<()> {
-        let libfuncdef = match storage.libfuncs.get(id).unwrap() {
-            SierraLibFunc::Function(d) => d,
-            SierraLibFunc::Constant(_) => {
-                panic!("Enum match unexpectedly registered as constant")
-            }
-        };
+        let libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
 
         let (tag_type, storage_type, variants_types) = match &libfuncdef.args[0].ty {
             SierraType::Enum { tag_type, storage_type, variants_types, .. } => {

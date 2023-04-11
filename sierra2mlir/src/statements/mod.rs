@@ -12,9 +12,12 @@ use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Va
 use crate::compiler::FnAttributes;
 use crate::{
     compiler::{Compiler, SierraType, Storage},
-    libfuncs::lib_func_def::{ConstantLibFunc, LibFuncDef, SierraLibFunc},
     utility::create_fn_signature,
 };
+
+mod function_call;
+mod general_libfunc_implementations;
+mod inline_jumps;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
@@ -117,7 +120,6 @@ impl<'ctx> Compiler<'ctx> {
                         let name_without_generics = name.split('<').next().unwrap();
                         let mut jump_processed = false;
                         match name_without_generics {
-                            "disable_ap_tracking" | "drop" | "branch_align" => {}
                             "jump" => {
                                 self.inline_jump(invocation, block, &mut variables, &blocks)?;
                                 jump_processed = true;
@@ -146,90 +148,20 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
-                            "function_call" => {
-                                let callee_name = id
-                                    .strip_prefix("function_call<user@")
-                                    .unwrap()
-                                    .strip_suffix('>')
-                                    .unwrap();
-                                let callee_def = storage
-                                    .userfuncs
-                                    .get(callee_name)
-                                    .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
-                                let args = invocation
-                                    .args
-                                    .iter()
-                                    .map(|id| variables.get(&id.id).unwrap().get_value())
-                                    .collect_vec();
-                                let return_types = callee_def
-                                    .return_types
-                                    .iter()
-                                    .map(|t| t.get_type())
-                                    .collect_vec();
-                                let op =
-                                    self.op_func_call(block, callee_name, &args, &return_types)?;
-                                variables.extend(
-                                    invocation.branches[0].results.iter().enumerate().map(
-                                        |(result_pos, var_id)| {
-                                            (
-                                                var_id.id,
-                                                Variable::Local { op, result_idx: result_pos },
-                                            )
-                                        },
-                                    ),
-                                );
-                            }
-                            _ => {
-                                let libfunc_def = storage
-                                    .libfuncs
-                                    .get(&id)
-                                    .unwrap_or_else(|| panic!("Unhandled libfunc {name}"));
-                                match libfunc_def {
-                                    SierraLibFunc::Function(LibFuncDef { args, return_types }) => {
-                                        let arg_values = args
-                                            .iter()
-                                            .map(|a| {
-                                                variables
-                                                    .get(&invocation.args[a.loc].id)
-                                                    .unwrap()
-                                                    .get_value()
-                                            })
-                                            .collect_vec();
-                                        assert_eq!(return_types.len(), 1, "Libfunc with abnormal number of returns not handled properly");
-                                        let return_types = return_types[0]
-                                            .iter()
-                                            .map(SierraType::get_type)
-                                            .collect_vec();
-                                        let op = self.op_func_call(
-                                            block,
-                                            &id,
-                                            &arg_values,
-                                            &return_types,
-                                        )?;
-                                        variables.extend(
-                                            invocation.branches[0].results.iter().enumerate().map(
-                                                |(result_pos, var_id)| {
-                                                    (
-                                                        var_id.id,
-                                                        Variable::Local {
-                                                            op,
-                                                            result_idx: result_pos,
-                                                        },
-                                                    )
-                                                },
-                                            ),
-                                        );
-                                    }
-                                    SierraLibFunc::Constant(ConstantLibFunc { ty, value }) => {
-                                        let op = self.op_const(block, value, ty.get_type());
-                                        let var_id = &invocation.branches[0].results[0];
-                                        variables.insert(
-                                            var_id.id,
-                                            Variable::Local { op, result_idx: 0 },
-                                        );
-                                    }
-                                }
-                            }
+                            "function_call" => self.process_function_call(
+                                &id,
+                                invocation,
+                                block,
+                                &mut variables,
+                                storage,
+                            )?,
+                            _ => self.process_general_libfunc(
+                                &id,
+                                invocation,
+                                block,
+                                &mut variables,
+                                storage,
+                            )?,
                         }
 
                         if statement_idx == block_info.end - 1 && !jump_processed {

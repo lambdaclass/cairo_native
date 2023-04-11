@@ -2,9 +2,6 @@ module attributes {llvm.data_layout = ""} {
   llvm.func @malloc(i64) -> !llvm.ptr
   llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    llvm.return %arg0 : i256
-  }
   llvm.func internal @print_felt252(%arg0: i256) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
     %0 = llvm.mlir.constant(224 : i256) : i256
     %1 = llvm.ashr %arg0, %0  : i256
@@ -98,8 +95,7 @@ module attributes {llvm.data_layout = ""} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(24 : i256) : i256
-    %1 = llvm.call @"store_temp<felt252>"(%0) : (i256) -> i256
-    llvm.return %1 : i256
+    llvm.return %0 : i256
   }
   llvm.func @"_mlir_ciface_print_test::print_test::main"() -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"print_test::print_test::main"() : () -> i256

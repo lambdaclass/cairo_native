@@ -73,24 +73,38 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Utility function to create a printf call.
-    pub fn call_printf(&self, block: &Block, fmt: &str, values: &[Value]) -> Result<()> {
+    /// Null-terminates the string iff it is not already null-terminated
+    pub fn call_printf<'a>(
+        &'a self,
+        block: &'a Block,
+        fmt: &str,
+        values: &[Value],
+    ) -> Result<()> {
+        let terminated_fmt_string = if fmt.ends_with('\0') {
+            fmt.to_string()
+        } else if fmt.contains('\0') {
+            panic!("Format string \"{fmt}\" to printf contains data after \\0")
+        } else {
+            format!("{fmt}\0")
+        };
+
         let i32_type = Type::integer(&self.context, 32);
-        let fmt_len = fmt.as_bytes().len();
+        let fmt_len = terminated_fmt_string.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
         let arr_ty =
             Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
-        let data_op = self.op_llvm_alloca(block, i8_type, fmt_len)?;
+        let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
         // To create a constant array, we need to use a dense array attribute, which has a tensor type,
         // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
-            block,
+            &block,
             &format!(
                 "dense<[{}]> : tensor<{} x {}>",
-                fmt.as_bytes().iter().join(", "),
+                terminated_fmt_string.as_bytes().iter().join(", "),
                 fmt_len,
                 i8_type
             ),
@@ -340,7 +354,7 @@ impl<'ctx> Compiler<'ctx> {
             _ => panic!("Struct type declaration arguments after the first should all be resolved"),
         };
 
-        if let SierraType::Array { ty, len_type, element_type } = array_type {
+        if let SierraType::Array { ty: _, len_type, element_type } = array_type {
             let array_value = entry_block.argument(0)?.into();
 
             // get the data pointer

@@ -16,7 +16,6 @@ use crate::{
 
 use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
 
-pub mod inline_funcs;
 pub mod lib_func_def;
 pub mod sierra_enum;
 
@@ -67,7 +66,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.register_libfunc_felt252_is_zero(func_decl, storage);
                 }
                 "dup" => {
-                    self.create_libfunc_dup(func_decl, parent_block, storage)?;
+                    self.register_libfunc_dup(func_decl, storage)?;
                 }
                 "enum_init" => {
                     self.create_libfunc_enum_init(func_decl, parent_block, storage)?;
@@ -83,7 +82,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_struct_deconstruct(func_decl, parent_block, storage)?;
                 }
                 "store_temp" | "rename" => {
-                    self.create_identity_function(func_decl, parent_block, storage)?;
+                    self.create_identity_function(func_decl, storage)?;
                 }
                 "u8_const" => {
                     self.create_libfunc_uint_const(func_decl, self.u8_type(), storage);
@@ -238,7 +237,7 @@ impl<'ctx> Compiler<'ctx> {
                         func_decl,
                         parent_block,
                         storage,
-                        BoolBinaryOp::Or,
+                        BoolBinaryOp::And,
                     )?;
                 }
                 "bool_xor_impl" => {
@@ -441,7 +440,6 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_identity_function(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
@@ -455,43 +453,16 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::UserFunc(_) => todo!(),
             GenericArg::Libfunc(_) => todo!(),
         };
-
-        let region = Region::new();
-
-        let args = &[arg_type.get_type()];
-        let args_with_location = &[arg_type.get_type_location(&self.context)];
-
-        let block = Block::new(args_with_location);
-
-        let mut results: Vec<Value> = vec![];
-
-        for i in 0..block.argument_count() {
-            let arg = block.argument(i)?;
-            results.push(arg.into());
-        }
-
-        self.op_return(&block, &results);
-
-        region.append_block(block);
-
-        let function_type = create_fn_signature(args, args);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
         storage
             .libfuncs
-            .insert(id, SierraLibFunc::create_simple(vec![arg_type.clone()], vec![arg_type]));
-
-        parent_block.append_operation(func);
+            .insert(id, SierraLibFunc::InlineDataflow(vec![LibFuncArg { loc: 0, ty: arg_type }]));
 
         Ok(())
     }
 
-    pub fn create_libfunc_dup(
+    pub fn register_libfunc_dup(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
@@ -505,46 +476,13 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::Libfunc(_) => todo!(),
         };
 
-        let region = Region::new();
-
-        let args = &[arg_type.get_type()];
-        let args_with_location = &[arg_type.get_type_location(&self.context)];
-
-        let block = Block::new(args_with_location);
-
-        // Return the results, 2 times.
-        let mut results: Vec<Value> = vec![];
-
-        for i in 0..block.argument_count() {
-            let arg = block.argument(i)?;
-            results.push(arg.into());
-        }
-
-        // 2 times, duplicate.
-        for i in 0..block.argument_count() {
-            let arg = block.argument(i)?;
-            results.push(arg.into());
-        }
-
-        self.op_return(&block, &results);
-
-        region.append_block(block);
-
-        let mut return_types = Vec::with_capacity(args.len() * 2);
-        return_types.extend_from_slice(args);
-        return_types.extend_from_slice(args);
-
-        let function_type = create_fn_signature(args, &return_types);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(vec![arg_type.clone()], vec![arg_type.clone(), arg_type]),
+            SierraLibFunc::InlineDataflow(vec![
+                LibFuncArg { loc: 0, ty: arg_type.clone() },
+                LibFuncArg { loc: 0, ty: arg_type },
+            ]),
         );
-
-        parent_block.append_operation(func);
 
         Ok(())
     }
@@ -1116,7 +1054,7 @@ impl<'ctx> Compiler<'ctx> {
             }
             Ordering::Equal => {
                 // Similar to store_local and rename, create an identity function for ease of dataflow processing, under the assumption the optimiser will optimise it out
-                self.create_identity_function(func_decl, parent_block, storage)?;
+                self.create_identity_function(func_decl, storage)?;
             }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }

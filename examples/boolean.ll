@@ -35,11 +35,6 @@ define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %0) #0 {
-  ret { i16, [0 x i8] } %0
-}
-
-; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
@@ -60,7 +55,7 @@ define internal { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %0) #0 {
 define internal { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
-  %5 = or i16 %3, %4
+  %5 = and i16 %3, %4
   %6 = insertvalue { i16, [0 x i8] } undef, i16 %5, 0
   ret { i16, [0 x i8] } %6
 }
@@ -79,11 +74,6 @@ define internal i256 @bool_to_felt252({ i16, [0 x i8] } %0) #0 {
   %2 = extractvalue { i16, [0 x i8] } %0, 0
   %3 = zext i16 %2 to i256
   ret i256 %3
-}
-
-; Function Attrs: alwaysinline norecurse nounwind
-define internal i256 @"store_temp<felt252>"(i256 %0) #0 {
-  ret i256 %0
 }
 
 ; Function Attrs: norecurse nounwind
@@ -152,26 +142,17 @@ define i256 @"boolean::boolean::main"() {
   %3 = call { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %2)
   %4 = call {} @"struct_construct<Unit>"()
   %5 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %4)
-  %6 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %3)
-  %7 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %5)
-  %8 = call { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %6, { i16, [0 x i8] } %7)
-  %9 = call {} @"struct_construct<Unit>"()
-  %10 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %9)
-  %11 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %10)
-  %12 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %11)
-  %13 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %12)
-  %14 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %13)
-  %15 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %8)
-  %16 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %14)
-  %17 = call { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %15, { i16, [0 x i8] } %16)
-  %18 = call {} @"struct_construct<Unit>"()
-  %19 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %18)
-  %20 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %17)
-  %21 = call { i16, [0 x i8] } @"store_temp<core::bool>"({ i16, [0 x i8] } %19)
-  %22 = call { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %20, { i16, [0 x i8] } %21)
-  %23 = call i256 @bool_to_felt252({ i16, [0 x i8] } %22)
-  %24 = call i256 @"store_temp<felt252>"(i256 %23)
-  ret i256 %24
+  %6 = call { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %3, { i16, [0 x i8] } %5)
+  %7 = call {} @"struct_construct<Unit>"()
+  %8 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %7)
+  %9 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %8)
+  %10 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %9)
+  %11 = call { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %6, { i16, [0 x i8] } %10)
+  %12 = call {} @"struct_construct<Unit>"()
+  %13 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %12)
+  %14 = call { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %11, { i16, [0 x i8] } %13)
+  %15 = call i256 @bool_to_felt252({ i16, [0 x i8] } %14)
+  ret i256 %15
 }
 
 define i256 @"_mlir_ciface_boolean::boolean::main"() {
