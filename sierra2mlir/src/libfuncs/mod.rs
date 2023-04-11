@@ -1311,7 +1311,7 @@ impl<'ctx> Compiler<'ctx> {
         let array_capacity_op = self.op_u32_const(&block, "8");
         let array_capacity = array_capacity_op.result(0)?.into();
 
-        let array_element_size = arg_type.get_width();
+        let array_element_size_bytes = arg_type.get_width() / 8;
 
         // length
         let insert_op =
@@ -1329,9 +1329,14 @@ impl<'ctx> Compiler<'ctx> {
         let array_value: Value = insert_op.result(0)?.into();
 
         // 8 here is the capacity
-        let const_arr_size_bites =
-            self.op_const(&block, &(array_element_size * 8).to_string(), self.u64_type());
-        let ptr_op = self.call_malloc(&block, const_arr_size_bites.result(0)?.into())?;
+        let const_arr_size_bytes_op =
+            self.op_const(&block, &(array_element_size_bytes * 8).to_string(), self.u64_type());
+        let const_arr_size_bytes = const_arr_size_bytes_op.result(0)?;
+
+        let null_ptr_op = self.op_llvm_nullptr(&block);
+        let null_ptr = null_ptr_op.result(0)?;
+
+        let ptr_op = self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into())?;
         let ptr_val = ptr_op.result(0)?;
 
         let insert_op = self.op_llvm_insertvalue(
@@ -1396,8 +1401,6 @@ impl<'ctx> Compiler<'ctx> {
         let array_value = block.argument(0)?;
         let append_value = block.argument(1)?;
 
-        // todo: resize array
-
         // check if len < capacity
         let array_len_op =
             self.op_llvm_extractvalue(&block, 0, array_value.into(), self.u32_type())?;
@@ -1422,7 +1425,38 @@ impl<'ctx> Compiler<'ctx> {
             &[],
         )?;
 
-        // reallocate with more capacity
+        // reallocate with more capacity, for now with a simple algorithm:
+        // new_capacity = capacity * 2
+        let const_2_op = self.op_u32_const(&realloc_block, "2");
+        let const_2 = const_2_op.result(0)?;
+
+        let new_capacity_op = self.op_mul(&realloc_block, array_capacity.into(), const_2.into());
+        let new_capacity = new_capacity_op.result(0)?.into();
+
+        let new_capacity_as_u64_op = self.op_zext(&realloc_block, new_capacity, self.u64_type());
+        let new_capacity_as_u64 = new_capacity_as_u64_op.result(0)?;
+
+        let data_ptr_op =
+            self.op_llvm_extractvalue(&realloc_block, 2, array_value.into(), self.llvm_ptr_type())?;
+        let data_ptr: Value = data_ptr_op.result(0)?.into();
+
+        let new_ptr_op = self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into())?;
+        let new_ptr = new_ptr_op.result(0)?.into();
+
+        // change the ptr
+        let insert_ptr_op =
+            self.op_llvm_insertvalue(&realloc_block, 2, array_value.into(), new_ptr, array_type)?;
+        let array_value = insert_ptr_op.result(0)?;
+
+        // update the capacity
+        let insert_ptr_op = self.op_llvm_insertvalue(
+            &realloc_block,
+            1,
+            array_value.into(),
+            new_capacity,
+            array_type,
+        )?;
+        let array_value = insert_ptr_op.result(0)?;
 
         self.op_br(&realloc_block, &append_value_block, &[array_value.into()]);
 

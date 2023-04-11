@@ -14,18 +14,18 @@ use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
     /* Needed for sierra Arrays
-        declare ptr @malloc(i64)
+        declare ptr @realloc(ptr, i64)
         declare void @free(ptr)
     */
-    pub fn create_malloc(&self) -> Result<()> {
+    pub fn create_realloc(&self) -> Result<()> {
         let region = Region::new();
 
         let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
             .add_attributes(&NamedAttribute::new_parsed_vec(
                 &self.context,
                 &[
-                    ("sym_name", "\"malloc\""),
-                    ("function_type", "!llvm.func<ptr (i64)>"),
+                    ("sym_name", "\"realloc\""),
+                    ("function_type", "!llvm.func<ptr (ptr, i64)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -118,8 +118,13 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// value needs to be u64 and is the size in bytes.
-    pub fn call_malloc<'a>(&'a self, block: &'a Block, size: Value) -> Result<OperationRef<'a>> {
-        self.op_llvm_call(block, "malloc", &[size], &[self.llvm_ptr_type()])
+    pub fn call_realloc<'a>(
+        &'a self,
+        block: &'a Block,
+        ptr: Value,
+        size: Value,
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
     }
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
@@ -357,48 +362,45 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_llvm_extractvalue(&entry_block, 2, array_value, self.llvm_ptr_type())?;
             let data_ptr: Value = data_ptr_op.result(0)?.into();
 
-            let lower_bound_op = self.op_const(&entry_block, "0", Type::index(&self.context));
-            let lower_bound = lower_bound_op.result(0)?.into();
-            // looks messy because scf needs a index type, which is u64 in llvm.
+            let lower_bound_op = self.op_u32_const(&entry_block, "0");
+            let lower_bound: Value = lower_bound_op.result(0)?.into();
+
             let upper_bound_op =
                 self.op_llvm_extractvalue(&entry_block, 0, array_value, *len_type)?;
-            let upper_bound = upper_bound_op.result(0)?.into();
-            let upper_bound_idx_op = self.op_zext(&entry_block, upper_bound, self.u64_type());
-            let upper_bound = upper_bound_idx_op.result(0)?.into();
-            let upper_bound_op = entry_block.append_operation(
-                operation::Builder::new(
-                    "builtin.unrealized_conversion_cast",
-                    Location::unknown(&self.context),
-                )
-                .add_operands(&[upper_bound])
-                .add_results(&[Type::index(&self.context)])
-                .build(),
+            let upper_bound: Value = upper_bound_op.result(0)?.into();
+
+            let step_op = self.op_u32_const(&entry_block, "1");
+            let step: Value = step_op.result(0)?.into();
+
+            let check_block = region
+                .append_block(Block::new(&[(self.u32_type(), Location::unknown(&self.context))]));
+
+            let loop_block = region
+                .append_block(Block::new(&[(self.u32_type(), Location::unknown(&self.context))]));
+
+            let end_block = region.append_block(Block::new(&[]));
+
+            self.op_br(&entry_block, &check_block, &[lower_bound]);
+
+            let lower_bound = check_block.argument(0)?.into();
+            let cmp_op = self.op_cmp(
+                &check_block,
+                crate::compiler::CmpOp::UnsignedLess,
+                lower_bound,
+                upper_bound,
             );
-            let upper_bound = upper_bound_op.result(0)?.into();
-
-            let step_op = self.op_const(&entry_block, "1", Type::index(&self.context));
-            let step = step_op.result(0)?.into();
-
-            let loop_region = Region::new();
-            let loop_block = loop_region.append_block(Block::new(&[(
-                Type::index(&self.context),
-                Location::unknown(&self.context),
-            )]));
+            let cmp = cmp_op.result(0)?.into();
+            self.op_cond_br(
+                &check_block,
+                cmp,
+                &loop_block,
+                &end_block,
+                &[check_block.argument(0)?.into()],
+                &[],
+            )?;
 
             // for loop body
-            let idx_index = loop_block.argument(0)?.into();
-            let idx_op = loop_block.append_operation(
-                operation::Builder::new(
-                    "builtin.unrealized_conversion_cast",
-                    Location::unknown(&self.context),
-                )
-                .add_operands(&[idx_index])
-                .add_results(&[self.u64_type()])
-                .build(),
-            );
-            let idx = idx_op.result(0)?.into();
-
-            let array_value_type_name = array_value_type_id.debug_name.as_ref().unwrap();
+            let idx = loop_block.argument(0)?.into();
 
             // get the pointer to the data index
             let value_ptr_op =
@@ -408,24 +410,20 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_llvm_load(&loop_block, value_ptr, element_type.get_type())?;
             let value = value_load_op.result(0)?.into();
 
+            let array_value_type_name = array_value_type_id.debug_name.as_ref().unwrap();
             self.op_func_call(
                 &loop_block,
                 &format!("print_{}", array_value_type_name),
                 &[value],
                 &[],
             )?;
-            loop_block.append_operation(
-                operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
-            );
 
-            entry_block.append_operation(
-                operation::Builder::new("scf.for", Location::unknown(&self.context))
-                    .add_operands(&[lower_bound, upper_bound, step])
-                    .add_regions(vec![loop_region])
-                    .build(),
-            );
+            let new_idx_op = self.op_add(&loop_block, idx, step);
+            let new_idx = new_idx_op.result(0)?.into();
 
-            self.op_return(&entry_block, &[]);
+            self.op_br(&loop_block, &check_block, &[new_idx]);
+
+            self.op_return(&end_block, &[]);
         } else {
             panic!("sierra_type_declaration should be a array")
         }

@@ -8,6 +8,7 @@ use melior_next::{
         Attribute, Block, BlockRef, Identifier, Location, Module, NamedAttribute, Operation,
         OperationRef, Region, Type, TypeLike, Value, ValueLike,
     },
+    pass::transform::register_reconcile_casts,
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
@@ -236,6 +237,7 @@ impl<'ctx> Compiler<'ctx> {
         context.append_dialect_registry(&registry);
         context.load_all_available_dialects();
         register_all_llvm_translations(&context);
+        register_reconcile_casts();
 
         let location = Location::unknown(&context);
 
@@ -1237,7 +1239,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        self.create_malloc()?;
+        self.create_realloc()?;
         if self.print_fd > 0 {
             self.create_printf()?;
         }
