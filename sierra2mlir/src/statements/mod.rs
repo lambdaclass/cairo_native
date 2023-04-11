@@ -145,7 +145,19 @@ impl<'ctx> Compiler<'ctx> {
                                     &variables,
                                     storage,
                                 )?;
-
+                                jump_processed = true;
+                            }
+                            "array_get" => {
+                                self.inline_array_get(
+                                    &id,
+                                    statement_idx,
+                                    &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
+                                )?;
                                 jump_processed = true;
                             }
                             "function_call" => self.process_function_call(
