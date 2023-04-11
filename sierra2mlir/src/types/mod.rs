@@ -165,6 +165,28 @@ impl<'ctx> Compiler<'ctx> {
 
                     storage.types.insert(id.to_string(), sierra_type);
                 }
+                "Snapshot" => {
+                    // TODO: make sure this is correct
+                    let inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage
+                            .types
+                            .get(&x.id.to_string())
+                            .expect("snapshot inner type should exist"),
+                        _ => unreachable!("snapshot inner type is always a type"),
+                    };
+                    storage.types.insert(id.to_string(), inner_type.clone());
+                }
+                "Box" => {
+                    // TODO: make sure this is correct, or should it be a pointer to the type?
+                    let inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage
+                            .types
+                            .get(&x.id.to_string())
+                            .expect("box inner type should exist"),
+                        _ => unreachable!("box inner type is always a type"),
+                    };
+                    storage.types.insert(id.to_string(), inner_type.clone());
+                }
                 "u8" => {
                     let ty = self.u8_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
