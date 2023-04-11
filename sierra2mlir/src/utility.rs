@@ -41,9 +41,8 @@ impl<'ctx> Compiler<'ctx> {
         fmt: &str,
         values: &[Value],
     ) -> Result<()> {
-
         let terminated_fmt_string = if fmt.ends_with('\0') {
-            format!("{fmt}")
+            fmt.to_string()
         } else if fmt.contains('\0') {
             panic!("Format string \"{fmt}\" to printf contains data after \\0")
         } else {
