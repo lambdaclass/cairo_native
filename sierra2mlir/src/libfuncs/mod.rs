@@ -84,7 +84,7 @@ impl<'ctx> Compiler<'ctx> {
                 "struct_deconstruct" => {
                     self.create_libfunc_struct_deconstruct(func_decl, parent_block, storage)?;
                 }
-                "store_temp" | "rename" => {
+                "store_temp" | "rename" | "unbox" => {
                     self.create_identity_function(func_decl, storage)?;
                 }
                 "u8_const" => {
