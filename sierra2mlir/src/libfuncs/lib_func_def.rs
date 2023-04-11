@@ -28,6 +28,8 @@ pub struct ConstantLibFunc<'ctx> {
 pub enum SierraLibFunc<'ctx> {
     Function(LibFuncDef<'ctx>),
     Constant(ConstantLibFunc<'ctx>),
+    // Cases such as store_temp and dup that can be implemented purely at a dataflow level with no processing
+    InlineDataflow(Vec<LibFuncArg<'ctx>>),
 }
 
 impl<'ctx> SierraLibFunc<'ctx> {
@@ -55,6 +57,30 @@ impl<'ctx> SierraLibFunc<'ctx> {
                 args.iter().cloned().collect_vec()
             }
             SierraLibFunc::Constant(_) => vec![],
+            SierraLibFunc::InlineDataflow(args) => args.clone(),
+        }
+    }
+
+    /// If true, the libfunc can be simply ignored during processing
+    pub fn naively_skippable(&self) -> bool {
+        match self {
+            SierraLibFunc::Function(LibFuncDef { args: _, return_types }) => {
+                return_types.iter().all(|x| x.is_empty())
+            }
+            SierraLibFunc::Constant(_) => false,
+            SierraLibFunc::InlineDataflow(args) => args.is_empty(),
+        }
+    }
+
+    pub fn as_lib_func_def(&self) -> LibFuncDef {
+        match self {
+            SierraLibFunc::Function(lib_func_def) => lib_func_def.clone(),
+            SierraLibFunc::Constant(_) => {
+                panic!("Expected SierraLibFunc to be function, got constant")
+            }
+            SierraLibFunc::InlineDataflow(_) => {
+                panic!("Expected SierraLibFunc to be function, got inline dataflow")
+            }
         }
     }
 }
