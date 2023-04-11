@@ -1,0 +1,46 @@
+type felt252 = felt252;
+type enum_member::enum_member::T = Struct<ut@enum_member::enum_member::T, felt252, felt252>;
+type enum_member::enum_member::E = Enum<ut@enum_member::enum_member::E, felt252, enum_member::enum_member::T>;
+type enum_member::enum_member::S = Struct<ut@enum_member::enum_member::S, felt252, enum_member::enum_member::E, felt252>;
+type Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S> = Struct<ut@Tuple, enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>;
+
+libfunc felt252_const<0> = felt252_const<0>;
+libfunc felt252_const<3618502788666131213697322783095070105623107215331596699973092056135872020480> = felt252_const<3618502788666131213697322783095070105623107215331596699973092056135872020480>;
+libfunc enum_init<enum_member::enum_member::E, 0> = enum_init<enum_member::enum_member::E, 0>;
+libfunc felt252_const<20> = felt252_const<20>;
+libfunc struct_construct<enum_member::enum_member::S> = struct_construct<enum_member::enum_member::S>;
+libfunc felt252_const<10> = felt252_const<10>;
+libfunc felt252_const<11> = felt252_const<11>;
+libfunc felt252_const<12> = felt252_const<12>;
+libfunc struct_construct<enum_member::enum_member::T> = struct_construct<enum_member::enum_member::T>;
+libfunc enum_init<enum_member::enum_member::E, 1> = enum_init<enum_member::enum_member::E, 1>;
+libfunc felt252_const<15> = felt252_const<15>;
+libfunc felt252_const<16> = felt252_const<16>;
+libfunc felt252_const<1> = felt252_const<1>;
+libfunc struct_construct<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>> = struct_construct<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>>;
+libfunc store_temp<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>> = store_temp<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>>;
+
+felt252_const<0>() -> ([0]);
+felt252_const<3618502788666131213697322783095070105623107215331596699973092056135872020480>() -> ([1]);
+enum_init<enum_member::enum_member::E, 0>([1]) -> ([2]);
+felt252_const<20>() -> ([3]);
+struct_construct<enum_member::enum_member::S>([0], [2], [3]) -> ([4]);
+felt252_const<10>() -> ([5]);
+felt252_const<11>() -> ([6]);
+felt252_const<12>() -> ([7]);
+struct_construct<enum_member::enum_member::T>([6], [7]) -> ([8]);
+enum_init<enum_member::enum_member::E, 1>([8]) -> ([9]);
+felt252_const<3618502788666131213697322783095070105623107215331596699973092056135872020480>() -> ([10]);
+struct_construct<enum_member::enum_member::S>([5], [9], [10]) -> ([11]);
+felt252_const<3618502788666131213697322783095070105623107215331596699973092056135872020480>() -> ([12]);
+felt252_const<15>() -> ([13]);
+felt252_const<16>() -> ([14]);
+struct_construct<enum_member::enum_member::T>([13], [14]) -> ([15]);
+enum_init<enum_member::enum_member::E, 1>([15]) -> ([16]);
+felt252_const<1>() -> ([17]);
+struct_construct<enum_member::enum_member::S>([12], [16], [17]) -> ([18]);
+struct_construct<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>>([4], [11], [18]) -> ([19]);
+store_temp<Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>>([19]) -> ([20]);
+return([20]);
+
+enum_member::enum_member::main@0() -> (Tuple<enum_member::enum_member::S, enum_member::enum_member::S, enum_member::enum_member::S>);
