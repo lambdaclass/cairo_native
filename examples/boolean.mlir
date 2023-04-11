@@ -48,7 +48,7 @@ module attributes {llvm.data_layout = ""} {
   llvm.func internal @bool_and_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.extractvalue %arg1[0] : !llvm.struct<(i16, array<0 x i8>)> 
-    %2 = llvm.or %0, %1  : i16
+    %2 = llvm.and %0, %1  : i16
     %3 = llvm.mlir.undef : !llvm.struct<(i16, array<0 x i8>)>
     %4 = llvm.insertvalue %2, %3[0] : !llvm.struct<(i16, array<0 x i8>)> 
     llvm.return %4 : !llvm.struct<(i16, array<0 x i8>)>

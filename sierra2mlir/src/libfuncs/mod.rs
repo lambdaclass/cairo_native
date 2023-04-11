@@ -238,7 +238,7 @@ impl<'ctx> Compiler<'ctx> {
                         func_decl,
                         parent_block,
                         storage,
-                        BoolBinaryOp::Or,
+                        BoolBinaryOp::And,
                     )?;
                 }
                 "bool_xor_impl" => {
