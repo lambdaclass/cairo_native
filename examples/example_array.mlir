@@ -1,5 +1,5 @@
 module attributes {llvm.data_layout = ""} {
-  llvm.func @malloc(i64) -> !llvm.ptr
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
   llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"array_new<u64>"() -> !llvm.struct<(i32, i32, ptr)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
@@ -8,10 +8,11 @@ module attributes {llvm.data_layout = ""} {
     %2 = llvm.mlir.constant(8 : i32) : i32
     %3 = llvm.insertvalue %1, %0[0] : !llvm.struct<(i32, i32, ptr)> 
     %4 = llvm.insertvalue %2, %3[1] : !llvm.struct<(i32, i32, ptr)> 
-    %5 = llvm.mlir.constant(512 : i64) : i64
-    %6 = llvm.call @malloc(%5) : (i64) -> !llvm.ptr
-    %7 = llvm.insertvalue %6, %4[2] : !llvm.struct<(i32, i32, ptr)> 
-    llvm.return %7 : !llvm.struct<(i32, i32, ptr)>
+    %5 = llvm.mlir.constant(64 : i64) : i64
+    %6 = llvm.mlir.null : !llvm.ptr
+    %7 = llvm.call @realloc(%6, %5) : (!llvm.ptr, i64) -> !llvm.ptr
+    %8 = llvm.insertvalue %7, %4[2] : !llvm.struct<(i32, i32, ptr)> 
+    llvm.return %8 : !llvm.struct<(i32, i32, ptr)>
   }
   llvm.func internal @"array_append<u64>"(%arg0: !llvm.struct<(i32, i32, ptr)>, %arg1: i64) -> !llvm.struct<(i32, i32, ptr)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i32, i32, ptr)> 
@@ -19,15 +20,22 @@ module attributes {llvm.data_layout = ""} {
     %2 = llvm.icmp "slt" %0, %1 : i32
     llvm.cond_br %2, ^bb2(%arg0 : !llvm.struct<(i32, i32, ptr)>), ^bb1
   ^bb1:  // pred: ^bb0
-    llvm.br ^bb2(%arg0 : !llvm.struct<(i32, i32, ptr)>)
-  ^bb2(%3: !llvm.struct<(i32, i32, ptr)>):  // 2 preds: ^bb0, ^bb1
-    %4 = llvm.extractvalue %3[2] : !llvm.struct<(i32, i32, ptr)> 
-    %5 = llvm.getelementptr %4[%0] : (!llvm.ptr, i32) -> !llvm.ptr, i64
-    llvm.store %arg1, %5 : i64, !llvm.ptr
-    %6 = llvm.mlir.constant(1 : i32) : i32
-    %7 = llvm.add %0, %6  : i32
-    %8 = llvm.insertvalue %7, %3[0] : !llvm.struct<(i32, i32, ptr)> 
-    llvm.return %8 : !llvm.struct<(i32, i32, ptr)>
+    %3 = llvm.mlir.constant(2 : i32) : i32
+    %4 = llvm.mul %1, %3  : i32
+    %5 = llvm.zext %4 : i32 to i64
+    %6 = llvm.extractvalue %arg0[2] : !llvm.struct<(i32, i32, ptr)> 
+    %7 = llvm.call @realloc(%6, %5) : (!llvm.ptr, i64) -> !llvm.ptr
+    %8 = llvm.insertvalue %7, %arg0[2] : !llvm.struct<(i32, i32, ptr)> 
+    %9 = llvm.insertvalue %4, %8[1] : !llvm.struct<(i32, i32, ptr)> 
+    llvm.br ^bb2(%9 : !llvm.struct<(i32, i32, ptr)>)
+  ^bb2(%10: !llvm.struct<(i32, i32, ptr)>):  // 2 preds: ^bb0, ^bb1
+    %11 = llvm.extractvalue %10[2] : !llvm.struct<(i32, i32, ptr)> 
+    %12 = llvm.getelementptr %11[%0] : (!llvm.ptr, i32) -> !llvm.ptr, i64
+    llvm.store %arg1, %12 : i64, !llvm.ptr
+    %13 = llvm.mlir.constant(1 : i32) : i32
+    %14 = llvm.add %0, %13  : i32
+    %15 = llvm.insertvalue %14, %10[0] : !llvm.struct<(i32, i32, ptr)> 
+    llvm.return %15 : !llvm.struct<(i32, i32, ptr)>
   }
   llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<()>

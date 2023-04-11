@@ -1,5 +1,5 @@
 module attributes {llvm.data_layout = ""} {
-  llvm.func @malloc(i64) -> !llvm.ptr
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
   llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"enum_init<simple_enum::simple_enum::MyEnum, 0>"(%arg0: i8) -> !llvm.struct<(i16, array<8 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {

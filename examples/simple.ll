@@ -5,6 +5,8 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
 ; Function Attrs: alwaysinline norecurse nounwind

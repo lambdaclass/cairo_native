@@ -1414,7 +1414,7 @@ impl<'ctx> Compiler<'ctx> {
         let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
 
         let is_less =
-            self.op_cmp(&block, CmpOp::SignedLessThan, array_len.into(), array_capacity.into());
+            self.op_cmp(&block, CmpOp::UnsignedLess, array_len.into(), array_capacity.into());
 
         self.op_cond_br(
             &block,
