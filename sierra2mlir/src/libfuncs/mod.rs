@@ -957,10 +957,16 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::Function{
+            SierraLibFunc::Function {
                 // Skip range check
-                args: vec![PositionalArg{ loc: 1, ty: SierraType::Simple(src_type) }, PositionalArg{ loc: 2, ty: SierraType::Simple(src_type) }],
-                return_types: vec![PositionalArg{ loc: 1, ty: SierraType::Simple(src_type) }, PositionalArg{ loc: 2, ty: SierraType::Simple(src_type) }],
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
+                ],
+                return_types: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
+                ],
             },
         );
         parent_block.append_operation(func);

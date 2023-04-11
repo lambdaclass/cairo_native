@@ -124,7 +124,9 @@ impl<'ctx> Compiler<'ctx> {
                                 self.inline_jump(invocation, block, &mut variables, &blocks)?;
                                 jump_processed = true;
                             }
-                            name_without_generics if is_int_is_zero_libfunc(name_without_generics) => {
+                            name_without_generics
+                                if is_int_is_zero_libfunc(name_without_generics) =>
+                            {
                                 self.inline_int_is_zero(
                                     name_without_generics,
                                     invocation,
@@ -373,12 +375,12 @@ impl<'ctx> Compiler<'ctx> {
 }
 
 fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
-    name_without_generics == "u8_is_zero" ||
-    name_without_generics == "u16_is_zero" ||
-    name_without_generics == "u32_is_zero" ||
-    name_without_generics == "u64_is_zero" ||
-    name_without_generics == "u128_is_zero" ||
-    name_without_generics == "felt252_is_zero"
+    name_without_generics == "u8_is_zero"
+        || name_without_generics == "u16_is_zero"
+        || name_without_generics == "u32_is_zero"
+        || name_without_generics == "u64_is_zero"
+        || name_without_generics == "u128_is_zero"
+        || name_without_generics == "felt252_is_zero"
 }
 
 fn calculate_block_ranges_per_function(
