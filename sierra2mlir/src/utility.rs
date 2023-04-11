@@ -34,14 +34,24 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// Utility function to create a printf call.
+    /// Null-terminates the string iff it is not already null-terminated
     pub fn call_printf(
         &'ctx self,
         block: BlockRef<'ctx>,
         fmt: &str,
         values: &[Value],
     ) -> Result<()> {
+
+        let terminated_fmt_string = if fmt.ends_with('\0') {
+            format!("{fmt}")
+        } else if fmt.contains('\0') {
+            panic!("Format string \"{fmt}\" to printf contains data after \\0")
+        } else {
+            format!("{fmt}\0")
+        };
+
         let i32_type = Type::integer(&self.context, 32);
-        let fmt_len = fmt.as_bytes().len();
+        let fmt_len = terminated_fmt_string.as_bytes().len();
 
         let i8_type = Type::integer(&self.context, 8);
         let arr_ty =
@@ -56,7 +66,7 @@ impl<'ctx> Compiler<'ctx> {
             &block,
             &format!(
                 "dense<[{}]> : tensor<{} x {}>",
-                fmt.as_bytes().iter().join(", "),
+                terminated_fmt_string.as_bytes().iter().join(", "),
                 fmt_len,
                 i8_type
             ),
