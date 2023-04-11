@@ -16,6 +16,9 @@ use test_case::test_case;
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
 #[test_case("fib_counter")]
+#[test_case("bitwise/and")]
+#[test_case("bitwise/or")]
+#[test_case("bitwise/xor")]
 #[test_case("bool/and")]
 #[test_case("bool/not")]
 #[test_case("bool/or")]

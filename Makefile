@@ -19,6 +19,7 @@ compile-example-optimized: check-mlir
 	RUST_LOG="debug" cargo r -- compile examples/simple.sierra --optimize
 
 build-examples: check-mlir
+	cargo r -- compile examples/bitwise.sierra -o examples/bitwise.mlir -m
 	cargo r -- compile examples/boolean.sierra -o examples/boolean.mlir -m
 	cargo r -- compile examples/casts.sierra -o examples/casts.mlir -m
 	# cargo r -- compile examples/felt_div.sierra -o examples/felt_div.mlir # Requires arrays (for panic)
@@ -29,6 +30,7 @@ build-examples: check-mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple.mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
 	cargo r -- compile examples/uint.sierra -o examples/uint.mlir
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/bitwise.mlir -o examples/bitwise.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/boolean.mlir -o examples/boolean.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/casts.mlir -o examples/casts.ll
 	# $(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/felt_div.mlir -o examples/felt_div.ll
