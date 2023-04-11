@@ -22,6 +22,7 @@ use test_case::test_case;
 #[test_case("bool/and")]
 #[test_case("bool/not")]
 #[test_case("bool/or")]
+#[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
 #[test_case("felt_ops/add")]
 #[test_case("felt_ops/sub")]
