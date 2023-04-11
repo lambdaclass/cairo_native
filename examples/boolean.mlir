@@ -26,9 +26,6 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<0 x i8>)>
     llvm.return %5 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @"store_temp<core::bool>"(%arg0: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
-    llvm.return %arg0 : !llvm.struct<(i16, array<0 x i8>)>
-  }
   llvm.func internal @bool_or_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.extractvalue %arg1[0] : !llvm.struct<(i16, array<0 x i8>)> 
@@ -65,9 +62,6 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.zext %0 : i16 to i256
     llvm.return %1 : i256
-  }
-  llvm.func internal @"store_temp<felt252>"(%arg0: i256) -> i256 {
-    llvm.return %arg0 : i256
   }
   llvm.func internal @print_felt252(%arg0: i256) {
     %0 = llvm.mlir.constant(224 : i256) : i256
@@ -165,26 +159,17 @@ module attributes {llvm.data_layout = ""} {
     %1 = llvm.call @"enum_init<core::bool, 1>"(%0) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
     %2 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
     %3 = llvm.call @"enum_init<core::bool, 0>"(%2) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %4 = llvm.call @"store_temp<core::bool>"(%1) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %5 = llvm.call @"store_temp<core::bool>"(%3) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %6 = llvm.call @bool_or_impl(%4, %5) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %7 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
-    %8 = llvm.call @"enum_init<core::bool, 0>"(%7) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %9 = llvm.call @"store_temp<core::bool>"(%8) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %10 = llvm.call @bool_not_impl(%9) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %11 = llvm.call @"store_temp<core::bool>"(%10) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %12 = llvm.call @bool_not_impl(%11) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %13 = llvm.call @"store_temp<core::bool>"(%6) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %14 = llvm.call @"store_temp<core::bool>"(%12) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %15 = llvm.call @bool_and_impl(%13, %14) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %16 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
-    %17 = llvm.call @"enum_init<core::bool, 0>"(%16) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %18 = llvm.call @"store_temp<core::bool>"(%15) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %19 = llvm.call @"store_temp<core::bool>"(%17) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %20 = llvm.call @bool_xor_impl(%18, %19) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
-    %21 = llvm.call @bool_to_felt252(%20) : (!llvm.struct<(i16, array<0 x i8>)>) -> i256
-    %22 = llvm.call @"store_temp<felt252>"(%21) : (i256) -> i256
-    llvm.return %22 : i256
+    %4 = llvm.call @bool_or_impl(%1, %3) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %5 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
+    %6 = llvm.call @"enum_init<core::bool, 0>"(%5) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %7 = llvm.call @bool_not_impl(%6) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %8 = llvm.call @bool_not_impl(%7) : (!llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %9 = llvm.call @bool_and_impl(%4, %8) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %10 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
+    %11 = llvm.call @"enum_init<core::bool, 0>"(%10) : (!llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %12 = llvm.call @bool_xor_impl(%9, %11) : (!llvm.struct<(i16, array<0 x i8>)>, !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)>
+    %13 = llvm.call @bool_to_felt252(%12) : (!llvm.struct<(i16, array<0 x i8>)>) -> i256
+    llvm.return %13 : i256
   }
   llvm.func @"_mlir_ciface_boolean::boolean::main"() -> i256 attributes {llvm.emit_c_interface} {
     %0 = llvm.call @"boolean::boolean::main"() : () -> i256

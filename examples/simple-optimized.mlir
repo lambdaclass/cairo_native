@@ -1,11 +1,5 @@
 module attributes {llvm.data_layout = ""} {
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"dup<felt252>"(%arg0: i256) -> !llvm.struct<(i256, i256)> {
-    %0 = llvm.mlir.undef : !llvm.struct<(i256, i256)>
-    %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
-    %2 = llvm.insertvalue %arg0, %1[1] : !llvm.struct<(i256, i256)> 
-    llvm.return %2 : !llvm.struct<(i256, i256)>
-  }
   llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
     %0 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
     %1 = llvm.add %arg0, %arg1  : i256
@@ -34,9 +28,6 @@ module attributes {llvm.data_layout = ""} {
     %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(i256, i256)> 
     %2 = llvm.insertvalue %arg1, %1[1] : !llvm.struct<(i256, i256)> 
     llvm.return %2 : !llvm.struct<(i256, i256)>
-  }
-  llvm.func internal @"store_temp<Tuple<felt252, felt252>>"(%arg0: !llvm.struct<(i256, i256)>) -> !llvm.struct<(i256, i256)> {
-    llvm.return %arg0 : !llvm.struct<(i256, i256)>
   }
   llvm.func @"simple::simple::something"(%arg0: i256) -> !llvm.struct<(i256, i256)> attributes {llvm.emit_c_interface} {
     %0 = llvm.mlir.constant(0 : i256) : i256
