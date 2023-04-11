@@ -124,14 +124,16 @@ impl<'ctx> Compiler<'ctx> {
                                 self.inline_jump(invocation, block, &mut variables, &blocks)?;
                                 jump_processed = true;
                             }
-                            "felt252_is_zero" => {
-                                self.inline_felt252_is_zero(
+                            name_without_generics if is_int_is_zero_libfunc(name_without_generics) => {
+                                self.inline_int_is_zero(
+                                    name_without_generics,
                                     invocation,
                                     block,
                                     &mut variables,
                                     &blocks,
                                     statement_idx,
                                 )?;
+
                                 jump_processed = true;
                             }
                             "enum_match" => {
@@ -368,6 +370,15 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect::<BTreeMap<_, _>>()
     }
+}
+
+fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
+    name_without_generics == "u8_is_zero" ||
+    name_without_generics == "u16_is_zero" ||
+    name_without_generics == "u32_is_zero" ||
+    name_without_generics == "u64_is_zero" ||
+    name_without_generics == "u128_is_zero" ||
+    name_without_generics == "felt252_is_zero"
 }
 
 fn calculate_block_ranges_per_function(

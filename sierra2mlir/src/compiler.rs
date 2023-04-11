@@ -313,7 +313,7 @@ impl<'ctx> Compiler<'ctx> {
     /// Only the MLIR op.
     pub fn op_rem<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
-            operation::Builder::new("arith.remsi", Location::unknown(&self.context))
+            operation::Builder::new("arith.remui", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
                 .add_results(&[lhs.r#type()])
                 .build(),
