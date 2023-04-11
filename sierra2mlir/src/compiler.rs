@@ -13,7 +13,10 @@ use melior_next::{
 };
 use std::{cmp::Ordering, collections::HashMap, ops::Deref};
 
-use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
+use crate::{
+    libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME,
+    userfuncs::user_func_def::UserFuncDef,
+};
 
 pub struct Compiler<'ctx> {
     pub program: &'ctx Program,
@@ -145,12 +148,6 @@ impl<'ctx> SierraType<'ctx> {
             } => Some(variants_types),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct UserFuncDef<'ctx> {
-    pub(crate) args: Vec<SierraType<'ctx>>,
-    pub(crate) return_types: Vec<SierraType<'ctx>>,
 }
 
 /// Types, functions, etc storage.

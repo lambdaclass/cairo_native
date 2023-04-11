@@ -103,9 +103,9 @@ impl<'ctx> Compiler<'ctx> {
         variables: &HashMap<u64, Variable>,
         storage: &Storage,
     ) -> Result<()> {
-        let libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
+        let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, storage_type, variants_types) = match &libfuncdef.args[0].ty {
+        let (tag_type, storage_type, variants_types) = match &args[0].ty {
             SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
                 (tag_type, storage_type, variants_types)
             }

@@ -326,7 +326,7 @@ impl<'ctx> Compiler<'ctx> {
                 let upper = self.op_trunc(&block, upper_shifted.result(0)?.into(), self.u64_type());
                 self.call_printf(
                     block,
-                    "%lX%lX\n",
+                    "%lX%016lX\n",
                     &[upper.result(0)?.into(), lower.result(0)?.into()],
                 )?;
             }
