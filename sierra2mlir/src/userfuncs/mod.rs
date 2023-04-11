@@ -118,7 +118,7 @@ impl<'ctx> Compiler<'ctx> {
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
             let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();
-            if type_name == "RangeCheck" || type_name == "Bitwise" {
+            if is_omitted_builtin_type(type_name) {
                 continue;
             }
             let result_val = raw_res.result(position)?;
