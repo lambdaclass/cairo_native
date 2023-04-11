@@ -122,10 +122,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
+            let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();
+            if type_name == "RangeCheck" || type_name == "Bitwise" {
+                continue;
+            }
             let result_val = raw_res.result(position)?;
             self.op_func_call(
                 &block,
-                &format!("print_{}", type_decl.id.debug_name.as_ref().unwrap().as_str()),
+                &format!("print_{}", type_name),
                 &[result_val.into()],
                 &[],
             )?;
@@ -251,6 +255,8 @@ fn get_all_types_to_print(
                     types_to_print.push(type_decl.clone());
                 }
             }
+            // Specifically omit these types
+            "RangeCheck" | "Bitwise" => {}
             _ => todo!("Felt representation for {}", type_category),
         }
     }

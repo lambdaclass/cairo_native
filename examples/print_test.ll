@@ -7,10 +7,6 @@ declare void @free(ptr)
 
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i256 @"store_temp<felt252>"(i256 %0) {
-  ret i256 %0
-}
-
 define internal void @print_felt252(i256 %0) {
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
@@ -72,8 +68,7 @@ define i256 @"print_test::print_test::main"() {
   br label %1
 
 1:                                                ; preds = %0
-  %2 = call i256 @"store_temp<felt252>"(i256 24)
-  ret i256 %2
+  ret i256 24
 }
 
 define i256 @"_mlir_ciface_print_test::print_test::main"() {

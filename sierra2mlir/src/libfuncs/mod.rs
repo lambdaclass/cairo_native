@@ -82,7 +82,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_struct_deconstruct(func_decl, parent_block, storage)?;
                 }
                 "store_temp" | "rename" => {
-                    self.create_identity_function(func_decl, storage)?;
+                    self.register_identity_function(func_decl, storage)?;
                 }
                 "u8_const" => {
                     self.create_libfunc_uint_const(func_decl, self.u8_type(), storage);
@@ -427,9 +427,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    /// Returns the given value, needed so its handled nicely when processing statements
-    /// and the variable id gets assigned to the returned value.
-    pub fn create_identity_function(
+    pub fn register_identity_function(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
@@ -1053,8 +1051,8 @@ impl<'ctx> Compiler<'ctx> {
                 parent_block.append_operation(func);
             }
             Ordering::Equal => {
-                // Similar to store_local and rename, create an identity function for ease of dataflow processing, under the assumption the optimiser will optimise it out
-                self.create_identity_function(func_decl, storage)?;
+                // Similar to store_local and rename, create a libfuncdef that tells statement processing to just forward its argument
+                self.register_identity_function(func_decl, storage)?;
             }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }

@@ -17,10 +17,6 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-define internal { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %0) {
-  ret { i16, [8 x i8] } %0
-}
-
 define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 %0) {
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
@@ -137,8 +133,7 @@ define { i16, [8 x i8] } @"simple_enum::simple_enum::my_enum_a"() {
 
 1:                                                ; preds = %0
   %2 = call { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 0>"(i8 4)
-  %3 = call { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %2)
-  ret { i16, [8 x i8] } %3
+  ret { i16, [8 x i8] } %2
 }
 
 define void @"_mlir_ciface_simple_enum::simple_enum::my_enum_a"(ptr %0) {
@@ -152,8 +147,7 @@ define { i16, [8 x i8] } @"simple_enum::simple_enum::my_enum_b"() {
 
 1:                                                ; preds = %0
   %2 = call { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 8)
-  %3 = call { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %2)
-  ret { i16, [8 x i8] } %3
+  ret { i16, [8 x i8] } %2
 }
 
 define void @"_mlir_ciface_simple_enum::simple_enum::my_enum_b"(ptr %0) {
@@ -167,8 +161,7 @@ define { i16, [8 x i8] } @"simple_enum::simple_enum::my_enum_c"() {
 
 1:                                                ; preds = %0
   %2 = call { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 2>"(i32 16)
-  %3 = call { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %2)
-  ret { i16, [8 x i8] } %3
+  ret { i16, [8 x i8] } %2
 }
 
 define void @"_mlir_ciface_simple_enum::simple_enum::my_enum_c"(ptr %0) {
@@ -182,8 +175,7 @@ define { i16, [8 x i8] } @"simple_enum::simple_enum::my_enum_d"() {
 
 1:                                                ; preds = %0
   %2 = call { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 3>"(i64 16)
-  %3 = call { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %2)
-  ret { i16, [8 x i8] } %3
+  ret { i16, [8 x i8] } %2
 }
 
 define void @"_mlir_ciface_simple_enum::simple_enum::my_enum_d"(ptr %0) {
@@ -197,8 +189,7 @@ define { i16, [8 x i8] } @"simple_enum::simple_enum::main"() {
 
 1:                                                ; preds = %0
   %2 = call { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 3>"(i64 16)
-  %3 = call { i16, [8 x i8] } @"store_temp<simple_enum::simple_enum::MyEnum>"({ i16, [8 x i8] } %2)
-  ret { i16, [8 x i8] } %3
+  ret { i16, [8 x i8] } %2
 }
 
 define void @"_mlir_ciface_simple_enum::simple_enum::main"(ptr %0) {
