@@ -9,13 +9,13 @@ use crate::compiler::{Compiler, Storage};
 
 use super::Variable;
 
-impl<'a, 'ctx> Compiler<'ctx> {
+impl<'block, 'ctx> Compiler<'ctx> {
     pub fn process_function_call(
         &self,
         id: &str,
         invocation: &GenInvocation<StatementIdx>,
-        block: &'a Block,
-        variables: &mut HashMap<u64, Variable<'a>>,
+        block: &'block Block,
+        variables: &mut HashMap<u64, Variable<'block>>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let callee_name =

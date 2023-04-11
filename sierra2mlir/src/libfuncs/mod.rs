@@ -16,7 +16,6 @@ use crate::{
 
 use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
 
-pub mod inline_funcs;
 pub mod lib_func_def;
 pub mod sierra_enum;
 
