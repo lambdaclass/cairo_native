@@ -68,6 +68,9 @@ impl<'ctx> Compiler<'ctx> {
                 "dup" => {
                     self.register_libfunc_dup(func_decl, storage)?;
                 }
+                "snapshot_take" => {
+                    self.register_libfunc_snapshot_take(func_decl, storage)?;
+                }
                 "enum_init" => {
                     self.create_libfunc_enum_init(func_decl, parent_block, storage)?;
                 }
@@ -461,6 +464,33 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn register_libfunc_dup(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = match &func_decl.long_id.generic_args[0] {
+            GenericArg::UserType(_) => todo!(),
+            GenericArg::Type(type_id) => {
+                storage.types.get(&type_id.id.to_string()).expect("type to exist").clone()
+            }
+            GenericArg::Value(_) => todo!(),
+            GenericArg::UserFunc(_) => todo!(),
+            GenericArg::Libfunc(_) => todo!(),
+        };
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::InlineDataflow(vec![
+                LibFuncArg { loc: 0, ty: arg_type.clone() },
+                LibFuncArg { loc: 0, ty: arg_type },
+            ]),
+        );
+
+        Ok(())
+    }
+
+    pub fn register_libfunc_snapshot_take(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
