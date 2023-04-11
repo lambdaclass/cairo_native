@@ -35,6 +35,7 @@ use test_case::test_case;
 #[test_case("structs/bigger")]
 #[test_case("structs/nested")]
 #[test_case("structs/enum_member")]
+#[test_case("uint/consts")]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
