@@ -318,17 +318,19 @@ impl<'ctx> Compiler<'ctx> {
             "u32" => {
                 self.call_printf(block, "%X\n", &[arg])?;
             }
-            "u64" => {
-                self.call_printf(block, "%lX\n", &[arg])?
-            }
+            "u64" => self.call_printf(block, "%lX\n", &[arg])?,
             "u128" => {
                 let lower = self.op_trunc(&block, arg, self.u64_type());
                 let shift_amount = self.op_u128_const(&block, "64");
                 let upper_shifted = self.op_shru(&block, arg, shift_amount.result(0)?.into());
                 let upper = self.op_trunc(&block, upper_shifted.result(0)?.into(), self.u64_type());
-                self.call_printf(block, "%lX%lX\n", &[upper.result(0)?.into(), lower.result(0)?.into()])?;
+                self.call_printf(
+                    block,
+                    "%lX%lX\n",
+                    &[upper.result(0)?.into(), lower.result(0)?.into()],
+                )?;
             }
-            _ => unreachable!("Encountered unexpected type {} when creating uint print", uint_name)
+            _ => unreachable!("Encountered unexpected type {} when creating uint print", uint_name),
         }
 
         self.op_return(&block, &[]);
