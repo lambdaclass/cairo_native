@@ -74,12 +74,7 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Utility function to create a printf call.
     /// Null-terminates the string iff it is not already null-terminated
-    pub fn call_printf<'a>(
-        &'a self,
-        block: &'a Block,
-        fmt: &str,
-        values: &[Value],
-    ) -> Result<()> {
+    pub fn call_printf<'a>(&'a self, block: &'a Block, fmt: &str, values: &[Value]) -> Result<()> {
         let terminated_fmt_string = if fmt.ends_with('\0') {
             fmt.to_string()
         } else if fmt.contains('\0') {
