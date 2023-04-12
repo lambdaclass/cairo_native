@@ -10,11 +10,11 @@ use tracing::debug;
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
-    types::DEFAULT_PRIME,
+    types::{is_omitted_builtin_type, DEFAULT_PRIME},
     utility::create_fn_signature,
 };
 
-use self::lib_func_def::{LibFuncArg, LibFuncDef, SierraLibFunc};
+use self::lib_func_def::{PositionalArg, SierraLibFunc};
 
 pub mod lib_func_def;
 pub mod sierra_enum;
@@ -63,7 +63,7 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "felt252_is_zero" => {
                     // Note no actual function is created here, however types are registered
-                    self.register_libfunc_felt252_is_zero(func_decl, storage);
+                    self.register_libfunc_int_is_zero(func_decl, self.felt_type(), storage);
                 }
                 "dup" => {
                     self.register_libfunc_dup(func_decl, storage)?;
@@ -82,7 +82,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_struct_deconstruct(func_decl, parent_block, storage)?;
                 }
                 "store_temp" | "rename" => {
-                    self.create_identity_function(func_decl, storage)?;
+                    self.register_identity_function(func_decl, storage)?;
                 }
                 "u8_const" => {
                     self.create_libfunc_uint_const(func_decl, self.u8_type(), storage);
@@ -98,6 +98,21 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_const" => {
                     self.create_libfunc_uint_const(func_decl, self.u128_type(), storage);
+                }
+                "u8_is_zero" => {
+                    self.register_libfunc_int_is_zero(func_decl, self.u8_type(), storage);
+                }
+                "u16_is_zero" => {
+                    self.register_libfunc_int_is_zero(func_decl, self.u16_type(), storage);
+                }
+                "u32_is_zero" => {
+                    self.register_libfunc_int_is_zero(func_decl, self.u32_type(), storage);
+                }
+                "u64_is_zero" => {
+                    self.register_libfunc_int_is_zero(func_decl, self.u64_type(), storage);
+                }
+                "u128_is_zero" => {
+                    self.register_libfunc_int_is_zero(func_decl, self.u128_type(), storage);
                 }
                 "u8_to_felt252" => {
                     self.create_libfunc_uint_to_felt252(
@@ -267,7 +282,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        storage.libfuncs.insert(id, SierraLibFunc::create_simple(vec![], vec![]));
+        storage.libfuncs.insert(id, SierraLibFunc::create_function_all_args(vec![], vec![]));
     }
 
     pub fn create_libfunc_felt_const(
@@ -360,7 +375,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 arg_type.get_field_sierra_types().unwrap().to_vec(),
                 vec![arg_type],
             ),
@@ -419,35 +434,43 @@ impl<'ctx> Compiler<'ctx> {
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
-        storage
-            .libfuncs
-            .insert(fn_id, SierraLibFunc::create_simple(vec![struct_type], return_types));
+        storage.libfuncs.insert(
+            fn_id,
+            SierraLibFunc::create_function_all_args(vec![struct_type], return_types),
+        );
 
         parent_block.append_operation(fn_op);
         Ok(())
     }
 
-    /// Returns the given value, needed so its handled nicely when processing statements
-    /// and the variable id gets assigned to the returned value.
-    pub fn create_identity_function(
+    pub fn register_identity_function(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
-        let arg_type = match &func_decl.long_id.generic_args[0] {
+        let results = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).expect("type to exist").clone()
+                if is_omitted_builtin_type(type_id.debug_name.as_ref().unwrap().as_str()) {
+                    vec![]
+                } else {
+                    vec![PositionalArg {
+                        loc: 0,
+                        ty: storage
+                            .types
+                            .get(&type_id.id.to_string())
+                            .expect("type to exist")
+                            .clone(),
+                    }]
+                }
             }
             GenericArg::Value(_) => todo!(),
             GenericArg::UserFunc(_) => todo!(),
             GenericArg::Libfunc(_) => todo!(),
         };
-        storage
-            .libfuncs
-            .insert(id, SierraLibFunc::InlineDataflow(vec![LibFuncArg { loc: 0, ty: arg_type }]));
+        storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(results));
 
         Ok(())
     }
@@ -458,23 +481,26 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
+        let results = match &func_decl.long_id.generic_args[0] {
             GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).expect("type to exist").clone()
+                if is_omitted_builtin_type(type_id.debug_name.as_ref().unwrap().as_str()) {
+                    vec![]
+                } else {
+                    let arg_type =
+                        storage.types.get(&type_id.id.to_string()).expect("type to exist").clone();
+                    vec![
+                        PositionalArg { loc: 0, ty: arg_type.clone() },
+                        PositionalArg { loc: 0, ty: arg_type },
+                    ]
+                }
             }
             GenericArg::Value(_) => todo!(),
             GenericArg::UserFunc(_) => todo!(),
             GenericArg::Libfunc(_) => todo!(),
         };
 
-        storage.libfuncs.insert(
-            id,
-            SierraLibFunc::InlineDataflow(vec![
-                LibFuncArg { loc: 0, ty: arg_type.clone() },
-                LibFuncArg { loc: 0, ty: arg_type },
-            ]),
-        );
+        storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(results));
 
         Ok(())
     }
@@ -535,7 +561,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block.append_operation(func);
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
                 vec![sierra_felt_type],
             ),
@@ -601,7 +627,7 @@ impl<'ctx> Compiler<'ctx> {
         parent_block.append_operation(func);
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
                 vec![sierra_felt_type],
             ),
@@ -656,7 +682,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
                 vec![sierra_felt_type],
             ),
@@ -698,7 +724,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
                 vec![sierra_felt_type],
             ),
@@ -706,18 +732,22 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn register_libfunc_felt252_is_zero(
+    pub fn register_libfunc_int_is_zero(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
         storage: &mut Storage<'ctx>,
     ) {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::Function(LibFuncDef {
-                args: vec![LibFuncArg { loc: 0, ty: SierraType::Simple(self.felt_type()) }],
-                return_types: vec![vec![], vec![SierraType::Simple(self.felt_type())]],
-            }),
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg { loc: 0, ty: SierraType::Simple(op_type) }],
+                return_types: vec![
+                    vec![],
+                    vec![PositionalArg { loc: 0, ty: SierraType::Simple(op_type) }],
+                ],
+            },
         );
     }
 
@@ -746,10 +776,13 @@ impl<'ctx> Compiler<'ctx> {
         {
             storage.libfuncs.insert(
                 id,
-                SierraLibFunc::Function(LibFuncDef {
-                    args: vec![LibFuncArg { loc: 0, ty: arg_type }],
-                    return_types: variants_types.into_iter().map(|x| [x].to_vec()).collect_vec(),
-                }),
+                SierraLibFunc::Branching {
+                    args: vec![PositionalArg { loc: 0, ty: arg_type }],
+                    return_types: variants_types
+                        .into_iter()
+                        .map(|x| vec![PositionalArg { loc: 0, ty: x }])
+                        .collect_vec(),
+                },
             );
         } else {
             panic!("enum_match arg_type should be a enum")
@@ -781,7 +814,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![SierraType::Simple(src_type)],
                 vec![SierraType::Simple(self.felt_type())],
             ),
@@ -823,7 +856,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![SierraType::Simple(src_type), SierraType::Simple(src_type)],
                 vec![SierraType::Simple(dst_type)],
             ),
@@ -841,36 +874,32 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let region = Region::new();
         let block = region.append_block(Block::new(&[
-            (self.range_check_type(), Location::unknown(&self.context)),
             (self.u128_type(), Location::unknown(&self.context)),
             (self.u128_type(), Location::unknown(&self.context)),
         ]));
 
-        let op_zext_lhs = self.op_zext(&block, block.argument(1)?.into(), self.u256_type());
-        let op_zext_rhs = self.op_zext(&block, block.argument(2)?.into(), self.u256_type());
+        let op_zext_lhs = self.op_zext(&block, block.argument(0)?.into(), self.u256_type());
+        let op_zext_rhs = self.op_zext(&block, block.argument(1)?.into(), self.u256_type());
 
         let op_mul =
             self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
 
-        let op_mul_hi = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
-        let op_mul_lo = {
+        let op_mul_lo = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
+        let op_mul_hi = {
             let op_const = self.op_const(&block, "128", self.u256_type());
             let op_shru =
                 self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
             self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
         };
 
-        self.op_return(
-            &block,
-            &[block.argument(0)?.into(), op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()],
-        );
+        self.op_return(&block, &[op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
             &create_fn_signature(
-                &[self.range_check_type(), self.u128_type(), self.u128_type()],
-                &[self.range_check_type(), self.u128_type(), self.u128_type()],
+                &[self.u128_type(), self.u128_type()],
+                &[self.u128_type(), self.u128_type()],
             ),
             vec![region],
             false,
@@ -879,18 +908,17 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
-                vec![
-                    SierraType::Simple(self.range_check_type()),
-                    SierraType::Simple(self.u128_type()),
-                    SierraType::Simple(self.u128_type()),
+            SierraLibFunc::Function {
+                // Skip the range check argument and return
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.u128_type()) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u128_type()) },
                 ],
-                vec![
-                    SierraType::Simple(self.range_check_type()),
-                    SierraType::Simple(self.u128_type()),
-                    SierraType::Simple(self.u128_type()),
+                return_types: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.u128_type()) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u128_type()) },
                 ],
-            ),
+            },
         );
         parent_block.append_operation(func);
 
@@ -906,26 +934,22 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let region = Region::new();
         let block = region.append_block(Block::new(&[
-            (self.range_check_type(), Location::unknown(&self.context)),
             (src_type, Location::unknown(&self.context)),
             (src_type, Location::unknown(&self.context)),
         ]));
 
-        let op_div = self.op_div(&block, block.argument(1)?.into(), block.argument(2)?.into());
-        let op_rem = self.op_rem(&block, block.argument(1)?.into(), block.argument(2)?.into());
+        let lhs = block.argument(0)?.into();
+        let rhs = block.argument(1)?.into();
 
-        self.op_return(
-            &block,
-            &[block.argument(0)?.into(), op_div.result(0)?.into(), op_rem.result(0)?.into()],
-        );
+        let op_div = self.op_div(&block, lhs, rhs);
+        let op_rem = self.op_rem(&block, lhs, rhs);
+
+        self.op_return(&block, &[op_div.result(0)?.into(), op_rem.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let func = self.op_func(
             &id,
-            &create_fn_signature(
-                &[self.range_check_type(), src_type, src_type],
-                &[self.range_check_type(), src_type, src_type],
-            ),
+            &create_fn_signature(&[src_type, src_type], &[src_type, src_type]),
             vec![region],
             false,
             false,
@@ -933,18 +957,17 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id,
-            SierraLibFunc::create_simple(
-                vec![
-                    SierraType::Simple(self.range_check_type()),
-                    SierraType::Simple(src_type),
-                    SierraType::Simple(src_type),
+            SierraLibFunc::Function {
+                // Skip range check
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
                 ],
-                vec![
-                    SierraType::Simple(self.range_check_type()),
-                    SierraType::Simple(src_type),
-                    SierraType::Simple(src_type),
+                return_types: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
                 ],
-            ),
+            },
         );
         parent_block.append_operation(func);
 
@@ -986,13 +1009,18 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             fn_id,
-            SierraLibFunc::Function(LibFuncDef {
+            SierraLibFunc::Function {
+                // Skip bitwise argument and return
                 args: vec![
-                    LibFuncArg { loc: 1, ty: SierraType::Simple(data_in[0]) },
-                    LibFuncArg { loc: 2, ty: SierraType::Simple(data_in[1]) },
+                    PositionalArg { loc: 1, ty: SierraType::Simple(data_in[0]) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(data_in[1]) },
                 ],
-                return_types: vec![data_out.iter().copied().map(SierraType::Simple).collect_vec()],
-            }),
+                return_types: data_out
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, ty)| PositionalArg { loc: idx + 1, ty: SierraType::Simple(*ty) })
+                    .collect_vec(),
+            },
         );
 
         parent_block.append_operation(fn_op);
@@ -1047,14 +1075,17 @@ impl<'ctx> Compiler<'ctx> {
 
                 storage.libfuncs.insert(
                     id,
-                    SierraLibFunc::create_simple(vec![src_sierra_type], vec![dst_sierra_type]),
+                    SierraLibFunc::create_function_all_args(
+                        vec![src_sierra_type],
+                        vec![dst_sierra_type],
+                    ),
                 );
 
                 parent_block.append_operation(func);
             }
             Ordering::Equal => {
-                // Similar to store_local and rename, create an identity function for ease of dataflow processing, under the assumption the optimiser will optimise it out
-                self.create_identity_function(func_decl, storage)?;
+                // Similar to store_local and rename, create a libfuncdef that tells statement processing to just forward its argument
+                self.register_identity_function(func_decl, storage)?;
             }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }
@@ -1135,7 +1166,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             fn_id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![bool_sierra_type.clone(), bool_sierra_type.clone()],
                 vec![bool_sierra_type.clone()],
             ),
@@ -1204,7 +1235,10 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             fn_id,
-            SierraLibFunc::create_simple(vec![bool_sierra_type.clone()], vec![bool_sierra_type]),
+            SierraLibFunc::create_function_all_args(
+                vec![bool_sierra_type.clone()],
+                vec![bool_sierra_type],
+            ),
         );
 
         parent_block.append_operation(fn_op);
@@ -1260,7 +1294,7 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             fn_id,
-            SierraLibFunc::create_simple(
+            SierraLibFunc::create_function_all_args(
                 vec![bool_sierra_type],
                 vec![SierraType::Simple(self.felt_type())],
             ),

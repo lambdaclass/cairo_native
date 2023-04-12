@@ -300,19 +300,37 @@ impl<'ctx> Compiler<'ctx> {
         let block = region
             .append_block(Block::new(&[(uint_type.get_type(), Location::unknown(&self.context))]));
 
-        let arg = block.argument(0)?;
+        let arg = block.argument(0)?.into();
 
         let function_type = create_fn_signature(&[uint_type.get_type()], &[]);
 
         let uint_name = sierra_type_declaration.id.debug_name.unwrap();
 
-        match arg.r#type().get_width().unwrap().cmp(&32) {
-            std::cmp::Ordering::Less => {
-                let value_32bit = self.op_zext(&block, arg.into(), self.u32_type());
-                self.call_printf(block, "%X\n\0", &[value_32bit.result(0)?.into()])?;
+        match uint_name.as_str() {
+            "u8" => {
+                let value_32bit = self.op_zext(&block, arg, self.u32_type());
+                self.call_printf(block, "%X\n", &[value_32bit.result(0)?.into()])?;
             }
-            std::cmp::Ordering::Equal => self.call_printf(block, "%X\n\0", &[arg.into()])?,
-            std::cmp::Ordering::Greater => self.call_printf(block, "%lX\n\0", &[arg.into()])?,
+            "u16" => {
+                let value_32bit = self.op_zext(&block, arg, self.u32_type());
+                self.call_printf(block, "%X\n", &[value_32bit.result(0)?.into()])?;
+            }
+            "u32" => {
+                self.call_printf(block, "%X\n", &[arg])?;
+            }
+            "u64" => self.call_printf(block, "%lX\n", &[arg])?,
+            "u128" => {
+                let lower = self.op_trunc(&block, arg, self.u64_type());
+                let shift_amount = self.op_u128_const(&block, "64");
+                let upper_shifted = self.op_shru(&block, arg, shift_amount.result(0)?.into());
+                let upper = self.op_trunc(&block, upper_shifted.result(0)?.into(), self.u64_type());
+                self.call_printf(
+                    block,
+                    "%lX%016lX\n",
+                    &[upper.result(0)?.into(), lower.result(0)?.into()],
+                )?;
+            }
+            _ => unreachable!("Encountered unexpected type {} when creating uint print", uint_name),
         }
 
         self.op_return(&block, &[]);

@@ -7,7 +7,7 @@ use melior_next::ir::Block;
 
 use crate::{
     compiler::{Compiler, SierraType, Storage},
-    libfuncs::lib_func_def::{ConstantLibFunc, LibFuncArg, LibFuncDef, SierraLibFunc},
+    libfuncs::lib_func_def::{PositionalArg, SierraLibFunc},
 };
 
 use super::Variable;
@@ -29,7 +29,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
         }
 
         match libfunc_def {
-            SierraLibFunc::Function(LibFuncDef { args, return_types }) => self
+            SierraLibFunc::Function { args, return_types } => self
                 .process_libfunc_as_function_call(
                     id,
                     args,
@@ -38,7 +38,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
                     block,
                     variables,
                 ),
-            SierraLibFunc::Constant(ConstantLibFunc { ty, value }) => {
+            SierraLibFunc::Constant { ty, value } => {
                 self.process_constant_libfunc(value, ty, invocation, block, variables);
                 Ok(())
             }
@@ -46,14 +46,17 @@ impl<'block, 'ctx> Compiler<'ctx> {
                 self.process_dataflow_libfunc(args_forwarded, invocation, variables);
                 Ok(())
             }
+            SierraLibFunc::Branching { args: _, return_types: _ } => {
+                panic!("Branching SierraLibFunc should have been handled specifically")
+            }
         }
     }
 
     fn process_libfunc_as_function_call(
         &self,
         id: &str,
-        args: &[LibFuncArg],
-        return_types: &Vec<Vec<SierraType>>,
+        args: &[PositionalArg],
+        return_types: &[PositionalArg],
         invocation: &GenInvocation<StatementIdx>,
         block: &'block Block,
         variables: &mut HashMap<u64, Variable<'block>>,
@@ -62,16 +65,12 @@ impl<'block, 'ctx> Compiler<'ctx> {
             .iter()
             .map(|a| variables.get(&invocation.args[a.loc].id).unwrap().get_value())
             .collect_vec();
-        assert_eq!(
-            return_types.len(),
-            1,
-            "Libfunc with abnormal number of returns not handled properly"
-        );
-        let return_types = return_types[0].iter().map(SierraType::get_type).collect_vec();
-        let op = self.op_func_call(block, id, &arg_values, &return_types)?;
-        variables.extend(invocation.branches[0].results.iter().enumerate().map(
-            |(result_pos, var_id)| (var_id.id, Variable::Local { op, result_idx: result_pos }),
-        ));
+        let call_return_types = return_types.iter().map(|ret| ret.ty.get_type()).collect_vec();
+        let op = self.op_func_call(block, id, &arg_values, &call_return_types)?;
+
+        variables.extend(return_types.iter().enumerate().map(|(result_idx, arg)| {
+            (invocation.branches[0].results[arg.loc].id, Variable::Local { op, result_idx })
+        }));
 
         Ok(())
     }
@@ -91,7 +90,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
 
     fn process_dataflow_libfunc(
         &self,
-        args_forwarded: &[LibFuncArg],
+        args_forwarded: &[PositionalArg],
         invocation: &GenInvocation<StatementIdx>,
         variables: &mut HashMap<u64, Variable<'block>>,
     ) {

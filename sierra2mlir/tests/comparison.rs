@@ -16,9 +16,13 @@ use test_case::test_case;
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
 #[test_case("fib_counter")]
+#[test_case("bitwise/and")]
+#[test_case("bitwise/or")]
+#[test_case("bitwise/xor")]
 #[test_case("bool/and")]
 #[test_case("bool/not")]
 #[test_case("bool/or")]
+#[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
 #[test_case("felt_ops/add")]
 #[test_case("felt_ops/sub")]
@@ -35,6 +39,10 @@ use test_case::test_case;
 #[test_case("structs/bigger")]
 #[test_case("structs/nested")]
 #[test_case("structs/enum_member")]
+#[test_case("uint/consts")]
+#[test_case("uint/upcasts")]
+#[test_case("uint/safe_divmod")]
+#[test_case("uint/wide_mul")]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =

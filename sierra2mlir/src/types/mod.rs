@@ -17,14 +17,7 @@ impl<'ctx> Compiler<'ctx> {
             debug!(name, "processing type decl");
 
             match name {
-                "Bitwise" => {
-                    let ty = self.bitwise_type();
-                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
-                }
-                "RangeCheck" => {
-                    let ty = self.range_check_type();
-                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
-                }
+                name if is_omitted_builtin_type(name) => {}
                 "felt252" => {
                     let ty = self.felt_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
@@ -168,4 +161,8 @@ impl<'ctx> Compiler<'ctx> {
         // debug!(types = ?storage.borrow().types, "processed");
         Ok(())
     }
+}
+
+pub fn is_omitted_builtin_type(type_name: &str) -> bool {
+    type_name == "Bitwise" || type_name == "RangeCheck"
 }

@@ -7,12 +7,6 @@ declare void @free(ptr)
 
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal { i256, i256 } @"dup<felt252>"(i256 %0) {
-  %2 = insertvalue { i256, i256 } undef, i256 %0, 0
-  %3 = insertvalue { i256, i256 } %2, i256 %0, 1
-  ret { i256, i256 } %3
-}
-
 define internal i256 @felt252_add(i256 %0, i256 %1) {
   %3 = add i256 %0, %1
   %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
@@ -43,10 +37,6 @@ define internal { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256
   %3 = insertvalue { i256, i256 } undef, i256 %0, 0
   %4 = insertvalue { i256, i256 } %3, i256 %1, 1
   ret { i256, i256 } %4
-}
-
-define internal { i256, i256 } @"store_temp<Tuple<felt252, felt252>>"({ i256, i256 } %0) {
-  ret { i256, i256 } %0
 }
 
 define { i256, i256 } @"simple::simple::something"(i256 %0) {

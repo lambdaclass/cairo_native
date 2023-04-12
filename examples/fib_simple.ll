@@ -33,27 +33,37 @@ define internal i256 @felt252_sub(i256 %0, i256 %1) {
   ret i256 %7
 }
 
-define internal { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %0, i256 %1) {
-  %3 = insertvalue { i256, i256 } undef, i256 %0, 0
-  %4 = insertvalue { i256, i256 } %3, i256 %1, 1
-  ret { i256, i256 } %4
+define i256 @"fib_simple::fib_simple::fib"(i256 %0, i256 %1, i256 %2) {
+  br label %4
+
+4:                                                ; preds = %3
+  %5 = phi i256 [ %0, %3 ]
+  %6 = phi i256 [ %1, %3 ]
+  %7 = phi i256 [ %2, %3 ]
+  %8 = icmp eq i256 %7, 0
+  br i1 %8, label %9, label %11
+
+9:                                                ; preds = %4
+  %10 = phi i256 [ %5, %4 ]
+  br label %18
+
+11:                                               ; preds = %4
+  %12 = phi i256 [ %5, %4 ]
+  %13 = phi i256 [ %6, %4 ]
+  %14 = phi i256 [ %7, %4 ]
+  %15 = call i256 @felt252_add(i256 %12, i256 %13)
+  %16 = call i256 @felt252_sub(i256 %14, i256 1)
+  %17 = call i256 @"fib_simple::fib_simple::fib"(i256 %13, i256 %15, i256 %16)
+  br label %18
+
+18:                                               ; preds = %9, %11
+  %19 = phi i256 [ %17, %11 ], [ %10, %9 ]
+  ret i256 %19
 }
 
-define { i256, i256 } @"simple::simple::something"(i256 %0) {
-  br label %2
-
-2:                                                ; preds = %1
-  %3 = phi i256 [ %0, %1 ]
-  %4 = call i256 @felt252_add(i256 %3, i256 2)
-  %5 = call i256 @felt252_sub(i256 %3, i256 2)
-  %6 = call { i256, i256 } @"struct_construct<Tuple<felt252, felt252>>"(i256 %4, i256 %5)
-  ret { i256, i256 } %6
-}
-
-define void @"_mlir_ciface_simple::simple::something"(ptr %0, i256 %1) {
-  %3 = call { i256, i256 } @"simple::simple::something"(i256 %1)
-  store { i256, i256 } %3, ptr %0, align 4
-  ret void
+define i256 @"_mlir_ciface_fib_simple::fib_simple::fib"(i256 %0, i256 %1, i256 %2) {
+  %4 = call i256 @"fib_simple::fib_simple::fib"(i256 %0, i256 %1, i256 %2)
+  ret i256 %4
 }
 
 !llvm.module.flags = !{!0}
