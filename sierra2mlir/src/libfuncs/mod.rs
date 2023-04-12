@@ -879,21 +879,23 @@ impl<'ctx> Compiler<'ctx> {
             element_type: Box::new(arg_type.clone()),
         };
 
-        if let SierraType::Array { element_type, .. } = &sierra_type {
-            storage.libfuncs.insert(
-                id,
-                SierraLibFunc::Branching {
-                    args: vec![
-                        PositionalArg { loc: 1, ty: sierra_type.clone() },
-                        PositionalArg { loc: 2, ty: *element_type.clone() },
-                    ],
-                    return_types: vec![
-                        vec![/* todo: array element type here i think */],
-                        vec![PositionalArg { loc: 0, ty: sierra_type }],
-                    ],
-                },
-            );
-        }
+        // 2 branches:
+        // - falthrough with return args: 0 = rangecheck, 1 = the value at index
+        // - branch jump: if out of bounds jump, return arg 0 = range check
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: sierra_type.clone() }, // array
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
+                    vec![],                                       // panic branch
+                ],
+            },
+        );
     }
 
     pub fn create_libfunc_uint_to_felt252(
