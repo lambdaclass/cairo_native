@@ -36,8 +36,12 @@ define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) #0 {
   ret { i16, [0 x i8] } %5
 }
 
+<<<<<<< HEAD
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
+=======
+define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) {
+>>>>>>> origin/main
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
   %5 = or i16 %3, %4
@@ -78,8 +82,12 @@ define internal i256 @bool_to_felt252({ i16, [0 x i8] } %0) #0 {
   ret i256 %3
 }
 
+<<<<<<< HEAD
 ; Function Attrs: norecurse nounwind
 define internal void @print_felt252(i256 %0) #1 {
+=======
+define internal void @print_felt252(i256 %0) {
+>>>>>>> origin/main
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
   %4 = alloca i8, i64 5, align 1

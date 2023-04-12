@@ -9,8 +9,12 @@ declare ptr @realloc(ptr, i64)
 
 declare i32 @dprintf(i32, ptr, ...)
 
+<<<<<<< HEAD
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal i256 @felt252_add(i256 %0, i256 %1) #0 {
+=======
+define internal i256 @felt252_add(i256 %0, i256 %1) {
+>>>>>>> origin/main
   %3 = add i256 %0, %1
   %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
   br i1 %4, label %6, label %5
@@ -37,8 +41,12 @@ define internal i256 @felt252_sub(i256 %0, i256 %1) #0 {
   ret i256 %7
 }
 
+<<<<<<< HEAD
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal {} @"struct_construct<Unit>"() #0 {
+=======
+define internal {} @"struct_construct<Unit>"() {
+>>>>>>> origin/main
   ret {} undef
 }
 

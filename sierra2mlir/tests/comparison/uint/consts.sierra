@@ -1,0 +1,45 @@
+type u8 = u8;
+type u16 = u16;
+type u32 = u32;
+type u64 = u64;
+type u128 = u128;
+type Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128> = Struct<ut@Tuple, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>;
+
+libfunc u8_const<0> = u8_const<0>;
+libfunc u16_const<0> = u16_const<0>;
+libfunc u32_const<0> = u32_const<0>;
+libfunc u64_const<0> = u64_const<0>;
+libfunc u128_const<0> = u128_const<0>;
+libfunc u8_const<100> = u8_const<100>;
+libfunc u16_const<100> = u16_const<100>;
+libfunc u32_const<100> = u32_const<100>;
+libfunc u64_const<100> = u64_const<100>;
+libfunc u128_const<100> = u128_const<100>;
+libfunc u8_const<255> = u8_const<255>;
+libfunc u16_const<65535> = u16_const<65535>;
+libfunc u32_const<4294967295> = u32_const<4294967295>;
+libfunc u64_const<18446744073709551615> = u64_const<18446744073709551615>;
+libfunc u128_const<340282366920938463463374607431768211455> = u128_const<340282366920938463463374607431768211455>;
+libfunc struct_construct<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>> = struct_construct<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>>;
+libfunc store_temp<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>> = store_temp<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>>;
+
+u8_const<0>() -> ([0]);
+u16_const<0>() -> ([1]);
+u32_const<0>() -> ([2]);
+u64_const<0>() -> ([3]);
+u128_const<0>() -> ([4]);
+u8_const<100>() -> ([5]);
+u16_const<100>() -> ([6]);
+u32_const<100>() -> ([7]);
+u64_const<100>() -> ([8]);
+u128_const<100>() -> ([9]);
+u8_const<255>() -> ([10]);
+u16_const<65535>() -> ([11]);
+u32_const<4294967295>() -> ([12]);
+u64_const<18446744073709551615>() -> ([13]);
+u128_const<340282366920938463463374607431768211455>() -> ([14]);
+struct_construct<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>>([0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14]) -> ([15]);
+store_temp<Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>>([15]) -> ([16]);
+return([16]);
+
+consts::consts::main@0() -> (Tuple<u8, u16, u32, u64, u128, u8, u16, u32, u64, u128, u8, u16, u32, u64, u128>);

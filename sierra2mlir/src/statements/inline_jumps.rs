@@ -40,16 +40,25 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn inline_felt252_is_zero(
+    pub fn inline_int_is_zero(
         &'ctx self,
+        name: &str,
         invocation: &Invocation,
         block: &Block<'ctx>,
         variables: &mut HashMap<u64, Variable>,
         blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
         statement_idx: usize,
     ) -> Result<()> {
-        let felt_op_zero = self.op_felt_const(block, "0");
-        let zero = felt_op_zero.result(0)?.into();
+        let op_zero = match name {
+            "u8_is_zero" => self.op_u8_const(block, "0"),
+            "u16_is_zero" => self.op_u16_const(block, "0"),
+            "u32_is_zero" => self.op_u32_const(block, "0"),
+            "u64_is_zero" => self.op_u64_const(block, "0"),
+            "u128_is_zero" => self.op_u128_const(block, "0"),
+            "felt252_is_zero" => self.op_felt_const(block, "0"),
+            _ => panic!("Unexpected is_zero libfunc name {}", name),
+        };
+        let zero = op_zero.result(0)?.into();
 
         let input = variables
             .get(&invocation.args[0].id)
@@ -58,7 +67,7 @@ impl<'ctx> Compiler<'ctx> {
         let eq_op = self.op_cmp(block, CmpOp::Equal, input, zero);
         let eq = eq_op.result(0)?;
 
-        // felt_is_zero forwards its argument to the non-zero branch
+        // X_is_zero forwards its argument to the non-zero branch
         // Since no processing is done, we can simply assign to the variable here
         variables.insert(
             invocation.branches[1].results[0].id,
@@ -103,9 +112,9 @@ impl<'ctx> Compiler<'ctx> {
         variables: &HashMap<u64, Variable>,
         storage: &Storage,
     ) -> Result<()> {
-        let libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
+        let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, storage_type, variants_types) = match &libfuncdef.args[0].ty {
+        let (tag_type, storage_type, variants_types) = match &args[0].ty {
             SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
                 (tag_type, storage_type, variants_types)
             }
@@ -175,16 +184,16 @@ impl<'ctx> Compiler<'ctx> {
     #[allow(clippy::too_many_arguments)]
     pub fn inline_array_get(
         &self,
-        id: &str,
+        _id: &str,
         _statement_idx: usize,
         _region: &Region,
         _block: &Block,
         _blocks: &BTreeMap<usize, BlockInfo>,
         _invocation: &Invocation,
         _variables: &HashMap<u64, Variable>,
-        storage: &Storage,
+        _storage: &Storage,
     ) -> Result<()> {
-        let _libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
+        // let _libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
 
         // arg 0 is range check, can ignore
         // arg 1 is the array

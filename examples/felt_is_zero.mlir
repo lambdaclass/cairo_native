@@ -8,7 +8,7 @@ module attributes {llvm.data_layout = ""} {
     %2 = llvm.mul %0, %1  : i512
     %3 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
     %4 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i512) : i512
-    %5 = llvm.srem %2, %4  : i512
+    %5 = llvm.urem %2, %4  : i512
     %6 = llvm.trunc %5 : i512 to i256
     llvm.return %6 : i256
   }

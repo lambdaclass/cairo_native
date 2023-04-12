@@ -78,7 +78,7 @@ impl<'ctx> Compiler<'ctx> {
 
             storage.libfuncs.insert(
                 id,
-                SierraLibFunc::create_simple(
+                SierraLibFunc::create_function_all_args(
                     vec![variant_sierra_type.clone()],
                     vec![enum_arg_type],
                 ),

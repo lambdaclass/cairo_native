@@ -19,9 +19,21 @@ compile-example-optimized: check-mlir
 	RUST_LOG="debug" cargo r -- compile examples/simple.sierra --optimize
 
 build-examples: check-mlir
+	cargo r -- compile examples/bitwise.sierra -o examples/bitwise.mlir -m
+	cargo r -- compile examples/boolean.sierra -o examples/boolean.mlir -m
+	cargo r -- compile examples/casts.sierra -o examples/casts.mlir -m
+	cargo r -- compile examples/destructure.sierra -o examples/destructure.mlir -m
+	cargo r -- compile examples/enum_match.sierra -o examples/enum_match.mlir -m
+	# cargo r -- compile examples/felt_div.sierra -o examples/felt_div.mlir # Requires arrays (for panic)
+	cargo r -- compile examples/felt_is_zero.sierra -o examples/felt_is_zero.mlir
+	cargo r -- compile examples/fib_simple.sierra -o examples/fib_simple.mlir
+	cargo r -- compile examples/fib.sierra -o examples/fib.mlir
 	cargo r -- compile examples/print_test.sierra -o examples/print_test.mlir -m
+	cargo r -- compile examples/program.sierra -o examples/program.mlir -m
+	cargo r -- compile examples/simple_enum.sierra -o examples/simple_enum.mlir -m
 	cargo r -- compile examples/simple.sierra -o examples/simple.mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
+<<<<<<< HEAD
 	cargo r -- compile examples/simple_enum.sierra -o examples/simple_enum.mlir -m
 	cargo r -- compile examples/boolean.sierra -o examples/boolean.mlir -m
 	cargo r -- compile examples/felt_is_zero.sierra -o examples/felt_is_zero.mlir
@@ -35,6 +47,26 @@ build-examples: check-mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/fib.mlir -o examples/fib.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/boolean.mlir -o examples/boolean.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/example_array.mlir -o examples/example_array.ll
+=======
+	cargo r -- compile examples/types.sierra -o examples/types.mlir -m
+	cargo r -- compile examples/uint.sierra -o examples/uint.mlir
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/bitwise.mlir -o examples/bitwise.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/boolean.mlir -o examples/boolean.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/casts.mlir -o examples/casts.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/destructure.mlir -o examples/destructure.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/enum_match.mlir -o examples/enum_match.ll
+	# $(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/felt_div.mlir -o examples/felt_div.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/felt_is_zero.mlir -o examples/felt_is_zero.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/fib_simple.mlir -o examples/fib_simple.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/fib.mlir -o examples/fib.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/print_test.mlir -o examples/print_test.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/program.mlir -o examples/program.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple_enum.mlir -o examples/simple_enum.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple.mlir -o examples/simple.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir -o examples/simple-optimized.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/types.mlir -o examples/types.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/uint.mlir -o examples/uint.ll
+>>>>>>> origin/main
 
 book:
 	mdbook serve docs

@@ -44,7 +44,8 @@ impl<'c> Variable<'c> {
     pub fn get_value(&self) -> Value {
         match &self {
             Variable::Local { op, result_idx } => {
-                let res = op.result(*result_idx).unwrap();
+                let res =
+                    op.result(*result_idx).expect("Failed to get result from Variable::Local");
                 res.into()
             }
             Variable::Param { argument } => (*argument).into(),
@@ -124,14 +125,18 @@ impl<'ctx> Compiler<'ctx> {
                                 self.inline_jump(invocation, block, &mut variables, &blocks)?;
                                 jump_processed = true;
                             }
-                            "felt252_is_zero" => {
-                                self.inline_felt252_is_zero(
+                            name_without_generics
+                                if is_int_is_zero_libfunc(name_without_generics) =>
+                            {
+                                self.inline_int_is_zero(
+                                    name_without_generics,
                                     invocation,
                                     block,
                                     &mut variables,
                                     &blocks,
                                     statement_idx,
                                 )?;
+
                                 jump_processed = true;
                             }
                             "enum_match" => {
@@ -192,11 +197,13 @@ impl<'ctx> Compiler<'ctx> {
                         }
                     }
                     GenStatement::Return(ret_args) => {
-                        let ret_values = ret_args
+                        let userfunc_def = storage.userfuncs.get(&user_func_name).unwrap();
+                        let ret_values = userfunc_def
+                            .return_types
                             .iter()
                             .map(|id| {
                                 variables
-                                    .get(&id.id)
+                                    .get(&ret_args[id.loc].id)
                                     .expect("Variable should be registered before return")
                                     .get_value()
                             })
@@ -214,8 +221,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let user_func_def = storage.userfuncs.get(user_func_name.as_str()).unwrap();
         let function_type = create_fn_signature(
-            &user_func_def.args.iter().map(|t| t.get_type()).collect_vec(),
-            &user_func_def.return_types.iter().map(|t| t.get_type()).collect_vec(),
+            &user_func_def.args.iter().map(|t| t.ty.get_type()).collect_vec(),
+            &user_func_def.return_types.iter().map(|t| t.ty.get_type()).collect_vec(),
         );
         let func = self.op_func(
             &user_func_name,
@@ -277,13 +284,14 @@ impl<'ctx> Compiler<'ctx> {
         let entry_block = Block::new(
             &arg_types
                 .iter()
-                .map(|t| (t.get_type(), Location::unknown(&self.context)))
+                .map(|t| (t.ty.get_type(), Location::unknown(&self.context)))
                 .collect_vec(),
         );
         let block_info = &blocks.get(&func_start).unwrap();
 
         let mut args_to_pass = vec![];
-        for (position, param) in func.params.iter().enumerate() {
+        for (position, arg) in arg_types.iter().enumerate() {
+            let param = &func.params[arg.loc];
             if block_info.variables_at_start.contains_key(&param.id.id) {
                 let arg = entry_block.argument(position)?;
                 args_to_pass.push(arg.into());
@@ -329,7 +337,10 @@ impl<'ctx> Compiler<'ctx> {
                                 .expect("UserFunc should have been registered")
                                 .args;
                             let arg_indices = &invocation.args;
-                            arg_indices.iter().zip_eq(arg_types.iter().cloned()).collect_vec()
+                            arg_types
+                                .iter()
+                                .map(|arg| (&arg_indices[arg.loc], arg.ty.clone()))
+                                .collect_vec()
                         } else {
                             let libfunc = storage.libfuncs.get(&id).cloned().unwrap_or_else(|| {
                                 panic!("LibFunc {id} should have been registered")
@@ -344,7 +355,10 @@ impl<'ctx> Compiler<'ctx> {
                     GenStatement::Return(ret) => {
                         let func_ret_types =
                             &storage.userfuncs.get(&user_func_name).unwrap().return_types;
-                        ret.iter().zip_eq(func_ret_types.iter().cloned()).collect_vec()
+                        func_ret_types
+                            .iter()
+                            .map(|arg| (&ret[arg.loc], arg.ty.clone()))
+                            .collect_vec()
                     }
                 };
 
@@ -383,6 +397,15 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect::<BTreeMap<_, _>>()
     }
+}
+
+fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
+    name_without_generics == "u8_is_zero"
+        || name_without_generics == "u16_is_zero"
+        || name_without_generics == "u32_is_zero"
+        || name_without_generics == "u64_is_zero"
+        || name_without_generics == "u128_is_zero"
+        || name_without_generics == "felt252_is_zero"
 }
 
 fn calculate_block_ranges_per_function(

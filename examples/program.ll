@@ -5,16 +5,22 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
-declare ptr @realloc(ptr, i64)
-
 declare i32 @dprintf(i32, ptr, ...)
 
-<<<<<<< HEAD
-; Function Attrs: norecurse nounwind
-define internal void @print_felt252(i256 %0) #0 {
-=======
+define internal i256 @felt252_add(i256 %0, i256 %1) {
+  %3 = add i256 %0, %1
+  %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  br i1 %4, label %6, label %5
+
+5:                                                ; preds = %2
+  ret i256 %3
+
+6:                                                ; preds = %2
+  %7 = sub i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
+  ret i256 %7
+}
+
 define internal void @print_felt252(i256 %0) {
->>>>>>> origin/main
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
   %4 = alloca i8, i64 5, align 1
@@ -61,7 +67,7 @@ define internal void @print_felt252(i256 %0) {
 }
 
 define void @main() {
-  %1 = call i256 @"print_test::print_test::main"()
+  %1 = call i256 @"add::add::main"()
   call void @print_felt252(i256 %1)
   ret void
 }
@@ -71,19 +77,18 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define i256 @"print_test::print_test::main"() {
+define i256 @"add::add::main"() {
   br label %1
 
 1:                                                ; preds = %0
-  ret i256 24
+  %2 = call i256 @felt252_add(i256 1, i256 2)
+  ret i256 %2
 }
 
-define i256 @"_mlir_ciface_print_test::print_test::main"() {
-  %1 = call i256 @"print_test::print_test::main"()
+define i256 @"_mlir_ciface_add::add::main"() {
+  %1 = call i256 @"add::add::main"()
   ret i256 %1
 }
-
-attributes #0 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

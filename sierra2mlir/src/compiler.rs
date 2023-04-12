@@ -14,7 +14,10 @@ use melior_next::{
 };
 use std::{cmp::Ordering, collections::HashMap, ops::Deref};
 
-use crate::{libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME};
+use crate::{
+    libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME,
+    userfuncs::user_func_def::UserFuncDef,
+};
 
 pub struct Compiler<'ctx> {
     pub program: &'ctx Program,
@@ -166,12 +169,6 @@ impl<'ctx> SierraType<'ctx> {
             SierraType::Array { .. } => None,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct UserFuncDef<'ctx> {
-    pub(crate) args: Vec<SierraType<'ctx>>,
-    pub(crate) return_types: Vec<SierraType<'ctx>>,
 }
 
 /// Types, functions, etc storage.
@@ -388,7 +385,7 @@ impl<'ctx> Compiler<'ctx> {
     /// Only the MLIR op.
     pub fn op_rem<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(
-            operation::Builder::new("arith.remsi", Location::unknown(&self.context))
+            operation::Builder::new("arith.remui", Location::unknown(&self.context))
                 .add_operands(&[lhs, rhs])
                 .add_results(&[lhs.r#type()])
                 .build(),
