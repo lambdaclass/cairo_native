@@ -194,7 +194,6 @@ impl<'ctx> Compiler<'ctx> {
         storage: &Storage,
     ) -> Result<()> {
         let libfunc = storage.libfuncs.get(id).unwrap();
-        dbg!(&libfunc);
         let array_arg = &libfunc.get_args()[0];
         let index_arg = &libfunc.get_args()[1];
 
