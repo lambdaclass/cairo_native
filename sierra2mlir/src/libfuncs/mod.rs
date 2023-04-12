@@ -1619,7 +1619,6 @@ impl<'ctx> Compiler<'ctx> {
         let array_type = sierra_type.get_type();
         let array_value = block.argument(0)?;
 
-        // check if len < capacity
         let array_len_op =
             self.op_llvm_extractvalue(&block, 0, array_value.into(), self.u32_type())?;
         let array_len = array_len_op.result(0)?.into();
