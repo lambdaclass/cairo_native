@@ -28,7 +28,7 @@ num-traits = "0.2.15"
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c" }
-cairo-vm = "0.2.2"
+cairo-vm = "0.3.0-rc1"
 criterion = "0.4.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
