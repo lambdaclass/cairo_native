@@ -5,13 +5,17 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal {} @"struct_construct<Unit>"() {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal {} @"struct_construct<Unit>"() #0 {
   ret {} undef
 }
 
-define internal { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %0) #0 {
   %2 = alloca { i16, [0 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
@@ -21,7 +25,8 @@ define internal { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %0) {
   ret { i16, [0 x i8] } %5
 }
 
-define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) #0 {
   %2 = alloca { i16, [0 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
@@ -31,7 +36,8 @@ define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) {
   ret { i16, [0 x i8] } %5
 }
 
-define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
   %5 = or i16 %3, %4
@@ -39,14 +45,16 @@ define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 
   ret { i16, [0 x i8] } %6
 }
 
-define internal { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %0) #0 {
   %2 = extractvalue { i16, [0 x i8] } %0, 0
   %3 = xor i16 %2, 1
   %4 = insertvalue { i16, [0 x i8] } undef, i16 %3, 0
   ret { i16, [0 x i8] } %4
 }
 
-define internal { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
   %5 = and i16 %3, %4
@@ -54,7 +62,8 @@ define internal { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %0, { i16, [0
   ret { i16, [0 x i8] } %6
 }
 
-define internal { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
   %3 = extractvalue { i16, [0 x i8] } %0, 0
   %4 = extractvalue { i16, [0 x i8] } %1, 0
   %5 = xor i16 %3, %4
@@ -62,13 +71,15 @@ define internal { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %0, { i16, [0
   ret { i16, [0 x i8] } %6
 }
 
-define internal i256 @bool_to_felt252({ i16, [0 x i8] } %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @bool_to_felt252({ i16, [0 x i8] } %0) #0 {
   %2 = extractvalue { i16, [0 x i8] } %0, 0
   %3 = zext i16 %2 to i256
   ret i256 %3
 }
 
-define internal void @print_felt252(i256 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_felt252(i256 %0) #1 {
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
   %4 = alloca i8, i64 5, align 1
@@ -150,6 +161,9 @@ define i256 @"_mlir_ciface_boolean::boolean::main"() {
   %1 = call i256 @"boolean::boolean::main"()
   ret i256 %1
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

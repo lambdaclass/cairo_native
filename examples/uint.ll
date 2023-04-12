@@ -5,62 +5,74 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i256 @u8_to_felt252(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @u8_to_felt252(i8 %0) #0 {
   %2 = zext i8 %0 to i256
   ret i256 %2
 }
 
-define internal i256 @u16_to_felt252(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @u16_to_felt252(i16 %0) #0 {
   %2 = zext i16 %0 to i256
   ret i256 %2
 }
 
-define internal i256 @u32_to_felt252(i32 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @u32_to_felt252(i32 %0) #0 {
   %2 = zext i32 %0 to i256
   ret i256 %2
 }
 
-define internal i256 @u64_to_felt252(i64 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @u64_to_felt252(i64 %0) #0 {
   %2 = zext i64 %0 to i256
   ret i256 %2
 }
 
-define internal i256 @u128_to_felt252(i128 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @u128_to_felt252(i128 %0) #0 {
   %2 = zext i128 %0 to i256
   ret i256 %2
 }
 
-define internal i16 @u8_wide_mul(i8 %0, i8 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i16 @u8_wide_mul(i8 %0, i8 %1) #0 {
   %3 = zext i8 %0 to i16
   %4 = zext i8 %1 to i16
   %5 = mul i16 %3, %4
   ret i16 %5
 }
 
-define internal i32 @u16_wide_mul(i16 %0, i16 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i32 @u16_wide_mul(i16 %0, i16 %1) #0 {
   %3 = zext i16 %0 to i32
   %4 = zext i16 %1 to i32
   %5 = mul i32 %3, %4
   ret i32 %5
 }
 
-define internal i64 @u32_wide_mul(i32 %0, i32 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i64 @u32_wide_mul(i32 %0, i32 %1) #0 {
   %3 = zext i32 %0 to i64
   %4 = zext i32 %1 to i64
   %5 = mul i64 %3, %4
   ret i64 %5
 }
 
-define internal i128 @u64_wide_mul(i64 %0, i64 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i128 @u64_wide_mul(i64 %0, i64 %1) #0 {
   %3 = zext i64 %0 to i128
   %4 = zext i64 %1 to i128
   %5 = mul i128 %3, %4
   ret i128 %5
 }
 
-define internal { i128, i128 } @u128_wide_mul(i128 %0, i128 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i128, i128 } @u128_wide_mul(i128 %0, i128 %1) #0 {
   %3 = zext i128 %0 to i256
   %4 = zext i128 %1 to i256
   %5 = mul i256 %3, %4
@@ -72,7 +84,8 @@ define internal { i128, i128 } @u128_wide_mul(i128 %0, i128 %1) {
   ret { i128, i128 } %10
 }
 
-define internal {} @"struct_construct<Unit>"() {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal {} @"struct_construct<Unit>"() #0 {
   ret {} undef
 }
 
@@ -101,6 +114,8 @@ define void @"_mlir_ciface_uint::uint::main"(ptr %0) {
   store {} %2, ptr %0, align 1
   ret void
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

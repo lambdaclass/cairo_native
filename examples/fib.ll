@@ -5,9 +5,12 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i256 @felt252_add(i256 %0, i256 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @felt252_add(i256 %0, i256 %1) #0 {
   %3 = add i256 %0, %1
   %4 = icmp uge i256 %3, 3618502788666131213697322783095070105623107215331596699973092056135872020481
   br i1 %4, label %6, label %5
@@ -20,7 +23,8 @@ define internal i256 @felt252_add(i256 %0, i256 %1) {
   ret i256 %7
 }
 
-define internal i256 @felt252_sub(i256 %0, i256 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @felt252_sub(i256 %0, i256 %1) #0 {
   %3 = sub i256 %0, %1
   %4 = icmp slt i256 %3, 0
   br i1 %4, label %6, label %5
@@ -33,7 +37,8 @@ define internal i256 @felt252_sub(i256 %0, i256 %1) {
   ret i256 %7
 }
 
-define internal {} @"struct_construct<Unit>"() {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal {} @"struct_construct<Unit>"() #0 {
   ret {} undef
 }
 
@@ -113,6 +118,8 @@ define void @"_mlir_ciface_fib::fib::main"(ptr %0, i256 %1) {
   store {} %3, ptr %0, align 1
   ret void
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

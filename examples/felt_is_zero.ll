@@ -5,9 +5,12 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i256 @felt252_mul(i256 %0, i256 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i256 @felt252_mul(i256 %0, i256 %1) #0 {
   %3 = zext i256 %0 to i512
   %4 = zext i256 %1 to i512
   %5 = mul i512 %3, %4
@@ -41,6 +44,8 @@ define i256 @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(i256 %0)
   %2 = call i256 @"felt_is_zero::felt_is_zero::mul_if_not_zero"(i256 %0)
   ret i256 %2
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

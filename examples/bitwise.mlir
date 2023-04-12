@@ -1,6 +1,8 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @bitwise(%arg0: i128, %arg1: i128) -> !llvm.struct<(i128, i128, i128)> {
+  llvm.func internal @bitwise(%arg0: i128, %arg1: i128) -> !llvm.struct<(i128, i128, i128)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.and %arg0, %arg1  : i128
     %1 = llvm.xor %arg0, %arg1  : i128
     %2 = llvm.or %arg0, %arg1  : i128
@@ -10,23 +12,23 @@ module attributes {llvm.data_layout = ""} {
     %6 = llvm.insertvalue %2, %5[2] : !llvm.struct<(i128, i128, i128)> 
     llvm.return %6 : !llvm.struct<(i128, i128, i128)>
   }
-  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> {
+  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<()>
     llvm.return %0 : !llvm.struct<()>
   }
-  llvm.func internal @print_Unit(%arg0: !llvm.struct<()>) {
+  llvm.func internal @print_Unit(%arg0: !llvm.struct<()>) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
     llvm.return
   }
-  llvm.func @main() attributes {llvm.emit_c_interface} {
+  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"bitwise::bitwise::main"() : () -> !llvm.struct<()>
     llvm.call @print_Unit(%0) : (!llvm.struct<()>) -> ()
     llvm.return
   }
-  llvm.func @_mlir_ciface_main() attributes {llvm.emit_c_interface} {
+  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.call @main() : () -> ()
     llvm.return
   }
-  llvm.func @"bitwise::bitwise::main"() -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
+  llvm.func @"bitwise::bitwise::main"() -> !llvm.struct<()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(1234 : i128) : i128
@@ -46,7 +48,7 @@ module attributes {llvm.data_layout = ""} {
     %14 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
     llvm.return %14 : !llvm.struct<()>
   }
-  llvm.func @"_mlir_ciface_bitwise::bitwise::main"(%arg0: !llvm.ptr<struct<()>>) attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_bitwise::bitwise::main"(%arg0: !llvm.ptr<struct<()>>) attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"bitwise::bitwise::main"() : () -> !llvm.struct<()>
     llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
     llvm.return

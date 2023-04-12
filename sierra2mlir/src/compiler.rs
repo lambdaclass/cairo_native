@@ -5,9 +5,10 @@ use melior_next::{
     dialect,
     ir::{
         operation::{self},
-        Block, BlockRef, Location, Module, NamedAttribute, Operation, OperationRef, Region, Type,
-        TypeLike, Value, ValueLike,
+        Attribute, Block, BlockRef, Identifier, Location, Module, NamedAttribute, Operation,
+        OperationRef, Region, Type, TypeLike, Value, ValueLike,
     },
+    pass::transform::register_reconcile_casts,
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
@@ -41,6 +42,14 @@ pub enum SierraType<'ctx> {
         storage_type: Type<'ctx>, // the array
         variants_types: Vec<Self>,
     },
+    Array {
+        /// (u32, u32, ptr)
+        ///
+        /// (length, capacity, data)
+        ty: Type<'ctx>,
+        len_type: Type<'ctx>, // type of length and capacity: u32
+        element_type: Box<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -61,6 +70,11 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => tag_type.get_width().unwrap() + (storage_type_len * 8),
+            SierraType::Array { ty: _, len_type, element_type: _ } => {
+                // 64 is the pointer size, assuming here
+                // TODO: find a better way to find the pointer size? it would require getting the context here
+                len_type.get_width().unwrap() + 64
+            }
         }
     }
 
@@ -83,6 +97,9 @@ impl<'ctx> SierraType<'ctx> {
                     .max()
                     .unwrap_or(0)
             }
+            SierraType::Array { ty: _, len_type, element_type: _ } => {
+                len_type.get_width().unwrap().try_into().unwrap()
+            }
         }
     }
 
@@ -98,6 +115,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types: _,
             } => *ty,
+            Self::Array { ty, .. } => *ty,
         }
     }
 
@@ -113,6 +131,7 @@ impl<'ctx> SierraType<'ctx> {
                     storage_type: _,
                     variants_types: _,
                 } => *ty,
+                Self::Array { ty, .. } => *ty,
             },
             Location::unknown(context),
         )
@@ -132,6 +151,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types,
             } => Some(variants_types.iter().map(|x| x.get_type()).collect()),
+            SierraType::Array { .. } => None,
         }
     }
 
@@ -146,6 +166,7 @@ impl<'ctx> SierraType<'ctx> {
                 storage_type: _,
                 variants_types,
             } => Some(variants_types),
+            SierraType::Array { .. } => None,
         }
     }
 }
@@ -157,6 +178,47 @@ pub struct Storage<'ctx> {
     pub(crate) types: HashMap<String, SierraType<'ctx>>,
     pub(crate) libfuncs: HashMap<String, SierraLibFunc<'ctx>>,
     pub(crate) userfuncs: HashMap<String, UserFuncDef<'ctx>>,
+}
+
+/// Function attributes to fine tune the generated definition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FnAttributes {
+    /// the function linkage
+    pub public: bool,
+    pub emit_c_interface: bool,
+    /// true = dso_local https://llvm.org/docs/LangRef.html#runtime-preemption-specifiers
+    pub local: bool,
+    pub inline: bool,
+    /// This function attribute indicates that the function does not call itself either directly or indirectly down any possible call path. This produces undefined behavior at runtime if the function ever does recurse.
+    pub norecurse: bool,
+    /// This function attribute indicates that the function never raises an exception. If the function does raise an exception, its runtime behavior is undefined.
+    pub nounwind: bool, // never raises exception
+}
+
+impl Default for FnAttributes {
+    fn default() -> Self {
+        Self {
+            public: true,
+            emit_c_interface: false,
+            local: true,
+            inline: false,
+            norecurse: false,
+            nounwind: false,
+        }
+    }
+}
+
+impl FnAttributes {
+    pub const fn libfunc(panics: bool, inline: bool) -> Self {
+        Self {
+            public: false,
+            emit_c_interface: false,
+            local: true,
+            inline,
+            norecurse: true,
+            nounwind: !panics,
+        }
+    }
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -172,6 +234,7 @@ impl<'ctx> Compiler<'ctx> {
         context.append_dialect_registry(&registry);
         context.load_all_available_dialects();
         register_all_llvm_translations(&context);
+        register_reconcile_casts();
 
         let location = Location::unknown(&context);
 
@@ -264,6 +327,15 @@ impl<'ctx> Compiler<'ctx> {
     /// Sierra: type core::bool = Enum<ut@core::bool, Unit, Unit>;
     pub fn boolean_enum_type(&self) -> Type {
         Type::parse(&self.context, "!llvm.struct<(i16, array<0 x i8>)>").unwrap()
+    }
+
+    /// Creates a llvm array type.
+    pub fn llvm_array_type(&self, len: usize, ty: Type) -> Type {
+        Type::parse(&self.context, &format!("!llvm.array<{len} x {ty}>")).expect("parse type")
+    }
+
+    pub fn llvm_struct_type(&self, types: &[Type]) -> Type {
+        Type::parse(&self.context, &self.struct_type_string(types)).expect("parse type")
     }
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
@@ -745,24 +817,48 @@ impl<'ctx> Compiler<'ctx> {
         name: &str,
         function_type: &str,
         regions: Vec<Region>,
-        emit_c_interface: bool,
-        public: bool,
+        fn_attrs: FnAttributes,
     ) -> Result<Operation<'a>> {
         let mut attrs = Vec::with_capacity(3);
 
         attrs.push(NamedAttribute::new_parsed(&self.context, "function_type", function_type)?);
         attrs.push(NamedAttribute::new_parsed(&self.context, "sym_name", &format!("\"{name}\""))?);
 
-        if !public {
+        if !fn_attrs.public {
             attrs.push(NamedAttribute::new_parsed(
                 &self.context,
                 "llvm.linkage",
-                "#llvm.linkage<internal>", // found digging llvm code..
+                "#llvm.linkage<internal>",
             )?);
         }
 
-        if emit_c_interface {
+        if fn_attrs.emit_c_interface {
             attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.emit_c_interface", "unit")?);
+        }
+
+        if fn_attrs.local {
+            attrs.push(NamedAttribute::new_parsed(&self.context, "llvm.dso_local", "unit")?);
+        }
+
+        let mut llvm_attrs = Vec::with_capacity(8);
+
+        if fn_attrs.norecurse {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"norecurse\"").unwrap());
+        }
+
+        if fn_attrs.inline {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"alwaysinline\"").unwrap());
+        }
+
+        if fn_attrs.nounwind {
+            llvm_attrs.push(Attribute::parse(&self.context, "\"nounwind\"").unwrap());
+        }
+
+        if !llvm_attrs.is_empty() {
+            attrs.push(NamedAttribute::new(
+                Identifier::new(&self.context, "passthrough"),
+                Attribute::array(&self.context, &llvm_attrs).unwrap(),
+            )?);
         }
 
         Ok(operation::Builder::new("func.func", Location::unknown(&self.context))
@@ -871,6 +967,14 @@ impl<'ctx> Compiler<'ctx> {
             operation::Builder::new("llvm.mlir.constant", Location::unknown(&self.context))
                 .add_results(&[ty])
                 .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", val).unwrap()])
+                .build(),
+        )
+    }
+
+    pub fn op_llvm_nullptr<'a>(&self, block: &'a Block) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.mlir.null", Location::unknown(&self.context))
+                .add_results(&[self.llvm_ptr_type()])
                 .build(),
         )
     }
@@ -1058,6 +1162,31 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    /// gep with a offset from a value
+    ///
+    /// https://llvm.org/docs/LangRef.html#getelementptr-instruction
+    pub fn op_llvm_gep_dynamic<'a>(
+        &self,
+        block: &'a Block,
+        indexes: &[Value],
+        base_ptr: Value,
+        ptr_type: Type,
+    ) -> Result<OperationRef<'a>> {
+        let mut operands = vec![base_ptr];
+        operands.extend(indexes);
+
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
+                .add_attributes(&[
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", indexes.iter().map(|_| i32::MIN).join(", ")))?,
+                    self.named_attribute("elem_type", &ptr_type.to_string())?,
+                ])
+                .add_operands(&operands) // base addr
+                .add_results(&[self.llvm_ptr_type()]) // always returns a opaque pointer type
+                .build(),
+        ))
+    }
+
     pub fn struct_type_string(&self, types: &[Type]) -> String {
         let types = types.iter().map(|x| x.to_string()).join(", ");
         format!("!llvm.struct<({})>", types)
@@ -1107,6 +1236,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        self.create_realloc()?;
         if self.print_fd > 0 {
             self.create_printf()?;
         }
@@ -1266,7 +1396,12 @@ impl<'ctx> Compiler<'ctx> {
             self.op_return(&block, &[main_ret.result(0)?.into()]);
             region.append_block(block);
 
-            self.op_func("main", "() -> i32", vec![region], true, true)?
+            self.op_func(
+                "main",
+                "() -> i32",
+                vec![region],
+                FnAttributes { public: true, emit_c_interface: true, ..Default::default() },
+            )?
         };
 
         self.module.body().append_operation(main_function);

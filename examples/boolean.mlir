@@ -1,10 +1,12 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> {
+  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<()>
     llvm.return %0 : !llvm.struct<()>
   }
-  llvm.func internal @"enum_init<core::bool, 1>"(%arg0: !llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @"enum_init<core::bool, 1>"(%arg0: !llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<0 x i8>)> : (i64) -> !llvm.ptr
     %2 = llvm.mlir.constant(1 : i16) : i16
@@ -15,7 +17,7 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<0 x i8>)>
     llvm.return %5 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @"enum_init<core::bool, 0>"(%arg0: !llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @"enum_init<core::bool, 0>"(%arg0: !llvm.struct<()>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<0 x i8>)> : (i64) -> !llvm.ptr
     %2 = llvm.mlir.constant(0 : i16) : i16
@@ -26,7 +28,7 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<0 x i8>)>
     llvm.return %5 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @bool_or_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @bool_or_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.extractvalue %arg1[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %2 = llvm.or %0, %1  : i16
@@ -34,7 +36,7 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.insertvalue %2, %3[0] : !llvm.struct<(i16, array<0 x i8>)> 
     llvm.return %4 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @bool_not_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @bool_not_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.mlir.constant(1 : i16) : i16
     %2 = llvm.xor %0, %1  : i16
@@ -42,7 +44,7 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.insertvalue %2, %3[0] : !llvm.struct<(i16, array<0 x i8>)> 
     llvm.return %4 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @bool_and_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @bool_and_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.extractvalue %arg1[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %2 = llvm.and %0, %1  : i16
@@ -50,7 +52,7 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.insertvalue %2, %3[0] : !llvm.struct<(i16, array<0 x i8>)> 
     llvm.return %4 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @bool_xor_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> {
+  llvm.func internal @bool_xor_impl(%arg0: !llvm.struct<(i16, array<0 x i8>)>, %arg1: !llvm.struct<(i16, array<0 x i8>)>) -> !llvm.struct<(i16, array<0 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.extractvalue %arg1[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %2 = llvm.xor %0, %1  : i16
@@ -58,12 +60,12 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.insertvalue %2, %3[0] : !llvm.struct<(i16, array<0 x i8>)> 
     llvm.return %4 : !llvm.struct<(i16, array<0 x i8>)>
   }
-  llvm.func internal @bool_to_felt252(%arg0: !llvm.struct<(i16, array<0 x i8>)>) -> i256 {
+  llvm.func internal @bool_to_felt252(%arg0: !llvm.struct<(i16, array<0 x i8>)>) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i16, array<0 x i8>)> 
     %1 = llvm.zext %0 : i16 to i256
     llvm.return %1 : i256
   }
-  llvm.func internal @print_felt252(%arg0: i256) {
+  llvm.func internal @print_felt252(%arg0: i256) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
     %0 = llvm.mlir.constant(224 : i256) : i256
     %1 = llvm.ashr %arg0, %0  : i256
     %2 = llvm.trunc %1 : i256 to i32
@@ -143,16 +145,16 @@ module attributes {llvm.data_layout = ""} {
     %67 = llvm.call @dprintf(%66, %64) : (i32, !llvm.ptr) -> i32
     llvm.return
   }
-  llvm.func @main() attributes {llvm.emit_c_interface} {
+  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"boolean::boolean::main"() : () -> i256
     llvm.call @print_felt252(%0) : (i256) -> ()
     llvm.return
   }
-  llvm.func @_mlir_ciface_main() attributes {llvm.emit_c_interface} {
+  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.call @main() : () -> ()
     llvm.return
   }
-  llvm.func @"boolean::boolean::main"() -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"boolean::boolean::main"() -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
@@ -171,7 +173,7 @@ module attributes {llvm.data_layout = ""} {
     %13 = llvm.call @bool_to_felt252(%12) : (!llvm.struct<(i16, array<0 x i8>)>) -> i256
     llvm.return %13 : i256
   }
-  llvm.func @"_mlir_ciface_boolean::boolean::main"() -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_boolean::boolean::main"() -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"boolean::boolean::main"() : () -> i256
     llvm.return %0 : i256
   }

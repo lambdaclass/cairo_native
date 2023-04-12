@@ -118,10 +118,7 @@ impl<'ctx> Compiler<'ctx> {
             SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
                 (tag_type, storage_type, variants_types)
             }
-            SierraType::Simple(_) => {
-                panic!("Argument of enum match should be an enum")
-            }
-            SierraType::Struct { ty: _, field_types: _ } => {
+            _ => {
                 panic!("Argument of enum match should be an enum")
             }
         };

@@ -1,6 +1,8 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 {
+  llvm.func internal @felt252_add(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.add %arg0, %arg1  : i256
     %1 = llvm.mlir.constant(3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256) : i256
     %2 = llvm.icmp "uge" %0, %1 : i256
@@ -11,7 +13,7 @@ module attributes {llvm.data_layout = ""} {
     %3 = llvm.sub %0, %1  : i256
     llvm.return %3 : i256
   }
-  llvm.func internal @print_felt252(%arg0: i256) {
+  llvm.func internal @print_felt252(%arg0: i256) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
     %0 = llvm.mlir.constant(224 : i256) : i256
     %1 = llvm.ashr %arg0, %0  : i256
     %2 = llvm.trunc %1 : i256 to i32
@@ -91,16 +93,16 @@ module attributes {llvm.data_layout = ""} {
     %67 = llvm.call @dprintf(%66, %64) : (i32, !llvm.ptr) -> i32
     llvm.return
   }
-  llvm.func @main() attributes {llvm.emit_c_interface} {
+  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"add::add::main"() : () -> i256
     llvm.call @print_felt252(%0) : (i256) -> ()
     llvm.return
   }
-  llvm.func @_mlir_ciface_main() attributes {llvm.emit_c_interface} {
+  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.call @main() : () -> ()
     llvm.return
   }
-  llvm.func @"add::add::main"() -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"add::add::main"() -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(1 : i256) : i256
@@ -108,7 +110,7 @@ module attributes {llvm.data_layout = ""} {
     %2 = llvm.call @felt252_add(%0, %1) : (i256, i256) -> i256
     llvm.return %2 : i256
   }
-  llvm.func @"_mlir_ciface_add::add::main"() -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_add::add::main"() -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"add::add::main"() : () -> i256
     llvm.return %0 : i256
   }

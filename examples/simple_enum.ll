@@ -5,9 +5,12 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 0>"(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 0>"(i8 %0) #0 {
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
@@ -17,7 +20,8 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 %0) #0 {
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
@@ -27,7 +31,8 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 2>"(i32 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 2>"(i32 %0) #0 {
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
   store i16 2, ptr %3, align 2
@@ -37,7 +42,8 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 3>"(i64 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 3>"(i64 %0) #0 {
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
   store i16 3, ptr %3, align 2
@@ -47,7 +53,8 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-define internal void @print_u8(i8 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_u8(i8 %0) #1 {
   %2 = zext i8 %0 to i32
   %3 = alloca i8, i64 4, align 1
   store [4 x i8] c"%X\0A\00", ptr %3, align 1
@@ -55,7 +62,8 @@ define internal void @print_u8(i8 %0) {
   ret void
 }
 
-define internal void @print_u16(i16 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_u16(i16 %0) #1 {
   %2 = zext i16 %0 to i32
   %3 = alloca i8, i64 4, align 1
   store [4 x i8] c"%X\0A\00", ptr %3, align 1
@@ -63,21 +71,24 @@ define internal void @print_u16(i16 %0) {
   ret void
 }
 
-define internal void @print_u32(i32 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_u32(i32 %0) #1 {
   %2 = alloca i8, i64 4, align 1
   store [4 x i8] c"%X\0A\00", ptr %2, align 1
   %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2, i32 %0)
   ret void
 }
 
-define internal void @print_u64(i64 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_u64(i64 %0) #1 {
   %2 = alloca i8, i64 5, align 1
   store [5 x i8] c"%lX\0A\00", ptr %2, align 1
   %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2, i64 %0)
   ret void
 }
 
-define internal void @"print_simple_enum::simple_enum::MyEnum"({ i16, [8 x i8] } %0) {
+; Function Attrs: norecurse nounwind
+define internal void @"print_simple_enum::simple_enum::MyEnum"({ i16, [8 x i8] } %0) #1 {
   %2 = extractvalue { i16, [8 x i8] } %0, 0
   %3 = zext i16 %2 to i32
   %4 = alloca i8, i64 4, align 1
@@ -197,6 +208,9 @@ define void @"_mlir_ciface_simple_enum::simple_enum::main"(ptr %0) {
   store { i16, [8 x i8] } %2, ptr %0, align 2
   ret void
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

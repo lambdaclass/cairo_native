@@ -9,6 +9,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 
+use crate::compiler::FnAttributes;
 use crate::{
     compiler::{Compiler, SierraType, Storage},
     utility::create_fn_signature,
@@ -149,7 +150,6 @@ impl<'ctx> Compiler<'ctx> {
                                     &variables,
                                     storage,
                                 )?;
-
                                 jump_processed = true;
                             }
                             "function_call" => self.process_function_call(
@@ -211,7 +211,19 @@ impl<'ctx> Compiler<'ctx> {
             &user_func_def.args.iter().map(|t| t.ty.get_type()).collect_vec(),
             &user_func_def.return_types.iter().map(|t| t.ty.get_type()).collect_vec(),
         );
-        let func = self.op_func(&user_func_name, &function_type, vec![region], true, true)?;
+        let func = self.op_func(
+            &user_func_name,
+            &function_type,
+            vec![region],
+            FnAttributes {
+                public: true,
+                emit_c_interface: true,
+                local: true,
+                inline: false,
+                norecurse: false,
+                nounwind: false,
+            },
+        )?;
         self.module.body().append_operation(func);
         Ok(())
     }

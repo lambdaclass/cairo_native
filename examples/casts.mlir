@@ -1,62 +1,64 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @"upcast<u8, u16>"(%arg0: i8) -> i16 {
+  llvm.func internal @"upcast<u8, u16>"(%arg0: i8) -> i16 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i8 to i16
     llvm.return %0 : i16
   }
-  llvm.func internal @"upcast<u8, u32>"(%arg0: i8) -> i32 {
+  llvm.func internal @"upcast<u8, u32>"(%arg0: i8) -> i32 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i8 to i32
     llvm.return %0 : i32
   }
-  llvm.func internal @"upcast<u8, u64>"(%arg0: i8) -> i64 {
+  llvm.func internal @"upcast<u8, u64>"(%arg0: i8) -> i64 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i8 to i64
     llvm.return %0 : i64
   }
-  llvm.func internal @"upcast<u8, u128>"(%arg0: i8) -> i128 {
+  llvm.func internal @"upcast<u8, u128>"(%arg0: i8) -> i128 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i8 to i128
     llvm.return %0 : i128
   }
-  llvm.func internal @"upcast<u16, u32>"(%arg0: i16) -> i32 {
+  llvm.func internal @"upcast<u16, u32>"(%arg0: i16) -> i32 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i16 to i32
     llvm.return %0 : i32
   }
-  llvm.func internal @"upcast<u16, u64>"(%arg0: i16) -> i64 {
+  llvm.func internal @"upcast<u16, u64>"(%arg0: i16) -> i64 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i16 to i64
     llvm.return %0 : i64
   }
-  llvm.func internal @"upcast<u16, u128>"(%arg0: i16) -> i128 {
+  llvm.func internal @"upcast<u16, u128>"(%arg0: i16) -> i128 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i16 to i128
     llvm.return %0 : i128
   }
-  llvm.func internal @"upcast<u32, u64>"(%arg0: i32) -> i64 {
+  llvm.func internal @"upcast<u32, u64>"(%arg0: i32) -> i64 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i32 to i64
     llvm.return %0 : i64
   }
-  llvm.func internal @"upcast<u32, u128>"(%arg0: i32) -> i128 {
+  llvm.func internal @"upcast<u32, u128>"(%arg0: i32) -> i128 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i32 to i128
     llvm.return %0 : i128
   }
-  llvm.func internal @"upcast<u64, u128>"(%arg0: i64) -> i128 {
+  llvm.func internal @"upcast<u64, u128>"(%arg0: i64) -> i128 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i64 to i128
     llvm.return %0 : i128
   }
-  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> {
+  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<()>
     llvm.return %0 : !llvm.struct<()>
   }
-  llvm.func internal @print_Unit(%arg0: !llvm.struct<()>) {
+  llvm.func internal @print_Unit(%arg0: !llvm.struct<()>) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
     llvm.return
   }
-  llvm.func @main() attributes {llvm.emit_c_interface} {
+  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"casts::casts::main"() : () -> !llvm.struct<()>
     llvm.call @print_Unit(%0) : (!llvm.struct<()>) -> ()
     llvm.return
   }
-  llvm.func @_mlir_ciface_main() attributes {llvm.emit_c_interface} {
+  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.call @main() : () -> ()
     llvm.return
   }
-  llvm.func @"casts::casts::main"() -> !llvm.struct<()> attributes {llvm.emit_c_interface} {
+  llvm.func @"casts::casts::main"() -> !llvm.struct<()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(0 : i8) : i8
@@ -77,7 +79,7 @@ module attributes {llvm.data_layout = ""} {
     %15 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
     llvm.return %15 : !llvm.struct<()>
   }
-  llvm.func @"_mlir_ciface_casts::casts::main"(%arg0: !llvm.ptr<struct<()>>) attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_casts::casts::main"(%arg0: !llvm.ptr<struct<()>>) attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"casts::casts::main"() : () -> !llvm.struct<()>
     llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
     llvm.return

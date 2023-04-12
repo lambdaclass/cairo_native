@@ -1,6 +1,8 @@
 module attributes {llvm.data_layout = ""} {
+  llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
-  llvm.func internal @felt252_mul(%arg0: i256, %arg1: i256) -> i256 {
+  llvm.func internal @felt252_mul(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.zext %arg0 : i256 to i512
     %1 = llvm.zext %arg1 : i256 to i512
     %2 = llvm.mul %0, %1  : i512
@@ -10,7 +12,7 @@ module attributes {llvm.data_layout = ""} {
     %6 = llvm.trunc %5 : i512 to i256
     llvm.return %6 : i256
   }
-  llvm.func @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1(%arg0 : i256)
   ^bb1(%0: i256):  // pred: ^bb0
     %1 = llvm.mlir.constant(0 : i256) : i256
@@ -26,7 +28,7 @@ module attributes {llvm.data_layout = ""} {
   ^bb4(%7: i256):  // 2 preds: ^bb2, ^bb3
     llvm.return %7 : i256
   }
-  llvm.func @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.emit_c_interface} {
+  llvm.func @"_mlir_ciface_felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0: i256) -> i256 attributes {llvm.dso_local, llvm.emit_c_interface} {
     %0 = llvm.call @"felt_is_zero::felt_is_zero::mul_if_not_zero"(%arg0) : (i256) -> i256
     llvm.return %0 : i256
   }

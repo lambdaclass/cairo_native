@@ -132,6 +132,54 @@ impl<'ctx> Compiler<'ctx> {
 
                     storage.types.insert(id.to_string(), enum_sierra_type);
                 }
+                "Array" => {
+                    // Since the array is growable and a stack array with known size is not possible to pass
+                    // to functions due to signature match requirements
+                    // we allocate in on the heap, and it's dropped on drop, which will no longer be
+                    // a noop in the case of arrays.
+
+                    let array_value_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => {
+                            storage.types.get(&x.id.to_string()).expect("array type should exist")
+                        }
+                        _ => unreachable!("array type is always a type"),
+                    };
+
+                    // array len type is u32 because sierra usize is u32.
+                    let sierra_type = SierraType::Array {
+                        ty: self.struct_type(&[
+                            self.u32_type(),
+                            self.u32_type(),
+                            self.llvm_ptr_type(),
+                        ]),
+                        len_type: self.u32_type(),
+                        element_type: Box::new(array_value_type.clone()),
+                    };
+
+                    storage.types.insert(id.to_string(), sierra_type);
+                }
+                "Snapshot" => {
+                    // TODO: make sure this is correct
+                    let inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage
+                            .types
+                            .get(&x.id.to_string())
+                            .expect("snapshot inner type should exist"),
+                        _ => unreachable!("snapshot inner type is always a type"),
+                    };
+                    storage.types.insert(id.to_string(), inner_type.clone());
+                }
+                "Box" => {
+                    // TODO: make sure this is correct, or should it be a pointer to the type?
+                    let inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage
+                            .types
+                            .get(&x.id.to_string())
+                            .expect("box inner type should exist"),
+                        _ => unreachable!("box inner type is always a type"),
+                    };
+                    storage.types.insert(id.to_string(), inner_type.clone());
+                }
                 "u8" => {
                     let ty = self.u8_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));

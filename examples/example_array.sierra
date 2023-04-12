@@ -1,0 +1,58 @@
+type u32 = u32;
+type Array<u32> = Array<u32>;
+type Unit = Struct<ut@Tuple>;
+type Snapshot<Array<u32>> = Snapshot<Array<u32>>;
+
+libfunc array_new<u32> = array_new<u32>;
+libfunc u32_const<1> = u32_const<1>;
+libfunc store_temp<u32> = store_temp<u32>;
+libfunc array_append<u32> = array_append<u32>;
+libfunc struct_construct<Unit> = struct_construct<Unit>;
+libfunc drop<Unit> = drop<Unit>;
+libfunc u32_const<2> = u32_const<2>;
+libfunc u32_const<3> = u32_const<3>;
+libfunc u32_const<4> = u32_const<4>;
+libfunc u32_const<5> = u32_const<5>;
+libfunc snapshot_take<Array<u32>> = snapshot_take<Array<u32>>;
+libfunc store_temp<Snapshot<Array<u32>>> = store_temp<Snapshot<Array<u32>>>;
+libfunc array_len<u32> = array_len<u32>;
+libfunc store_temp<Array<u32>> = store_temp<Array<u32>>;
+
+array_new<u32>() -> ([0]);
+u32_const<1>() -> ([1]);
+store_temp<u32>([1]) -> ([1]);
+array_append<u32>([0], [1]) -> ([2]);
+struct_construct<Unit>() -> ([3]);
+drop<Unit>([3]) -> ();
+u32_const<2>() -> ([4]);
+store_temp<u32>([4]) -> ([4]);
+array_append<u32>([2], [4]) -> ([5]);
+struct_construct<Unit>() -> ([6]);
+drop<Unit>([6]) -> ();
+u32_const<3>() -> ([7]);
+store_temp<u32>([7]) -> ([7]);
+array_append<u32>([5], [7]) -> ([8]);
+struct_construct<Unit>() -> ([9]);
+drop<Unit>([9]) -> ();
+u32_const<4>() -> ([10]);
+store_temp<u32>([10]) -> ([10]);
+array_append<u32>([8], [10]) -> ([11]);
+struct_construct<Unit>() -> ([12]);
+drop<Unit>([12]) -> ();
+u32_const<5>() -> ([13]);
+store_temp<u32>([13]) -> ([13]);
+array_append<u32>([11], [13]) -> ([14]);
+struct_construct<Unit>() -> ([15]);
+drop<Unit>([15]) -> ();
+snapshot_take<Array<u32>>([14]) -> ([16], [17]);
+store_temp<Snapshot<Array<u32>>>([17]) -> ([17]);
+array_len<u32>([17]) -> ([18]);
+store_temp<u32>([18]) -> ([18]);
+array_append<u32>([16], [18]) -> ([19]);
+struct_construct<Unit>() -> ([20]);
+drop<Unit>([20]) -> ();
+store_temp<Array<u32>>([19]) -> ([21]);
+return([21]);
+
+example_array::example_array::main@0() -> (Array<u32>);
+

@@ -2,16 +2,55 @@ use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
 use melior_next::ir::{
-    operation, Block, BlockRef, Location, NamedAttribute, Region, Type, TypeLike, Value, ValueLike,
+    operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
+    Value, ValueLike,
 };
 
 use crate::{
-    compiler::{Compiler, SierraType},
+    compiler::{Compiler, FnAttributes, SierraType},
     statements::Variable,
 };
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
+    /* Needed for sierra Arrays
+        declare ptr @realloc(ptr, i64)
+        declare void @free(ptr)
+    */
+    pub fn create_realloc(&self) -> Result<()> {
+        let region = Region::new();
+
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"realloc\""),
+                    ("function_type", "!llvm.func<ptr (ptr, i64)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+
+        let region = Region::new();
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"free\""),
+                    ("function_type", "!llvm.func<void (ptr)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+        Ok(())
+    }
+
     /// Creates the external function definition for printf.
     pub fn create_printf(&'ctx self) -> Result<()> {
         let region = Region::new();
@@ -35,12 +74,7 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Utility function to create a printf call.
     /// Null-terminates the string iff it is not already null-terminated
-    pub fn call_printf(
-        &'ctx self,
-        block: BlockRef<'ctx>,
-        fmt: &str,
-        values: &[Value],
-    ) -> Result<()> {
+    pub fn call_printf<'a>(&'a self, block: &'a Block, fmt: &str, values: &[Value]) -> Result<()> {
         let terminated_fmt_string = if fmt.ends_with('\0') {
             fmt.to_string()
         } else if fmt.contains('\0') {
@@ -55,14 +89,14 @@ impl<'ctx> Compiler<'ctx> {
         let i8_type = Type::integer(&self.context, 8);
         let arr_ty =
             Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
-        let data_op = self.op_llvm_alloca(&block, i8_type, fmt_len)?;
+        let data_op = self.op_llvm_alloca(block, i8_type, fmt_len)?;
         let addr: Value = data_op.result(0)?.into();
 
         // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
         // To create a constant array, we need to use a dense array attribute, which has a tensor type,
         // which is then interpreted as a llvm.array type.
         let fmt_data = self.op_llvm_const(
-            &block,
+            block,
             &format!(
                 "dense<[{}]> : tensor<{} x {}>",
                 terminated_fmt_string.as_bytes().iter().join(", "),
@@ -72,15 +106,25 @@ impl<'ctx> Compiler<'ctx> {
             arr_ty,
         );
 
-        self.op_llvm_store(&block, fmt_data.result(0)?.into(), addr)?;
+        self.op_llvm_store(block, fmt_data.result(0)?.into(), addr)?;
 
-        let target_fd = self.op_u32_const(&block, "1");
+        let target_fd = self.op_u32_const(block, "1");
 
         let mut args = vec![target_fd.result(0)?.into(), addr];
         args.extend(values);
 
-        self.op_llvm_call(&block, "dprintf", &args, &[i32_type])?;
+        self.op_llvm_call(block, "dprintf", &args, &[i32_type])?;
         Ok(())
+    }
+
+    /// value needs to be u64 and is the size in bytes.
+    pub fn call_realloc<'a>(
+        &'a self,
+        block: &'a Block,
+        ptr: Value,
+        size: Value,
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
     }
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
@@ -120,18 +164,23 @@ impl<'ctx> Compiler<'ctx> {
 
             let truncated_op = self.op_trunc(&block, shift_result, self.i32_type());
             let truncated = truncated_op.result(0)?.into();
-            self.call_printf(block, "%08X\0", &[truncated])?;
+            self.call_printf(&block, "%08X\0", &[truncated])?;
 
             bit_width = bit_width.saturating_sub(32);
         }
 
-        self.call_printf(block, "\n\0", &[])?;
+        self.call_printf(&block, "\n\0", &[])?;
 
         self.op_return(&block, &[]);
 
         let function_type = create_fn_signature(&args_types, &[]);
 
-        let func = self.op_func("print_felt252", &function_type, vec![region], false, false)?;
+        let func = self.op_func(
+            "print_felt252",
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
 
         self.module.body().append_operation(func);
 
@@ -189,8 +238,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", struct_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);
@@ -230,7 +278,7 @@ impl<'ctx> Compiler<'ctx> {
 
             // Print the tag. Extending it to 32 bits allows for better printf portability
             let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
-            self.call_printf(entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
 
             // Store the enum data on the stack, and create a pointer to it
             // This allows us to interpret a ptr to it as a ptr to any of the variant types
@@ -263,7 +311,7 @@ impl<'ctx> Compiler<'ctx> {
                 let variant_felt_width = var_ty.get_felt_representation_width();
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
                 if unused_felt_count != 0 {
-                    self.call_printf(*block, &"0\n".repeat(unused_felt_count), &[])?;
+                    self.call_printf(block, &"0\n".repeat(unused_felt_count), &[])?;
                 }
 
                 let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
@@ -282,8 +330,111 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", enum_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
+    pub fn create_print_array(
+        &'ctx self,
+        array_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let entry_block = region
+            .append_block(Block::new(&[(array_type.get_type(), Location::unknown(&self.context))]));
+
+        let function_type = create_fn_signature(&[array_type.get_type()], &[]);
+
+        let array_value_type_id = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::Type(type_id) => type_id,
+            _ => panic!("Struct type declaration arguments after the first should all be resolved"),
+        };
+
+        if let SierraType::Array { ty: _, len_type, element_type } = array_type {
+            let array_value = entry_block.argument(0)?.into();
+
+            // get the data pointer
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&entry_block, 2, array_value, self.llvm_ptr_type())?;
+            let data_ptr: Value = data_ptr_op.result(0)?.into();
+
+            let lower_bound_op = self.op_u32_const(&entry_block, "0");
+            let lower_bound: Value = lower_bound_op.result(0)?.into();
+
+            let upper_bound_op =
+                self.op_llvm_extractvalue(&entry_block, 0, array_value, *len_type)?;
+            let upper_bound: Value = upper_bound_op.result(0)?.into();
+
+            let step_op = self.op_u32_const(&entry_block, "1");
+            let step: Value = step_op.result(0)?.into();
+
+            let check_block = region
+                .append_block(Block::new(&[(self.u32_type(), Location::unknown(&self.context))]));
+
+            let loop_block = region
+                .append_block(Block::new(&[(self.u32_type(), Location::unknown(&self.context))]));
+
+            let end_block = region.append_block(Block::new(&[]));
+
+            self.op_br(&entry_block, &check_block, &[lower_bound]);
+
+            let lower_bound = check_block.argument(0)?.into();
+            let cmp_op = self.op_cmp(
+                &check_block,
+                crate::compiler::CmpOp::UnsignedLess,
+                lower_bound,
+                upper_bound,
+            );
+            let cmp = cmp_op.result(0)?.into();
+            self.op_cond_br(
+                &check_block,
+                cmp,
+                &loop_block,
+                &end_block,
+                &[check_block.argument(0)?.into()],
+                &[],
+            )?;
+
+            // for loop body
+            let idx = loop_block.argument(0)?.into();
+
+            // get the pointer to the data index
+            let value_ptr_op =
+                self.op_llvm_gep_dynamic(&loop_block, &[idx], data_ptr, element_type.get_type())?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+            let value_load_op =
+                self.op_llvm_load(&loop_block, value_ptr, element_type.get_type())?;
+            let value = value_load_op.result(0)?.into();
+
+            let array_value_type_name = array_value_type_id.debug_name.as_ref().unwrap();
+            self.op_func_call(
+                &loop_block,
+                &format!("print_{}", array_value_type_name),
+                &[value],
+                &[],
+            )?;
+
+            let new_idx_op = self.op_add(&loop_block, idx, step);
+            let new_idx = new_idx_op.result(0)?.into();
+
+            self.op_br(&loop_block, &check_block, &[new_idx]);
+
+            self.op_return(&end_block, &[]);
+        } else {
+            panic!("sierra_type_declaration should be a array")
+        }
+
+        let enum_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let func = self.op_func(
+            &format!("print_{}", enum_name.as_str()),
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);
@@ -309,23 +460,23 @@ impl<'ctx> Compiler<'ctx> {
         match uint_name.as_str() {
             "u8" => {
                 let value_32bit = self.op_zext(&block, arg, self.u32_type());
-                self.call_printf(block, "%X\n", &[value_32bit.result(0)?.into()])?;
+                self.call_printf(&block, "%X\n", &[value_32bit.result(0)?.into()])?;
             }
             "u16" => {
                 let value_32bit = self.op_zext(&block, arg, self.u32_type());
-                self.call_printf(block, "%X\n", &[value_32bit.result(0)?.into()])?;
+                self.call_printf(&block, "%X\n", &[value_32bit.result(0)?.into()])?;
             }
             "u32" => {
-                self.call_printf(block, "%X\n", &[arg])?;
+                self.call_printf(&block, "%X\n", &[arg])?;
             }
-            "u64" => self.call_printf(block, "%lX\n", &[arg])?,
+            "u64" => self.call_printf(&block, "%lX\n", &[arg])?,
             "u128" => {
                 let lower = self.op_trunc(&block, arg, self.u64_type());
                 let shift_amount = self.op_u128_const(&block, "64");
                 let upper_shifted = self.op_shru(&block, arg, shift_amount.result(0)?.into());
                 let upper = self.op_trunc(&block, upper_shifted.result(0)?.into(), self.u64_type());
                 self.call_printf(
-                    block,
+                    &block,
                     "%lX%016lX\n",
                     &[upper.result(0)?.into(), lower.result(0)?.into()],
                 )?;
@@ -339,8 +490,7 @@ impl<'ctx> Compiler<'ctx> {
             &format!("print_{}", uint_name.as_str()),
             &function_type,
             vec![region],
-            false,
-            false,
+            FnAttributes::libfunc(false, false),
         )?;
 
         self.module.body().append_operation(func);
