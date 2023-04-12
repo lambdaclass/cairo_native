@@ -180,4 +180,30 @@ impl<'ctx> Compiler<'ctx> {
 
         Ok(())
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn inline_array_get(
+        &self,
+        _id: &str,
+        _statement_idx: usize,
+        _region: &Region,
+        _block: &Block,
+        _blocks: &BTreeMap<usize, BlockInfo>,
+        _invocation: &Invocation,
+        _variables: &HashMap<u64, Variable>,
+        _storage: &Storage,
+    ) -> Result<()> {
+        // let _libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
+
+        // arg 0 is range check, can ignore
+        // arg 1 is the array
+        // arg 2 is the index
+
+        todo!();
+
+        // fallthrough if array out of bounds
+        // jump if ok
+
+        // Ok(())
+    }
 }

@@ -282,6 +282,9 @@ impl<'ctx> Compiler<'ctx> {
                 "array_len" => {
                     self.create_libfunc_array_len(func_decl, parent_block, storage)?;
                 }
+                "array_get" => {
+                    self.register_libfunc_array_get(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -852,6 +855,44 @@ impl<'ctx> Compiler<'ctx> {
             );
         } else {
             panic!("enum_match arg_type should be a enum")
+        }
+    }
+
+    pub fn register_libfunc_array_get(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_get argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::Array {
+            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
+            len_type: self.u32_type(),
+            element_type: Box::new(arg_type.clone()),
+        };
+
+        if let SierraType::Array { element_type, .. } = &sierra_type {
+            storage.libfuncs.insert(
+                id,
+                SierraLibFunc::Branching {
+                    args: vec![
+                        PositionalArg { loc: 1, ty: sierra_type.clone() },
+                        PositionalArg { loc: 2, ty: *element_type.clone() },
+                    ],
+                    return_types: vec![
+                        vec![/* todo: array element type here i think */],
+                        vec![PositionalArg { loc: 0, ty: sierra_type }],
+                    ],
+                },
+            );
         }
     }
 
