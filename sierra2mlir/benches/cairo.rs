@@ -7,7 +7,8 @@ use std::fs;
 
 fn benchmark_cairo(c: &mut Criterion) {
     let cairo_run_config = CairoRunConfig::default();
-    let program = fs::read("benches/programs/fib0.json").expect("JSON program not found or not readable");
+    let program =
+        fs::read("benches/programs/fib0.json").expect("JSON program not found or not readable");
 
     c.bench_with_input(
         BenchmarkId::new("Cairo", 1),
