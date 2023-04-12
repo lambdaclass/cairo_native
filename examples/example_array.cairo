@@ -8,5 +8,6 @@ fn main() -> Array<u32> {
     data.append(3_u32);
     data.append(4_u32);
     data.append(5_u32);
+    data.append(data.len());
     data
 }
