@@ -214,11 +214,7 @@ impl<'ctx> Compiler<'ctx> {
             .collect_vec();
 
         let target_block_info = target_blocks[0];
-        dbg!(target_block_info);
         let panic_block_info = target_blocks[1];
-
-        dbg!(invocation);
-        dbg!(&target_blocks);
 
         if let SierraType::Array { ty: _, len_type, element_type } = array_type {
             // arg 0 is range check, can ignore
