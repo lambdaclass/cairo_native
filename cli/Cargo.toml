@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
+cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c"}
+cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c"}
 clap = { version = "4.1.13", features = ["derive"] }
 color-eyre = "0.6.2"
 sierra2mlir = { version = "0.1.0", path = "../sierra2mlir" }

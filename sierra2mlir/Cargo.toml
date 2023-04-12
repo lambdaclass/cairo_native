@@ -17,7 +17,7 @@ name = "cairo"
 harness = false
 
 [dependencies]
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6"}
+cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c"}
 tracing = "0.1.37"
 color-eyre = "0.6.2"
 melior-next = { git = "https://github.com/edg-l/melior-next", rev = "69edc4f7527e7e8e3b496df08c12441be2352996"}
@@ -27,8 +27,8 @@ num-bigint = "0.4.3"
 num-traits = "0.2.15"
 
 [dev-dependencies]
-cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.6" }
-cairo-vm = "0.2.2"
+cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c" }
+cairo-vm = "0.3.0-rc1"
 criterion = "0.4.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
