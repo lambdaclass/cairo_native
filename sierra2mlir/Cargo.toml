@@ -12,6 +12,10 @@ authors = [
 name = "execution"
 harness = false
 
+[[bench]]
+name = "cairo"
+harness = false
+
 [dependencies]
 cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c"}
 tracing = "0.1.37"
@@ -24,6 +28,7 @@ num-traits = "0.2.15"
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", rev = "6f6f49f17e6c976fb00dc9513f4d4a68c2f6723c" }
+cairo-vm = "0.2.2"
 criterion = "0.4.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
