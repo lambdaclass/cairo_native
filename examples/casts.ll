@@ -5,63 +5,77 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal i16 @"upcast<u8, u16>"(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i16 @"upcast<u8, u16>"(i8 %0) #0 {
   %2 = zext i8 %0 to i16
   ret i16 %2
 }
 
-define internal i32 @"upcast<u8, u32>"(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i32 @"upcast<u8, u32>"(i8 %0) #0 {
   %2 = zext i8 %0 to i32
   ret i32 %2
 }
 
-define internal i64 @"upcast<u8, u64>"(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i64 @"upcast<u8, u64>"(i8 %0) #0 {
   %2 = zext i8 %0 to i64
   ret i64 %2
 }
 
-define internal i128 @"upcast<u8, u128>"(i8 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i128 @"upcast<u8, u128>"(i8 %0) #0 {
   %2 = zext i8 %0 to i128
   ret i128 %2
 }
 
-define internal i32 @"upcast<u16, u32>"(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i32 @"upcast<u16, u32>"(i16 %0) #0 {
   %2 = zext i16 %0 to i32
   ret i32 %2
 }
 
-define internal i64 @"upcast<u16, u64>"(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i64 @"upcast<u16, u64>"(i16 %0) #0 {
   %2 = zext i16 %0 to i64
   ret i64 %2
 }
 
-define internal i128 @"upcast<u16, u128>"(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i128 @"upcast<u16, u128>"(i16 %0) #0 {
   %2 = zext i16 %0 to i128
   ret i128 %2
 }
 
-define internal i64 @"upcast<u32, u64>"(i32 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i64 @"upcast<u32, u64>"(i32 %0) #0 {
   %2 = zext i32 %0 to i64
   ret i64 %2
 }
 
-define internal i128 @"upcast<u32, u128>"(i32 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i128 @"upcast<u32, u128>"(i32 %0) #0 {
   %2 = zext i32 %0 to i128
   ret i128 %2
 }
 
-define internal i128 @"upcast<u64, u128>"(i64 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i128 @"upcast<u64, u128>"(i64 %0) #0 {
   %2 = zext i64 %0 to i128
   ret i128 %2
 }
 
-define internal {} @"struct_construct<Unit>"() {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal {} @"struct_construct<Unit>"() #0 {
   ret {} undef
 }
 
-define internal void @print_Unit({} %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_Unit({} %0) #1 {
   ret void
 }
 
@@ -99,6 +113,9 @@ define void @"_mlir_ciface_casts::casts::main"(ptr %0) {
   store {} %2, ptr %0, align 1
   ret void
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

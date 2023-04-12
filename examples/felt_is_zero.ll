@@ -9,12 +9,8 @@ declare ptr @realloc(ptr, i64)
 
 declare i32 @dprintf(i32, ptr, ...)
 
-<<<<<<< HEAD
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal i256 @felt252_mul(i256 %0, i256 %1) #0 {
-=======
-define internal i256 @felt252_mul(i256 %0, i256 %1) {
->>>>>>> origin/main
   %3 = zext i256 %0 to i512
   %4 = zext i256 %1 to i512
   %5 = mul i512 %3, %4

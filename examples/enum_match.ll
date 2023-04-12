@@ -5,9 +5,12 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal { i16, [4 x i8] } @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 %0) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [4 x i8] } @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 %0) #0 {
   %2 = alloca { i16, [4 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [4 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
@@ -17,7 +20,8 @@ define internal { i16, [4 x i8] } @"enum_init<enum_match::enum_match::MyEnum, 1>
   ret { i16, [4 x i8] } %5
 }
 
-define internal void @print_u16(i16 %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_u16(i16 %0) #1 {
   %2 = zext i16 %0 to i32
   %3 = alloca i8, i64 4, align 1
   store [4 x i8] c"%X\0A\00", ptr %3, align 1
@@ -97,6 +101,9 @@ define i16 @"_mlir_ciface_enum_match::enum_match::main"() {
   %1 = call i16 @"enum_match::enum_match::main"()
   ret i16 %1
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

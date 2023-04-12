@@ -5,9 +5,12 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
+declare ptr @realloc(ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
-define internal { i128, i128, i128 } @bitwise(i128 %0, i128 %1) {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i128, i128, i128 } @bitwise(i128 %0, i128 %1) #0 {
   %3 = and i128 %0, %1
   %4 = xor i128 %0, %1
   %5 = or i128 %0, %1
@@ -17,11 +20,13 @@ define internal { i128, i128, i128 } @bitwise(i128 %0, i128 %1) {
   ret { i128, i128, i128 } %8
 }
 
-define internal {} @"struct_construct<Unit>"() {
+; Function Attrs: alwaysinline norecurse nounwind
+define internal {} @"struct_construct<Unit>"() #0 {
   ret {} undef
 }
 
-define internal void @print_Unit({} %0) {
+; Function Attrs: norecurse nounwind
+define internal void @print_Unit({} %0) #1 {
   ret void
 }
 
@@ -61,6 +66,9 @@ define void @"_mlir_ciface_bitwise::bitwise::main"(ptr %0) {
   store {} %2, ptr %0, align 1
   ret void
 }
+
+attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

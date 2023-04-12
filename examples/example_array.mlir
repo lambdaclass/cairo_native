@@ -45,6 +45,42 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i32, i32, ptr)> 
     llvm.return %0 : i32
   }
+  llvm.func internal @print_u32(%arg0: i32) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
+    %0 = llvm.mlir.constant(4 : i64) : i64
+    %1 = llvm.alloca %0 x i8 : (i64) -> !llvm.ptr
+    %2 = llvm.mlir.constant(dense<[37, 88, 10, 0]> : tensor<4xi8>) : !llvm.array<4 x i8>
+    llvm.store %2, %1 : !llvm.array<4 x i8>, !llvm.ptr
+    %3 = llvm.mlir.constant(1 : i32) : i32
+    %4 = llvm.call @dprintf(%3, %1, %arg0) : (i32, !llvm.ptr, i32) -> i32
+    llvm.return
+  }
+  llvm.func internal @"print_Array<u32>"(%arg0: !llvm.struct<(i32, i32, ptr)>) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
+    %0 = llvm.extractvalue %arg0[2] : !llvm.struct<(i32, i32, ptr)> 
+    %1 = llvm.mlir.constant(0 : i32) : i32
+    %2 = llvm.extractvalue %arg0[0] : !llvm.struct<(i32, i32, ptr)> 
+    %3 = llvm.mlir.constant(1 : i32) : i32
+    llvm.br ^bb1(%1 : i32)
+  ^bb1(%4: i32):  // 2 preds: ^bb0, ^bb2
+    %5 = llvm.icmp "ult" %4, %2 : i32
+    llvm.cond_br %5, ^bb2(%4 : i32), ^bb3
+  ^bb2(%6: i32):  // pred: ^bb1
+    %7 = llvm.getelementptr %0[%6] : (!llvm.ptr, i32) -> !llvm.ptr, i32
+    %8 = llvm.load %7 : !llvm.ptr -> i32
+    llvm.call @print_u32(%8) : (i32) -> ()
+    %9 = llvm.add %6, %3  : i32
+    llvm.br ^bb1(%9 : i32)
+  ^bb3:  // pred: ^bb1
+    llvm.return
+  }
+  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
+    %0 = llvm.call @"example_array::example_array::main"() : () -> !llvm.struct<(i32, i32, ptr)>
+    llvm.call @"print_Array<u32>"(%0) : (!llvm.struct<(i32, i32, ptr)>) -> ()
+    llvm.return
+  }
+  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
+    llvm.call @main() : () -> ()
+    llvm.return
+  }
   llvm.func @"example_array::example_array::main"() -> !llvm.struct<(i32, i32, ptr)> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0

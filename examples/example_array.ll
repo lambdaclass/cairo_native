@@ -53,6 +53,48 @@ define internal i32 @"array_len<u32>"({ i32, i32, ptr } %0) #0 {
   ret i32 %2
 }
 
+; Function Attrs: norecurse nounwind
+define internal void @print_u32(i32 %0) #1 {
+  %2 = alloca i8, i64 4, align 1
+  store [4 x i8] c"%X\0A\00", ptr %2, align 1
+  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2, i32 %0)
+  ret void
+}
+
+; Function Attrs: norecurse nounwind
+define internal void @"print_Array<u32>"({ i32, i32, ptr } %0) #1 {
+  %2 = extractvalue { i32, i32, ptr } %0, 2
+  %3 = extractvalue { i32, i32, ptr } %0, 0
+  br label %4
+
+4:                                                ; preds = %7, %1
+  %5 = phi i32 [ %11, %7 ], [ 0, %1 ]
+  %6 = icmp ult i32 %5, %3
+  br i1 %6, label %7, label %12
+
+7:                                                ; preds = %4
+  %8 = phi i32 [ %5, %4 ]
+  %9 = getelementptr i32, ptr %2, i32 %8
+  %10 = load i32, ptr %9, align 4
+  call void @print_u32(i32 %10)
+  %11 = add i32 %8, 1
+  br label %4
+
+12:                                               ; preds = %4
+  ret void
+}
+
+define void @main() {
+  %1 = call { i32, i32, ptr } @"example_array::example_array::main"()
+  call void @"print_Array<u32>"({ i32, i32, ptr } %1)
+  ret void
+}
+
+define void @_mlir_ciface_main() {
+  call void @main()
+  ret void
+}
+
 define { i32, i32, ptr } @"example_array::example_array::main"() {
   br label %1
 
@@ -81,6 +123,7 @@ define void @"_mlir_ciface_example_array::example_array::main"(ptr %0) {
 }
 
 attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { norecurse nounwind }
 
 !llvm.module.flags = !{!0}
 

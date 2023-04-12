@@ -20,12 +20,8 @@ define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 
   ret { i16, [8 x i8] } %5
 }
 
-<<<<<<< HEAD
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 %0) #0 {
-=======
-define internal { i16, [8 x i8] } @"enum_init<simple_enum::simple_enum::MyEnum, 1>"(i16 %0) {
->>>>>>> origin/main
   %2 = alloca { i16, [8 x i8] }, i64 1, align 8
   %3 = getelementptr inbounds { i16, [8 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2

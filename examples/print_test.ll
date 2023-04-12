@@ -9,12 +9,8 @@ declare ptr @realloc(ptr, i64)
 
 declare i32 @dprintf(i32, ptr, ...)
 
-<<<<<<< HEAD
 ; Function Attrs: norecurse nounwind
 define internal void @print_felt252(i256 %0) #0 {
-=======
-define internal void @print_felt252(i256 %0) {
->>>>>>> origin/main
   %2 = ashr i256 %0, 224
   %3 = trunc i256 %2 to i32
   %4 = alloca i8, i64 5, align 1
