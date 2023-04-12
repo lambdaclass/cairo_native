@@ -18,6 +18,7 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(
+    example_array,
     boolean,
     casts,
     destructure,

@@ -176,15 +176,15 @@ impl<'ctx> Compiler<'ctx> {
     pub fn inline_array_get(
         &self,
         id: &str,
-        statement_idx: usize,
-        region: &Region,
-        block: &Block,
-        blocks: &BTreeMap<usize, BlockInfo>,
-        invocation: &Invocation,
-        variables: &HashMap<u64, Variable>,
+        _statement_idx: usize,
+        _region: &Region,
+        _block: &Block,
+        _blocks: &BTreeMap<usize, BlockInfo>,
+        _invocation: &Invocation,
+        _variables: &HashMap<u64, Variable>,
         storage: &Storage,
     ) -> Result<()> {
-        let libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
+        let _libfuncdef = storage.libfuncs.get(id).unwrap().as_lib_func_def();
 
         // arg 0 is range check, can ignore
         // arg 1 is the array
@@ -195,6 +195,6 @@ impl<'ctx> Compiler<'ctx> {
         // fallthrough if array out of bounds
         // jump if ok
 
-        Ok(())
+        // Ok(())
     }
 }
