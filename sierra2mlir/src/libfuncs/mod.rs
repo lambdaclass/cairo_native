@@ -1170,7 +1170,7 @@ impl<'ctx> Compiler<'ctx> {
                 self.op_return(&block, &[op_load.result(0)?.into()]);
 
                 parent_block.append_operation(self.op_func(
-                    &id,
+                    id,
                     &create_fn_signature(&[self.range_check_type(), src_type], &[enum_type]),
                     vec![region],
                     false,
@@ -1202,7 +1202,7 @@ impl<'ctx> Compiler<'ctx> {
                 );
             }
             Ordering::Equal => {
-                self.create_identity_function(func_decl, parent_block, storage)?;
+                self.create_identity_function(func_decl, storage)?;
             }
             Ordering::Less => todo!("invalid generics for libfunc `downcast`"),
         }
