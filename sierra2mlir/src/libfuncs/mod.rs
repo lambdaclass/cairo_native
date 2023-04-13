@@ -609,7 +609,7 @@ impl<'ctx> Compiler<'ctx> {
         let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
         let gte_prime = gte_prime_op.result(0)?.into();
 
-        // if gt_primes
+        // if gt_prime
         self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[]);
 
         //gt prime block
