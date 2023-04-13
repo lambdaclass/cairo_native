@@ -1,9 +1,14 @@
+use std::ops::Deref;
+
 use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
-use melior_next::ir::{
-    operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
-    Value, ValueLike,
+use melior_next::{
+    dialect::cf,
+    ir::{
+        operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
+        Value, ValueLike,
+    },
 };
 
 use crate::{
@@ -302,7 +307,16 @@ impl<'ctx> Compiler<'ctx> {
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
             let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
 
-            self.op_switch(&entry_block, &case_values, tag_value, default_block, &blockrefs)?;
+            let blockrefs_with_ops =
+                blockrefs.iter().map(|x| (x.deref(), [].as_slice())).collect_vec();
+            entry_block.append_operation(cf::switch(
+                &self.context,
+                &case_values,
+                tag_value,
+                (&default_block, &[]),
+                blockrefs_with_ops.as_slice(),
+                Location::unknown(&self.context),
+            ));
 
             // Sierra type id of each variant type, used to work out which print functions to delegate to
             let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
@@ -407,7 +421,7 @@ impl<'ctx> Compiler<'ctx> {
                 &end_block,
                 &[check_block.argument(0)?.into()],
                 &[],
-            )?;
+            );
 
             // for loop body
             let idx = loop_block.argument(0)?.into();
