@@ -1,9 +1,15 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::Deref,
+};
 
 use cairo_lang_sierra::program::{GenBranchTarget, Invocation};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Region, Value};
+use melior_next::{
+    dialect::cf,
+    ir::{Block, BlockRef, Location, Region, Value},
+};
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
@@ -95,7 +101,7 @@ impl<'ctx> Compiler<'ctx> {
         let (zero_block, zero_vars) = &target_blocks[0];
         let (nonzero_block, nonzero_vars) = &target_blocks[1];
 
-        self.op_cond_br(block, eq.into(), zero_block, nonzero_block, zero_vars, nonzero_vars)?;
+        self.op_cond_br(block, eq.into(), zero_block, nonzero_block, zero_vars, nonzero_vars);
 
         Ok(())
     }
@@ -176,7 +182,17 @@ impl<'ctx> Compiler<'ctx> {
         // NOTE To truly guarantee this, we'll need guards on external inputs once we take them
         let default_block = region.append_block(Block::new(&[]));
         self.op_unreachable(&default_block);
-        self.op_switch(block, &case_values, tag_value, default_block, &variant_blocks)?;
+
+        let variant_blocks_with_ops =
+            variant_blocks.iter().map(|x| (x.deref(), [].as_slice())).collect_vec();
+        block.append_operation(cf::switch(
+            &self.context,
+            &case_values,
+            tag_value,
+            (&default_block, &[]),
+            variant_blocks_with_ops.as_slice(),
+            Location::unknown(&self.context),
+        ));
 
         Ok(())
     }
@@ -256,7 +272,7 @@ impl<'ctx> Compiler<'ctx> {
                 &panic_block_info.block,
                 &[],
                 &args_to_panic_block,
-            )?;
+            );
 
             // get the value at index
 

@@ -2,17 +2,17 @@ use cairo_lang_sierra::program::Program;
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
-    dialect,
+    dialect::{self, arith, cf, llvm},
     ir::{
         operation::{self},
-        Attribute, Block, BlockRef, Identifier, Location, Module, NamedAttribute, Operation,
-        OperationRef, Region, Type, TypeLike, Value, ValueLike,
+        Attribute, Block, Identifier, Location, Module, NamedAttribute, Operation, OperationRef,
+        Region, Type, TypeLike, Value, ValueLike,
     },
     pass::transform::register_reconcile_casts,
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use std::{cmp::Ordering, collections::HashMap, ops::Deref};
+use std::{cmp::Ordering, collections::HashMap};
 
 use crate::{
     libfuncs::lib_func_def::SierraLibFunc, types::DEFAULT_PRIME,
@@ -279,7 +279,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn llvm_ptr_type(&self) -> Type {
-        Type::parse(&self.context, "!llvm.ptr").unwrap()
+        llvm::r#type::opaque_pointer(&self.context)
     }
 
     pub fn felt_type(&self) -> Type {
@@ -340,16 +340,15 @@ impl<'ctx> Compiler<'ctx> {
     ///
     /// Sierra: type core::bool = Enum<ut@core::bool, Unit, Unit>;
     pub fn boolean_enum_type(&self) -> Type {
-        Type::parse(&self.context, "!llvm.struct<(i16, array<0 x i8>)>").unwrap()
+        self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)])
     }
 
-    /// Creates a llvm array type.
-    pub fn llvm_array_type(&self, len: usize, ty: Type) -> Type {
-        Type::parse(&self.context, &format!("!llvm.array<{len} x {ty}>")).expect("parse type")
+    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>]) -> Type {
+        llvm::r#type::r#struct(&self.context, fields, false)
     }
 
-    pub fn llvm_struct_type(&self, types: &[Type]) -> Type {
-        Type::parse(&self.context, &self.struct_type_string(types)).expect("parse type")
+    pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
+        llvm::r#type::array(element_type, len)
     }
 
     pub fn prime_constant<'a>(&self, block: &'a Block) -> OperationRef<'a> {
@@ -358,72 +357,72 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Only the MLIR op, doesn't do modulo.
     pub fn op_add<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.addi", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[lhs.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::addi(
+            lhs,
+            rhs,
+            lhs.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Only the MLIR op, doesn't do modulo.
     pub fn op_sub<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.subi", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[lhs.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::subi(
+            lhs,
+            rhs,
+            lhs.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Only the MLIR op.
     pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.muli", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[lhs.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::muli(
+            lhs,
+            rhs,
+            lhs.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Only the MLIR op.
     pub fn op_div<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.divui", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[lhs.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::divui(
+            lhs,
+            rhs,
+            lhs.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Only the MLIR op.
     pub fn op_rem<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.remui", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[lhs.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::remui(
+            lhs,
+            rhs,
+            lhs.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Shift right signed.
     pub fn op_shrs<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.shrsi", Location::unknown(&self.context))
-                .add_operands(&[value, shift_by])
-                .add_results(&[value.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::shrsi(
+            value,
+            shift_by,
+            value.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Shift right unsigned.
     pub fn op_shru<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.shrui", Location::unknown(&self.context))
-                .add_operands(&[value, shift_by])
-                .add_results(&[value.r#type()])
-                .build(),
-        )
+        block.append_operation(arith::shrui(
+            value,
+            shift_by,
+            value.r#type(),
+            Location::unknown(&self.context),
+        ))
     }
 
     /// Only the MLIR op.
@@ -484,12 +483,7 @@ impl<'ctx> Compiler<'ctx> {
         rhs: Value,
         to: Type,
     ) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.andi", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[to])
-                .build(),
-        )
+        block.append_operation(arith::andi(lhs, rhs, to, Location::unknown(&self.context)))
     }
 
     pub fn op_or<'a>(
@@ -499,12 +493,7 @@ impl<'ctx> Compiler<'ctx> {
         rhs: Value,
         to: Type,
     ) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.ori", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[to])
-                .build(),
-        )
+        block.append_operation(arith::ori(lhs, rhs, to, Location::unknown(&self.context)))
     }
 
     pub fn op_xor<'a>(
@@ -514,27 +503,17 @@ impl<'ctx> Compiler<'ctx> {
         rhs: Value,
         to: Type,
     ) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.xori", Location::unknown(&self.context))
-                .add_operands(&[lhs, rhs])
-                .add_results(&[to])
-                .build(),
-        )
+        block.append_operation(arith::xori(lhs, rhs, to, Location::unknown(&self.context)))
     }
 
     /// New constant
     pub fn op_const<'a>(&self, block: &'a Block, val: &str, ty: Type<'ctx>) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                .add_results(&[ty])
-                .add_attributes(&[NamedAttribute::new_parsed(
-                    &self.context,
-                    "value",
-                    &format!("{val} : {}", ty),
-                )
-                .unwrap()])
-                .build(),
-        )
+        block.append_operation(arith::r#const(
+            &self.context,
+            val,
+            ty,
+            Location::unknown(&self.context),
+        ))
     }
 
     /// New felt constant
@@ -697,7 +676,7 @@ impl<'ctx> Compiler<'ctx> {
                     loop_after_condition_block.argument(1)?.into(),
                     loop_after_condition_block.argument(2)?.into(),
                 ],
-            )?;
+            );
         }
 
         // Block loop_step:
@@ -1031,24 +1010,15 @@ impl<'ctx> Compiler<'ctx> {
         false_block: &Block,
         true_block_args: &[Value],
         false_block_args: &[Value],
-    ) -> Result<OperationRef<'a>> {
-        let mut operands = vec![cond];
-        operands.extend(true_block_args);
-        operands.extend(false_block_args);
-        Ok(block.append_operation(
-            operation::Builder::new("cf.cond_br", Location::unknown(&self.context))
-                .add_attributes(&[NamedAttribute::new_parsed(
-                    &self.context,
-                    "operand_segment_sizes",
-                    &format!(
-                        "array<i32: 1, {}, {}>",
-                        true_block_args.len(),
-                        false_block_args.len()
-                    ),
-                )?])
-                .add_operands(&operands)
-                .add_successors(&[true_block, false_block])
-                .build(),
+    ) -> OperationRef<'a> {
+        block.append_operation(cf::cond_br(
+            &self.context,
+            cond,
+            true_block,
+            false_block,
+            true_block_args,
+            false_block_args,
+            Location::unknown(&self.context),
         ))
     }
 
@@ -1059,54 +1029,7 @@ impl<'ctx> Compiler<'ctx> {
         target_block: &Block,
         block_args: &[Value],
     ) -> OperationRef<'a> {
-        block.append_operation(
-            operation::Builder::new("cf.br", Location::unknown(&self.context))
-                .add_operands(block_args)
-                .add_successors(&[target_block])
-                .build(),
-        )
-    }
-
-    /// cf switch
-    pub fn op_switch<'a>(
-        &self,
-        block: &'a Block,
-        case_values: &[String],
-        flag: Value,
-        default_dest: BlockRef,
-        case_dests: &[BlockRef],
-    ) -> Result<OperationRef<'a>> {
-        let mut dests = vec![default_dest];
-        dests.extend(case_dests);
-        Ok(block.append_operation(
-            operation::Builder::new("cf.switch", Location::unknown(&self.context))
-                .add_attributes(&NamedAttribute::new_parsed_vec(
-                    &self.context,
-                    &[
-                        (
-                            "case_values",
-                            &format!(
-                                "dense<[{}]> : tensor<{} x {}>",
-                                case_values.iter().join(", "),
-                                case_values.len(),
-                                flag.r#type()
-                            ),
-                        ),
-                        (
-                            // number of operands passed to each case
-                            "case_operand_segments",
-                            &format!("array<i32: {}>", case_values.iter().map(|_| "0").join(", ")),
-                        ),
-                        (
-                            "operand_segment_sizes",
-                            "array<i32: 1, 0, 0>", // flag, defaultops, caseops
-                        ),
-                    ],
-                )?)
-                .add_operands(&[flag])
-                .add_successors(dests.iter().map(|x| x.deref()).collect_vec().as_slice())
-                .build(),
-        ))
+        block.append_operation(cf::br(target_block, block_args, Location::unknown(&self.context)))
     }
 
     /// inserts a value into the specified struct.

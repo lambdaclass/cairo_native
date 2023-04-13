@@ -609,8 +609,8 @@ impl<'ctx> Compiler<'ctx> {
         let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
         let gte_prime = gte_prime_op.result(0)?.into();
 
-        // if gt_prime
-        self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[])?;
+        // if gt_primes
+        self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[]);
 
         //gt prime block
         let wrapped_res_op = self.op_sub(&gte_prime_block, res, prime);
@@ -673,7 +673,7 @@ impl<'ctx> Compiler<'ctx> {
         let lt_zero = lt_zero_op.result(0)?.into();
 
         // if gt_prime
-        self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[])?;
+        self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[]);
 
         //lt zero block
         let prime_op = self.prime_constant(&lt_zero_block);
@@ -1552,7 +1552,7 @@ impl<'ctx> Compiler<'ctx> {
             &realloc_block,
             &[array_value.into()],
             &[],
-        )?;
+        );
 
         // reallocate with more capacity, for now with a simple algorithm:
         // new_capacity = capacity * 2
