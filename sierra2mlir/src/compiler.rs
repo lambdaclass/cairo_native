@@ -73,7 +73,7 @@ impl<'ctx> SierraType<'ctx> {
             SierraType::Array { ty: _, len_type, element_type: _ } => {
                 // 64 is the pointer size, assuming here
                 // TODO: find a better way to find the pointer size? it would require getting the context here
-                len_type.get_width().unwrap() + 64
+                len_type.get_width().unwrap() * 2 + 64
             }
         }
     }
@@ -165,6 +165,22 @@ impl<'ctx> SierraType<'ctx> {
                 variants_types,
             } => Some(variants_types),
             SierraType::Array { .. } => None,
+        }
+    }
+
+    /// gets the sierra array type for the given element
+    pub fn get_array_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Array {
+            ty: compiler.struct_type(&[
+                compiler.u32_type(),
+                compiler.u32_type(),
+                compiler.llvm_ptr_type(),
+            ]),
+            len_type: compiler.u32_type(),
+            element_type: Box::new(element),
         }
     }
 }

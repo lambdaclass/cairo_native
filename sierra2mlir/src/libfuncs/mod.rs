@@ -873,11 +873,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         // 2 branches:
         // - falthrough with return args: 0 = rangecheck, 1 = the value at index
@@ -1435,11 +1431,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&[]);
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
@@ -1525,11 +1517,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block = region.append_block(Block::new(&[
             sierra_type.get_type_location(&self.context),
@@ -1679,11 +1667,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block =
             region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));
