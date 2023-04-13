@@ -108,7 +108,10 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
                 }
                 let llvm_panic_message = llvm_result.unwrap_err();
 
-                assert_eq!(llvm_panic_message, casm_panic_message, "LLvm panic message (lhs) should equal casm panic message (rhs)");
+                assert_eq!(
+                    llvm_panic_message, casm_panic_message,
+                    "LLvm panic message (lhs) should equal casm panic message (rhs)"
+                );
             }
         },
         Err(_) => {
