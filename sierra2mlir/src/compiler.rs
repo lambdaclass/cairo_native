@@ -97,7 +97,7 @@ impl<'ctx> SierraType<'ctx> {
                     .max()
                     .unwrap_or(0)
             }
-            SierraType::Array { .. } => 1,
+            SierraType::Array { .. } => 2,
         }
     }
 
