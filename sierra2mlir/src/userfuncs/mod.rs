@@ -4,10 +4,10 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region};
 
 use crate::{
-    compiler::{fn_attributes::FnAttributes, Compiler, Storage},
+    compiler::{fn_attributes::FnAttributes, Compiler, Storage, mlir_ops::CmpOp},
     libfuncs::lib_func_def::PositionalArg,
     types::is_omitted_builtin_type,
-    utility::create_fn_signature,
+    utility::create_fn_signature, sierra_type::SierraType,
 };
 
 use self::user_func_def::UserFuncDef;
@@ -49,7 +49,7 @@ impl<'ctx> Compiler<'ctx> {
         let ret_types = userfunc_def
             .return_types
             .iter()
-            .map(|arg| (arg.ty.get_type(), func.signature.ret_types[arg.loc].clone()))
+            .map(|arg| (arg.ty.clone(), func.signature.ret_types[arg.loc].clone()))
             .collect_vec();
 
         // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
@@ -114,7 +114,7 @@ impl<'ctx> Compiler<'ctx> {
         let region = Region::new();
         let arg_types_with_locations =
             arg_types.iter().map(|t| (*t, Location::unknown(&self.context))).collect::<Vec<_>>();
-        let block = Block::new(&arg_types_with_locations);
+        let block = region.append_block(Block::new(&arg_types_with_locations));
 
         let mut arg_values: Vec<_> = vec![];
         for i in 0..block.argument_count() {
@@ -122,21 +122,180 @@ impl<'ctx> Compiler<'ctx> {
             arg_values.push(arg.into());
         }
         let arg_values = arg_values;
-        let mlir_ret_types = ret_types.iter().map(|(t, _id)| *t).collect_vec();
+        let mlir_ret_types = ret_types.iter().map(|(t, _id)| t.get_type()).collect_vec();
 
+        // First, call the wrapped function
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
+
+        let success_block = region.append_block(Block::new(&[]));
+
+        // Then, print whether or not the execution was successful
+        if ret_types[0].1.debug_name.as_ref().unwrap().starts_with("core::PanicResult::<") {
+            let (tag_type, storage_type, error_msg_type) = if let SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: _,
+                storage_type,
+                variants_types,
+            } = &ret_types[0].0
+            {
+                (*tag_type, *storage_type, &variants_types[1])
+            } else {
+                panic!("PanicResult should be registered as an SierraType::Enum")
+            };
+            let panic_block = region.append_block(Block::new(&[]));
+            let panic_value = raw_res.result(0)?.into();
+            let is_panic_flag = self.op_llvm_extractvalue(&block, 0, panic_value, tag_type)?;
+            let zero_op = self.op_const(&block, "0", tag_type);
+            // Cmp eq to 0 for efficiency
+            let is_not_panic_op = self.op_cmp(
+                &block,
+                CmpOp::Equal,
+                is_panic_flag.result(0)?.into(),
+                zero_op.result(0)?.into(),
+            );
+            // Branch to success block if the PanicResult tag equals 0, and to the panic block if it doesn't
+            self.op_cond_br(
+                &block,
+                is_not_panic_op.result(0)?.into(),
+                &success_block,
+                &panic_block,
+                &[],
+                &[],
+            );
+
+            // In the panic block, extract the error message. This should be an Array<felt252>
+            // In order to do this, the enum's data needs to be stored on the stack
+            self.call_dprintf(&panic_block, "Program panicked\n", &[], storage)?;
+            let panic_data_op =
+                self.op_llvm_extractvalue(&panic_block, 1, panic_value, storage_type)?;
+            let panic_data = panic_data_op.result(0)?.into();
+            let panic_data_ptr_op = self.op_llvm_alloca(&panic_block, storage_type, 1)?;
+            let panic_data_ptr = panic_data_ptr_op.result(0)?.into();
+            self.op_llvm_store(&panic_block, panic_data, panic_data_ptr)?;
+
+            // Now that the data is on the stack, we can treat the pointer to it as the correct type
+            let load_op =
+                self.op_llvm_load(&panic_block, panic_data_ptr, error_msg_type.get_type())?;
+            let panic_array = load_op.result(0)?.into();
+            let (panic_array_len_type, panic_array_element_type) =
+                if let SierraType::Array { ty: _, len_type, element_type } = error_msg_type {
+                    (*len_type, element_type)
+                } else {
+                    panic!("Expected panic array type to be an Array Type")
+                };
+            // Arrays are stored as (len, capacity, data_ptr), so we need to get the data pointer
+            let len_op =
+                self.op_llvm_extractvalue(&panic_block, 0, panic_array, panic_array_len_type)?;
+            let len = len_op.result(0)?.into();
+            let zero_op = self.op_const(&panic_block, "0", panic_array_len_type);
+            let zero = zero_op.result(0)?.into();
+            let one_op = self.op_const(&panic_block, "1", panic_array_len_type);
+            let one = one_op.result(0)?.into();
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&panic_block, 2, panic_array, self.llvm_ptr_type())?;
+
+            // Create a loop to loop through the elements of the array to be printed
+            let outer_loop_block = region.append_block(Block::new(&[(
+                panic_array_len_type,
+                Location::unknown(&self.context),
+            )]));
+            let done_block = region.append_block(Block::new(&[]));
+            self.op_br(&panic_block, &outer_loop_block, &[zero]);
+            // At the start of the outer block, check if the loop index is equal to len
+            //     If it is, jump to the done block, otherwise the inner block
+            let loop_index = outer_loop_block.argument(0)?.into();
+            let cmp_op = self.op_cmp(&outer_loop_block, CmpOp::Equal, loop_index, len);
+            let cmp = cmp_op.result(0)?.into();
+            let inner_loop_start_block = region.append_block(Block::new(&[]));
+            self.op_cond_br(&outer_loop_block, cmp, &done_block, &inner_loop_start_block, &[], &[]);
+
+            // In the inner loop start block, get the element at the given index, and pass it to the inner loop print block
+            let error_message_data_gep_op = self.op_llvm_gep_dynamic(
+                &inner_loop_start_block,
+                &[loop_index],
+                data_ptr_op.result(0)?.into(),
+                panic_array_element_type.get_type(),
+            )?;
+            let error_message_element_ptr = error_message_data_gep_op.result(0)?.into();
+            let error_message_element_op = self.op_llvm_load(
+                &inner_loop_start_block,
+                error_message_element_ptr,
+                panic_array_element_type.get_type(),
+            )?;
+            let error_message_element = error_message_element_op.result(0)?.into();
+            let increment_op = self.op_add(&inner_loop_start_block, loop_index, one);
+            let incremented_loop_index = increment_op.result(0)?.into();
+
+            // In the inner loop print block, we're going to print the topmost 8bits of the value, then shift it left by 8 bits, and repeat until it is 0
+            let inner_loop_print_block = region.append_block(Block::new(&[(
+                panic_array_element_type.get_type(),
+                Location::unknown(&self.context),
+            )]));
+            self.op_br(&inner_loop_start_block, &inner_loop_print_block, &[error_message_element]);
+            let print_arg = inner_loop_print_block.argument(0)?.into();
+            let zero_op = self.op_felt_const(&inner_loop_print_block, "0");
+            let zero = zero_op.result(0)?.into();
+            let cmp_op = self.op_cmp(&inner_loop_print_block, CmpOp::Equal, print_arg, zero);
+            let cmp = cmp_op.result(0)?.into();
+            let shift_amount_op = self.op_felt_const(&inner_loop_print_block, "248");
+            let shift_op =
+                self.op_shru(&inner_loop_print_block, print_arg, shift_amount_op.result(0)?.into());
+            let shift = shift_op.result(0)?.into();
+            let trunc_op = self.op_trunc(&inner_loop_print_block, shift, self.u8_type());
+            let bits_to_print = trunc_op.result(0)?.into();
+            let eight_op = self.op_felt_const(&inner_loop_print_block, "8");
+            let eight = eight_op.result(0)?.into();
+            let shl_op = self.op_shl(&inner_loop_print_block, print_arg, eight);
+            let next_print_arg = shl_op.result(0)?.into();
+
+            let print_block = region.append_block(Block::new(&[]));
+            let loop_end_block = region.append_block(Block::new(&[]));
+            let bits_to_print_zero_cmp_op =
+                self.op_cmp(&inner_loop_print_block, CmpOp::Equal, shift, zero);
+            let bits_to_print_zero_cmp = bits_to_print_zero_cmp_op.result(0)?.into();
+            self.op_cond_br(
+                &inner_loop_print_block,
+                bits_to_print_zero_cmp,
+                &loop_end_block,
+                &print_block,
+                &[],
+                &[],
+            );
+            self.call_dprintf(&print_block, "%c", &[bits_to_print], storage)?;
+            self.op_br(&print_block, &loop_end_block, &[]);
+            self.op_cond_br(
+                &loop_end_block,
+                cmp,
+                &outer_loop_block,
+                &inner_loop_print_block,
+                &[incremented_loop_index],
+                &[next_print_arg],
+            );
+
+            self.op_return(&done_block, &[]);
+        } else {
+            self.op_br(&block, &success_block, &[]);
+        }
+
+        self.call_dprintf(&success_block, "Success\n", &[], storage)?;
+
+        // Finally, print the result if it was, or the error message if not
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
             let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();
             if is_omitted_builtin_type(type_name) {
                 continue;
             }
             let result_val = raw_res.result(position)?;
-            self.op_func_call(&block, &format!("print_{}", type_name), &[result_val.into()], &[])?;
+            self.op_func_call(
+                &success_block,
+                &format!("print_{}", type_name),
+                &[result_val.into()],
+                &[],
+            )?;
         }
 
-        self.op_return(&block, &[]);
-
-        region.append_block(block);
+        self.op_return(&success_block, &[]);
 
         // Currently this wrapper is only put on the entrypoint, so we call it main
         // We might want to change this in the future
