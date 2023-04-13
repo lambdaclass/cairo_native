@@ -21,7 +21,7 @@ mod inline_jumps;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
-    pub variables_at_start: HashMap<u64, SierraType<'ctx>>,
+    pub variables_at_start: BTreeMap<u64, SierraType<'ctx>>,
     // pub(crate) variables_available_at_end: HashSet<u64>,
     pub block: Block<'ctx>,
     pub end: usize,
@@ -55,13 +55,13 @@ impl<'c> Variable<'c> {
 
 // The information about dataflow needed to process statements
 struct DataFlow<'ctx> {
-    input_variables: HashMap<u64, SierraType<'ctx>>,
+    input_variables: BTreeMap<u64, SierraType<'ctx>>,
     block_flow: BlockFlow,
 }
 
 // The data required to calculate dataflow
 struct DataFlowInfo<'ctx> {
-    required_args: HashMap<u64, SierraType<'ctx>>,
+    required_args: BTreeMap<u64, SierraType<'ctx>>,
     variables_created: HashSet<u64>,
     block_flow: BlockFlow,
 }
@@ -107,8 +107,7 @@ impl<'ctx> Compiler<'ctx> {
             // Variables holds the most recent value associated with a variable id as we progress through the block
             // Initially it only holds the blocks arguments
             let mut variables: HashMap<u64, Variable> = HashMap::new();
-            for (arg_position, var_id) in block_info.variables_at_start.keys().sorted().enumerate()
-            {
+            for (arg_position, var_id) in block_info.variables_at_start.keys().enumerate() {
                 let argument = block.argument(arg_position)?;
                 variables.insert(*var_id, Variable::Param { argument });
             }
@@ -173,11 +172,9 @@ impl<'ctx> Compiler<'ctx> {
                                 .get(&(statement_idx + 1))
                                 .expect("Block should be registered for fallthrough successor");
 
-                            let mut operand_indices =
-                                target.variables_at_start.keys().collect_vec();
-                            operand_indices.sort_unstable();
-                            let operand_values = operand_indices
-                                .iter()
+                            let operand_values = target
+                                .variables_at_start
+                                .keys()
                                 .map(|id| variables.get(id).unwrap().get_value())
                                 .collect_vec();
                             self.op_br(block, &target.block, &operand_values);
@@ -248,7 +245,7 @@ impl<'ctx> Compiler<'ctx> {
                 )
             })
             .map(|(block_start, block_info)| {
-                for (_, var_type) in block_info.variables_at_start.iter() {
+                for var_type in block_info.variables_at_start.values() {
                     block_info
                         .block
                         .add_argument(var_type.get_type(), Location::unknown(&self.context));
@@ -301,7 +298,7 @@ impl<'ctx> Compiler<'ctx> {
 
         // Collect the variables required by the invocations in each block, and those produced by the invocations
         for (block_start, block_flow) in block_flows {
-            let mut required_args = HashMap::new();
+            let mut required_args = BTreeMap::new();
             let mut variables_created = HashSet::new();
 
             for statement in self.program.statements[block_start..block_flow.end].iter() {

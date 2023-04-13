@@ -31,10 +31,11 @@ impl<'ctx> Compiler<'ctx> {
             }
             GenBranchTarget::Statement(id) => blocks.get(&(id.0)).unwrap(),
         };
-        let mut operand_indices = target_block_info.variables_at_start.keys().collect_vec();
-        operand_indices.sort_unstable();
-        let operand_values =
-            operand_indices.iter().map(|id| variables.get(id).unwrap().get_value()).collect_vec();
+        let operand_values = target_block_info
+            .variables_at_start
+            .keys()
+            .map(|id| variables.get(id).unwrap().get_value())
+            .collect_vec();
         self.op_br(block, &target_block_info.block, &operand_values);
 
         Ok(())
@@ -82,10 +83,9 @@ impl<'ctx> Compiler<'ctx> {
             })
             .map(|idx| {
                 let target_block_info = blocks.get(&idx).unwrap();
-                let mut operand_indices = target_block_info.variables_at_start.keys().collect_vec();
-                operand_indices.sort_unstable();
-                let operand_values = operand_indices
-                    .iter()
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
                     .map(|id| variables.get(id).unwrap().get_value())
                     .collect_vec();
                 (&target_block_info.block, operand_values)
@@ -153,7 +153,7 @@ impl<'ctx> Compiler<'ctx> {
                     .unwrap();
 
                 let mut args_to_target_block = vec![];
-                for var_idx in target_block_info.variables_at_start.keys().sorted() {
+                for var_idx in target_block_info.variables_at_start.keys() {
                     if *var_idx == invocation.branches[variant_index].results[0].id {
                         let load_op =
                             self.op_llvm_load(&variant_block, data_ptr, variant_type.get_type())?;
