@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
@@ -47,7 +47,8 @@ use test_case::test_case;
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
-    let llvm_result = run_sierra_via_llvm(test_name, &sierra_code)?;
+    compile_to_mlir_with_consistency_check(test_name, &sierra_code);
+    let llvm_result = run_mlir(test_name)?;
 
     let casm_result = run_sierra_via_casm(&sierra_code);
 
@@ -95,6 +96,31 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn compile_to_mlir_with_consistency_check(test_name: &str, sierra_code: &str) {
+    let program = ProgramParser::new().parse(sierra_code).unwrap();
+    let out_dir = get_outdir();
+    let test_file_name = flatten_test_name(test_name);
+    let compiled_code = compile(&program, false, false, true, 1).unwrap();
+    let optimised_compiled_code = compile(&program, false, false, true, 1).unwrap();
+    let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
+    let optimised_mlir_file =
+        out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
+    std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
+    std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
+    for _ in 0..5 {
+        let repeat_compiled_code = compile(&program, false, false, true, 1).unwrap();
+        if compiled_code != repeat_compiled_code {
+            let mlir_repeat_file =
+                out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
+            std::fs::write(mlir_repeat_file.as_str(), &repeat_compiled_code).unwrap();
+        }
+        assert_eq!(
+            compiled_code, repeat_compiled_code,
+            "Repeat compilation produced differing code"
+        );
+    }
+}
+
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
 fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
@@ -106,30 +132,41 @@ fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
     runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
 }
 
-// Runs the test file via compiling to mlir, then llir, then invoking lli to run it
-fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint>, String> {
-    let program = ProgramParser::new().parse(sierra_code).unwrap();
-
-    let out_dir = Path::new(".").join("tests").join("comparison").join("out");
+// Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
+fn run_mlir(test_name: &str) -> Result<Vec<BigUint>, String> {
+    let out_dir = get_outdir();
 
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
 
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
+    let optimised_mlir_file =
+        out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     let output_file = out_dir.join(format!("{test_file_name}.ll")).display().to_string();
+    let optimised_output_file =
+        out_dir.join(format!("{test_file_name}-opt.ll")).display().to_string();
 
-    let compiled_code = compile(&program, false, false, true, 1).unwrap();
-    std::fs::write(mlir_file.as_str(), compiled_code).unwrap();
+    let result = run_mlir_file_via_llvm(&mlir_file, &output_file)?;
+    let optimised_result = run_mlir_file_via_llvm(&optimised_mlir_file, &optimised_output_file)?;
 
+    assert_eq!(
+        result, optimised_result,
+        "Compiling with the optimised flag produced different behaviour"
+    );
+
+    Ok(result)
+}
+
+fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigUint>, String> {
     let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
-    let mlir_translate_path = Path::new(mlir_prefix.as_str()).join("bin").join("mlir-translate");
     let lli_path = Path::new(mlir_prefix.as_str()).join("bin").join("lli");
+    let mlir_translate_path = Path::new(mlir_prefix.as_str()).join("bin").join("mlir-translate");
 
     let mlir_output = Command::new(mlir_translate_path)
         .arg("--mlir-to-llvmir")
         .arg("-o")
-        .arg(output_file.as_str())
-        .arg(mlir_file.as_str())
+        .arg(output_file)
+        .arg(mlir_file)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -139,7 +176,8 @@ fn run_sierra_via_llvm(test_name: &str, sierra_code: &str) -> Result<Vec<BigUint
 
     if !mlir_output.stdout.is_empty() || !mlir_output.stderr.is_empty() {
         println!(
-            "Mlir_output:\n    stdout: {}\n    stderr: {}",
+            "Mlir_output ({}):\n    stdout: {}\n    stderr: {}",
+            mlir_file,
             String::from_utf8(mlir_output.stdout).unwrap(),
             String::from_utf8(mlir_output.stderr).unwrap()
         );
@@ -177,4 +215,8 @@ fn parse_llvm_result(res: &str) -> Vec<BigUint> {
 
 fn flatten_test_name(test_name: &str) -> String {
     test_name.replace('_', "__").replace('/', "_")
+}
+
+fn get_outdir() -> PathBuf {
+    Path::new(".").join("tests").join("comparison").join("out")
 }
