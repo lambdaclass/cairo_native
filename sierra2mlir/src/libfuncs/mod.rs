@@ -282,6 +282,9 @@ impl<'ctx> Compiler<'ctx> {
                 "array_len" => {
                     self.create_libfunc_array_len(func_decl, parent_block, storage)?;
                 }
+                "array_get" => {
+                    self.register_libfunc_array_get(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -855,6 +858,42 @@ impl<'ctx> Compiler<'ctx> {
         }
     }
 
+    pub fn register_libfunc_array_get(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_get argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+
+        // 2 branches:
+        // - falthrough with return args: 0 = rangecheck, 1 = the value at index
+        // - branch jump: if out of bounds jump, return arg 0 = range check
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: sierra_type.clone() }, // array
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
+                    vec![],                                       // panic branch
+                ],
+            },
+        );
+    }
+
     pub fn create_libfunc_uint_to_felt252(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -1392,11 +1431,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&[]);
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
@@ -1482,11 +1517,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block = region.append_block(Block::new(&[
             sierra_type.get_type_location(&self.context),
@@ -1636,11 +1667,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block =
             region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));

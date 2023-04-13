@@ -15,6 +15,7 @@ use test_case::test_case;
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
+#[test_case("array/example_array")]
 #[test_case("fib_counter")]
 #[test_case("fib_local")]
 #[test_case("bitwise/and")]
