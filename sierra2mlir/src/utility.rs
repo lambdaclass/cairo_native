@@ -258,6 +258,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let enum_value = entry_block.argument(0)?.into();
 
+        // if its a panic enum wrapper, don't print the tag, as they are meant to be invisible
+        let is_panic_enum = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::UserType(x) => {
+                x.debug_name.as_ref().unwrap().starts_with("core::PanicResult::")
+            }
+            _ => unreachable!(),
+        };
+
         let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
 
         if let SierraType::Enum { tag_type, storage_type, variants_types, .. } = enum_type {
@@ -276,9 +284,11 @@ impl<'ctx> Compiler<'ctx> {
             let tag_value_op = self.op_llvm_extractvalue(&entry_block, 0, enum_value, *tag_type)?;
             let tag_value = tag_value_op.result(0)?.into();
 
-            // Print the tag. Extending it to 32 bits allows for better printf portability
-            let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
-            self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            if !is_panic_enum {
+                // Print the tag. Extending it to 32 bits allows for better printf portability
+                let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
+                self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            }
 
             // Store the enum data on the stack, and create a pointer to it
             // This allows us to interpret a ptr to it as a ptr to any of the variant types
