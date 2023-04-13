@@ -164,6 +164,19 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "array_pop_front" => {
+                                self.inline_array_pop_front(
+                                    &id,
+                                    statement_idx,
+                                    &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "function_call" => self.process_function_call(
                                 &id,
                                 invocation,

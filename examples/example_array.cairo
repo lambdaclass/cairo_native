@@ -6,6 +6,8 @@ fn main() -> (u32, u32, u32, u32, u32) {
     data.append(1_u32);
     data.append(2_u32);
     data.append(3_u32);
+    data.append(8_u32);
+    data.pop_front();
     data.append(4_u32);
     data.append(5_u32);
     data.append(data.len());

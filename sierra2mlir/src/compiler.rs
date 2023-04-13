@@ -1173,7 +1173,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
-        self.create_realloc()?;
+        self.create_libc_funcs()?;
         if self.print_fd > 0 {
             self.create_printf()?;
         }

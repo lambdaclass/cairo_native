@@ -18,11 +18,7 @@ use crate::{
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
-    /* Needed for sierra Arrays
-        declare ptr @realloc(ptr, i64)
-        declare void @free(ptr)
-    */
-    pub fn create_realloc(&self) -> Result<()> {
+    pub fn create_libc_funcs(&self) -> Result<()> {
         let region = Region::new();
 
         let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
@@ -31,6 +27,21 @@ impl<'ctx> Compiler<'ctx> {
                 &[
                     ("sym_name", "\"realloc\""),
                     ("function_type", "!llvm.func<ptr (ptr, i64)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+
+        let region = Region::new();
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"memmove\""),
+                    ("function_type", "!llvm.func<ptr (ptr, ptr, i64)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -130,6 +141,16 @@ impl<'ctx> Compiler<'ctx> {
         size: Value,
     ) -> Result<OperationRef<'a>> {
         self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
+    }
+
+    pub fn call_memmove<'a>(
+        &'a self,
+        block: &'a Block,
+        dst: Value,
+        src: Value,
+        size: Value,
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
     }
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
