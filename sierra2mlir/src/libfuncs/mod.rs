@@ -45,6 +45,7 @@ impl<'ctx> Compiler<'ctx> {
                 | "jump"
                 | "alloc_local"
                 | "finalize_locals" => self.register_nop(func_decl, storage),
+                "store_local" => self.register_store_local(func_decl, storage)?,
                 "function_call" => continue, // Skip function call because it works differently than all the others
                 "felt252_const" => {
                     self.create_libfunc_felt_const(func_decl, self.felt_type(), storage)?;
@@ -465,7 +466,6 @@ impl<'ctx> Compiler<'ctx> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let results = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 if is_omitted_builtin_type(type_id.debug_name.as_ref().unwrap().as_str()) {
                     vec![]
@@ -480,9 +480,38 @@ impl<'ctx> Compiler<'ctx> {
                     }]
                 }
             }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
+            _ => unreachable!("Generic argument to {} should be a Type", id),
+        };
+        storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(results));
+
+        Ok(())
+    }
+
+    pub fn register_store_local(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        // Since we don't model locals the same as sierra, store_local can just return its payload
+        let results = match &func_decl.long_id.generic_args[0] {
+            GenericArg::Type(type_id) => {
+                if is_omitted_builtin_type(type_id.debug_name.as_ref().unwrap().as_str()) {
+                    vec![]
+                } else {
+                    // Skip over the first argument, which is the uninitialized local variable
+                    vec![PositionalArg {
+                        loc: 1,
+                        ty: storage
+                            .types
+                            .get(&type_id.id.to_string())
+                            .expect("type to exist")
+                            .clone(),
+                    }]
+                }
+            }
+            _ => unreachable!("Argument to store_local should be a Type"),
         };
         storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(results));
 
