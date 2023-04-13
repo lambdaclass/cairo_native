@@ -194,7 +194,9 @@ impl<'ctx> Compiler<'ctx> {
         storage: &Storage,
     ) -> Result<()> {
         let libfunc = storage.libfuncs.get(id).unwrap();
-        let array_type = &libfunc.get_args()[0].ty;
+        dbg!(&libfunc);
+        let array_arg = &libfunc.get_args()[0];
+        let index_arg = &libfunc.get_args()[1];
 
         // fallthrough if ok
         // jump if panic
@@ -216,15 +218,17 @@ impl<'ctx> Compiler<'ctx> {
         let target_block_info = target_blocks[0];
         let panic_block_info = target_blocks[1];
 
-        if let SierraType::Array { ty: _, len_type, element_type } = array_type {
+        if let SierraType::Array { ty: _, len_type, element_type } = &array_arg.ty {
             // arg 0 is range check, can ignore
             // arg 1 is the array
             // arg 2 is the index
 
-            let array_var =
-                variables.get(&invocation.args[1].id).expect("variable array should exist");
-            let index_var =
-                variables.get(&invocation.args[2].id).expect("variable index should exist");
+            let array_var = variables
+                .get(&invocation.args[array_arg.loc].id)
+                .expect("variable array should exist");
+            let index_var = variables
+                .get(&invocation.args[index_arg.loc].id)
+                .expect("variable index should exist");
 
             let array_value = array_var.get_value();
 
