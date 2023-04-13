@@ -180,6 +180,20 @@ impl<'ctx> Compiler<'ctx> {
                     };
                     storage.types.insert(id.to_string(), inner_type.clone());
                 }
+                "Uninitialized" => {
+                    // Uninitialized is meant to be used for locals, a use case for which we ignore it
+                    // However in case it's possible for a user to use it for some other case it is here defined
+                    // as the same as its underlying type
+                    // There are cases where the underlying type wouldn't exist (e.g. Uninitialized<RangeCheck> crops up in larger examples)
+                    // In such cases we should also leave this type undefined for similar reasons
+                    let optional_inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage.types.get(&x.id.to_string()),
+                        _ => unreachable!("Uninitialized inner type should always be a type"),
+                    };
+                    if let Some(inner_type) = optional_inner_type {
+                        storage.types.insert(id.to_string(), inner_type.clone());
+                    }
+                }
                 "u8" => {
                     let ty = self.u8_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
