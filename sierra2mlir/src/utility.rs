@@ -320,7 +320,7 @@ impl<'ctx> Compiler<'ctx> {
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
                 let variant_felt_width = var_ty.get_felt_representation_width();
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
-                if unused_felt_count != 0 {
+                if unused_felt_count != 0 && !is_panic_enum {
                     self.call_printf(block, &"0\n".repeat(unused_felt_count), &[])?;
                 }
 
