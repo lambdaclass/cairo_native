@@ -275,16 +275,20 @@ impl<'ctx> Compiler<'ctx> {
             let target_value_var_id = invocation.branches[0].results[1].id;
 
             // get the args to the target block (fallthrough here)
-            let mut args_to_target_block = vec![];
-            for var_idx in target_block_info.variables_at_start.keys().sorted() {
-                if *var_idx == target_value_var_id {
-                    let value_load_op =
-                        self.op_llvm_load(&block_get_idx, value_ptr, element_type.get_type())?;
-                    args_to_target_block.push(Variable::Local { op: value_load_op, result_idx: 0 });
-                } else {
-                    args_to_target_block.push(*variables.get(var_idx).unwrap());
-                }
-            }
+            let args_to_target_block = target_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    if *var_idx == target_value_var_id {
+                        let value_load_op = self
+                            .op_llvm_load(&block_get_idx, value_ptr, element_type.get_type())
+                            .unwrap();
+                        Variable::Local { op: value_load_op, result_idx: 0 }
+                    } else {
+                        *variables.get(var_idx).unwrap()
+                    }
+                })
+                .collect_vec();
             let args_to_target_block =
                 args_to_target_block.iter().map(Variable::get_value).collect_vec();
 

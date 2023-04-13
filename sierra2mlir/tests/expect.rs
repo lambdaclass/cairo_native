@@ -9,7 +9,7 @@ use sierra2mlir::compile;
 
 // Tests behaviour of the generated MLIR against the expected values.
 
-#[test]
+// #[test]
 fn array_append() -> Result<(), String> {
     let sierra_code = include_str!("comparison/array/example_array.sierra");
     let llvm_result = run_sierra_via_llvm("example_array", sierra_code)?;

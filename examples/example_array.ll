@@ -43,14 +43,148 @@ define internal { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %0, i32
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal {} @"struct_construct<Unit>"() #0 {
-  ret {} undef
-}
-
-; Function Attrs: alwaysinline norecurse nounwind
 define internal i32 @"array_len<u32>"({ i32, i32, ptr } %0) #0 {
   %2 = extractvalue { i32, i32, ptr } %0, 0
   ret i32 %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %0) #0 {
+  %2 = extractvalue { i32 } %0, 0
+  ret i32 %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i32, i32, i32, i32, i32 } @"struct_construct<Tuple<u32, u32, u32, u32, u32>>"(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4) #0 {
+  %6 = insertvalue { i32, i32, i32, i32, i32 } undef, i32 %0, 0
+  %7 = insertvalue { i32, i32, i32, i32, i32 } %6, i32 %1, 1
+  %8 = insertvalue { i32, i32, i32, i32, i32 } %7, i32 %2, 2
+  %9 = insertvalue { i32, i32, i32, i32, i32 } %8, i32 %3, 3
+  %10 = insertvalue { i32, i32, i32, i32, i32 } %9, i32 %4, 4
+  ret { i32, i32, i32, i32, i32 } %10
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { { i32, i32, i32, i32, i32 } } @"struct_construct<Tuple<Tuple<u32, u32, u32, u32, u32>>>"({ i32, i32, i32, i32, i32 } %0) #0 {
+  %2 = insertvalue { { i32, i32, i32, i32, i32 } } undef, { i32, i32, i32, i32, i32 } %0, 0
+  ret { { i32, i32, i32, i32, i32 } } %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 0>"({ { i32, i32, i32, i32, i32 } } %0) #0 {
+  %2 = alloca { i16, [20 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 1
+  store { { i32, i32, i32, i32, i32 } } %0, ptr %4, align 4
+  %5 = load { i16, [20 x i8] }, ptr %2, align 2
+  ret { i16, [20 x i8] } %5
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [20 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 0
+  store i16 1, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 1
+  store { i32, i32, ptr } %0, ptr %4, align 8
+  %5 = load { i16, [20 x i8] }, ptr %2, align 2
+  ret { i16, [20 x i8] } %5
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal i32 @"struct_deconstruct<Tuple<Box<u32>>>"({ i32 } %0) #0 {
+  %2 = extractvalue { i32 } %0, 0
+  ret i32 %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i32 } @"struct_construct<Tuple<u32>>"(i32 %0) #0 {
+  %2 = insertvalue { i32 } undef, i32 %0, 0
+  ret { i32 } %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 0>"({ i32 } %0) #0 {
+  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  store { i32 } %0, ptr %4, align 4
+  %5 = load { i16, [12 x i8] }, ptr %2, align 2
+  ret { i16, [12 x i8] } %5
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+  store i16 1, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  store { i32, i32, ptr } %0, ptr %4, align 8
+  %5 = load { i16, [12 x i8] }, ptr %2, align 2
+  ret { i16, [12 x i8] } %5
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i32 } @"struct_construct<Tuple<Box<u32>>>"(i32 %0) #0 {
+  %2 = insertvalue { i32 } undef, i32 %0, 0
+  ret { i32 } %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 0>"({ i32 } %0) #0 {
+  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  store { i32 } %0, ptr %4, align 4
+  %5 = load { i16, [12 x i8] }, ptr %2, align 2
+  ret { i16, [12 x i8] } %5
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i32, i32, ptr } @"array_new<felt252>"() #0 {
+  %1 = call ptr @realloc(ptr null, i64 256)
+  %2 = insertvalue { i32, i32, ptr } { i32 0, i32 8, ptr undef }, ptr %1, 2
+  ret { i32, i32, ptr } %2
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %0, i256 %1) #0 {
+  %3 = extractvalue { i32, i32, ptr } %0, 0
+  %4 = extractvalue { i32, i32, ptr } %0, 1
+  %5 = icmp ult i32 %3, %4
+  br i1 %5, label %13, label %6
+
+6:                                                ; preds = %2
+  %7 = mul i32 %4, 2
+  %8 = zext i32 %7 to i64
+  %9 = extractvalue { i32, i32, ptr } %0, 2
+  %10 = call ptr @realloc(ptr %9, i64 %8)
+  %11 = insertvalue { i32, i32, ptr } %0, ptr %10, 2
+  %12 = insertvalue { i32, i32, ptr } %11, i32 %7, 1
+  br label %13
+
+13:                                               ; preds = %6, %2
+  %14 = phi { i32, i32, ptr } [ %12, %6 ], [ %0, %2 ]
+  %15 = extractvalue { i32, i32, ptr } %14, 2
+  %16 = getelementptr i256, ptr %15, i32 %3
+  store i256 %1, ptr %16, align 4
+  %17 = add i32 %3, 1
+  %18 = insertvalue { i32, i32, ptr } %14, i32 %17, 0
+  ret { i32, i32, ptr } %18
+}
+
+; Function Attrs: alwaysinline norecurse nounwind
+define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+  store i16 1, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  store { i32, i32, ptr } %0, ptr %4, align 8
+  %5 = load { i16, [12 x i8] }, ptr %2, align 2
+  ret { i16, [12 x i8] } %5
 }
 
 ; Function Attrs: norecurse nounwind
@@ -62,7 +196,76 @@ define internal void @print_u32(i32 %0) #1 {
 }
 
 ; Function Attrs: norecurse nounwind
-define internal void @"print_Array<u32>"({ i32, i32, ptr } %0) #1 {
+define internal void @"print_Tuple<u32, u32, u32, u32, u32>"({ i32, i32, i32, i32, i32 } %0) #1 {
+  %2 = extractvalue { i32, i32, i32, i32, i32 } %0, 0
+  call void @print_u32(i32 %2)
+  %3 = extractvalue { i32, i32, i32, i32, i32 } %0, 1
+  call void @print_u32(i32 %3)
+  %4 = extractvalue { i32, i32, i32, i32, i32 } %0, 2
+  call void @print_u32(i32 %4)
+  %5 = extractvalue { i32, i32, i32, i32, i32 } %0, 3
+  call void @print_u32(i32 %5)
+  %6 = extractvalue { i32, i32, i32, i32, i32 } %0, 4
+  call void @print_u32(i32 %6)
+  ret void
+}
+
+; Function Attrs: norecurse nounwind
+define internal void @"print_Tuple<Tuple<u32, u32, u32, u32, u32>>"({ { i32, i32, i32, i32, i32 } } %0) #1 {
+  %2 = extractvalue { { i32, i32, i32, i32, i32 } } %0, 0
+  call void @"print_Tuple<u32, u32, u32, u32, u32>"({ i32, i32, i32, i32, i32 } %2)
+  ret void
+}
+
+; Function Attrs: norecurse nounwind
+define internal void @print_felt252(i256 %0) #1 {
+  %2 = ashr i256 %0, 224
+  %3 = trunc i256 %2 to i32
+  %4 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %4, align 1
+  %5 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %4, i32 %3)
+  %6 = ashr i256 %0, 192
+  %7 = trunc i256 %6 to i32
+  %8 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %8, align 1
+  %9 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %8, i32 %7)
+  %10 = ashr i256 %0, 160
+  %11 = trunc i256 %10 to i32
+  %12 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %12, align 1
+  %13 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %12, i32 %11)
+  %14 = ashr i256 %0, 128
+  %15 = trunc i256 %14 to i32
+  %16 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %16, align 1
+  %17 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %16, i32 %15)
+  %18 = ashr i256 %0, 96
+  %19 = trunc i256 %18 to i32
+  %20 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %20, align 1
+  %21 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %20, i32 %19)
+  %22 = ashr i256 %0, 64
+  %23 = trunc i256 %22 to i32
+  %24 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %24, align 1
+  %25 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %24, i32 %23)
+  %26 = ashr i256 %0, 32
+  %27 = trunc i256 %26 to i32
+  %28 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %28, align 1
+  %29 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %28, i32 %27)
+  %30 = trunc i256 %0 to i32
+  %31 = alloca i8, i64 5, align 1
+  store [5 x i8] c"%08X\00", ptr %31, align 1
+  %32 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %31, i32 %30)
+  %33 = alloca i8, i64 2, align 1
+  store [2 x i8] c"\0A\00", ptr %33, align 1
+  %34 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %33)
+  ret void
+}
+
+; Function Attrs: norecurse nounwind
+define internal void @"print_Array<felt252>"({ i32, i32, ptr } %0) #1 {
   %2 = extractvalue { i32, i32, ptr } %0, 2
   %3 = extractvalue { i32, i32, ptr } %0, 0
   br label %4
@@ -74,9 +277,9 @@ define internal void @"print_Array<u32>"({ i32, i32, ptr } %0) #1 {
 
 7:                                                ; preds = %4
   %8 = phi i32 [ %5, %4 ]
-  %9 = getelementptr i32, ptr %2, i32 %8
-  %10 = load i32, ptr %9, align 4
-  call void @print_u32(i32 %10)
+  %9 = getelementptr i256, ptr %2, i32 %8
+  %10 = load i256, ptr %9, align 4
+  call void @print_felt252(i256 %10)
   %11 = add i32 %8, 1
   br label %4
 
@@ -84,9 +287,41 @@ define internal void @"print_Array<u32>"({ i32, i32, ptr } %0) #1 {
   ret void
 }
 
+; Function Attrs: norecurse nounwind
+define internal void @"print_core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>"({ i16, [20 x i8] } %0) #1 {
+  %2 = extractvalue { i16, [20 x i8] } %0, 0
+  %3 = zext i16 %2 to i32
+  %4 = alloca i8, i64 4, align 1
+  store [4 x i8] c"%X\0A\00", ptr %4, align 1
+  %5 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %4, i32 %3)
+  %6 = alloca [20 x i8], i64 1, align 1
+  %7 = extractvalue { i16, [20 x i8] } %0, 1
+  store [20 x i8] %7, ptr %6, align 1
+  switch i16 %2, label %14 [
+    i16 0, label %8
+    i16 1, label %12
+  ]
+
+8:                                                ; preds = %1
+  %9 = alloca i8, i64 55, align 1
+  store [55 x i8] c"0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A0\0A\00", ptr %9, align 1
+  %10 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %9)
+  %11 = load { { i32, i32, i32, i32, i32 } }, ptr %6, align 4
+  call void @"print_Tuple<Tuple<u32, u32, u32, u32, u32>>"({ { i32, i32, i32, i32, i32 } } %11)
+  ret void
+
+12:                                               ; preds = %1
+  %13 = load { i32, i32, ptr }, ptr %6, align 8
+  call void @"print_Array<felt252>"({ i32, i32, ptr } %13)
+  ret void
+
+14:                                               ; preds = %1
+  ret void
+}
+
 define void @main() {
-  %1 = call { i32, i32, ptr } @"example_array::example_array::main"()
-  call void @"print_Array<u32>"({ i32, i32, ptr } %1)
+  %1 = call { i16, [20 x i8] } @"example_array::example_array::main"()
+  call void @"print_core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>"({ i16, [20 x i8] } %1)
   ret void
 }
 
@@ -95,30 +330,267 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define { i32, i32, ptr } @"example_array::example_array::main"() {
-  br label %1
+define { i16, [20 x i8] } @"example_array::example_array::main"() {
+  br label %26
 
-1:                                                ; preds = %0
-  %2 = call { i32, i32, ptr } @"array_new<u32>"()
-  %3 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %2, i32 1)
-  %4 = call {} @"struct_construct<Unit>"()
-  %5 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %3, i32 2)
-  %6 = call {} @"struct_construct<Unit>"()
-  %7 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %5, i32 3)
-  %8 = call {} @"struct_construct<Unit>"()
-  %9 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %7, i32 4)
-  %10 = call {} @"struct_construct<Unit>"()
-  %11 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %9, i32 5)
-  %12 = call {} @"struct_construct<Unit>"()
-  %13 = call i32 @"array_len<u32>"({ i32, i32, ptr } %11)
-  %14 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %11, i32 %13)
-  %15 = call {} @"struct_construct<Unit>"()
-  ret { i32, i32, ptr } %14
+1:                                                ; preds = %26
+  %2 = load { i32 }, ptr %38, align 4
+  br label %39
+
+3:                                                ; preds = %26
+  %4 = load { i32, i32, ptr }, ptr %38, align 8
+  br label %99
+
+5:                                                ; preds = %26
+  unreachable
+
+6:                                                ; preds = %39
+  %7 = load { i32 }, ptr %46, align 4
+  br label %47
+
+8:                                                ; preds = %39
+  %9 = load { i32, i32, ptr }, ptr %46, align 8
+  br label %96
+
+10:                                               ; preds = %39
+  unreachable
+
+11:                                               ; preds = %47
+  %12 = load { i32 }, ptr %55, align 4
+  br label %56
+
+13:                                               ; preds = %47
+  %14 = load { i32, i32, ptr }, ptr %55, align 8
+  br label %93
+
+15:                                               ; preds = %47
+  unreachable
+
+16:                                               ; preds = %56
+  %17 = load { i32 }, ptr %65, align 4
+  br label %66
+
+18:                                               ; preds = %56
+  %19 = load { i32, i32, ptr }, ptr %65, align 8
+  br label %90
+
+20:                                               ; preds = %56
+  unreachable
+
+21:                                               ; preds = %66
+  %22 = load { i32 }, ptr %76, align 4
+  br label %77
+
+23:                                               ; preds = %66
+  %24 = load { i32, i32, ptr }, ptr %76, align 8
+  br label %87
+
+25:                                               ; preds = %66
+  unreachable
+
+26:                                               ; preds = %0
+  %27 = call { i32, i32, ptr } @"array_new<u32>"()
+  %28 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %27, i32 1)
+  %29 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %28, i32 2)
+  %30 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %29, i32 3)
+  %31 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %30, i32 4)
+  %32 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %31, i32 5)
+  %33 = call i32 @"array_len<u32>"({ i32, i32, ptr } %32)
+  %34 = call { i32, i32, ptr } @"array_append<u32>"({ i32, i32, ptr } %32, i32 %33)
+  %35 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %34, i32 0)
+  %36 = extractvalue { i16, [12 x i8] } %35, 0
+  %37 = extractvalue { i16, [12 x i8] } %35, 1
+  %38 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %37, ptr %38, align 1
+  switch i16 %36, label %5 [
+    i16 0, label %1
+    i16 1, label %3
+  ]
+
+39:                                               ; preds = %1
+  %40 = phi { i32, i32, ptr } [ %34, %1 ]
+  %41 = phi { i32 } [ %2, %1 ]
+  %42 = call i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %41)
+  %43 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %40, i32 1)
+  %44 = extractvalue { i16, [12 x i8] } %43, 0
+  %45 = extractvalue { i16, [12 x i8] } %43, 1
+  %46 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %45, ptr %46, align 1
+  switch i16 %44, label %10 [
+    i16 0, label %6
+    i16 1, label %8
+  ]
+
+47:                                               ; preds = %6
+  %48 = phi i32 [ %42, %6 ]
+  %49 = phi { i32, i32, ptr } [ %40, %6 ]
+  %50 = phi { i32 } [ %7, %6 ]
+  %51 = call i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %50)
+  %52 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %49, i32 2)
+  %53 = extractvalue { i16, [12 x i8] } %52, 0
+  %54 = extractvalue { i16, [12 x i8] } %52, 1
+  %55 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %54, ptr %55, align 1
+  switch i16 %53, label %15 [
+    i16 0, label %11
+    i16 1, label %13
+  ]
+
+56:                                               ; preds = %11
+  %57 = phi i32 [ %48, %11 ]
+  %58 = phi i32 [ %51, %11 ]
+  %59 = phi { i32, i32, ptr } [ %49, %11 ]
+  %60 = phi { i32 } [ %12, %11 ]
+  %61 = call i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %60)
+  %62 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %59, i32 3)
+  %63 = extractvalue { i16, [12 x i8] } %62, 0
+  %64 = extractvalue { i16, [12 x i8] } %62, 1
+  %65 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %64, ptr %65, align 1
+  switch i16 %63, label %20 [
+    i16 0, label %16
+    i16 1, label %18
+  ]
+
+66:                                               ; preds = %16
+  %67 = phi i32 [ %57, %16 ]
+  %68 = phi i32 [ %58, %16 ]
+  %69 = phi i32 [ %61, %16 ]
+  %70 = phi { i32, i32, ptr } [ %59, %16 ]
+  %71 = phi { i32 } [ %17, %16 ]
+  %72 = call i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %71)
+  %73 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %70, i32 4)
+  %74 = extractvalue { i16, [12 x i8] } %73, 0
+  %75 = extractvalue { i16, [12 x i8] } %73, 1
+  %76 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %75, ptr %76, align 1
+  switch i16 %74, label %25 [
+    i16 0, label %21
+    i16 1, label %23
+  ]
+
+77:                                               ; preds = %21
+  %78 = phi i32 [ %67, %21 ]
+  %79 = phi i32 [ %68, %21 ]
+  %80 = phi i32 [ %69, %21 ]
+  %81 = phi i32 [ %72, %21 ]
+  %82 = phi { i32 } [ %22, %21 ]
+  %83 = call i32 @"struct_deconstruct<Tuple<u32>>"({ i32 } %82)
+  %84 = call { i32, i32, i32, i32, i32 } @"struct_construct<Tuple<u32, u32, u32, u32, u32>>"(i32 %78, i32 %79, i32 %80, i32 %81, i32 %83)
+  %85 = call { { i32, i32, i32, i32, i32 } } @"struct_construct<Tuple<Tuple<u32, u32, u32, u32, u32>>>"({ i32, i32, i32, i32, i32 } %84)
+  %86 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 0>"({ { i32, i32, i32, i32, i32 } } %85)
+  ret { i16, [20 x i8] } %86
+
+87:                                               ; preds = %23
+  %88 = phi { i32, i32, ptr } [ %24, %23 ]
+  %89 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %88)
+  ret { i16, [20 x i8] } %89
+
+90:                                               ; preds = %18
+  %91 = phi { i32, i32, ptr } [ %19, %18 ]
+  %92 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %91)
+  ret { i16, [20 x i8] } %92
+
+93:                                               ; preds = %13
+  %94 = phi { i32, i32, ptr } [ %14, %13 ]
+  %95 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %94)
+  ret { i16, [20 x i8] } %95
+
+96:                                               ; preds = %8
+  %97 = phi { i32, i32, ptr } [ %9, %8 ]
+  %98 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %97)
+  ret { i16, [20 x i8] } %98
+
+99:                                               ; preds = %3
+  %100 = phi { i32, i32, ptr } [ %4, %3 ]
+  %101 = call { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %100)
+  ret { i16, [20 x i8] } %101
 }
 
 define void @"_mlir_ciface_example_array::example_array::main"(ptr %0) {
-  %2 = call { i32, i32, ptr } @"example_array::example_array::main"()
-  store { i32, i32, ptr } %2, ptr %0, align 8
+  %2 = call { i16, [20 x i8] } @"example_array::example_array::main"()
+  store { i16, [20 x i8] } %2, ptr %0, align 2
+  ret void
+}
+
+define { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %0, i32 %1) {
+  br label %8
+
+3:                                                ; preds = %8
+  %4 = load { i32 }, ptr %14, align 4
+  br label %15
+
+5:                                                ; preds = %8
+  %6 = load { i32, i32, ptr }, ptr %14, align 8
+  br label %20
+
+7:                                                ; preds = %8
+  unreachable
+
+8:                                                ; preds = %2
+  %9 = phi { i32, i32, ptr } [ %0, %2 ]
+  %10 = phi i32 [ %1, %2 ]
+  %11 = call { i16, [12 x i8] } @"core::array::array_at::<core::integer::u32>"({ i32, i32, ptr } %9, i32 %10)
+  %12 = extractvalue { i16, [12 x i8] } %11, 0
+  %13 = extractvalue { i16, [12 x i8] } %11, 1
+  %14 = alloca [12 x i8], i64 1, align 1
+  store [12 x i8] %13, ptr %14, align 1
+  switch i16 %12, label %7 [
+    i16 0, label %3
+    i16 1, label %5
+  ]
+
+15:                                               ; preds = %3
+  %16 = phi { i32 } [ %4, %3 ]
+  %17 = call i32 @"struct_deconstruct<Tuple<Box<u32>>>"({ i32 } %16)
+  %18 = call { i32 } @"struct_construct<Tuple<u32>>"(i32 %17)
+  %19 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 0>"({ i32 } %18)
+  ret { i16, [12 x i8] } %19
+
+20:                                               ; preds = %5
+  %21 = phi { i32, i32, ptr } [ %6, %5 ]
+  %22 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 1>"({ i32, i32, ptr } %21)
+  ret { i16, [12 x i8] } %22
+}
+
+define void @"_mlir_ciface_core::array::ArrayIndex::<core::integer::u32>::index"(ptr %0, { i32, i32, ptr } %1, i32 %2) {
+  %4 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u32>::index"({ i32, i32, ptr } %1, i32 %2)
+  store { i16, [12 x i8] } %4, ptr %0, align 2
+  ret void
+}
+
+define { i16, [12 x i8] } @"core::array::array_at::<core::integer::u32>"({ i32, i32, ptr } %0, i32 %1) {
+  br label %7
+
+3:                                                ; preds = %7
+  %4 = extractvalue { i32, i32, ptr } %8, 2
+  %5 = getelementptr i32, ptr %4, i32 %9
+  %6 = load i32, ptr %5, align 4
+  br label %12
+
+7:                                                ; preds = %2
+  %8 = phi { i32, i32, ptr } [ %0, %2 ]
+  %9 = phi i32 [ %1, %2 ]
+  %10 = extractvalue { i32, i32, ptr } %8, 0
+  %11 = icmp ult i32 %9, %10
+  br i1 %11, label %3, label %16
+
+12:                                               ; preds = %3
+  %13 = phi i32 [ %6, %3 ]
+  %14 = call { i32 } @"struct_construct<Tuple<Box<u32>>>"(i32 %13)
+  %15 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 0>"({ i32 } %14)
+  ret { i16, [12 x i8] } %15
+
+16:                                               ; preds = %7
+  %17 = call { i32, i32, ptr } @"array_new<felt252>"()
+  %18 = call { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %17, i256 1637570914057682275393755530660268060279989363)
+  %19 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 1>"({ i32, i32, ptr } %18)
+  ret { i16, [12 x i8] } %19
+}
+
+define void @"_mlir_ciface_core::array::array_at::<core::integer::u32>"(ptr %0, { i32, i32, ptr } %1, i32 %2) {
+  %4 = call { i16, [12 x i8] } @"core::array::array_at::<core::integer::u32>"({ i32, i32, ptr } %1, i32 %2)
+  store { i16, [12 x i8] } %4, ptr %0, align 2
   ret void
 }
 
