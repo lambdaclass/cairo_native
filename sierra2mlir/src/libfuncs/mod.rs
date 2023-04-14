@@ -2250,7 +2250,7 @@ impl<'ctx> Compiler<'ctx> {
 
         {
             // Increment index.
-            let k1 = blocks.3.append_operation(
+            let k1 = blocks.4.append_operation(
                 operation::Builder::new("index.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2263,9 +2263,9 @@ impl<'ctx> Compiler<'ctx> {
             );
             let k1: Value = k1.result(0)?.into();
 
-            let new_index = blocks.3.append_operation(
+            let new_index = blocks.4.append_operation(
                 operation::Builder::new("index.add", Location::unknown(&self.context))
-                    .add_operands(&[blocks.3.argument(0)?.into(), k1])
+                    .add_operands(&[blocks.4.argument(0)?.into(), k1])
                     .add_results(&[Type::parse(&self.context, "index").unwrap()])
                     .build(),
             );
@@ -2374,7 +2374,7 @@ impl<'ctx> Compiler<'ctx> {
 
         // Set '\n'.
         {
-            let k0 = blocks.5.append_operation(
+            let k0 = blocks.0.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2387,7 +2387,7 @@ impl<'ctx> Compiler<'ctx> {
             );
             let k0: Value = k0.result(0)?.into();
 
-            let k1 = blocks.5.append_operation(
+            let k1 = blocks.0.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2400,7 +2400,7 @@ impl<'ctx> Compiler<'ctx> {
             );
             let k1: Value = k1.result(0)?.into();
 
-            blocks.5.append_operation(
+            blocks.0.append_operation(
                 operation::Builder::new("memref.store", Location::unknown(&self.context))
                     .add_operands(&[k0, buf, k1])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
