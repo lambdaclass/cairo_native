@@ -15,6 +15,7 @@ use cairo_lang_sierra::program::Program;
 
 pub mod compiler;
 mod libfuncs;
+mod sierra_type;
 mod statements;
 pub mod types;
 mod userfuncs;

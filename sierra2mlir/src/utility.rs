@@ -12,7 +12,8 @@ use melior_next::{
 };
 
 use crate::{
-    compiler::{Compiler, FnAttributes, SierraType},
+    compiler::{Compiler, FnAttributes},
+    sierra_type::SierraType,
     statements::Variable,
 };
 use color_eyre::Result;

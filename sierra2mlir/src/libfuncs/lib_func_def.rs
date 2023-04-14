@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::compiler::SierraType;
+use crate::sierra_type::SierraType;
 
 // MLIR implementations do not always use the same number of parameters
 // As such, each LibFuncArg tracks both the type, and which parameter of the sierra libfunc it corresponds to for dataflow tracking

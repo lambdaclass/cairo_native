@@ -6,8 +6,9 @@ use itertools::Itertools;
 use melior_next::ir::Block;
 
 use crate::{
-    compiler::{Compiler, SierraType, Storage},
+    compiler::{Compiler, Storage},
     libfuncs::lib_func_def::{PositionalArg, SierraLibFunc},
+    sierra_type::SierraType,
 };
 
 use super::Variable;

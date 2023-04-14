@@ -3,7 +3,8 @@ use color_eyre::Result;
 use melior_next::ir::{operation, Block, BlockRef, Location, Region, Value};
 
 use crate::{
-    compiler::{Compiler, FnAttributes, SierraType, Storage},
+    compiler::{Compiler, FnAttributes, Storage},
+    sierra_type::SierraType,
     utility::create_fn_signature,
 };
 
