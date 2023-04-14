@@ -1240,6 +1240,7 @@ impl<'ctx> Compiler<'ctx> {
         if self.print_fd > 0 {
             self.create_printf()?;
         }
+        self.create_puts()?;
         let mut storage = Storage::default();
         self.process_types(&mut storage)?;
         self.process_libfuncs(&mut storage)?;
