@@ -1691,6 +1691,14 @@ impl<'ctx> Compiler<'ctx> {
             element_type: Box::new(SierraType::Simple(self.felt_type())),
         };
 
+        // Regions:
+        //   - 0: Entry region.
+        //   - 1: Source bits loop region.
+        //   - 2: Add & shift loop region.
+        //   - 3: Non-zero digit search loop (pre-condition and condition) region.
+        //   - 4: Non-zero digit search loop (post-condition) region.
+        //   - 5: Make ASCII string loop region.
+        //
         // Blocks:
         //   - 0: Entry point.
         //   - 1: Source bits loop body.
@@ -1698,521 +1706,386 @@ impl<'ctx> Compiler<'ctx> {
         //   - 3: Non-zero digit search loop (pre-condition and condition).
         //   - 4: Non-zero digit search loop (post-condition).
         //   - 5: Make ASCII string loop.
-        let region = Region::new();
-        let blocks = (
-            region.append_block(Block::new(&[(
-                src_type.get_type(),
-                Location::unknown(&self.context),
-            )])),
-            region.append_block(Block::new(&[(
-                Type::parse(&self.context, "index").unwrap(),
-                Location::unknown(&self.context),
-            )])),
-            region.append_block(Block::new(&[
-                (Type::parse(&self.context, "index").unwrap(), Location::unknown(&self.context)),
-                (Type::parse(&self.context, "i1").unwrap(), Location::unknown(&self.context)),
-            ])),
-            region.append_block(Block::new(&[(
-                Type::parse(&self.context, "index").unwrap(),
-                Location::unknown(&self.context),
-            )])),
-            region.append_block(Block::new(&[(
-                Type::parse(&self.context, "index").unwrap(),
-                Location::unknown(&self.context),
-            )])),
-            region.append_block(Block::new(&[(
-                src_type.get_type(),
-                Location::unknown(&self.context),
-            )])),
+        let regions = (
+            Region::new(),
+            Region::new(),
+            Region::new(),
+            Region::new(),
+            Region::new(),
+            Region::new(),
         );
+        regions
+            .0
+            .append_block(Block::new(&[(src_type.get_type(), Location::unknown(&self.context))]));
+        regions.1.append_block(Block::new(&[(
+            Type::parse(&self.context, "index").unwrap(),
+            Location::unknown(&self.context),
+        )]));
+        regions.2.append_block(Block::new(&[
+            (Type::parse(&self.context, "index").unwrap(), Location::unknown(&self.context)),
+            (Type::parse(&self.context, "i1").unwrap(), Location::unknown(&self.context)),
+        ]));
+        regions.3.append_block(Block::new(&[(
+            Type::parse(&self.context, "index").unwrap(),
+            Location::unknown(&self.context),
+        )]));
+        regions.4.append_block(Block::new(&[(
+            Type::parse(&self.context, "index").unwrap(),
+            Location::unknown(&self.context),
+        )]));
+        regions
+            .5
+            .append_block(Block::new(&[(src_type.get_type(), Location::unknown(&self.context))]));
+
+        let block0 = regions.0.first_block().unwrap();
 
         //
         // Block #0: Entry point (1/?).
         //
 
         // Allocate buffer.
-        let buf = blocks.0.append_operation(
+        let buf = block0.append_operation(
             operation::Builder::new("memref.alloca", Location::unknown(&self.context))
                 .add_results(&[Type::parse(&self.context, "memref<78xi8>").unwrap()])
                 .build(),
-        );
-        let buf: Value = buf.result(0)?.into();
-
-        // Zero the buffer.
-        let ptr_as_idx = {
-            // Extract LLVM pointer from memref.
-            let ptr_as_idx_op = blocks.0.append_operation(
-                operation::Builder::new(
-                    "memref.extract_aligned_pointer_as_index",
-                    Location::unknown(&self.context),
-                )
-                .add_operands(&[buf])
-                .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                .build(),
-            );
-            let ptr_as_idx: Value = ptr_as_idx_op.result(0)?.into();
-
-            let ptr_as_i64 = blocks.0.append_operation(
-                operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
-                    .add_operands(&[ptr_as_idx])
-                    .add_results(&[Type::parse(&self.context, "i64").unwrap()])
-                    .build(),
-            );
-            let ptr_as_i64: Value = ptr_as_i64.result(0)?.into();
-
-            let ptr = blocks.0.append_operation(
-                operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
-                    .add_operands(&[ptr_as_i64])
-                    .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
-                    .build(),
-            );
-            let ptr: Value = ptr.result(0)?.into();
-
-            // Zero the buffer.
-            let k0 = blocks.0.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "0 : i8").unwrap()
-                    ])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let k1 = blocks.0.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "78 : i32",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "i32").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            let k2 = blocks.0.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "0 : i1").unwrap()
-                    ])
-                    .add_results(&[Type::parse(&self.context, "i1").unwrap()])
-                    .build(),
-            );
-            let k2: Value = k2.result(0)?.into();
-
-            blocks.0.append_operation(
-                operation::Builder::new("llvm.intr.memset", Location::unknown(&self.context))
-                    .add_operands(&[ptr, k0, k1, k2])
-                    .build(),
-            );
-
-            ptr_as_idx_op
-        };
-        let ptr_as_idx: Value = ptr_as_idx.result(0)?.into();
-
-        // Find MSB index starting from LSB (count minimum required bits).
-        let first_used_bit_index = {
-            let leading_zeros = blocks.0.append_operation(
-                operation::Builder::new("math.ctlz", Location::unknown(&self.context))
-                    .add_operands(&[blocks.0.argument(0)?.into()])
-                    .add_results(&[self.felt_type()])
-                    .build(),
-            );
-            let leading_zeros: Value = leading_zeros.result(0)?.into();
-
-            blocks.0.append_operation(
-                operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
-                    .add_operands(&[leading_zeros])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            )
-        };
-        let first_used_bit_index: Value = first_used_bit_index.result(0)?.into();
-
-        // Iterate over used bits (from the first used bit index to the least significant bit).
-        {
-            let k0 = blocks.0.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "252 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let k1 = blocks.0.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "1 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            blocks.0.append_operation(
-                operation::Builder::new("scf.for", Location::unknown(&self.context))
-                    .add_operands(&[first_used_bit_index, k0, k1])
-                    .add_successors(&[&blocks.1])
-                    .build(),
-            );
-        }
-
-        //
-        // Block #1: Source bits loop body.
-        //
-
-        // Extract current bit from source.
-        let current_bit_value = {
-            let k0 = blocks.1.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "251 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let shift_amount = blocks.1.append_operation(
-                operation::Builder::new("index.sub", Location::unknown(&self.context))
-                    .add_operands(&[k0, blocks.1.argument(0)?.into()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let shift_amount: Value = shift_amount.result(0)?.into();
-
-            let shift_amount_felt = blocks.1.append_operation(
-                operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
-                    .add_operands(&[shift_amount])
-                    .add_results(&[self.felt_type()])
-                    .build(),
-            );
-            let shift_amount_felt: Value = shift_amount_felt.result(0)?.into();
-
-            let shifted_value = blocks.1.append_operation(
-                operation::Builder::new("arith.shrui", Location::unknown(&self.context))
-                    .add_operands(&[blocks.0.argument(0)?.into(), shift_amount_felt])
-                    .add_results(&[self.felt_type()])
-                    .build(),
-            );
-            let shifted_value: Value = shifted_value.result(0)?.into();
-
-            blocks.1.append_operation(
-                operation::Builder::new("arith.trunci", Location::unknown(&self.context))
-                    .add_operands(&[shifted_value])
-                    .add_results(&[Type::parse(&self.context, "i1").unwrap()])
-                    .build(),
-            )
-        };
-        let current_bit_value: Value = current_bit_value.result(0)?.into();
-
-        // Iterate over each byte for the add & shift steps.
-        {
-            let k0 = blocks.1.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "0 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let k1 = blocks.1.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "76 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            let k2 = blocks.1.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "1 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k2: Value = k2.result(0)?.into();
-
-            blocks.1.append_operation(
-                operation::Builder::new("scf.for", Location::unknown(&self.context))
-                    .add_operands(&[k0, k1, k2, current_bit_value])
-                    .add_successors(&[&blocks.2])
-                    .build(),
-            );
-        }
-
-        // Yield.
-        blocks.1.append_operation(
-            operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
         );
 
         //
         // Block #2: Add & shift loop body.
         //
 
-        // Load value.
-        let (value_index, value) = {
-            let k0 = blocks.2.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "75 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let value_index_op = blocks.2.append_operation(
-                operation::Builder::new("index.sub", Location::unknown(&self.context))
-                    .add_operands(&[k0, blocks.2.argument(0)?.into()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let value_index: Value = value_index_op.result(0)?.into();
-
-            let value = blocks.2.append_operation(
-                operation::Builder::new("memref.load", Location::unknown(&self.context))
-                    .add_operands(&[buf, value_index])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-
-            (value_index_op, value)
-        };
-        let value_index: Value = value_index.result(0)?.into();
-        let value: Value = value.result(0)?.into();
-
-        // Add 3 if value >= 5.
-        let value = {
-            let k0 = blocks.2.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "5 : i8").unwrap()
-                    ])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let is_ge_5 = blocks.2.append_operation(
-                operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "predicate",
-                        /* uge */ "9",
-                    )
-                    .unwrap()])
-                    .add_operands(&[value, k0])
-                    .add_results(&[Type::parse(&self.context, "i1").unwrap()])
-                    .build(),
-            );
-            let is_ge_5: Value = is_ge_5.result(0)?.into();
-
-            let k1 = blocks.2.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "3 : i8").unwrap()
-                    ])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            let value_plus_3 = blocks.2.append_operation(
-                operation::Builder::new("arith.addi", Location::unknown(&self.context))
-                    .add_operands(&[value, k1])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let value_plus_3: Value = value_plus_3.result(0)?.into();
-
-            blocks.2.append_operation(
-                operation::Builder::new("arith.select", Location::unknown(&self.context))
-                    .add_operands(&[is_ge_5, value_plus_3, value])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            )
-        };
-        let value: Value = value.result(0)?.into();
-
-        // Shift left by 1, then bitwise-or the carry in.
-        let (shifted_value_with_carry_in, new_value) = {
-            let k0 = blocks.2.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "1 : i8").unwrap()
-                    ])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let shifted_value = blocks.2.append_operation(
-                operation::Builder::new("arith.shli", Location::unknown(&self.context))
-                    .add_operands(&[value, k0])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let shifted_value: Value = shifted_value.result(0)?.into();
-
-            let carry_in = blocks.2.append_operation(
-                operation::Builder::new("llvm.zext", Location::unknown(&self.context))
-                    .add_operands(&[blocks.2.argument(1)?.into()])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let carry_in: Value = carry_in.result(0)?.into();
-
-            let shifted_value_with_carry_in_op = blocks.2.append_operation(
-                operation::Builder::new("arith.ori", Location::unknown(&self.context))
-                    .add_operands(&[shifted_value, carry_in])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let shifted_value_with_carry_in: Value =
-                shifted_value_with_carry_in_op.result(0)?.into();
-
-            let k1 = blocks.2.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "15 : i8",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            let new_value = blocks.2.append_operation(
-                operation::Builder::new("arith.andi", Location::unknown(&self.context))
-                    .add_operands(&[shifted_value_with_carry_in, k1])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-
-            (shifted_value_with_carry_in_op, new_value)
-        };
-        let shifted_value_with_carry_in: Value = shifted_value_with_carry_in.result(0)?.into();
-        let new_value: Value = new_value.result(0)?.into();
-
-        // Store new value.
-        blocks.2.append_operation(
-            operation::Builder::new("memref.store", Location::unknown(&self.context))
-                .add_operands(&[new_value, buf, value_index])
-                .build(),
-        );
-
-        // Compute next carry and yield.
         {
-            let k0 = blocks.2.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[
-                        NamedAttribute::new_parsed(&self.context, "value", "4 : i8").unwrap()
+            let block = regions.2.first_block().unwrap();
+
+            // Load value.
+            let (value_index, value) = {
+                let k0 = block.append_operation(
+                    operation::Builder::new("index.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "75 : index",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let value_index = block.append_operation(
+                    operation::Builder::new("index.sub", Location::unknown(&self.context))
+                        .add_operands(&[k0.result(0)?.into(), block.argument(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let value = block.append_operation(
+                    operation::Builder::new("memref.load", Location::unknown(&self.context))
+                        .add_operands(&[buf.result(0)?.into(), value_index.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                (value_index, value)
+            };
+
+            // Add 3 if value >= 5.
+            let value = {
+                let k0 = block.append_operation(
+                    operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "5 : i8",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let is_ge_5 = block.append_operation(
+                    operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "predicate",
+                            /* uge */ "9",
+                        )
+                        .unwrap()])
+                        .add_operands(&[value.result(0)?.into(), k0.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i1").unwrap()])
+                        .build(),
+                );
+
+                let k1 = block.append_operation(
+                    operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "3 : i8",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let value_plus_3 = block.append_operation(
+                    operation::Builder::new("arith.addi", Location::unknown(&self.context))
+                        .add_operands(&[value.result(0)?.into(), k1.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                block.append_operation(
+                    operation::Builder::new("arith.select", Location::unknown(&self.context))
+                        .add_operands(&[
+                            is_ge_5.result(0)?.into(),
+                            value_plus_3.result(0)?.into(),
+                            value.result(0)?.into(),
+                        ])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                )
+            };
+
+            // Shift left by 1, then bitwise-or the carry in.
+            let (shifted_value_with_carry_in, new_value) = {
+                let k0 = block.append_operation(
+                    operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "1 : i8",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let shifted_value = block.append_operation(
+                    operation::Builder::new("arith.shli", Location::unknown(&self.context))
+                        .add_operands(&[value.result(0)?.into(), k0.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let carry_in = block.append_operation(
+                    operation::Builder::new("llvm.zext", Location::unknown(&self.context))
+                        .add_operands(&[block.argument(1)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let shifted_value_with_carry_in = block.append_operation(
+                    operation::Builder::new("arith.ori", Location::unknown(&self.context))
+                        .add_operands(&[
+                            shifted_value.result(0)?.into(),
+                            carry_in.result(0)?.into(),
+                        ])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let k1 = block.append_operation(
+                    operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "15 : i8",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                let new_value = block.append_operation(
+                    operation::Builder::new("arith.andi", Location::unknown(&self.context))
+                        .add_operands(&[
+                            shifted_value_with_carry_in.result(0)?.into(),
+                            k1.result(0)?.into(),
+                        ])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
+
+                (shifted_value_with_carry_in, new_value)
+            };
+
+            // Store new value.
+            block.append_operation(
+                operation::Builder::new("memref.store", Location::unknown(&self.context))
+                    .add_operands(&[
+                        new_value.result(0)?.into(),
+                        buf.result(0)?.into(),
+                        value_index.result(0)?.into(),
                     ])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let k0: Value = k0.result(0)?.into();
 
-            let carry_out = blocks.2.append_operation(
-                operation::Builder::new("arith.shrui", Location::unknown(&self.context))
-                    .add_operands(&[shifted_value_with_carry_in, k0])
-                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
-                    .build(),
-            );
-            let carry_out: Value = carry_out.result(0)?.into();
+            // Compute next carry and yield.
+            {
+                let k0 = block.append_operation(
+                    operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "4 : i8",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
 
-            let carry_out = blocks.2.append_operation(
-                operation::Builder::new("arith.trunci", Location::unknown(&self.context))
-                    .add_operands(&[carry_out])
-                    .add_results(&[Type::parse(&self.context, "i1").unwrap()])
-                    .build(),
-            );
-            let carry_out: Value = carry_out.result(0)?.into();
+                let carry_out = block.append_operation(
+                    operation::Builder::new("arith.shrui", Location::unknown(&self.context))
+                        .add_operands(&[
+                            shifted_value_with_carry_in.result(0)?.into(),
+                            k0.result(0)?.into(),
+                        ])
+                        .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                        .build(),
+                );
 
-            blocks.2.append_operation(
-                operation::Builder::new("scf.yield", Location::unknown(&self.context))
-                    .add_operands(&[carry_out])
-                    .build(),
+                let carry_out = block.append_operation(
+                    operation::Builder::new("arith.trunci", Location::unknown(&self.context))
+                        .add_operands(&[carry_out.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i1").unwrap()])
+                        .build(),
+                );
+
+                block.append_operation(
+                    operation::Builder::new("scf.yield", Location::unknown(&self.context))
+                        .add_operands(&[carry_out.result(0)?.into()])
+                        .build(),
+                );
+            }
+        }
+
+        //
+        // Block #1: Source bits loop body.
+        //
+
+        {
+            let block = regions.1.first_block().unwrap();
+
+            // Extract current bit from source.
+            let current_bit_value = {
+                let k0 = block.append_operation(
+                    operation::Builder::new("index.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "251 : index",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let shift_amount = block.append_operation(
+                    operation::Builder::new("index.sub", Location::unknown(&self.context))
+                        .add_operands(&[k0.result(0)?.into(), block.argument(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let shift_amount_felt = block.append_operation(
+                    operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
+                        .add_operands(&[shift_amount.result(0)?.into()])
+                        .add_results(&[self.felt_type()])
+                        .build(),
+                );
+
+                let shifted_value = block.append_operation(
+                    operation::Builder::new("arith.shrui", Location::unknown(&self.context))
+                        .add_operands(&[
+                            block0.argument(0)?.into(),
+                            shift_amount_felt.result(0)?.into(),
+                        ])
+                        .add_results(&[self.felt_type()])
+                        .build(),
+                );
+
+                block.append_operation(
+                    operation::Builder::new("arith.trunci", Location::unknown(&self.context))
+                        .add_operands(&[shifted_value.result(0)?.into()])
+                        .add_results(&[Type::parse(&self.context, "i1").unwrap()])
+                        .build(),
+                )
+            };
+
+            // Iterate over each byte for the add & shift steps.
+            {
+                let k0 = block.append_operation(
+                    operation::Builder::new("index.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "0 : index",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let k1 = block.append_operation(
+                    operation::Builder::new("index.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "76 : index",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                let k2 = block.append_operation(
+                    operation::Builder::new("index.constant", Location::unknown(&self.context))
+                        .add_attributes(&[NamedAttribute::new_parsed(
+                            &self.context,
+                            "value",
+                            "1 : index",
+                        )
+                        .unwrap()])
+                        .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                        .build(),
+                );
+
+                block.append_operation(
+                    operation::Builder::new("scf.for", Location::unknown(&self.context))
+                        .add_operands(&[
+                            k0.result(0)?.into(),
+                            k1.result(0)?.into(),
+                            k2.result(0)?.into(),
+                            current_bit_value.result(0)?.into(),
+                        ])
+                        .add_regions(vec![regions.2])
+                        .build(),
+                );
+            }
+
+            // Yield.
+            block.append_operation(
+                operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
             );
         }
 
         //
-        // Block #0: Entry point (2/?).
-        //
-
-        // Find first non-zero digit.
-        let first_nonzero_digit_index = {
-            let k0 = blocks.0.append_operation(
-                operation::Builder::new("arith.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "0 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            blocks.0.append_operation(
-                operation::Builder::new("scf.while", Location::unknown(&self.context))
-                    .add_operands(&[k0])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .add_successors(&[&blocks.3, &blocks.4])
-                    .build(),
-            )
-        };
-        let first_nonzero_digit_index: Value = first_nonzero_digit_index.result(0)?.into();
-
-        //
         // Block #3: Non-zero digit search loop (pre-condition and condition).
         //
+
         {
+            let block = regions.3.first_block().unwrap();
+
             // Load value.
-            let value = blocks.3.append_operation(
+            let value = block.append_operation(
                 operation::Builder::new("memref.load", Location::unknown(&self.context))
-                    .add_operands(&[buf, blocks.3.argument(0)?.into()])
+                    .add_operands(&[buf.result(0)?.into(), block.argument(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let value: Value = value.result(0)?.into();
 
             // Compare with zero.
-            let k0 = blocks.3.append_operation(
+            let k0 = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[
                         NamedAttribute::new_parsed(&self.context, "value", "0 : i8").unwrap()
@@ -2220,9 +2093,8 @@ impl<'ctx> Compiler<'ctx> {
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let k0: Value = k0.result(0)?.into();
 
-            let value_is_zero = blocks.3.append_operation(
+            let value_is_zero = block.append_operation(
                 operation::Builder::new("arith.cmpi", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2230,16 +2102,15 @@ impl<'ctx> Compiler<'ctx> {
                         /* eq */ "0",
                     )
                     .unwrap()])
-                    .add_operands(&[value, k0])
+                    .add_operands(&[value.result(0)?.into(), k0.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i1").unwrap()])
                     .build(),
             );
-            let value_is_zero: Value = value_is_zero.result(0)?.into();
 
             // If equal, continue.
-            blocks.3.append_operation(
+            block.append_operation(
                 operation::Builder::new("scf.condition", Location::unknown(&self.context))
-                    .add_operands(&[value_is_zero, blocks.3.argument(0)?.into()])
+                    .add_operands(&[value_is_zero.result(0)?.into(), block.argument(0)?.into()])
                     .build(),
             );
         }
@@ -2249,8 +2120,10 @@ impl<'ctx> Compiler<'ctx> {
         //
 
         {
+            let block = regions.4.first_block().unwrap();
+
             // Increment index.
-            let k1 = blocks.4.append_operation(
+            let k1 = block.append_operation(
                 operation::Builder::new("index.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2261,59 +2134,17 @@ impl<'ctx> Compiler<'ctx> {
                     .add_results(&[Type::parse(&self.context, "index").unwrap()])
                     .build(),
             );
-            let k1: Value = k1.result(0)?.into();
 
-            let new_index = blocks.4.append_operation(
+            let new_index = block.append_operation(
                 operation::Builder::new("index.add", Location::unknown(&self.context))
-                    .add_operands(&[blocks.4.argument(0)?.into(), k1])
+                    .add_operands(&[block.argument(0)?.into(), k1.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "index").unwrap()])
                     .build(),
             );
-            let new_index: Value = new_index.result(0)?.into();
 
-            blocks.4.append_operation(
+            block.append_operation(
                 operation::Builder::new("scf.yield", Location::unknown(&self.context))
-                    .add_operands(&[new_index])
-                    .build(),
-            );
-        }
-
-        //
-        // Block #0: Entry point (3/?).
-        //
-
-        // Convert BCD to ascii decimal numbers.
-        {
-            let k0 = blocks.0.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "76 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k0: Value = k0.result(0)?.into();
-
-            let k1 = blocks.0.append_operation(
-                operation::Builder::new("index.constant", Location::unknown(&self.context))
-                    .add_attributes(&[NamedAttribute::new_parsed(
-                        &self.context,
-                        "value",
-                        "1 : index",
-                    )
-                    .unwrap()])
-                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
-                    .build(),
-            );
-            let k1: Value = k1.result(0)?.into();
-
-            blocks.0.append_operation(
-                operation::Builder::new("scf.for", Location::unknown(&self.context))
-                    .add_operands(&[first_nonzero_digit_index, k0, k1])
-                    .add_successors(&[&blocks.5])
+                    .add_operands(&[new_index.result(0)?.into()])
                     .build(),
             );
         }
@@ -2323,17 +2154,18 @@ impl<'ctx> Compiler<'ctx> {
         //
 
         {
+            let block = regions.5.first_block().unwrap();
+
             // Load value.
-            let value = blocks.5.append_operation(
+            let value = block0.append_operation(
                 operation::Builder::new("memref.load", Location::unknown(&self.context))
-                    .add_operands(&[buf, blocks.5.argument(0)?.into()])
+                    .add_operands(&[buf.result(0)?.into(), block.argument(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let value: Value = value.result(0)?.into();
 
             // Add 48 (or ASCII '0').
-            let k0 = blocks.5.append_operation(
+            let k0 = block.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2344,37 +2176,227 @@ impl<'ctx> Compiler<'ctx> {
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let k0: Value = k0.result(0)?.into();
 
-            let ascii_value = blocks.5.append_operation(
+            let ascii_value = block.append_operation(
                 operation::Builder::new("arith.addi", Location::unknown(&self.context))
-                    .add_operands(&[value, k0])
+                    .add_operands(&[value.result(0)?.into(), k0.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let ascii_value: Value = ascii_value.result(0)?.into();
 
             // Store new value.
-            blocks.5.append_operation(
+            block.append_operation(
                 operation::Builder::new("memref.store", Location::unknown(&self.context))
-                    .add_operands(&[ascii_value, buf, blocks.5.argument(0)?.into()])
+                    .add_operands(&[
+                        ascii_value.result(0)?.into(),
+                        buf.result(0)?.into(),
+                        block.argument(0)?.into(),
+                    ])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                    .build(),
+            );
+
+            // Yield.
+            block.append_operation(
+                operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
+            );
+        }
+
+        //
+        // Block #0: Entry point (2/?).
+        //
+
+        // Zero the buffer.
+        let ptr_as_idx = {
+            // Extract LLVM pointer from memref.
+            let ptr_as_idx = block0.append_operation(
+                operation::Builder::new(
+                    "memref.extract_aligned_pointer_as_index",
+                    Location::unknown(&self.context),
+                )
+                .add_operands(&[buf.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                .build(),
+            );
+
+            let ptr_as_i64 = block0.append_operation(
+                operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
+                    .add_operands(&[ptr_as_idx.result(0)?.into()])
+                    .add_results(&[Type::parse(&self.context, "i64").unwrap()])
+                    .build(),
+            );
+
+            let ptr = block0.append_operation(
+                operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                    .add_operands(&[ptr_as_i64.result(0)?.into()])
+                    .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                    .build(),
+            );
+
+            // Zero the buffer.
+            let k0 = block0.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_attributes(&[
+                        NamedAttribute::new_parsed(&self.context, "value", "0 : i8").unwrap()
+                    ])
+                    .add_results(&[Type::parse(&self.context, "i8").unwrap()])
+                    .build(),
+            );
+
+            let k1 = block0.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "78 : i32",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "i32").unwrap()])
+                    .build(),
+            );
+
+            let k2 = block0.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_attributes(&[
+                        NamedAttribute::new_parsed(&self.context, "value", "0 : i1").unwrap()
+                    ])
+                    .add_results(&[Type::parse(&self.context, "i1").unwrap()])
+                    .build(),
+            );
+
+            block0.append_operation(
+                operation::Builder::new("llvm.intr.memset", Location::unknown(&self.context))
+                    .add_operands(&[
+                        ptr.result(0)?.into(),
+                        k0.result(0)?.into(),
+                        k1.result(0)?.into(),
+                        k2.result(0)?.into(),
+                    ])
+                    .build(),
+            );
+
+            ptr_as_idx
+        };
+
+        // Find MSB index starting from LSB (count minimum required bits).
+        let first_used_bit_index = {
+            let leading_zeros = block0.append_operation(
+                operation::Builder::new("math.ctlz", Location::unknown(&self.context))
+                    .add_operands(&[block0.argument(0)?.into()])
+                    .add_results(&[self.felt_type()])
+                    .build(),
+            );
+
+            block0.append_operation(
+                operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
+                    .add_operands(&[leading_zeros.result(0)?.into()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            )
+        };
+
+        // Iterate over used bits (from the first used bit index to the least significant bit).
+        {
+            let k0 = block0.append_operation(
+                operation::Builder::new("index.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "252 : index",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            );
+
+            let k1 = block0.append_operation(
+                operation::Builder::new("index.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "1 : index",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            );
+
+            block0.append_operation(
+                operation::Builder::new("scf.for", Location::unknown(&self.context))
+                    .add_operands(&[
+                        first_used_bit_index.result(0)?.into(),
+                        k0.result(0)?.into(),
+                        k1.result(0)?.into(),
+                    ])
+                    .add_regions(vec![regions.1])
                     .build(),
             );
         }
 
-        // Yield.
-        blocks.5.append_operation(
-            operation::Builder::new("scf.yield", Location::unknown(&self.context)).build(),
-        );
+        // Find first non-zero digit.
+        let first_nonzero_digit_index = {
+            let k0 = block0.append_operation(
+                operation::Builder::new("arith.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "0 : index",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            );
 
-        //
-        // Block #0: Entry point (4/?).
-        //
+            block0.append_operation(
+                operation::Builder::new("scf.while", Location::unknown(&self.context))
+                    .add_operands(&[k0.result(0)?.into()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .add_regions(vec![regions.3, regions.4])
+                    .build(),
+            )
+        };
+
+        // Convert BCD to ascii decimal numbers.
+        {
+            let k0 = block0.append_operation(
+                operation::Builder::new("index.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "76 : index",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            );
+
+            let k1 = block0.append_operation(
+                operation::Builder::new("index.constant", Location::unknown(&self.context))
+                    .add_attributes(&[NamedAttribute::new_parsed(
+                        &self.context,
+                        "value",
+                        "1 : index",
+                    )
+                    .unwrap()])
+                    .add_results(&[Type::parse(&self.context, "index").unwrap()])
+                    .build(),
+            );
+
+            block0.append_operation(
+                operation::Builder::new("scf.for", Location::unknown(&self.context))
+                    .add_operands(&[
+                        first_nonzero_digit_index.result(0)?.into(),
+                        k0.result(0)?.into(),
+                        k1.result(0)?.into(),
+                    ])
+                    .add_regions(vec![regions.5])
+                    .build(),
+            );
+        }
 
         // Set '\n'.
         {
-            let k0 = blocks.0.append_operation(
+            let k0 = block0.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2385,9 +2407,8 @@ impl<'ctx> Compiler<'ctx> {
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
-            let k0: Value = k0.result(0)?.into();
 
-            let k1 = blocks.0.append_operation(
+            let k1 = block0.append_operation(
                 operation::Builder::new("arith.constant", Location::unknown(&self.context))
                     .add_attributes(&[NamedAttribute::new_parsed(
                         &self.context,
@@ -2398,11 +2419,14 @@ impl<'ctx> Compiler<'ctx> {
                     .add_results(&[Type::parse(&self.context, "index").unwrap()])
                     .build(),
             );
-            let k1: Value = k1.result(0)?.into();
 
-            blocks.0.append_operation(
+            block0.append_operation(
                 operation::Builder::new("memref.store", Location::unknown(&self.context))
-                    .add_operands(&[k0, buf, k1])
+                    .add_operands(&[
+                        k0.result(0)?.into(),
+                        buf.result(0)?.into(),
+                        k1.result(0)?.into(),
+                    ])
                     .add_results(&[Type::parse(&self.context, "i8").unwrap()])
                     .build(),
             );
@@ -2410,45 +2434,40 @@ impl<'ctx> Compiler<'ctx> {
 
         // Call `puts()`.
         {
-            // TODO: index.add ptr_as_idx, first_nonzero_digit_index
-            // TODO: arith.index_castui
-            // TODO: llvm.inttoptr
-            // TODO: func.call
-
-            let offset_ptr = blocks.0.append_operation(
+            let offset_ptr = block0.append_operation(
                 operation::Builder::new("index.add", Location::unknown(&self.context))
-                    .add_operands(&[ptr_as_idx, first_nonzero_digit_index])
+                    .add_operands(&[
+                        ptr_as_idx.result(0)?.into(),
+                        first_nonzero_digit_index.result(0)?.into(),
+                    ])
                     .add_results(&[Type::parse(&self.context, "index").unwrap()])
                     .build(),
             );
-            let offset_ptr: Value = offset_ptr.result(0)?.into();
 
-            let offset_ptr_i64 = blocks.0.append_operation(
+            let offset_ptr_i64 = block0.append_operation(
                 operation::Builder::new("arith.index_castui", Location::unknown(&self.context))
-                    .add_operands(&[offset_ptr])
+                    .add_operands(&[offset_ptr.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i64").unwrap()])
                     .build(),
             );
-            let offset_ptr_i64: Value = offset_ptr_i64.result(0)?.into();
 
-            let offset_ptr_llvm = blocks.0.append_operation(
+            let offset_ptr_llvm = block0.append_operation(
                 operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
-                    .add_operands(&[offset_ptr_i64])
+                    .add_operands(&[offset_ptr_i64.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
                     .build(),
             );
-            let offset_ptr_llvm: Value = offset_ptr_llvm.result(0)?.into();
 
-            blocks.0.append_operation(
+            block0.append_operation(
                 operation::Builder::new("func.call", Location::unknown(&self.context))
-                    .add_operands(&[offset_ptr_llvm])
+                    .add_operands(&[offset_ptr_llvm.result(0)?.into()])
                     .add_results(&[Type::parse(&self.context, "i32").unwrap()])
                     .build(),
             );
         }
 
         // Return.
-        blocks.0.append_operation(
+        block0.append_operation(
             operation::Builder::new("func.return", Location::unknown(&self.context)).build(),
         );
 
@@ -2457,7 +2476,7 @@ impl<'ctx> Compiler<'ctx> {
         //
         let fn_type = create_fn_signature(&[src_type.get_type()], &[]);
         let op_func =
-            self.op_func("print", &fn_type, vec![region], FnAttributes::libfunc(false, false))?;
+            self.op_func("print", &fn_type, vec![regions.0], FnAttributes::libfunc(false, false))?;
 
         parent_block.append_operation(op_func);
         storage.libfuncs.insert(
