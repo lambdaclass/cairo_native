@@ -1,5 +1,6 @@
 module attributes {llvm.data_layout = ""} {
   llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @memmove(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @"struct_construct<destructure::destructure::MyStruct>"(%arg0: i256, %arg1: i256, %arg2: i256) -> !llvm.struct<(i256, i256, i256)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {

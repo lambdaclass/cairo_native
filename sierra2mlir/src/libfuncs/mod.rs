@@ -285,6 +285,9 @@ impl<'ctx> Compiler<'ctx> {
                 "array_get" => {
                     self.register_libfunc_array_get(func_decl, storage);
                 }
+                "array_pop_front" => {
+                    self.register_libfunc_array_pop_front(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -889,6 +892,42 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![
                     vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
                     vec![],                                       // panic branch
+                ],
+            },
+        );
+    }
+
+    pub fn register_libfunc_array_pop_front(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_pop_front argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: sierra_type.clone() }, // array
+                ],
+                return_types: vec![
+                    // fallthrough (pop returned something): array, popped value
+                    vec![
+                        PositionalArg { loc: 0, ty: sierra_type.clone() },
+                        PositionalArg { loc: 1, ty: arg_type },
+                    ],
+                    // jump (pop returned none): array
+                    vec![PositionalArg { loc: 0, ty: sierra_type }],
                 ],
             },
         );

@@ -7,6 +7,8 @@ declare void @free(ptr)
 
 declare ptr @realloc(ptr, i64)
 
+declare ptr @memmove(ptr, ptr, i64)
+
 declare i32 @dprintf(i32, ptr, ...)
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -55,25 +57,25 @@ define internal { i8 } @"struct_construct<Tuple<u8>>"(i8 %0) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 0>"({ i8 } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 0>"({ i8 } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i8 } %0, ptr %4, align 1
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -83,25 +85,25 @@ define internal i8 @"struct_deconstruct<Tuple<Box<u8>>>"({ i8 } %0) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 0>"({ i8 } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 0>"({ i8 } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i8 } %0, ptr %4, align 1
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -111,14 +113,14 @@ define internal { i8 } @"struct_construct<Tuple<Box<u8>>>"(i8 %0) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 0>"({ i8 } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 0>"({ i8 } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i8 } %0, ptr %4, align 1
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -155,17 +157,17 @@ define internal { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %0,
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [12 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 0
+define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"({ i32, i32, ptr } %0) #0 {
+  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [12 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
   store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [12 x i8] }, ptr %2, align 2
-  ret { i16, [12 x i8] } %5
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
-define { i16, [12 x i8] } @"index_array::index_array::main"() {
+define { i16, [16 x i8] } @"index_array::index_array::main"() {
   br label %6
 
 1:                                                ; preds = %6
@@ -190,11 +192,11 @@ define { i16, [12 x i8] } @"index_array::index_array::main"() {
   %14 = call { i32, i32, ptr } @"array_append<u8>"({ i32, i32, ptr } %13, i8 1)
   %15 = call { i32, i32, ptr } @"array_append<u8>"({ i32, i32, ptr } %14, i8 1)
   %16 = call { i32, i32, ptr } @"array_append<u8>"({ i32, i32, ptr } %15, i8 2)
-  %17 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %16, i32 0)
-  %18 = extractvalue { i16, [12 x i8] } %17, 0
-  %19 = extractvalue { i16, [12 x i8] } %17, 1
-  %20 = alloca [12 x i8], i64 1, align 1
-  store [12 x i8] %19, ptr %20, align 1
+  %17 = call { i16, [16 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %16, i32 0)
+  %18 = extractvalue { i16, [16 x i8] } %17, 0
+  %19 = extractvalue { i16, [16 x i8] } %17, 1
+  %20 = alloca [16 x i8], i64 1, align 1
+  store [16 x i8] %19, ptr %20, align 1
   switch i16 %18, label %5 [
     i16 0, label %1
     i16 1, label %3
@@ -204,22 +206,22 @@ define { i16, [12 x i8] } @"index_array::index_array::main"() {
   %22 = phi { i8 } [ %2, %1 ]
   %23 = call i8 @"struct_deconstruct<Tuple<u8>>"({ i8 } %22)
   %24 = call { i8 } @"struct_construct<Tuple<u8>>"(i8 %23)
-  %25 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 0>"({ i8 } %24)
-  ret { i16, [12 x i8] } %25
+  %25 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 0>"({ i8 } %24)
+  ret { i16, [16 x i8] } %25
 
 26:                                               ; preds = %3
   %27 = phi { i32, i32, ptr } [ %4, %3 ]
-  %28 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"({ i32, i32, ptr } %27)
-  ret { i16, [12 x i8] } %28
+  %28 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"({ i32, i32, ptr } %27)
+  ret { i16, [16 x i8] } %28
 }
 
 define void @"_mlir_ciface_index_array::index_array::main"(ptr %0) {
-  %2 = call { i16, [12 x i8] } @"index_array::index_array::main"()
-  store { i16, [12 x i8] } %2, ptr %0, align 2
+  %2 = call { i16, [16 x i8] } @"index_array::index_array::main"()
+  store { i16, [16 x i8] } %2, ptr %0, align 2
   ret void
 }
 
-define { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %0, i32 %1) {
+define { i16, [16 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %0, i32 %1) {
   br label %8
 
 3:                                                ; preds = %8
@@ -236,11 +238,11 @@ define { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"
 8:                                                ; preds = %2
   %9 = phi { i32, i32, ptr } [ %0, %2 ]
   %10 = phi i32 [ %1, %2 ]
-  %11 = call { i16, [12 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %9, i32 %10)
-  %12 = extractvalue { i16, [12 x i8] } %11, 0
-  %13 = extractvalue { i16, [12 x i8] } %11, 1
-  %14 = alloca [12 x i8], i64 1, align 1
-  store [12 x i8] %13, ptr %14, align 1
+  %11 = call { i16, [16 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %9, i32 %10)
+  %12 = extractvalue { i16, [16 x i8] } %11, 0
+  %13 = extractvalue { i16, [16 x i8] } %11, 1
+  %14 = alloca [16 x i8], i64 1, align 1
+  store [16 x i8] %13, ptr %14, align 1
   switch i16 %12, label %7 [
     i16 0, label %3
     i16 1, label %5
@@ -250,22 +252,22 @@ define { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"
   %16 = phi { i8 } [ %4, %3 ]
   %17 = call i8 @"struct_deconstruct<Tuple<Box<u8>>>"({ i8 } %16)
   %18 = call { i8 } @"struct_construct<Tuple<u8>>"(i8 %17)
-  %19 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 0>"({ i8 } %18)
-  ret { i16, [12 x i8] } %19
+  %19 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 0>"({ i8 } %18)
+  ret { i16, [16 x i8] } %19
 
 20:                                               ; preds = %5
   %21 = phi { i32, i32, ptr } [ %6, %5 ]
-  %22 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"({ i32, i32, ptr } %21)
-  ret { i16, [12 x i8] } %22
+  %22 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"({ i32, i32, ptr } %21)
+  ret { i16, [16 x i8] } %22
 }
 
 define void @"_mlir_ciface_core::array::ArrayIndex::<core::integer::u8>::index"(ptr %0, { i32, i32, ptr } %1, i32 %2) {
-  %4 = call { i16, [12 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %1, i32 %2)
-  store { i16, [12 x i8] } %4, ptr %0, align 2
+  %4 = call { i16, [16 x i8] } @"core::array::ArrayIndex::<core::integer::u8>::index"({ i32, i32, ptr } %1, i32 %2)
+  store { i16, [16 x i8] } %4, ptr %0, align 2
   ret void
 }
 
-define { i16, [12 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %0, i32 %1) {
+define { i16, [16 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %0, i32 %1) {
   br label %7
 
 3:                                                ; preds = %7
@@ -284,19 +286,19 @@ define { i16, [12 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i
 12:                                               ; preds = %3
   %13 = phi i8 [ %6, %3 ]
   %14 = call { i8 } @"struct_construct<Tuple<Box<u8>>>"(i8 %13)
-  %15 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 0>"({ i8 } %14)
-  ret { i16, [12 x i8] } %15
+  %15 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 0>"({ i8 } %14)
+  ret { i16, [16 x i8] } %15
 
 16:                                               ; preds = %7
   %17 = call { i32, i32, ptr } @"array_new<felt252>"()
   %18 = call { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %17, i256 1637570914057682275393755530660268060279989363)
-  %19 = call { i16, [12 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"({ i32, i32, ptr } %18)
-  ret { i16, [12 x i8] } %19
+  %19 = call { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"({ i32, i32, ptr } %18)
+  ret { i16, [16 x i8] } %19
 }
 
 define void @"_mlir_ciface_core::array::array_at::<core::integer::u8>"(ptr %0, { i32, i32, ptr } %1, i32 %2) {
-  %4 = call { i16, [12 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %1, i32 %2)
-  store { i16, [12 x i8] } %4, ptr %0, align 2
+  %4 = call { i16, [16 x i8] } @"core::array::array_at::<core::integer::u8>"({ i32, i32, ptr } %1, i32 %2)
+  store { i16, [16 x i8] } %4, ptr %0, align 2
   ret void
 }
 

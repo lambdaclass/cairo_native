@@ -315,4 +315,159 @@ impl<'ctx> Compiler<'ctx> {
             panic!("argument should be array type");
         }
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn inline_array_pop_front(
+        &self,
+        id: &str,
+        statement_idx: usize,
+        region: &Region,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let array_arg = &libfunc.get_args()[0];
+
+        // fallthrough if there is a element to pop
+        // jump otherwise
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let some_block_info = target_blocks[0];
+        let none_block_info = target_blocks[1];
+
+        if let SierraType::Array { ty: array_type, len_type, element_type } = &array_arg.ty {
+            let array_var = variables
+                .get(&invocation.args[array_arg.loc].id)
+                .expect("variable array should exist");
+
+            let array_value = array_var.get_value();
+
+            let const_1_op = self.op_u32_const(block, "1");
+            let const_1 = const_1_op.result(0)?.into();
+            let const_0_op = self.op_u32_const(block, "0");
+            let const_0 = const_0_op.result(0)?.into();
+
+            // get the current length
+            let length_op = self.op_llvm_extractvalue(block, 0, array_value, *len_type)?;
+            let length: Value = length_op.result(0)?.into();
+
+            // check if there is something to pop
+            let cmp_op = self.op_cmp(block, CmpOp::UnsignedGreaterEqual, length, const_1);
+            let cmp = cmp_op.result(0)?.into();
+
+            let block_pop_idx = region.append_block(Block::new(&[]));
+
+            // collect args to the none block
+            let args_to_none_block = none_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    if *var_idx == invocation.branches[1].results[0].id {
+                        *array_var
+                    } else {
+                        *variables.get(var_idx).unwrap()
+                    }
+                })
+                .collect_vec();
+
+            let args_to_none_block =
+                args_to_none_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_cond_br(
+                block,
+                cmp,
+                &block_pop_idx,
+                &none_block_info.block,
+                &[],
+                &args_to_none_block,
+            );
+
+            // get the value at index
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&block_pop_idx, 2, array_value, self.llvm_ptr_type())?;
+            let data_ptr: Value = data_ptr_op.result(0)?.into();
+            // get the pointer to the data index
+            let value_ptr_op = self.op_llvm_gep_dynamic(
+                &block_pop_idx,
+                &[const_0],
+                data_ptr,
+                element_type.get_type(),
+            )?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+            let value_load_op =
+                self.op_llvm_load(&block_pop_idx, value_ptr, element_type.get_type()).unwrap();
+
+            let new_length_op = self.op_sub(&block_pop_idx, length, const_1);
+            let new_length = new_length_op.result(0)?.into();
+
+            // ptr at ptr + 1 element
+            let src_ptr_op = self.op_llvm_gep_dynamic(
+                &block_pop_idx,
+                &[const_1],
+                data_ptr,
+                element_type.get_type(),
+            )?;
+            let src_ptr = src_ptr_op.result(0)?.into();
+
+            // its safe if new_length is 0
+            let new_length_zext_op = self.op_zext(&block_pop_idx, new_length, self.u64_type());
+            let new_length_zext = new_length_zext_op.result(0)?.into();
+            let dst_ptr_op =
+                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_zext)?;
+            let dst_ptr: Value = dst_ptr_op.result(0)?.into();
+
+            // insert new length
+            let insert_op =
+                self.op_llvm_insertvalue(&block_pop_idx, 0, array_value, new_length, *array_type)?;
+            let array_value: Value = insert_op.result(0)?.into();
+
+            // insert new ptr
+            let insert_array_op =
+                self.op_llvm_insertvalue(&block_pop_idx, 2, array_value, dst_ptr, *array_type)?;
+
+            // get the args to the target block (fallthrough here)
+            let args_to_target_block = some_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    let array_value_id = invocation.branches[0].results[0].id;
+                    let popped_value_id = invocation.branches[0].results[1].id;
+                    match *var_idx {
+                        // popped value
+                        var_idx if var_idx == popped_value_id => {
+                            Variable::Local { op: value_load_op, result_idx: 0 }
+                        }
+                        // updated array
+                        var_idx if var_idx == array_value_id => {
+                            Variable::Local { op: insert_array_op, result_idx: 0 }
+                        }
+                        var_idx => *variables.get(&var_idx).unwrap(),
+                    }
+                })
+                .collect_vec();
+            let args_to_target_block =
+                args_to_target_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_br(&block_pop_idx, &some_block_info.block, &args_to_target_block);
+
+            Ok(())
+        } else {
+            panic!("argument should be array type");
+        }
+    }
 }
