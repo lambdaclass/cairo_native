@@ -2,8 +2,9 @@ use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use melior_next::ir::{operation, Block, BlockRef, Location, Region, Value};
 
+use crate::compiler::fn_attributes::FnAttributes;
 use crate::{
-    compiler::{Compiler, FnAttributes, Storage},
+    compiler::{Compiler, Storage},
     sierra_type::SierraType,
     utility::create_fn_signature,
 };
