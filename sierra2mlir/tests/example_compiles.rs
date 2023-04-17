@@ -30,7 +30,7 @@ impl_tests!(
     felt_is_zero,
     fib_simple,
     fib,
-    index_array
+    index_array,
     print_test,
     simple_enum,
     simple,
