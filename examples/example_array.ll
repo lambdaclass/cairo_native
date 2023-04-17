@@ -102,35 +102,16 @@ define internal { { i32, i32, i32, i32, i32 } } @"struct_construct<Tuple<Tuple<u
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 0>"({ { i32, i32, i32, i32, i32 } } %0) #0 {
   %2 = alloca { i16, [20 x i8] }, i64 1, align 8
-  br i1 true, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 0
-  store i16 0, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 1
-  store { { i32, i32, i32, i32, i32 } } %0, ptr %5, align 4
-  %6 = load { i16, [20 x i8] }, ptr %2, align 2
-  ret { i16, [20 x i8] } %6
-
-7:                                                ; preds = %1
-  call void @llvm.trap()
-  unreachable
+  %3 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 1
+  store { { i32, i32, i32, i32, i32 } } %0, ptr %4, align 4
+  %5 = load { i16, [20 x i8] }, ptr %2, align 2
+  ret { i16, [20 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [20 x i8] } @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [20 x i8] }, i64 1, align 8
-  br i1 false, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [20 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %5, align 8
-  %6 = load { i16, [20 x i8] }, ptr %2, align 2
-  ret { i16, [20 x i8] } %6
-
-7:                                                ; preds = %1
   call void @llvm.trap()
   unreachable
 }
@@ -150,35 +131,16 @@ define internal { i32 } @"struct_construct<Tuple<u32>>"(i32 %0) #0 {
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 0>"({ i32 } %0) #0 {
   %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  br i1 true, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 0, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32 } %0, ptr %5, align 4
-  %6 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %6
-
-7:                                                ; preds = %1
-  call void @llvm.trap()
-  unreachable
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
+  store { i32 } %0, ptr %4, align 4
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u32)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  br i1 false, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %5, align 8
-  %6 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %6
-
-7:                                                ; preds = %1
   call void @llvm.trap()
   unreachable
 }
@@ -192,19 +154,12 @@ define internal { i32 } @"struct_construct<Tuple<Box<u32>>>"(i32 %0) #0 {
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 0>"({ i32 } %0) #0 {
   %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  br i1 true, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 0, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32 } %0, ptr %5, align 4
-  %6 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %6
-
-7:                                                ; preds = %1
-  call void @llvm.trap()
-  unreachable
+  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
+  store i16 0, ptr %3, align 2
+  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
+  store { i32 } %0, ptr %4, align 4
+  %5 = load { i16, [16 x i8] }, ptr %2, align 2
+  ret { i16, [16 x i8] } %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -242,18 +197,6 @@ define internal { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %0,
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  br i1 false, label %3, label %7
-
-3:                                                ; preds = %1
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %4, align 2
-  %5 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %5, align 8
-  %6 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %6
-
-7:                                                ; preds = %1
   call void @llvm.trap()
   unreachable
 }

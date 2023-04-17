@@ -90,35 +90,14 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<20 x i8>)> : (i64) -> !llvm.ptr
     %2 = llvm.mlir.constant(0 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(true) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(struct<(i32, i32, i32, i32, i32)>)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<20 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<20 x i8>)>
-  ^bb2:  // pred: ^bb0
-    llvm.call_intrinsic "llvm.trap"() : () -> ()
-    llvm.unreachable
+    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
+    llvm.store %2, %3 : i16, !llvm.ptr
+    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
+    llvm.store %arg0, %4 : !llvm.struct<(struct<(i32, i32, i32, i32, i32)>)>, !llvm.ptr
+    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<20 x i8>)>
+    llvm.return %5 : !llvm.struct<(i16, array<20 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<20 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<20 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(false) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<20 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<20 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<20 x i8>)>
-  ^bb2:  // pred: ^bb0
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
@@ -135,35 +114,14 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
     %2 = llvm.mlir.constant(0 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(true) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(i32)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<16 x i8>)>
-  ^bb2:  // pred: ^bb0
-    llvm.call_intrinsic "llvm.trap"() : () -> ()
-    llvm.unreachable
+    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
+    llvm.store %2, %3 : i16, !llvm.ptr
+    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
+    llvm.store %arg0, %4 : !llvm.struct<(i32)>, !llvm.ptr
+    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
+    llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(@core::integer::u32)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(false) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<16 x i8>)>
-  ^bb2:  // pred: ^bb0
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
@@ -176,19 +134,12 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.mlir.constant(1 : i64) : i64
     %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
     %2 = llvm.mlir.constant(0 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(true) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(i32)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<16 x i8>)>
-  ^bb2:  // pred: ^bb0
-    llvm.call_intrinsic "llvm.trap"() : () -> ()
-    llvm.unreachable
+    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
+    llvm.store %2, %3 : i16, !llvm.ptr
+    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
+    llvm.store %arg0, %4 : !llvm.struct<(i32)>, !llvm.ptr
+    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
+    llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
   }
   llvm.func internal @"array_new<felt252>"() -> !llvm.struct<(i32, i32, ptr)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<(i32, i32, ptr)>
@@ -226,20 +177,6 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %15 : !llvm.struct<(i32, i32, ptr)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.mlir.constant(0 : i16) : i16
-    %4 = llvm.mlir.constant(false) : i1
-    llvm.cond_br %4, ^bb1, ^bb2
-  ^bb1:  // pred: ^bb0
-    %5 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %5 : i16, !llvm.ptr
-    %6 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %6 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %7 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %7 : !llvm.struct<(i16, array<16 x i8>)>
-  ^bb2:  // pred: ^bb0
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
