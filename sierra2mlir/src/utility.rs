@@ -72,28 +72,6 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn create_puts(&'ctx self) -> Result<()> {
-        let region = Region::new();
-
-        self.module.body().append_operation(
-            operation::Builder::new("func.func", Location::unknown(&self.context))
-                .add_attributes(&[
-                    NamedAttribute::new_parsed(&self.context, "sym_name", "\"puts\"").unwrap(),
-                    NamedAttribute::new_parsed(
-                        &self.context,
-                        "function_type",
-                        "(!llvm.ptr<i8>) -> (i32)",
-                    )
-                    .unwrap(),
-                    NamedAttribute::new_parsed(&self.context, "sym_visibility", "\"external\"").unwrap(),
-                ])
-                .add_regions(vec![region])
-                .build(),
-        );
-
-        Ok(())
-    }
-
     /// Utility function to create a printf call.
     /// Null-terminates the string iff it is not already null-terminated
     pub fn call_printf<'a>(&'a self, block: &'a Block, fmt: &str, values: &[Value]) -> Result<()> {
