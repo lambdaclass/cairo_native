@@ -34,5 +34,6 @@ impl_tests!(
     simple,
     types,
     uint,
+    uint_addition,
     index_array
 );

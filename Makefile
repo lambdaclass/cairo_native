@@ -36,6 +36,7 @@ build-examples: check-mlir
 	cargo r -- compile examples/simple.sierra -o examples/simple-optimized.mlir --optimize
 	cargo r -- compile examples/types.sierra -o examples/types.mlir -m
 	cargo r -- compile examples/uint.sierra -o examples/uint.mlir
+	cargo r -- compile examples/uint_addition.sierra -o examples/uint_addition.mlir
 	cargo r -- compile examples/index_array.sierra -o examples/index_array.mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/example_array.mlir -o examples/example_array.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/bitwise.mlir -o examples/bitwise.ll
@@ -54,6 +55,7 @@ build-examples: check-mlir
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/simple-optimized.mlir -o examples/simple-optimized.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/types.mlir -o examples/types.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/uint.mlir -o examples/uint.ll
+	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/uint_addition.mlir -o examples/uint_addition.ll
 	$(MLIR_SYS_160_PREFIX)/bin/mlir-translate --mlir-to-llvmir examples/index_array.mlir -o examples/index_array.ll
 
 book:

@@ -164,6 +164,21 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
+                            name_without_generics
+                                if is_uint_overflow_add_libfunc(name_without_generics) =>
+                            {
+                                self.inline_int_overflowing_add(
+                                    name_without_generics,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+
+                                jump_processed = true;
+                            }
                             "enum_match" => {
                                 self.inline_enum_match(
                                     &id,
@@ -447,6 +462,11 @@ fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
 fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
     let is_cmp: Regex = Regex::new(r#"u\d{1,3}_(eq|le|lt)"#).unwrap();
     is_cmp.is_match(name_without_generics)
+}
+
+fn is_uint_overflow_add_libfunc(name_without_generics: &str) -> bool {
+    let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_add"#).unwrap();
+    is_reg.is_match(name_without_generics)
 }
 
 fn calculate_block_ranges_per_function(

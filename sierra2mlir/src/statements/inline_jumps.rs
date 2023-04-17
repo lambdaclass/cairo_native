@@ -8,7 +8,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
     dialect::cf,
-    ir::{Block, BlockRef, Location, Region, Value},
+    ir::{operation, Block, BlockRef, Location, Region, Value, ValueLike},
 };
 
 use crate::{
@@ -157,6 +157,86 @@ impl<'ctx> Compiler<'ctx> {
         let (false_block, false_vars) = &target_blocks[0];
 
         self.op_cond_br(block, eq.into(), true_block, false_block, true_vars, false_vars);
+
+        Ok(())
+    }
+
+    // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/uint.rs#L339
+    pub fn inline_int_overflowing_add(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let pos_arg_1 = &libfunc.get_args()[0];
+        let pos_arg_2 = &libfunc.get_args()[1];
+
+        let arg_type = pos_arg_1.ty.clone();
+
+        let arg1 = variables
+            .get(&invocation.args[pos_arg_1.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let arg2 = variables
+            .get(&invocation.args[pos_arg_2.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let add_result_op = block.append_operation(
+            operation::Builder::new(
+                "llvm.intr.uadd.with.overflow",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[arg1, arg2])
+            .add_results(&[self.llvm_struct_type(&[arg1.r#type(), self.bool_type()])])
+            .build(),
+        );
+
+        // {iN, i1}
+        let add_result = add_result_op.result(0)?.into();
+        let result_op = self.op_llvm_extractvalue(block, 0, add_result, arg_type.get_type())?;
+        let overflow_op = self.op_llvm_extractvalue(block, 1, add_result, self.bool_type())?;
+
+        let result = result_op.result(0)?.into();
+
+        let overflow = overflow_op.result(0)?;
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| {
+                        if *id == invocation.branches[0].results[1].id
+                            || *id == invocation.branches[1].results[1].id
+                        {
+                            result
+                        } else {
+                            variables.get(id).unwrap().get_value()
+                        }
+                    })
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (true_block, true_vars) = &target_blocks[1];
+        let (false_block, false_vars) = &target_blocks[0];
+
+        self.op_cond_br(block, overflow.into(), true_block, false_block, true_vars, false_vars);
 
         Ok(())
     }

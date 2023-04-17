@@ -283,6 +283,25 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_lt" => {
                     self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
                 }
+                "u8_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_add(func_decl, self.u8_type(), storage);
+                }
+                "u16_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_add(func_decl, self.u16_type(), storage);
+                }
+                "u32_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_add(func_decl, self.u32_type(), storage);
+                }
+                "u64_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_add(func_decl, self.u64_type(), storage);
+                }
+                "u128_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_add(
+                        func_decl,
+                        self.u128_type(),
+                        storage,
+                    );
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
                 }
@@ -925,6 +944,28 @@ impl<'ctx> Compiler<'ctx> {
                     PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
                 ],
                 return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_uint_overflowing_add(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                ],
             },
         );
     }
