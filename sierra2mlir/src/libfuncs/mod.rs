@@ -1478,7 +1478,7 @@ impl<'ctx> Compiler<'ctx> {
         let array_capacity_op = self.op_u32_const(&block, "8");
         let array_capacity = array_capacity_op.result(0)?.into();
 
-        let array_element_size_bytes = arg_type.get_width() / 8;
+        let array_element_size_bytes = (arg_type.get_width() + 7) / 8;
 
         // length
         let insert_op =

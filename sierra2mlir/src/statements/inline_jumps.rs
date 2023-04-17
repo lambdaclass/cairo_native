@@ -428,7 +428,7 @@ impl<'ctx> Compiler<'ctx> {
             let new_length_zext_op = self.op_zext(&block_pop_idx, new_length, self.u64_type());
             let new_length_zext = new_length_zext_op.result(0)?.into();
 
-            let element_size_bytes = element_type.get_width() / 8;
+            let element_size_bytes = (element_type.get_width() + 7) / 8;
             let const_element_size_bytes =
                 self.op_const(&block_pop_idx, &element_size_bytes.to_string(), self.u64_type());
 
