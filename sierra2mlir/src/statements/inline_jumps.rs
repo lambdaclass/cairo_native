@@ -427,8 +427,20 @@ impl<'ctx> Compiler<'ctx> {
             // its safe if new_length is 0
             let new_length_zext_op = self.op_zext(&block_pop_idx, new_length, self.u64_type());
             let new_length_zext = new_length_zext_op.result(0)?.into();
+
+            let element_size_bytes = element_type.get_width() / 8;
+            let const_element_size_bytes =
+                self.op_const(&block_pop_idx, &element_size_bytes.to_string(), self.u64_type());
+
+            let new_length_bytes_op = self.op_mul(
+                &block_pop_idx,
+                new_length_zext,
+                const_element_size_bytes.result(0)?.into(),
+            );
+            let new_length_bytes = new_length_bytes_op.result(0)?.into();
+
             let dst_ptr_op =
-                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_zext)?;
+                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_bytes)?;
             let dst_ptr: Value = dst_ptr_op.result(0)?.into();
 
             // insert new length

@@ -3,7 +3,7 @@ use color_eyre::Result;
 use melior_next::ir::{operation, Block, BlockRef, Location, Region, Value};
 
 use crate::{
-    compiler::{Compiler, FnAttributes, SierraType, Storage},
+    compiler::{CmpOp, Compiler, FnAttributes, SierraType, Storage},
     utility::create_fn_signature,
 };
 
@@ -46,8 +46,34 @@ impl<'ctx> Compiler<'ctx> {
             let block = region
                 .append_block(Block::new(&[variant_sierra_type.get_type_location(&self.context)]));
 
-            if is_panic {
-                block.append_operation(
+            let enum_variant_value = block.argument(0)?;
+
+            let enum_alloca_op = self.op_llvm_struct_alloca(&block, &[*tag_type, *storage_type])?;
+            let enum_ptr: Value = enum_alloca_op.result(0)?.into();
+
+            let tag_op = self.op_const(&block, &enum_tag, *tag_type);
+            let tag_op_value = tag_op.result(0)?.into();
+
+            // only panic if the enum is a PanicResult, and the tag is Error.
+            let block = if is_panic {
+                let continue_block = region.append_block(Block::new(&[]));
+                let trap_block = region.append_block(Block::new(&[]));
+
+                let const_0_op = self.op_u16_const(&block, "0");
+                let const_0 = const_0_op.result(0)?.into();
+
+                let cond_op = self.op_cmp(&block, CmpOp::Equal, tag_op_value, const_0);
+
+                self.op_cond_br(
+                    &block,
+                    cond_op.result(0)?.into(),
+                    &continue_block,
+                    &trap_block,
+                    &[],
+                    &[],
+                );
+
+                trap_block.append_operation(
                     operation::Builder::new(
                         "llvm.call_intrinsic",
                         Location::unknown(&self.context),
@@ -55,31 +81,25 @@ impl<'ctx> Compiler<'ctx> {
                     .add_attributes(&[self.named_attribute("intrin", "\"llvm.trap\"").unwrap()])
                     .build(),
                 );
-                self.op_unreachable(&block);
+                self.op_unreachable(&trap_block);
+                continue_block
             } else {
-                let enum_variant_value = block.argument(0)?;
+                block
+            };
 
-                let enum_alloca_op =
-                    self.op_llvm_struct_alloca(&block, &[*tag_type, *storage_type])?;
-                let enum_ptr: Value = enum_alloca_op.result(0)?.into();
+            let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, *ty)?;
+            let tag_ptr = tag_ptr_op.result(0)?;
 
-                let tag_op = self.op_const(&block, &enum_tag, *tag_type);
-                let tag_op_value = tag_op.result(0)?;
+            self.op_llvm_store(&block, tag_op_value, tag_ptr.into())?;
 
-                let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, *ty)?;
-                let tag_ptr = tag_ptr_op.result(0)?;
+            let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
+            let variant_ptr = variant_ptr_op.result(0)?;
 
-                self.op_llvm_store(&block, tag_op_value.into(), tag_ptr.into())?;
+            self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;
 
-                let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
-                let variant_ptr = variant_ptr_op.result(0)?;
+            let enum_value_op = self.op_llvm_load(&block, enum_ptr, *ty)?;
 
-                self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;
-
-                let enum_value_op = self.op_llvm_load(&block, enum_ptr, *ty)?;
-
-                self.op_return(&block, &[enum_value_op.result(0)?.into()]);
-            }
+            self.op_return(&block, &[enum_value_op.result(0)?.into()]);
 
             let function_type = create_fn_signature(&[variant_sierra_type.get_type()], &[*ty]);
 
