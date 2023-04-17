@@ -42,6 +42,7 @@ use test_case::test_case;
 #[test_case("structs/nested")]
 #[test_case("structs/enum_member")]
 #[test_case("uint/consts")]
+#[test_case("uint/compare")]
 #[test_case("uint/upcasts")]
 #[test_case("uint/safe_divmod")]
 #[test_case("uint/wide_mul")]

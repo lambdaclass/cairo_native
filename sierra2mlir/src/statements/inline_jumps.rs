@@ -153,8 +153,8 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect_vec();
 
-        let (true_block, true_vars) = &target_blocks[0];
-        let (false_block, false_vars) = &target_blocks[1];
+        let (true_block, true_vars) = &target_blocks[1];
+        let (false_block, false_vars) = &target_blocks[0];
 
         self.op_cond_br(block, eq.into(), true_block, false_block, true_vars, false_vars);
 
