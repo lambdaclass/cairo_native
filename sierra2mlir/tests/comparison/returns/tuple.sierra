@@ -12,4 +12,4 @@ struct_construct<Tuple<felt252, felt252>>([0], [1]) -> ([2]);
 store_temp<Tuple<felt252, felt252>>([2]) -> ([3]);
 return([3]);
 
-tuple_return::tuple_return::main@0() -> (Tuple<felt252, felt252>);
+tuple::tuple::main@0() -> (Tuple<felt252, felt252>);

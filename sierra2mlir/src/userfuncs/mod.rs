@@ -1,15 +1,18 @@
-use cairo_lang_sierra::{
-    ids::ConcreteTypeId,
-    program::{GenericArg, Program, TypeDeclaration},
-};
+use cairo_lang_sierra::program::{GenFunction, GenericArg, Program, StatementIdx, TypeDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Location, Region, Type};
+use melior_next::ir::{Block, Location, Region};
 
 use crate::{
-    compiler::{Compiler, SierraType, Storage, UserFuncDef},
+    compiler::{Compiler, FnAttributes, Storage},
+    libfuncs::lib_func_def::PositionalArg,
+    types::is_omitted_builtin_type,
     utility::create_fn_signature,
 };
+
+use self::user_func_def::UserFuncDef;
+
+pub mod user_func_def;
 
 impl<'ctx> Compiler<'ctx> {
     pub fn process_functions(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
@@ -24,28 +27,10 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn create_wrappers_if_necessary(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for func in self.program.funcs.iter() {
-            let raw_func_name = func.id.debug_name.as_ref().unwrap().as_str();
+            let func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
-            let name = Self::normalize_func_name(raw_func_name).to_string();
-
-            let userfunc_def = storage.userfuncs.get(&name).unwrap().clone();
-
-            if self.main_print && should_create_wrapper(raw_func_name) {
-                let raw_arg_types =
-                    userfunc_def.args.iter().map(SierraType::get_type).collect_vec();
-                let ret_types = userfunc_def
-                    .return_types
-                    .iter()
-                    .map(SierraType::get_type)
-                    .zip_eq(func.signature.ret_types.iter().cloned())
-                    .collect_vec();
-
-                self.create_felt_representation_wrapper(
-                    &name,
-                    &raw_arg_types,
-                    &ret_types,
-                    storage,
-                )?;
+            if self.main_print && should_create_wrapper(func_name) {
+                self.create_felt_representation_wrapper(func_name, func, storage)?;
             }
         }
 
@@ -55,10 +40,18 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_felt_representation_wrapper(
         &'ctx self,
         wrapped_func_name: &str,
-        arg_types: &[Type],
-        ret_types: &[(Type, ConcreteTypeId)],
+        func: &GenFunction<StatementIdx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
+        let userfunc_def = storage.userfuncs.get(wrapped_func_name).unwrap().clone();
+
+        let arg_types = userfunc_def.args.iter().map(|arg| arg.ty.get_type()).collect_vec();
+        let ret_types = userfunc_def
+            .return_types
+            .iter()
+            .map(|arg| (arg.ty.get_type(), func.signature.ret_types[arg.loc].clone()))
+            .collect_vec();
+
         // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
         // This is especially important for enums
         let ret_type_declarations = ret_types
@@ -98,6 +91,13 @@ impl<'ctx> Compiler<'ctx> {
                         .expect("Type should be registered");
                     self.create_print_enum(arg_type, type_decl.clone())?
                 }
+                "Array" => {
+                    let arg_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered");
+                    self.create_print_array(arg_type, type_decl.clone())?
+                }
                 "u8" | "u16" | "u32" | "u64" | "u128" => {
                     let uint_type = storage
                         .types
@@ -124,13 +124,12 @@ impl<'ctx> Compiler<'ctx> {
 
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
+            let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();
+            if is_omitted_builtin_type(type_name) {
+                continue;
+            }
             let result_val = raw_res.result(position)?;
-            self.op_func_call(
-                &block,
-                &format!("print_{}", type_decl.id.debug_name.as_ref().unwrap().as_str()),
-                &[result_val.into()],
-                &[],
-            )?;
+            self.op_func_call(&block, &format!("print_{}", type_name), &[result_val.into()], &[])?;
         }
 
         self.op_return(&block, &[]);
@@ -141,10 +140,9 @@ impl<'ctx> Compiler<'ctx> {
         // We might want to change this in the future
         let op = self.op_func(
             "main",
-            create_fn_signature(arg_types, &[]).as_str(),
+            create_fn_signature(&arg_types, &[]).as_str(),
             vec![region],
-            true,
-            true,
+            FnAttributes { public: true, emit_c_interface: true, ..Default::default() },
         )?;
 
         self.module.body().append_operation(op);
@@ -158,31 +156,45 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) {
         for func in program.funcs.iter() {
-            let func_name =
-                Self::normalize_func_name(func.id.debug_name.as_ref().unwrap().as_str())
-                    .to_string();
+            let func_name = func.id.debug_name.as_ref().unwrap().to_string();
 
             let param_types = func
                 .params
                 .iter()
-                .map(|p| {
-                    storage
-                        .types
-                        .get(&p.ty.id.to_string())
-                        .expect("Userfunc arg type should have been registered")
-                        .clone()
+                .enumerate()
+                .filter_map(|(idx, param)| {
+                    if is_omitted_builtin_type(&param.ty.debug_name.as_ref().unwrap().to_string()) {
+                        None
+                    } else {
+                        Some(PositionalArg {
+                            loc: idx,
+                            ty: storage
+                                .types
+                                .get(&param.ty.id.to_string())
+                                .expect("Userfunc arg type should have been registered")
+                                .clone(),
+                        })
+                    }
                 })
                 .collect_vec();
             let return_types = func
                 .signature
                 .ret_types
                 .iter()
-                .map(|t| {
-                    storage
-                        .types
-                        .get(&t.id.to_string())
-                        .expect("Userfunc ret type should have been registered")
-                        .clone()
+                .enumerate()
+                .filter_map(|(idx, ty)| {
+                    if is_omitted_builtin_type(&ty.debug_name.as_ref().unwrap().to_string()) {
+                        None
+                    } else {
+                        Some(PositionalArg {
+                            loc: idx,
+                            ty: storage
+                                .types
+                                .get(&ty.id.to_string())
+                                .expect("Userfunc ret type should have been registered")
+                                .clone(),
+                        })
+                    }
                 })
                 .collect_vec();
 
@@ -250,11 +262,37 @@ fn get_all_types_to_print(
                     types_to_print.push(type_decl.clone());
                 }
             }
+            "Array" => {
+                let array_type = match &type_decl.long_id.generic_args[0] {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                };
+
+                for ty in &program.type_declarations {
+                    if ty.id == *array_type {
+                        let types_to_print_here = get_all_types_to_print(&[ty.clone()], program);
+                        for type_decl in types_to_print_here {
+                            if !types_to_print.contains(&type_decl) {
+                                types_to_print.push(type_decl);
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
             "u8" | "u16" | "u32" | "u64" | "u128" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }
             }
+            // Specifically omit these types
+            "RangeCheck" | "Bitwise" => {}
             _ => todo!("Felt representation for {}", type_category),
         }
     }

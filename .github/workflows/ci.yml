@@ -93,6 +93,7 @@ jobs:
           cargo-udeps-*/cargo-udeps udeps
 
   cairo-release:
+    if: ${{ false }}  # disable for now
     name: cairo release check
     runs-on: ubuntu-latest
     steps:

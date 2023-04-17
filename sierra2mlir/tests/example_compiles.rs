@@ -20,17 +20,20 @@ macro_rules! impl_tests {
 }
 
 impl_tests!(
-    //bitwise,
+    bitwise,
     boolean,
     casts,
     destructure,
+    enum_match,
+    example_array,
     //felt_div,
     felt_is_zero,
-    fib,
     fib_simple,
+    fib,
+    index_array
     print_test,
-    simple,
     simple_enum,
+    simple,
     types,
     uint,
 );
