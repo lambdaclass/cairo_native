@@ -95,9 +95,6 @@ define internal { i16, [90 x i8] } @"enum_init<core::PanicResult::<(((core::inte
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [90 x i8] } @"enum_init<core::PanicResult::<(((core::integer::u16, core::integer::u16, core::integer::u16), (core::integer::u32, core::integer::u32, core::integer::u32), (core::integer::u64, core::integer::u64, core::integer::u64), (core::integer::u128, core::integer::u128, core::integer::u128)))>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca i8, i64 13, align 1
-  store [13 x i8] c"trap reached\00", ptr %2, align 1
-  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2)
   call void @llvm.trap()
   unreachable
 }
@@ -143,9 +140,6 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::intege
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u16)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca i8, i64 13, align 1
-  store [13 x i8] c"trap reached\00", ptr %2, align 1
-  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2)
   call void @llvm.trap()
   unreachable
 }
@@ -191,9 +185,6 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::intege
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u32)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca i8, i64 13, align 1
-  store [13 x i8] c"trap reached\00", ptr %2, align 1
-  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2)
   call void @llvm.trap()
   unreachable
 }
@@ -239,9 +230,6 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::intege
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u64)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca i8, i64 13, align 1
-  store [13 x i8] c"trap reached\00", ptr %2, align 1
-  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2)
   call void @llvm.trap()
   unreachable
 }
@@ -287,9 +275,6 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::intege
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u128)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca i8, i64 13, align 1
-  store [13 x i8] c"trap reached\00", ptr %2, align 1
-  %3 = call i32 (i32, ptr, ...) @dprintf(i32 1, ptr %2)
   call void @llvm.trap()
   unreachable
 }

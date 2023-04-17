@@ -98,12 +98,6 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %5 : !llvm.struct<(i16, array<20 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<((core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32, core::integer::u32))>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<20 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(13 : i64) : i64
-    %1 = llvm.alloca %0 x i8 : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(dense<[116, 114, 97, 112, 32, 114, 101, 97, 99, 104, 101, 100, 0]> : tensor<13xi8>) : !llvm.array<13 x i8>
-    llvm.store %2, %1 : !llvm.array<13 x i8>, !llvm.ptr
-    %3 = llvm.mlir.constant(1 : i32) : i32
-    %4 = llvm.call @dprintf(%3, %1) : (i32, !llvm.ptr) -> i32
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
@@ -128,12 +122,6 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(@core::integer::u32)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(13 : i64) : i64
-    %1 = llvm.alloca %0 x i8 : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(dense<[116, 114, 97, 112, 32, 114, 101, 97, 99, 104, 101, 100, 0]> : tensor<13xi8>) : !llvm.array<13 x i8>
-    llvm.store %2, %1 : !llvm.array<13 x i8>, !llvm.ptr
-    %3 = llvm.mlir.constant(1 : i32) : i32
-    %4 = llvm.call @dprintf(%3, %1) : (i32, !llvm.ptr) -> i32
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
@@ -189,12 +177,6 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %15 : !llvm.struct<(i32, i32, ptr)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u32>)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(13 : i64) : i64
-    %1 = llvm.alloca %0 x i8 : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(dense<[116, 114, 97, 112, 32, 114, 101, 97, 99, 104, 101, 100, 0]> : tensor<13xi8>) : !llvm.array<13 x i8>
-    llvm.store %2, %1 : !llvm.array<13 x i8>, !llvm.ptr
-    %3 = llvm.mlir.constant(1 : i32) : i32
-    %4 = llvm.call @dprintf(%3, %1) : (i32, !llvm.ptr) -> i32
     llvm.call_intrinsic "llvm.trap"() : () -> ()
     llvm.unreachable
   }
