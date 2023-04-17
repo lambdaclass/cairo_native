@@ -5,6 +5,7 @@
 //#![deny(clippy::pedantic)]
 #![warn(clippy::all)]
 #![warn(unused)]
+#![allow(clippy::too_many_arguments)]
 
 use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 use tracing::debug;

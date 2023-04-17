@@ -8,8 +8,9 @@ use cairo_lang_sierra::program::{
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
+use regex::Regex;
 
-use crate::compiler::FnAttributes;
+use crate::compiler::{CmpOp, FnAttributes};
 use crate::{
     compiler::{Compiler, SierraType, Storage},
     utility::create_fn_signature,
@@ -134,6 +135,31 @@ impl<'ctx> Compiler<'ctx> {
                                     &mut variables,
                                     &blocks,
                                     statement_idx,
+                                )?;
+
+                                jump_processed = true;
+                            }
+                            // is_eq,lt,le
+                            name_without_generics if is_int_cmp_libfunc(name_without_generics) => {
+                                let cmpop = if name_without_generics.ends_with("eq") {
+                                    CmpOp::Equal
+                                } else if name_without_generics.ends_with("lt") {
+                                    CmpOp::UnsignedLessThan
+                                } else if name_without_generics.ends_with("le") {
+                                    CmpOp::UnsignedLessThanEqual
+                                } else {
+                                    panic!("unknown cmp op")
+                                };
+
+                                self.inline_int_cmpop(
+                                    name_without_generics,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                    cmpop,
                                 )?;
 
                                 jump_processed = true;
@@ -416,6 +442,11 @@ fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
         || name_without_generics == "u64_is_zero"
         || name_without_generics == "u128_is_zero"
         || name_without_generics == "felt252_is_zero"
+}
+
+fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
+    let is_cmp: Regex = Regex::new(r#"u\d{1,3}_(eq|le|lt)"#).unwrap();
+    is_cmp.is_match(name_without_generics)
 }
 
 fn calculate_block_ranges_per_function(
