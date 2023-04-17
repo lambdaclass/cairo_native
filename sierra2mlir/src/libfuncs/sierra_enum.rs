@@ -46,7 +46,7 @@ impl<'ctx> Compiler<'ctx> {
             let block = region
                 .append_block(Block::new(&[variant_sierra_type.get_type_location(&self.context)]));
 
-            if is_panic {
+            if is_panic && !enum_tag.eq_ignore_ascii_case("0") {
                 block.append_operation(
                     operation::Builder::new(
                         "llvm.call_intrinsic",

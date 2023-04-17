@@ -1457,13 +1457,10 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
+            _ => unreachable!(),
         };
 
         let region = Region::new();
@@ -1481,7 +1478,7 @@ impl<'ctx> Compiler<'ctx> {
         let array_capacity_op = self.op_u32_const(&block, "8");
         let array_capacity = array_capacity_op.result(0)?.into();
 
-        let array_element_size_bytes = arg_type.get_width() / 8;
+        let array_element_size_bytes = (arg_type.get_width() + 7) / 8;
 
         // length
         let insert_op =

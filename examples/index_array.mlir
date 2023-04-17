@@ -59,15 +59,8 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %3 : i16, !llvm.ptr
-    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %4 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
+    llvm.call_intrinsic "llvm.trap"() : () -> ()
+    llvm.unreachable
   }
   llvm.func internal @"struct_deconstruct<Tuple<Box<u8>>>"(%arg0: !llvm.struct<(i8)>) -> i8 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.extractvalue %arg0[0] : !llvm.struct<(i8)> 
@@ -85,15 +78,8 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %3 : i16, !llvm.ptr
-    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %4 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
+    llvm.call_intrinsic "llvm.trap"() : () -> ()
+    llvm.unreachable
   }
   llvm.func internal @"struct_construct<Tuple<Box<u8>>>"(%arg0: i8) -> !llvm.struct<(i8)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = llvm.mlir.undef : !llvm.struct<(i8)>
@@ -147,15 +133,8 @@ module attributes {llvm.data_layout = ""} {
     llvm.return %15 : !llvm.struct<(i32, i32, ptr)>
   }
   llvm.func internal @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"(%arg0: !llvm.struct<(i32, i32, ptr)>) -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.constant(1 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i16, array<16 x i8>)> : (i64) -> !llvm.ptr
-    %2 = llvm.mlir.constant(1 : i16) : i16
-    %3 = llvm.getelementptr inbounds %1[0, 0] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %2, %3 : i16, !llvm.ptr
-    %4 = llvm.getelementptr inbounds %1[0, 1] : (!llvm.ptr) -> !llvm.ptr, !llvm.struct<(i16, array<16 x i8>)>
-    llvm.store %arg0, %4 : !llvm.struct<(i32, i32, ptr)>, !llvm.ptr
-    %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<(i16, array<16 x i8>)>
-    llvm.return %5 : !llvm.struct<(i16, array<16 x i8>)>
+    llvm.call_intrinsic "llvm.trap"() : () -> ()
+    llvm.unreachable
   }
   llvm.func @"index_array::index_array::main"() -> !llvm.struct<(i16, array<16 x i8>)> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb4

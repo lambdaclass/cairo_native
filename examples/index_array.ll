@@ -69,13 +69,8 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::intege
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %5
+  call void @llvm.trap()
+  unreachable
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -97,13 +92,8 @@ define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integ
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(@core::integer::u8)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %5
+  call void @llvm.trap()
+  unreachable
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
@@ -158,13 +148,8 @@ define internal { i32, i32, ptr } @"array_append<felt252>"({ i32, i32, ptr } %0,
 
 ; Function Attrs: alwaysinline norecurse nounwind
 define internal { i16, [16 x i8] } @"enum_init<core::PanicResult::<(core::box::Box::<@core::integer::u8>)>, 1>"({ i32, i32, ptr } %0) #0 {
-  %2 = alloca { i16, [16 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 0
-  store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [16 x i8] }, ptr %2, i32 0, i32 1
-  store { i32, i32, ptr } %0, ptr %4, align 8
-  %5 = load { i16, [16 x i8] }, ptr %2, align 2
-  ret { i16, [16 x i8] } %5
+  call void @llvm.trap()
+  unreachable
 }
 
 define { i16, [16 x i8] } @"index_array::index_array::main"() {
@@ -302,7 +287,11 @@ define void @"_mlir_ciface_core::array::array_at::<core::integer::u8>"(ptr %0, {
   ret void
 }
 
+; Function Attrs: cold noreturn nounwind
+declare void @llvm.trap() #1
+
 attributes #0 = { alwaysinline norecurse nounwind }
+attributes #1 = { cold noreturn nounwind }
 
 !llvm.module.flags = !{!0}
 
