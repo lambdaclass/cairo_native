@@ -41,6 +41,7 @@ pub fn compile(
     pass_manager.add_pass(pass::conversion::convert_index_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_math_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_memref_to_llvmconversion_pass());
+    pass_manager.add_pass(pass::conversion::convert_reconcile_unrealized_casts());
 
     if optimized {
         pass_manager.add_pass(pass::transform::canonicalizer());
@@ -84,6 +85,7 @@ pub fn execute(
     pass_manager.add_pass(pass::conversion::convert_index_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_math_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_memref_to_llvmconversion_pass());
+    pass_manager.add_pass(pass::conversion::convert_reconcile_unrealized_casts());
 
     pass_manager.add_pass(pass::transform::canonicalizer());
     pass_manager.add_pass(pass::transform::inliner());
