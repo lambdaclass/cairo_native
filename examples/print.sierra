@@ -1,0 +1,42 @@
+type felt252 = felt252;
+type Unit = Struct<ut@Tuple>;
+type Array<felt252> = Array<felt252>;
+
+libfunc felt252_const<5735816763073854953388147237921> = felt252_const<5735816763073854953388147237921>;
+libfunc store_temp<felt252> = store_temp<felt252>;
+libfunc function_call<user@core::debug::Felt252PrintImpl::print> = function_call<user@core::debug::Felt252PrintImpl::print>;
+libfunc drop<Unit> = drop<Unit>;
+libfunc struct_construct<Unit> = struct_construct<Unit>;
+libfunc store_temp<Unit> = store_temp<Unit>;
+libfunc function_call<user@core::debug::print_felt252> = function_call<user@core::debug::print_felt252>;
+libfunc array_new<felt252> = array_new<felt252>;
+libfunc array_append<felt252> = array_append<felt252>;
+libfunc store_temp<Array<felt252>> = store_temp<Array<felt252>>;
+libfunc print = print;
+
+felt252_const<5735816763073854953388147237921>() -> ([0]);
+store_temp<felt252>([0]) -> ([2]);
+function_call<user@core::debug::Felt252PrintImpl::print>([2]) -> ([1]);
+drop<Unit>([1]) -> ();
+struct_construct<Unit>() -> ([3]);
+store_temp<Unit>([3]) -> ([4]);
+return([4]);
+store_temp<felt252>([0]) -> ([2]);
+function_call<user@core::debug::print_felt252>([2]) -> ([1]);
+drop<Unit>([1]) -> ();
+struct_construct<Unit>() -> ([3]);
+store_temp<Unit>([3]) -> ([4]);
+return([4]);
+array_new<felt252>() -> ([1]);
+array_append<felt252>([1], [0]) -> ([2]);
+struct_construct<Unit>() -> ([3]);
+drop<Unit>([3]) -> ();
+store_temp<Array<felt252>>([2]) -> ([2]);
+print([2]) -> ();
+struct_construct<Unit>() -> ([4]);
+store_temp<Unit>([4]) -> ([5]);
+return([5]);
+
+print::print::main@0() -> (Unit);
+core::debug::Felt252PrintImpl::print@7([0]: felt252) -> (Unit);
+core::debug::print_felt252@13([0]: felt252) -> (Unit);

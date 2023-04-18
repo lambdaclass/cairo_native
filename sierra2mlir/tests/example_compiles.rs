@@ -8,9 +8,9 @@ macro_rules! impl_tests {
             #[test]
             fn $name() {
                 let program = if Path::new(concat!("../examples/", stringify!($name), ".sierra")).exists() {
-                    load_program(Path::new(concat!("../examples/", stringify!($name), ".sierra")))
+                    load_program(Path::new(concat!(std::env!("CARGO_MANIFEST_DIR"), "/../examples/", stringify!($name), ".sierra")))
                 } else {
-                    load_program(Path::new(concat!("../examples/", stringify!($name), ".cairo")))
+                    load_program(Path::new(concat!(std::env!("CARGO_MANIFEST_DIR"), "../examples/", stringify!($name), ".cairo")))
                 };
 
                 sierra2mlir::compile(&program, false, false, false, 1).expect("Error compiling sierra program");
@@ -31,6 +31,7 @@ impl_tests!(
     fib_simple,
     fib,
     index_array,
+    print,
     print_test,
     simple_enum,
     simple,
