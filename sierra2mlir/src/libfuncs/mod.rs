@@ -937,7 +937,7 @@ impl<'ctx> Compiler<'ctx> {
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
     ) {
-        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let libfunc_id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let from_type = &func_decl.long_id.generic_args[0];
         let to_type = &func_decl.long_id.generic_args[1];
@@ -956,7 +956,7 @@ impl<'ctx> Compiler<'ctx> {
         };
 
         storage.libfuncs.insert(
-            id,
+            libfunc_id,
             SierraLibFunc::Branching {
                 args: vec![PositionalArg { loc: 1, ty: from_type }],
                 return_types: vec![vec![PositionalArg { loc: 1, ty: to_type }], vec![]],
