@@ -289,6 +289,9 @@ impl<'ctx> Compiler<'ctx> {
                 "upcast" => {
                     self.create_libfunc_upcast(func_decl, parent_block, storage)?;
                 }
+                "downcast" => {
+                    self.register_libfunc_downcast(func_decl, storage);
+                }
                 "bool_or_impl" => {
                     self.create_libfunc_bool_binop_impl(
                         func_decl,
@@ -925,6 +928,38 @@ impl<'ctx> Compiler<'ctx> {
                     PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
                 ],
                 return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_downcast(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let from_type = &func_decl.long_id.generic_args[0];
+        let to_type = &func_decl.long_id.generic_args[1];
+
+        let from_type = match from_type {
+            GenericArg::Type(id) => {
+                storage.types.get(&id.id.to_string()).cloned().expect("type should exist")
+            }
+            _ => unreachable!(),
+        };
+        let to_type = match to_type {
+            GenericArg::Type(id) => {
+                storage.types.get(&id.id.to_string()).cloned().expect("type should exist")
+            }
+            _ => unreachable!(),
+        };
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg { loc: 1, ty: from_type }],
+                return_types: vec![vec![PositionalArg { loc: 1, ty: to_type }], vec![]],
             },
         );
     }
