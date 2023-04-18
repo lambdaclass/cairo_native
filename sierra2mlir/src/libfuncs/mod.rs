@@ -1682,96 +1682,103 @@ impl<'ctx> Compiler<'ctx> {
         parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        mlir_asm! { parent_block, opt("--expand-strided-metadata", "--reconcile-unrealized-casts") =>
+        mlir_asm! { parent_block, opt(
+            "--convert-scf-to-cf",
+            "--convert-linalg-to-loops",
+            "--lower-affine",
+            "--convert-scf-to-cf",
+            "--canonicalize",
+            "--cse",
+            "--convert-linalg-to-llvm",
+            "--convert-vector-to-llvm=reassociate-fp-reductions",
+            "--convert-math-to-llvm",
+            "--expand-strided-metadata",
+            "--lower-affine",
+            "--convert-memref-to-llvm",
+            "--convert-func-to-llvm",
+            "--convert-index-to-llvm",
+            "--reconcile-unrealized-casts",
+        ) =>
             func.func @print(%0 : !llvm.struct<(i32, i32, !llvm.ptr)>) -> () {
                 // Allocate buffer.
                 %1 = memref.alloca() : memref<126xi8>
 
                 // Copy "[DEBUG] ".
-                %2 = index.constant 0
-                %3 = index.constant 8
-                %4 = index.constant 1
-                %5 = memref.subview %1[%2][%3][%4] : memref<126xi8> to memref<?xi8, strided<[1], offset: ?>>
-                %6 = memref.cast %5 : memref<?xi8, strided<[1], offset: ?>> to memref<8xi8>
-                %7 = memref.get_global @lit0 : memref<8xi8>
-                memref.copy %7, %6 : memref<8xi8> to memref<8xi8>
+                %2 = memref.get_global @lit0 : memref<8xi8>
+                %3 = memref.subview %1[0][8][1] : memref<126xi8> to memref<8xi8>
+                memref.copy %2, %3 : memref<8xi8> to memref<8xi8>
 
                 // Copy " (raw: ".
-                %8 = index.constant 39
-                %9 = index.constant 7
-                %10 = memref.subview %1[%8][%9][%4] : memref<126xi8> to memref<?xi8, strided<[1], offset: ?>>
-                %11 = memref.cast %10 : memref<?xi8, strided<[1], offset: ?>> to memref<7xi8>
-                %12 = memref.get_global @lit1 : memref<7xi8>
-                memref.copy %12, %11 : memref<7xi8> to memref<7xi8>
+                %4 = memref.get_global @lit1 : memref<7xi8>
+                %5 = memref.subview %1[39][7][1] : memref<126xi8> to memref<7xi8, strided<[1], offset: 39>>
+                memref.copy %4, %5 : memref<7xi8> to memref<7xi8, strided<[1], offset: 39>>
 
                 // For each element in the array:
-                %13 = llvm.extractvalue %0[0] : !llvm.struct<(i32, i32, !llvm.ptr)>
-                %14 = arith.index_castui %13 : i32 to index
-                scf.for %15 = %2 to %14 step %4 {
+                %6 = index.constant 0
+                %7 = llvm.extractvalue %0[0] : !llvm.struct<(i32, i32, !llvm.ptr)>
+                %8 = index.castu %7 : i32 to index
+                %9 = index.constant 1
+                scf.for %10 = %6 to %8 step %9 {
                     // Load element to print.
-                    %16 = llvm.extractvalue %0[2] : !llvm.struct<(i32, i32, !llvm.ptr)>
+                    %11 = llvm.extractvalue %0[2] : !llvm.struct<(i32, i32, !llvm.ptr)>
 
-                    %17 = llvm.ptrtoint %16 : !llvm.ptr to i64
-                    %18 = arith.constant 5 : i64
-                    %t5 = arith.index_castui %15 : index to i64
-                    %t6 = arith.shli %t5, %18 : i64
-                    %19 = arith.addi %17, %t6 : i64
-                    %20 = llvm.inttoptr %19 : i64 to !llvm.ptr
-                    %21 = llvm.load %20 : !llvm.ptr -> i256
+                    %12 = llvm.ptrtoint %11 : !llvm.ptr to i64
+                    %13 = arith.constant 5 : i64
+                    %14 = index.castu %10 : index to i64
+                    %15 = arith.shli %14, %13 : i64
+                    %16 = arith.addi %12, %15 : i64
+                    %17 = llvm.inttoptr %16 : i64 to !llvm.ptr
+                    %18 = llvm.load %17 : !llvm.ptr -> i256
 
                     // Copy string value replacing zeros with spaces.
-                    %22 = index.constant 32
-                    %23 = memref.subview %1[%3][%22][%4] : memref<126xi8> to memref<?xi8, strided<[1], offset: ?>>
-                    scf.for %24 = %2 to %22 step %4 {
+                    %19 = index.constant 32
+                    %20 = memref.subview %1[8][32][1] : memref<126xi8> to memref<32xi8, strided<[1], offset: 8>>
+                    scf.for %21 = %6 to %19 step %9 {
                         // Compute byte to write.
-                        %25 = index.constant 3
-                        %26 = index.shl %24, %25
-                        %27 = arith.index_castui %26 : index to i256
-                        %28 = arith.shrui %21, %27 : i256
-                        %29 = arith.trunci %28 : i256 to i8
+                        %22 = index.constant 3
+                        %23 = index.shl %21, %22
+                        %24 = index.castu %23 : index to i256
+                        %25 = arith.shrui %18, %24 : i256
+                        %26 = arith.trunci %25 : i256 to i8
 
                         // Map null byte (0) to ' '.
-                        %30 = arith.constant 0 : i8
-                        %31 = arith.cmpi eq, %29, %30 : i8
-                        %32 = arith.constant 32 : i8
-                        %33 = arith.select %31, %32, %29 : i8
+                        %27 = arith.constant 0 : i8
+                        %28 = arith.cmpi eq, %26, %27 : i8
+                        %29 = arith.constant 32 : i8
+                        %30 = arith.select %28, %29, %26 : i8
 
                         // Write byte into the buffer.
-                        %34 = index.constant 30
-                        %35 = index.sub %34, %24
-                        memref.store %33, %23[%35] : memref<?xi8, strided<[1], offset: ?>>
+                        %31 = index.constant 30
+                        %32 = index.sub %31, %21
+                        memref.store %30, %20[%32] : memref<32xi8, strided<[1], offset: 8>>
                     }
 
                     // Run algorithm to write decimal value.
-                    %36 = memref.alloca() : memref<77xi8>
-                    %37 = func.call @felt252_bin2dec(%36, %21) : (memref<77xi8>, i256) -> index
+                    %33 = memref.alloca() : memref<77xi8>
+                    %34 = func.call @felt252_bin2dec(%33, %18) : (memref<77xi8>, i256) -> index
 
                     // Copy the result.
-                    %38 = index.constant 46
-                    %39 = index.constant 76
-                    %40 = index.sub %39, %37
-                    %41 = memref.subview %36[%37][%40][%4] : memref<77xi8> to memref<?xi8, strided<[1], offset: ?>>
-                    %42 = memref.subview %1[%38][%40][%4] : memref<126xi8> to memref<?xi8, strided<[1], offset: ?>>
-                    %43 = memref.cast %41 : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8>
-                    %44 = memref.cast %42 : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8>
-                    memref.copy %43, %44 : memref<?xi8> to memref<?xi8>
+                    %35 = index.constant 76
+                    %36 = index.sub %35, %34
+                    %37 = memref.subview %33[%34][%36][1] : memref<77xi8> to memref<?xi8, strided<[1], offset: ?>>
+                    %38 = memref.subview %1[46][%36][1] : memref<126xi8> to memref<?xi8, strided<[1], offset: 46>>
+                    memref.copy %37, %38 : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: 46>>
 
                     // Copy ")\0".
-                    %45 = index.add %38, %40
-                    %46 = index.constant 2
-                    %47 = memref.subview %1[%45][%46][%4] : memref<126xi8> to memref<?xi8, strided<[1], offset: ?>>
-                    %48 = memref.cast %47 : memref<?xi8, strided<[1], offset: ?>> to memref<2xi8>
-                    %49 = memref.get_global @lit2 : memref<2xi8>
-                    memref.copy %49, %48 : memref<2xi8> to memref<2xi8>
+                    %39 = index.constant 46
+                    %40 = index.add %39, %36
+                    %41 = memref.subview %1[%40][2][1] : memref<126xi8> to memref<2xi8, strided<[1], offset: ?>>
+                    %42 = memref.get_global @lit2 : memref<2xi8>
+                    memref.copy %42, %41 : memref<2xi8> to memref<2xi8, strided<[1], offset: ?>>
 
-                    // TODO: Call `puts()`.
-                    %t3 = arith.constant 0 : i8
-                    %t4 = index.constant 125
-                    memref.store %t3, %1[%t4] : memref<126xi8>
-                    %t0 = memref.extract_aligned_pointer_as_index %1 : memref<126xi8> -> index
-                    %t1 = arith.index_castui %t0 : index to i64
-                    %t2 = llvm.inttoptr %t1 : i64 to !llvm.ptr
-                    func.call @puts(%t2) : (!llvm.ptr) -> i32
+                    // Call `puts()`.
+                    %43 = arith.constant 0 : i8
+                    %44 = index.constant 125
+                    memref.store %43, %1[%44] : memref<126xi8>
+                    %45 = memref.extract_aligned_pointer_as_index %1 : memref<126xi8> -> index
+                    %46 = index.castu %45 : index to i64
+                    %47 = llvm.inttoptr %46 : i64 to !llvm.ptr
+                    func.call @puts(%47) : (!llvm.ptr) -> i32
                 }
 
                 func.return
@@ -1780,7 +1787,7 @@ impl<'ctx> Compiler<'ctx> {
             func.func @felt252_bin2dec(%0 : memref<77xi8>, %1 : i256) -> index {
                 // Clear the buffer to zero.
                 %2 = memref.extract_aligned_pointer_as_index %0 : memref<77xi8> -> index
-                %3 = arith.index_castui %2 : index to i64
+                %3 = index.castu %2 : index to i64
                 %4 = llvm.inttoptr %3 : i64 to !llvm.ptr<i8>
                 %5 = arith.constant 0 : i8
                 %6 = arith.constant 77 : i32
@@ -1804,12 +1811,12 @@ impl<'ctx> Compiler<'ctx> {
                 } else {
                     // For each (required) bit in MSB to LSB order:
                     %16 = index.constant 0
-                    %17 = arith.index_castui %10 : i8 to index
+                    %17 = index.castu %10 : i8 to index
                     %18 = index.constant 1
                     scf.for %19 = %16 to %17 step %18 {
                         %20 = index.sub %17, %18
                         %21 = index.sub %20, %19
-                        %22 = arith.index_castui %21 : index to i256
+                        %22 = index.castu %21 : index to i256
                         %23 = arith.shrui %1, %22 : i256
                         %24 = arith.trunci %23 : i256 to i1
 
