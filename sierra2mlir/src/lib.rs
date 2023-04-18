@@ -39,6 +39,10 @@ pub fn compile(
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_math_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_memref_to_llvmconversion_pass());
+    pass_manager.add_pass(pass::conversion::convert_reconcile_unrealized_casts());
 
     if optimized {
         pass_manager.add_pass(pass::transform::canonicalizer());
@@ -79,6 +83,10 @@ pub fn execute(
     pass_manager.add_pass(pass::conversion::convert_scf_to_cf());
     pass_manager.add_pass(pass::conversion::convert_cf_to_llvm());
     pass_manager.add_pass(pass::conversion::convert_arithmetic_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_math_to_llvm());
+    pass_manager.add_pass(pass::conversion::convert_memref_to_llvmconversion_pass());
+    pass_manager.add_pass(pass::conversion::convert_reconcile_unrealized_casts());
 
     pass_manager.add_pass(pass::transform::canonicalizer());
     pass_manager.add_pass(pass::transform::inliner());
@@ -89,7 +97,12 @@ pub fn execute(
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;
 
-    let engine = ExecutionEngine::new(&compiler.module, 2, &[], false);
+    let engine = ExecutionEngine::new(
+        &compiler.module,
+        2,
+        &["/usr/lib/llvm-16/lib/libmlir_c_runner_utils.so"],
+        false,
+    );
 
     Ok(engine)
 }

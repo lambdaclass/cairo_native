@@ -24,7 +24,8 @@ impl<'block, 'ctx> Compiler<'ctx> {
         let libfunc_def =
             storage.libfuncs.get(id).unwrap_or_else(|| panic!("Unhandled libfunc {id}"));
 
-        if libfunc_def.naively_skippable() {
+        // TODO: Find a better way to avoid skipping necessary functions.
+        if id != "print" && libfunc_def.naively_skippable() {
             return Ok(());
         }
 

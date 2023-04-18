@@ -17,19 +17,18 @@ name = "cairo"
 harness = false
 
 [dependencies]
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7"}
-tracing = "0.1.37"
+cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
 color-eyre = "0.6.2"
-melior-next = { git = "https://github.com/edg-l/melior-next", rev = "ab297f081cd00344c483c392fc9979207451735d"}
 itertools = "0.10.5"
-regex = "1.7.3"
+melior-asm = { git = "https://github.com/azteca1998/melior-asm" }
+melior-next = { git = "https://github.com/edg-l/melior-next", rev = "ab297f081cd00344c483c392fc9979207451735d" }
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
+regex = "1.7.3"
+tracing = "0.1.37"
 
 [dev-dependencies]
 cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
 cairo-vm = "0.3.0-rc1"
 criterion = "0.4.0"
-num-bigint = "0.4.3"
-num-traits = "0.2.15"
 test-case = "3.0.0"

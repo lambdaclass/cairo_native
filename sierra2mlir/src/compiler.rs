@@ -8,7 +8,6 @@ use melior_next::{
         Attribute, Block, Identifier, Location, Module, NamedAttribute, Operation, OperationRef,
         Region, Type, TypeLike, Value, ValueLike,
     },
-    pass::transform::register_reconcile_casts,
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
@@ -248,7 +247,6 @@ impl<'ctx> Compiler<'ctx> {
         context.append_dialect_registry(&registry);
         context.load_all_available_dialects();
         register_all_llvm_translations(&context);
-        register_reconcile_casts();
 
         let location = Location::unknown(&context);
 
