@@ -96,7 +96,12 @@ pub fn execute(
     pass_manager.enable_verifier(true);
     pass_manager.run(&mut compiler.module)?;
 
-    let engine = ExecutionEngine::new(&compiler.module, 2, &[], false);
+    let engine = ExecutionEngine::new(
+        &compiler.module,
+        2,
+        &["/usr/lib/llvm-16/lib/libmlir_c_runner_utils.so"],
+        false,
+    );
 
     Ok(engine)
 }
