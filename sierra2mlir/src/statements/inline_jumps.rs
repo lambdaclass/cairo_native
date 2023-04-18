@@ -1,9 +1,15 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::Deref,
+};
 
 use cairo_lang_sierra::program::{GenBranchTarget, Invocation};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Region};
+use melior_next::{
+    dialect::cf,
+    ir::{Block, BlockRef, Location, Region, Value},
+};
 
 use crate::{
     compiler::{CmpOp, Compiler, SierraType, Storage},
@@ -95,12 +101,66 @@ impl<'ctx> Compiler<'ctx> {
         let (zero_block, zero_vars) = &target_blocks[0];
         let (nonzero_block, nonzero_vars) = &target_blocks[1];
 
-        self.op_cond_br(block, eq.into(), zero_block, nonzero_block, zero_vars, nonzero_vars)?;
+        self.op_cond_br(block, eq.into(), zero_block, nonzero_block, zero_vars, nonzero_vars);
 
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    // eq, le, lt
+    pub fn inline_int_cmpop(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+        cmpop: CmpOp,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let pos_arg_1 = &libfunc.get_args()[0];
+        let pos_arg_2 = &libfunc.get_args()[1];
+
+        let arg1 = variables
+            .get(&invocation.args[pos_arg_1.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let arg2 = variables
+            .get(&invocation.args[pos_arg_2.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let eq_op = self.op_cmp(block, cmpop, arg1, arg2);
+        let eq = eq_op.result(0)?;
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| variables.get(id).unwrap().get_value())
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (true_block, true_vars) = &target_blocks[1];
+        let (false_block, false_vars) = &target_blocks[0];
+
+        self.op_cond_br(block, eq.into(), true_block, false_block, true_vars, false_vars);
+
+        Ok(())
+    }
+
     pub fn inline_enum_match(
         &self,
         id: &str,
@@ -176,8 +236,303 @@ impl<'ctx> Compiler<'ctx> {
         // NOTE To truly guarantee this, we'll need guards on external inputs once we take them
         let default_block = region.append_block(Block::new(&[]));
         self.op_unreachable(&default_block);
-        self.op_switch(block, &case_values, tag_value, default_block, &variant_blocks)?;
+
+        let variant_blocks_with_ops =
+            variant_blocks.iter().map(|x| (x.deref(), [].as_slice())).collect_vec();
+        block.append_operation(cf::switch(
+            &self.context,
+            &case_values,
+            tag_value,
+            (&default_block, &[]),
+            variant_blocks_with_ops.as_slice(),
+            Location::unknown(&self.context),
+        ));
 
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn inline_array_get(
+        &self,
+        id: &str,
+        statement_idx: usize,
+        region: &Region,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let array_arg = &libfunc.get_args()[0];
+        let index_arg = &libfunc.get_args()[1];
+
+        // fallthrough if ok
+        // jump if panic
+
+        // 0 = ok block, 1 = panic block
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let target_block_info = target_blocks[0];
+        let panic_block_info = target_blocks[1];
+
+        if let SierraType::Array { ty: _, len_type, element_type } = &array_arg.ty {
+            // arg 0 is range check, can ignore
+            // arg 1 is the array
+            // arg 2 is the index
+
+            let array_var = variables
+                .get(&invocation.args[array_arg.loc].id)
+                .expect("variable array should exist");
+            let index_var = variables
+                .get(&invocation.args[index_arg.loc].id)
+                .expect("variable index should exist");
+
+            let array_value = array_var.get_value();
+
+            // get the current length
+            let length_op = self.op_llvm_extractvalue(block, 0, array_value, *len_type)?;
+            let length: Value = length_op.result(0)?.into();
+
+            // check if index is out of bounds
+            let cmp_op = self.op_cmp(block, CmpOp::UnsignedLessThan, index_var.get_value(), length);
+            let cmp = cmp_op.result(0)?.into();
+
+            let block_get_idx = region.append_block(Block::new(&[]));
+
+            // collect args to the panic block
+            let mut args_to_panic_block = vec![];
+            for var_idx in panic_block_info.variables_at_start.keys().sorted() {
+                args_to_panic_block.push(*variables.get(var_idx).unwrap());
+            }
+            let args_to_panic_block =
+                args_to_panic_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_cond_br(
+                block,
+                cmp,
+                &block_get_idx,
+                &panic_block_info.block,
+                &[],
+                &args_to_panic_block,
+            );
+
+            // get the value at index
+
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&block_get_idx, 2, array_value, self.llvm_ptr_type())?;
+            let data_ptr: Value = data_ptr_op.result(0)?.into();
+            // get the pointer to the data index
+            let value_ptr_op = self.op_llvm_gep_dynamic(
+                &block_get_idx,
+                &[index_var.get_value()],
+                data_ptr,
+                element_type.get_type(),
+            )?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+
+            let target_value_var_id = invocation.branches[0].results[1].id;
+
+            // get the args to the target block (fallthrough here)
+            let args_to_target_block = target_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    if *var_idx == target_value_var_id {
+                        let value_load_op = self
+                            .op_llvm_load(&block_get_idx, value_ptr, element_type.get_type())
+                            .unwrap();
+                        Variable::Local { op: value_load_op, result_idx: 0 }
+                    } else {
+                        *variables.get(var_idx).unwrap()
+                    }
+                })
+                .collect_vec();
+            let args_to_target_block =
+                args_to_target_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_br(&block_get_idx, &target_block_info.block, &args_to_target_block);
+
+            Ok(())
+        } else {
+            panic!("argument should be array type");
+        }
+    }
+
+    pub fn inline_array_pop_front(
+        &self,
+        id: &str,
+        statement_idx: usize,
+        region: &Region,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let array_arg = &libfunc.get_args()[0];
+
+        // fallthrough if there is a element to pop
+        // jump otherwise
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let some_block_info = target_blocks[0];
+        let none_block_info = target_blocks[1];
+
+        if let SierraType::Array { ty: array_type, len_type, element_type } = &array_arg.ty {
+            let array_var = variables
+                .get(&invocation.args[array_arg.loc].id)
+                .expect("variable array should exist");
+
+            let array_value = array_var.get_value();
+
+            let const_1_op = self.op_u32_const(block, "1");
+            let const_1 = const_1_op.result(0)?.into();
+            let const_0_op = self.op_u32_const(block, "0");
+            let const_0 = const_0_op.result(0)?.into();
+
+            // get the current length
+            let length_op = self.op_llvm_extractvalue(block, 0, array_value, *len_type)?;
+            let length: Value = length_op.result(0)?.into();
+
+            // check if there is something to pop
+            let cmp_op = self.op_cmp(block, CmpOp::UnsignedGreaterThanEqual, length, const_1);
+            let cmp = cmp_op.result(0)?.into();
+
+            let block_pop_idx = region.append_block(Block::new(&[]));
+
+            // collect args to the none block
+            let args_to_none_block = none_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    if *var_idx == invocation.branches[1].results[0].id {
+                        *array_var
+                    } else {
+                        *variables.get(var_idx).unwrap()
+                    }
+                })
+                .collect_vec();
+
+            let args_to_none_block =
+                args_to_none_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_cond_br(
+                block,
+                cmp,
+                &block_pop_idx,
+                &none_block_info.block,
+                &[],
+                &args_to_none_block,
+            );
+
+            // get the value at index
+            let data_ptr_op =
+                self.op_llvm_extractvalue(&block_pop_idx, 2, array_value, self.llvm_ptr_type())?;
+            let data_ptr: Value = data_ptr_op.result(0)?.into();
+            // get the pointer to the data index
+            let value_ptr_op = self.op_llvm_gep_dynamic(
+                &block_pop_idx,
+                &[const_0],
+                data_ptr,
+                element_type.get_type(),
+            )?;
+            let value_ptr = value_ptr_op.result(0)?.into();
+            let value_load_op =
+                self.op_llvm_load(&block_pop_idx, value_ptr, element_type.get_type()).unwrap();
+
+            let new_length_op = self.op_sub(&block_pop_idx, length, const_1);
+            let new_length = new_length_op.result(0)?.into();
+
+            // ptr at ptr + 1 element
+            let src_ptr_op = self.op_llvm_gep_dynamic(
+                &block_pop_idx,
+                &[const_1],
+                data_ptr,
+                element_type.get_type(),
+            )?;
+            let src_ptr = src_ptr_op.result(0)?.into();
+
+            // its safe if new_length is 0
+            let new_length_zext_op = self.op_zext(&block_pop_idx, new_length, self.u64_type());
+            let new_length_zext = new_length_zext_op.result(0)?.into();
+
+            let element_size_bytes = (element_type.get_width() + 7) / 8;
+            let const_element_size_bytes =
+                self.op_const(&block_pop_idx, &element_size_bytes.to_string(), self.u64_type());
+
+            let new_length_bytes_op = self.op_mul(
+                &block_pop_idx,
+                new_length_zext,
+                const_element_size_bytes.result(0)?.into(),
+            );
+            let new_length_bytes = new_length_bytes_op.result(0)?.into();
+
+            let dst_ptr_op =
+                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_bytes)?;
+            let dst_ptr: Value = dst_ptr_op.result(0)?.into();
+
+            // insert new length
+            let insert_op =
+                self.op_llvm_insertvalue(&block_pop_idx, 0, array_value, new_length, *array_type)?;
+            let array_value: Value = insert_op.result(0)?.into();
+
+            // insert new ptr
+            let insert_array_op =
+                self.op_llvm_insertvalue(&block_pop_idx, 2, array_value, dst_ptr, *array_type)?;
+
+            // get the args to the target block (fallthrough here)
+            let args_to_target_block = some_block_info
+                .variables_at_start
+                .keys()
+                .map(|var_idx| {
+                    let array_value_id = invocation.branches[0].results[0].id;
+                    let popped_value_id = invocation.branches[0].results[1].id;
+                    match *var_idx {
+                        // popped value
+                        var_idx if var_idx == popped_value_id => {
+                            Variable::Local { op: value_load_op, result_idx: 0 }
+                        }
+                        // updated array
+                        var_idx if var_idx == array_value_id => {
+                            Variable::Local { op: insert_array_op, result_idx: 0 }
+                        }
+                        var_idx => *variables.get(&var_idx).unwrap(),
+                    }
+                })
+                .collect_vec();
+            let args_to_target_block =
+                args_to_target_block.iter().map(Variable::get_value).collect_vec();
+
+            self.op_br(&block_pop_idx, &some_block_info.block, &args_to_target_block);
+
+            Ok(())
+        } else {
+            panic!("argument should be array type");
+        }
     }
 }

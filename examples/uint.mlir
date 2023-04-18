@@ -1,5 +1,6 @@
 module attributes {llvm.data_layout = ""} {
   llvm.func @realloc(!llvm.ptr, i64) -> !llvm.ptr
+  llvm.func @memmove(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   llvm.func @free(!llvm.ptr)
   llvm.func @dprintf(i32, !llvm.ptr, ...) -> i32
   llvm.func internal @u8_to_felt252(%arg0: i8) -> i256 attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {

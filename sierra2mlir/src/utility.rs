@@ -1,9 +1,14 @@
+use std::ops::Deref;
+
 use itertools::Itertools;
 
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
-use melior_next::ir::{
-    operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
-    Value, ValueLike,
+use melior_next::{
+    dialect::cf,
+    ir::{
+        operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
+        Value, ValueLike,
+    },
 };
 
 use crate::{
@@ -13,11 +18,7 @@ use crate::{
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
-    /* Needed for sierra Arrays
-        declare ptr @realloc(ptr, i64)
-        declare void @free(ptr)
-    */
-    pub fn create_realloc(&self) -> Result<()> {
+    pub fn create_libc_funcs(&self) -> Result<()> {
         let region = Region::new();
 
         let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
@@ -26,6 +27,21 @@ impl<'ctx> Compiler<'ctx> {
                 &[
                     ("sym_name", "\"realloc\""),
                     ("function_type", "!llvm.func<ptr (ptr, i64)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+
+        let region = Region::new();
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"memmove\""),
+                    ("function_type", "!llvm.func<ptr (ptr, ptr, i64)>"),
                     ("linkage", "#llvm.linkage<external>"),
                 ],
             )?)
@@ -125,6 +141,16 @@ impl<'ctx> Compiler<'ctx> {
         size: Value,
     ) -> Result<OperationRef<'a>> {
         self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
+    }
+
+    pub fn call_memmove<'a>(
+        &'a self,
+        block: &'a Block,
+        dst: Value,
+        src: Value,
+        size: Value,
+    ) -> Result<OperationRef<'a>> {
+        self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
     }
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
@@ -258,6 +284,14 @@ impl<'ctx> Compiler<'ctx> {
 
         let enum_value = entry_block.argument(0)?.into();
 
+        // if its a panic enum wrapper, don't print the tag, as they are meant to be invisible
+        let is_panic_enum = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::UserType(x) => {
+                x.debug_name.as_ref().unwrap().starts_with("core::PanicResult::")
+            }
+            _ => unreachable!(),
+        };
+
         let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
 
         if let SierraType::Enum { tag_type, storage_type, variants_types, .. } = enum_type {
@@ -276,9 +310,11 @@ impl<'ctx> Compiler<'ctx> {
             let tag_value_op = self.op_llvm_extractvalue(&entry_block, 0, enum_value, *tag_type)?;
             let tag_value = tag_value_op.result(0)?.into();
 
-            // Print the tag. Extending it to 32 bits allows for better printf portability
-            let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
-            self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            if !is_panic_enum {
+                // Print the tag. Extending it to 32 bits allows for better printf portability
+                let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
+                self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+            }
 
             // Store the enum data on the stack, and create a pointer to it
             // This allows us to interpret a ptr to it as a ptr to any of the variant types
@@ -292,7 +328,16 @@ impl<'ctx> Compiler<'ctx> {
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
             let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
 
-            self.op_switch(&entry_block, &case_values, tag_value, default_block, &blockrefs)?;
+            let blockrefs_with_ops =
+                blockrefs.iter().map(|x| (x.deref(), [].as_slice())).collect_vec();
+            entry_block.append_operation(cf::switch(
+                &self.context,
+                &case_values,
+                tag_value,
+                (&default_block, &[]),
+                blockrefs_with_ops.as_slice(),
+                Location::unknown(&self.context),
+            ));
 
             // Sierra type id of each variant type, used to work out which print functions to delegate to
             let component_type_ids = sierra_type_declaration.long_id.generic_args[1..]
@@ -310,7 +355,7 @@ impl<'ctx> Compiler<'ctx> {
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
                 let variant_felt_width = var_ty.get_felt_representation_width();
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
-                if unused_felt_count != 0 {
+                if unused_felt_count != 0 && !is_panic_enum {
                     self.call_printf(block, &"0\n".repeat(unused_felt_count), &[])?;
                 }
 
@@ -385,7 +430,7 @@ impl<'ctx> Compiler<'ctx> {
             let lower_bound = check_block.argument(0)?.into();
             let cmp_op = self.op_cmp(
                 &check_block,
-                crate::compiler::CmpOp::UnsignedLess,
+                crate::compiler::CmpOp::UnsignedLessThan,
                 lower_bound,
                 upper_bound,
             );
@@ -397,7 +442,7 @@ impl<'ctx> Compiler<'ctx> {
                 &end_block,
                 &[check_block.argument(0)?.into()],
                 &[],
-            )?;
+            );
 
             // for loop body
             let idx = loop_block.argument(0)?.into();

@@ -238,6 +238,51 @@ impl<'ctx> Compiler<'ctx> {
                         self.u128_type(),
                     )?;
                 }
+                "u8_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u8_type(), storage);
+                }
+                "u16_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u16_type(), storage);
+                }
+                "u32_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u32_type(), storage);
+                }
+                "u64_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u64_type(), storage);
+                }
+                "u128_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u128_type(), storage);
+                }
+                "u8_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u8_type(), storage);
+                }
+                "u16_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u16_type(), storage);
+                }
+                "u32_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u32_type(), storage);
+                }
+                "u64_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u64_type(), storage);
+                }
+                "u128_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u128_type(), storage);
+                }
+                "u8_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u8_type(), storage);
+                }
+                "u16_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u16_type(), storage);
+                }
+                "u32_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u32_type(), storage);
+                }
+                "u64_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u64_type(), storage);
+                }
+                "u128_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
                 }
@@ -282,6 +327,12 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "array_len" => {
                     self.create_libfunc_array_len(func_decl, parent_block, storage)?;
+                }
+                "array_get" => {
+                    self.register_libfunc_array_get(func_decl, storage);
+                }
+                "array_pop_front" => {
+                    self.register_libfunc_array_pop_front(func_decl, storage);
                 }
                 "print" => {
                     self.create_libfunc_print(func_decl, parent_block, storage)?;
@@ -607,11 +658,11 @@ impl<'ctx> Compiler<'ctx> {
         // gt_prime <=> res_result >= PRIME
         let prime_op = self.prime_constant(&entry_block);
         let prime = prime_op.result(0)?.into();
-        let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
+        let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterThanEqual, res, prime);
         let gte_prime = gte_prime_op.result(0)?.into();
 
         // if gt_prime
-        self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[])?;
+        self.op_cond_br(&entry_block, gte_prime, &gte_prime_block, &in_range_block, &[], &[]);
 
         //gt prime block
         let wrapped_res_op = self.op_sub(&gte_prime_block, res, prime);
@@ -674,7 +725,7 @@ impl<'ctx> Compiler<'ctx> {
         let lt_zero = lt_zero_op.result(0)?.into();
 
         // if gt_prime
-        self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[])?;
+        self.op_cond_br(&entry_block, lt_zero, &lt_zero_block, &in_range_block, &[], &[]);
 
         //lt zero block
         let prime_op = self.prime_constant(&lt_zero_block);
@@ -821,6 +872,63 @@ impl<'ctx> Compiler<'ctx> {
         );
     }
 
+    pub fn register_libfunc_int_eq(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_int_le(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_int_lt(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
     pub fn register_libfunc_enum_match(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -857,6 +965,78 @@ impl<'ctx> Compiler<'ctx> {
         } else {
             panic!("enum_match arg_type should be a enum")
         }
+    }
+
+    pub fn register_libfunc_array_get(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_get argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+
+        // 2 branches:
+        // - falthrough with return args: 0 = rangecheck, 1 = the value at index
+        // - branch jump: if out of bounds jump, return arg 0 = range check
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: sierra_type.clone() }, // array
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
+                    vec![],                                       // panic branch
+                ],
+            },
+        );
+    }
+
+    pub fn register_libfunc_array_pop_front(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_pop_front argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: sierra_type.clone() }, // array
+                ],
+                return_types: vec![
+                    // fallthrough (pop returned something): array, popped value
+                    vec![
+                        PositionalArg { loc: 0, ty: sierra_type.clone() },
+                        PositionalArg { loc: 1, ty: arg_type },
+                    ],
+                    // jump (pop returned none): array
+                    vec![PositionalArg { loc: 0, ty: sierra_type }],
+                ],
+            },
+        );
     }
 
     pub fn create_libfunc_uint_to_felt252(
@@ -1383,24 +1563,17 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
+            _ => unreachable!(),
         };
 
         let region = Region::new();
 
         let block = Block::new(&[]);
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
@@ -1411,7 +1584,7 @@ impl<'ctx> Compiler<'ctx> {
         let array_capacity_op = self.op_u32_const(&block, "8");
         let array_capacity = array_capacity_op.result(0)?.into();
 
-        let array_element_size_bytes = arg_type.get_width() / 8;
+        let array_element_size_bytes = (arg_type.get_width() + 7) / 8;
 
         // length
         let insert_op =
@@ -1486,11 +1659,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block = region.append_block(Block::new(&[
             sierra_type.get_type_location(&self.context),
@@ -1516,7 +1685,7 @@ impl<'ctx> Compiler<'ctx> {
         let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
 
         let is_less =
-            self.op_cmp(&block, CmpOp::UnsignedLess, array_len.into(), array_capacity.into());
+            self.op_cmp(&block, CmpOp::UnsignedLessThan, array_len.into(), array_capacity.into());
 
         self.op_cond_br(
             &block,
@@ -1525,7 +1694,7 @@ impl<'ctx> Compiler<'ctx> {
             &realloc_block,
             &[array_value.into()],
             &[],
-        )?;
+        );
 
         // reallocate with more capacity, for now with a simple algorithm:
         // new_capacity = capacity * 2
@@ -1640,11 +1809,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::Array {
-            ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
-            len_type: self.u32_type(),
-            element_type: Box::new(arg_type.clone()),
-        };
+        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
 
         let block =
             region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));
