@@ -43,6 +43,5 @@ function find_llvm_prefix() {
 }
 
 
-# LLVM_CONFIG_BIN=$(find_llvm_config)
-# find_llvm_prefix "$LLVM_CONFIG_BIN"
-find_llvm_config
+LLVM_CONFIG_BIN=$(find_llvm_config)
+find_llvm_prefix "$LLVM_CONFIG_BIN"
