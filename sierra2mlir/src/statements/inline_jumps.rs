@@ -162,7 +162,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/uint.rs#L339
-    pub fn inline_int_overflowing_add(
+    pub fn inline_int_overflowing_op(
         &'ctx self,
         id: &str,
         invocation: &Invocation,
@@ -171,6 +171,8 @@ impl<'ctx> Compiler<'ctx> {
         blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
         statement_idx: usize,
         storage: &Storage,
+        // true = add, false = sub
+        is_add: bool,
     ) -> Result<()> {
         let libfunc = storage.libfuncs.get(id).unwrap();
         let pos_arg_1 = &libfunc.get_args()[0];
@@ -188,9 +190,13 @@ impl<'ctx> Compiler<'ctx> {
             .expect("Variable should be registered before use")
             .get_value();
 
-        let add_result_op = block.append_operation(
+        let overflow_result_op = block.append_operation(
             operation::Builder::new(
-                "llvm.intr.uadd.with.overflow",
+                if is_add {
+                    "llvm.intr.uadd.with.overflow"
+                } else {
+                    "llvm.intr.usub.with.overflow"
+                },
                 Location::unknown(&self.context),
             )
             .add_operands(&[arg1, arg2])
@@ -199,9 +205,10 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         // {iN, i1}
-        let add_result = add_result_op.result(0)?.into();
-        let result_op = self.op_llvm_extractvalue(block, 0, add_result, arg_type.get_type())?;
-        let overflow_op = self.op_llvm_extractvalue(block, 1, add_result, self.bool_type())?;
+        let overflow_result = overflow_result_op.result(0)?.into();
+        let result_op =
+            self.op_llvm_extractvalue(block, 0, overflow_result, arg_type.get_type())?;
+        let overflow_op = self.op_llvm_extractvalue(block, 1, overflow_result, self.bool_type())?;
 
         let result = result_op.result(0)?.into();
 

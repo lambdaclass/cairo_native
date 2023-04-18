@@ -47,6 +47,7 @@ use test_case::test_case;
 #[test_case("uint/safe_divmod")]
 #[test_case("uint/wide_mul")]
 #[test_case("uint/uint_addition")]
+#[test_case("uint/uint_substraction")]
 // #[test_case("felt_ops/div")] - div blocked on bug on div
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =

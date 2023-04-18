@@ -165,9 +165,9 @@ impl<'ctx> Compiler<'ctx> {
                                 jump_processed = true;
                             }
                             name_without_generics
-                                if is_uint_overflow_add_libfunc(name_without_generics) =>
+                                if is_uint_overflow_libfunc(name_without_generics) =>
                             {
-                                self.inline_int_overflowing_add(
+                                self.inline_int_overflowing_op(
                                     name_without_generics,
                                     invocation,
                                     block,
@@ -175,6 +175,7 @@ impl<'ctx> Compiler<'ctx> {
                                     &blocks,
                                     statement_idx,
                                     storage,
+                                    name_without_generics.ends_with("add"),
                                 )?;
 
                                 jump_processed = true;
@@ -464,8 +465,8 @@ fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
     is_cmp.is_match(name_without_generics)
 }
 
-fn is_uint_overflow_add_libfunc(name_without_generics: &str) -> bool {
-    let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_add"#).unwrap();
+fn is_uint_overflow_libfunc(name_without_generics: &str) -> bool {
+    let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_(add|sub)"#).unwrap();
     is_reg.is_match(name_without_generics)
 }
 

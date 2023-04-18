@@ -283,24 +283,20 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_lt" => {
                     self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
                 }
-                "u8_overflowing_add" => {
-                    self.register_libfunc_uint_overflowing_add(func_decl, self.u8_type(), storage);
+                "u8_overflowing_add" | "u8_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u8_type(), storage);
                 }
-                "u16_overflowing_add" => {
-                    self.register_libfunc_uint_overflowing_add(func_decl, self.u16_type(), storage);
+                "u16_overflowing_add" | "u16_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u16_type(), storage);
                 }
-                "u32_overflowing_add" => {
-                    self.register_libfunc_uint_overflowing_add(func_decl, self.u32_type(), storage);
+                "u32_overflowing_add" | "u32_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u32_type(), storage);
                 }
-                "u64_overflowing_add" => {
-                    self.register_libfunc_uint_overflowing_add(func_decl, self.u64_type(), storage);
+                "u64_overflowing_add" | "u64_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u64_type(), storage);
                 }
-                "u128_overflowing_add" => {
-                    self.register_libfunc_uint_overflowing_add(
-                        func_decl,
-                        self.u128_type(),
-                        storage,
-                    );
+                "u128_overflowing_add" | "u128_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u128_type(), storage);
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
@@ -948,7 +944,7 @@ impl<'ctx> Compiler<'ctx> {
         );
     }
 
-    pub fn register_libfunc_uint_overflowing_add(
+    pub fn register_libfunc_uint_overflowing_op(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         op_type: Type<'ctx>,
