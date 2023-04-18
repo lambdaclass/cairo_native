@@ -1,6 +1,6 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::{env, fs};
 
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::ProgramParser;
@@ -161,9 +161,11 @@ fn run_mlir(test_name: &str) -> Result<Vec<BigUint>, String> {
 }
 
 fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigUint>, String> {
-    let mlir_prefix = std::env::var("MLIR_SYS_160_PREFIX").unwrap();
-    let lli_path = Path::new(mlir_prefix.as_str()).join("bin").join("lli");
-    let mlir_translate_path = Path::new(mlir_prefix.as_str()).join("bin").join("mlir-translate");
+    let mlir_prefix = find_mlir_prefix();
+    let lli_path = mlir_prefix.join("bin").join("lli");
+    let mlir_translate_path = mlir_prefix.join("bin").join("mlir-translate");
+    dbg!(&lli_path);
+    dbg!(&mlir_translate_path);
 
     let mlir_output = Command::new(mlir_translate_path)
         .arg("--mlir-to-llvmir")
@@ -222,4 +224,20 @@ fn flatten_test_name(test_name: &str) -> String {
 
 fn get_outdir() -> PathBuf {
     Path::new(".").join("tests").join("comparison").join("out")
+}
+
+fn find_mlir_prefix() -> PathBuf {
+    match env::var_os("MLIR_SYS_160_PREFIX") {
+        Some(x) => Path::new(x.to_str().unwrap()).to_owned(),
+        None => {
+            let cmd_output = Command::new("../scripts/find-llvm.sh")
+                .stdout(Stdio::piped())
+                .spawn()
+                .unwrap()
+                .wait_with_output()
+                .unwrap();
+
+            PathBuf::from(String::from_utf8(cmd_output.stdout).unwrap().trim())
+        }
+    }
 }
