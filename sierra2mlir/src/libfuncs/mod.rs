@@ -237,6 +237,51 @@ impl<'ctx> Compiler<'ctx> {
                         self.u128_type(),
                     )?;
                 }
+                "u8_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u8_type(), storage);
+                }
+                "u16_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u16_type(), storage);
+                }
+                "u32_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u32_type(), storage);
+                }
+                "u64_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u64_type(), storage);
+                }
+                "u128_eq" => {
+                    self.register_libfunc_int_eq(func_decl, self.u128_type(), storage);
+                }
+                "u8_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u8_type(), storage);
+                }
+                "u16_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u16_type(), storage);
+                }
+                "u32_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u32_type(), storage);
+                }
+                "u64_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u64_type(), storage);
+                }
+                "u128_le" => {
+                    self.register_libfunc_int_le(func_decl, self.u128_type(), storage);
+                }
+                "u8_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u8_type(), storage);
+                }
+                "u16_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u16_type(), storage);
+                }
+                "u32_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u32_type(), storage);
+                }
+                "u64_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u64_type(), storage);
+                }
+                "u128_lt" => {
+                    self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
                 }
@@ -609,7 +654,7 @@ impl<'ctx> Compiler<'ctx> {
         // gt_prime <=> res_result >= PRIME
         let prime_op = self.prime_constant(&entry_block);
         let prime = prime_op.result(0)?.into();
-        let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterEqual, res, prime);
+        let gte_prime_op = self.op_cmp(&entry_block, CmpOp::UnsignedGreaterThanEqual, res, prime);
         let gte_prime = gte_prime_op.result(0)?.into();
 
         // if gt_prime
@@ -819,6 +864,63 @@ impl<'ctx> Compiler<'ctx> {
                     vec![],
                     vec![PositionalArg { loc: 0, ty: SierraType::Simple(op_type) }],
                 ],
+            },
+        );
+    }
+
+    pub fn register_libfunc_int_eq(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_int_le(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_int_lt(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
             },
         );
     }
@@ -1579,7 +1681,7 @@ impl<'ctx> Compiler<'ctx> {
         let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
 
         let is_less =
-            self.op_cmp(&block, CmpOp::UnsignedLess, array_len.into(), array_capacity.into());
+            self.op_cmp(&block, CmpOp::UnsignedLessThan, array_len.into(), array_capacity.into());
 
         self.op_cond_br(
             &block,

@@ -430,7 +430,7 @@ impl<'ctx> Compiler<'ctx> {
             let lower_bound = check_block.argument(0)?.into();
             let cmp_op = self.op_cmp(
                 &check_block,
-                crate::compiler::CmpOp::UnsignedLess,
+                crate::compiler::CmpOp::UnsignedLessThan,
                 lower_bound,
                 upper_bound,
             );

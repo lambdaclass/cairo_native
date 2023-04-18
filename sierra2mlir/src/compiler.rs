@@ -1353,24 +1353,35 @@ impl<'ctx> Compiler<'ctx> {
     }
 }
 
-// TODO: Add other supported comparisons.
-//   Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
+// Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum CmpOp {
     #[default]
     Equal,
+    NotEqual,
     SignedLessThan,
-    UnsignedGreaterEqual,
-    UnsignedLess,
+    SignedLessThanEqual,
+    SignedGreaterThan,
+    SignedGreaterThanEqual,
+    UnsignedLessThan,
+    UnsignedLessThanEqual,
+    UnsignedGreaterThan,
+    UnsignedGreaterThanEqual,
 }
 
 impl CmpOp {
     pub const fn to_mlir_val(&self) -> &'static str {
         match self {
             Self::Equal => "0",
+            Self::NotEqual => "1",
             Self::SignedLessThan => "2",
-            Self::UnsignedGreaterEqual => "9",
-            Self::UnsignedLess => "6",
+            Self::SignedLessThanEqual => "3",
+            Self::SignedGreaterThan => "4",
+            Self::SignedGreaterThanEqual => "5",
+            Self::UnsignedLessThan => "6",
+            Self::UnsignedLessThanEqual => "7",
+            Self::UnsignedGreaterThan => "8",
+            Self::UnsignedGreaterThanEqual => "9",
         }
     }
 }
