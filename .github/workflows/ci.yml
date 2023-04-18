@@ -70,6 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16/
       RUSTUP_TOOLCHAIN: nightly
     steps:
       - uses: actions/checkout@v3
