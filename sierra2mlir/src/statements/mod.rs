@@ -11,8 +11,9 @@ use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Va
 use regex::Regex;
 
 use crate::compiler::{CmpOp, FnAttributes};
+use crate::sierra_type::SierraType;
 use crate::{
-    compiler::{Compiler, SierraType, Storage},
+    compiler::{Compiler, Storage},
     utility::create_fn_signature,
 };
 

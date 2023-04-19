@@ -9,7 +9,8 @@ use num_traits::Signed;
 use tracing::debug;
 
 use crate::{
-    compiler::{CmpOp, Compiler, FnAttributes, SierraType, Storage},
+    compiler::{CmpOp, Compiler, FnAttributes, Storage},
+    sierra_type::SierraType,
     types::{is_omitted_builtin_type, DEFAULT_PRIME},
     utility::create_fn_signature,
 };
@@ -1055,7 +1056,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
 
-        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
         // 2 branches:
         // - falthrough with return args: 0 = rangecheck, 1 = the value at index
@@ -1091,7 +1092,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
 
-        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
         storage.libfuncs.insert(
             id,
@@ -1646,7 +1647,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&[]);
 
-        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
         let array_value_op = self.op_llvm_undef(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
@@ -1732,7 +1733,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
         let block = region.append_block(Block::new(&[
             sierra_type.get_type_location(&self.context),
@@ -1882,7 +1883,7 @@ impl<'ctx> Compiler<'ctx> {
         };
         let region = Region::new();
 
-        let sierra_type = SierraType::get_array_type(self, arg_type.clone());
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
         let block =
             region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));

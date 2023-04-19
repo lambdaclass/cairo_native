@@ -14,7 +14,8 @@ use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 
 use crate::{
-    compiler::{CmpOp, Compiler, SierraType, Storage},
+    compiler::{CmpOp, Compiler, Storage},
+    sierra_type::SierraType,
     statements::{BlockInfo, Variable},
 };
 
@@ -263,9 +264,9 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, storage_type, variants_types, enum_type) = match &args[0].ty {
-            SierraType::Enum { tag_type, storage_type, variants_types, ty: enum_type, .. } => {
-                (tag_type, storage_type, variants_types, enum_type)
+        let (tag_type, variants_types, enum_type) = match &args[0].ty {
+            SierraType::Enum { tag_type, variants_types, ty: enum_type, .. } => {
+                (tag_type, variants_types, enum_type)
             }
             _ => {
                 panic!("Argument of enum match should be an enum")
