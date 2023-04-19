@@ -52,6 +52,15 @@ impl<'ctx> SierraLibFunc<'ctx> {
         }
     }
 
+    pub fn get_return_types(&self) -> Vec<Vec<PositionalArg<'ctx>>> {
+        match self {
+            SierraLibFunc::Function { return_types, .. } => vec![return_types.clone()],
+            SierraLibFunc::Constant { .. } => vec![],
+            SierraLibFunc::InlineDataflow(_) => vec![],
+            SierraLibFunc::Branching { return_types, .. } => return_types.clone(),
+        }
+    }
+
     /// If true, the libfunc can be simply ignored during processing
     pub fn naively_skippable(&self) -> bool {
         match self {

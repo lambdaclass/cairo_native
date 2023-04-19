@@ -1,32 +1,16 @@
 use integer::upcast;
 use integer::downcast;
 
-fn main() {
-    let x8 = 0_u8;
-    let x16 = 0_u16;
-    let x32 = 0_u32;
-    let x64 = 0_u64;
-    let x128 = 0_u128;
-
-    let x8_to_8: u8 = upcast(x8);
-    let x8_to_16: u16 = upcast(x8);
-    let x8_to_32: u32 = upcast(x8);
-    let x8_to_64: u64 = upcast(x8);
-    let x8_to_128: u128 = upcast(x8);
-
-    let x16_to_16: u16 = upcast(x16);
-    let x16_to_32: u32 = upcast(x16);
-    let x16_to_64: u64 = upcast(x16);
-    let x16_to_128: u128 = upcast(x16);
-
-    let x32_to_32: u32 = upcast(x32);
-    let x32_to_64: u64 = upcast(x32);
-    let x32_to_128: u128 = upcast(x32);
-
-    let x64_to_64: u64 = upcast(x64);
-    let x64_to_128: u128 = upcast(x64);
-
-    let x128_to_128: u128 = upcast(x128);
+fn main() -> (Option<u8>,
+              Option<u8>, Option<u16>,
+              Option<u8>, Option<u16>, Option<u32>,
+              Option<u8>, Option<u16>, Option<u32>, Option<u64>,
+              Option<u8>, Option<u16>, Option<u32>, Option<u64>, Option<u128>) {
+    let x8 = 2_u8;
+    let x16 = 4_u16;
+    let x32 = 1024_u32;
+    let x64 = 8_u64;
+    let x128 = 10_u128;
 
     let downcast_x8_to_8: Option<u8> = downcast(x8);
 
@@ -47,4 +31,9 @@ fn main() {
     let x128_to_32: Option<u32> = downcast(x128);
     let x128_to_64: Option<u64> = downcast(x128);
     let x128_to_128: Option<u128> = downcast(x128);
+
+    (downcast_x8_to_8, downcast_x16_to_8, downcast_x16_to_16,
+    downcast_x32_to_8, downcast_x32_to_16, downcast_x32_to_32,
+    downcast_x64_to_8, downcast_x64_to_16, downcast_x64_to_32, downcast_x64_to_64,
+    x128_to_8, x128_to_16, x128_to_32, x128_to_64, x128_to_128)
 }
