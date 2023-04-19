@@ -14,7 +14,8 @@ use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 
 use crate::{
-    compiler::{CmpOp, Compiler, SierraType, Storage},
+    compiler::{CmpOp, Compiler, Storage},
+    sierra_type::SierraType,
     statements::{BlockInfo, Variable},
 };
 
