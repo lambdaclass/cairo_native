@@ -219,6 +219,19 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "downcast" => {
+                                self.inline_downcast(
+                                    &id,
+                                    invocation,
+                                    &region,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "function_call" => self.process_function_call(
                                 &id,
                                 invocation,

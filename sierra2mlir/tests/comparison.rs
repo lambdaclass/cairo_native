@@ -44,6 +44,7 @@ use test_case::test_case;
 #[test_case("uint/consts")]
 #[test_case("uint/compare")]
 #[test_case("uint/upcasts")]
+#[test_case("uint/downcasts")]
 #[test_case("uint/safe_divmod")]
 #[test_case("uint/wide_mul")]
 #[test_case("uint/uint_addition")]
@@ -60,6 +61,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     match casm_result {
         Ok(result) => match result.value {
             cairo_lang_runner::RunResultValue::Success(casm_values) => {
+                println!("llvm result: {:?}\n", llvm_result);
                 println!("Casm result: {:?}\n", casm_values);
                 println!("llvm result: {:?}\n", llvm_result);
                 assert_eq!(
