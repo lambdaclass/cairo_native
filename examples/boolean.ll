@@ -12,70 +12,70 @@ declare ptr @memmove(ptr, ptr, i64)
 declare i32 @dprintf(i32, ptr, ...)
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal {} @"struct_construct<Unit>"() #0 {
-  ret {} undef
+define internal <{}> @"struct_construct<Unit>"() #0 {
+  ret <{}> undef
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %0) #0 {
-  %2 = alloca { i16, [0 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 0
+define internal <{ i16, [0 x i8] }> @"enum_init<core::bool, 1>"(<{}> %0) #0 {
+  %2 = alloca <{ i16, [0 x i8] }>, i64 1, align 8
+  %3 = getelementptr inbounds <{ i16, [0 x i8] }>, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 1
-  store {} %0, ptr %4, align 1
-  %5 = load { i16, [0 x i8] }, ptr %2, align 2
-  ret { i16, [0 x i8] } %5
+  %4 = getelementptr inbounds <{ i16, <{}> }>, ptr %2, i32 0, i32 1
+  store <{}> %0, ptr %4, align 1
+  %5 = load <{ i16, [0 x i8] }>, ptr %2, align 1
+  ret <{ i16, [0 x i8] }> %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %0) #0 {
-  %2 = alloca { i16, [0 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 0
+define internal <{ i16, [0 x i8] }> @"enum_init<core::bool, 0>"(<{}> %0) #0 {
+  %2 = alloca <{ i16, [0 x i8] }>, i64 1, align 8
+  %3 = getelementptr inbounds <{ i16, [0 x i8] }>, ptr %2, i32 0, i32 0
   store i16 0, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [0 x i8] }, ptr %2, i32 0, i32 1
-  store {} %0, ptr %4, align 1
-  %5 = load { i16, [0 x i8] }, ptr %2, align 2
-  ret { i16, [0 x i8] } %5
+  %4 = getelementptr inbounds <{ i16, <{}> }>, ptr %2, i32 0, i32 1
+  store <{}> %0, ptr %4, align 1
+  %5 = load <{ i16, [0 x i8] }>, ptr %2, align 1
+  ret <{ i16, [0 x i8] }> %5
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
-  %3 = extractvalue { i16, [0 x i8] } %0, 0
-  %4 = extractvalue { i16, [0 x i8] } %1, 0
+define internal <{ i16, [0 x i8] }> @bool_or_impl(<{ i16, [0 x i8] }> %0, <{ i16, [0 x i8] }> %1) #0 {
+  %3 = extractvalue <{ i16, [0 x i8] }> %0, 0
+  %4 = extractvalue <{ i16, [0 x i8] }> %1, 0
   %5 = or i16 %3, %4
-  %6 = insertvalue { i16, [0 x i8] } undef, i16 %5, 0
-  ret { i16, [0 x i8] } %6
+  %6 = insertvalue <{ i16, [0 x i8] }> undef, i16 %5, 0
+  ret <{ i16, [0 x i8] }> %6
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %0) #0 {
-  %2 = extractvalue { i16, [0 x i8] } %0, 0
+define internal <{ i16, [0 x i8] }> @bool_not_impl(<{ i16, [0 x i8] }> %0) #0 {
+  %2 = extractvalue <{ i16, [0 x i8] }> %0, 0
   %3 = xor i16 %2, 1
-  %4 = insertvalue { i16, [0 x i8] } undef, i16 %3, 0
-  ret { i16, [0 x i8] } %4
+  %4 = insertvalue <{ i16, [0 x i8] }> undef, i16 %3, 0
+  ret <{ i16, [0 x i8] }> %4
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
-  %3 = extractvalue { i16, [0 x i8] } %0, 0
-  %4 = extractvalue { i16, [0 x i8] } %1, 0
+define internal <{ i16, [0 x i8] }> @bool_and_impl(<{ i16, [0 x i8] }> %0, <{ i16, [0 x i8] }> %1) #0 {
+  %3 = extractvalue <{ i16, [0 x i8] }> %0, 0
+  %4 = extractvalue <{ i16, [0 x i8] }> %1, 0
   %5 = and i16 %3, %4
-  %6 = insertvalue { i16, [0 x i8] } undef, i16 %5, 0
-  ret { i16, [0 x i8] } %6
+  %6 = insertvalue <{ i16, [0 x i8] }> undef, i16 %5, 0
+  ret <{ i16, [0 x i8] }> %6
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %0, { i16, [0 x i8] } %1) #0 {
-  %3 = extractvalue { i16, [0 x i8] } %0, 0
-  %4 = extractvalue { i16, [0 x i8] } %1, 0
+define internal <{ i16, [0 x i8] }> @bool_xor_impl(<{ i16, [0 x i8] }> %0, <{ i16, [0 x i8] }> %1) #0 {
+  %3 = extractvalue <{ i16, [0 x i8] }> %0, 0
+  %4 = extractvalue <{ i16, [0 x i8] }> %1, 0
   %5 = xor i16 %3, %4
-  %6 = insertvalue { i16, [0 x i8] } undef, i16 %5, 0
-  ret { i16, [0 x i8] } %6
+  %6 = insertvalue <{ i16, [0 x i8] }> undef, i16 %5, 0
+  ret <{ i16, [0 x i8] }> %6
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal i256 @bool_to_felt252({ i16, [0 x i8] } %0) #0 {
-  %2 = extractvalue { i16, [0 x i8] } %0, 0
+define internal i256 @bool_to_felt252(<{ i16, [0 x i8] }> %0) #0 {
+  %2 = extractvalue <{ i16, [0 x i8] }> %0, 0
   %3 = zext i16 %2 to i256
   ret i256 %3
 }
@@ -142,20 +142,20 @@ define i256 @"boolean::boolean::main"() {
   br label %1
 
 1:                                                ; preds = %0
-  %2 = call {} @"struct_construct<Unit>"()
-  %3 = call { i16, [0 x i8] } @"enum_init<core::bool, 1>"({} %2)
-  %4 = call {} @"struct_construct<Unit>"()
-  %5 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %4)
-  %6 = call { i16, [0 x i8] } @bool_or_impl({ i16, [0 x i8] } %3, { i16, [0 x i8] } %5)
-  %7 = call {} @"struct_construct<Unit>"()
-  %8 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %7)
-  %9 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %8)
-  %10 = call { i16, [0 x i8] } @bool_not_impl({ i16, [0 x i8] } %9)
-  %11 = call { i16, [0 x i8] } @bool_and_impl({ i16, [0 x i8] } %6, { i16, [0 x i8] } %10)
-  %12 = call {} @"struct_construct<Unit>"()
-  %13 = call { i16, [0 x i8] } @"enum_init<core::bool, 0>"({} %12)
-  %14 = call { i16, [0 x i8] } @bool_xor_impl({ i16, [0 x i8] } %11, { i16, [0 x i8] } %13)
-  %15 = call i256 @bool_to_felt252({ i16, [0 x i8] } %14)
+  %2 = call <{}> @"struct_construct<Unit>"()
+  %3 = call <{ i16, [0 x i8] }> @"enum_init<core::bool, 1>"(<{}> %2)
+  %4 = call <{}> @"struct_construct<Unit>"()
+  %5 = call <{ i16, [0 x i8] }> @"enum_init<core::bool, 0>"(<{}> %4)
+  %6 = call <{ i16, [0 x i8] }> @bool_or_impl(<{ i16, [0 x i8] }> %3, <{ i16, [0 x i8] }> %5)
+  %7 = call <{}> @"struct_construct<Unit>"()
+  %8 = call <{ i16, [0 x i8] }> @"enum_init<core::bool, 0>"(<{}> %7)
+  %9 = call <{ i16, [0 x i8] }> @bool_not_impl(<{ i16, [0 x i8] }> %8)
+  %10 = call <{ i16, [0 x i8] }> @bool_not_impl(<{ i16, [0 x i8] }> %9)
+  %11 = call <{ i16, [0 x i8] }> @bool_and_impl(<{ i16, [0 x i8] }> %6, <{ i16, [0 x i8] }> %10)
+  %12 = call <{}> @"struct_construct<Unit>"()
+  %13 = call <{ i16, [0 x i8] }> @"enum_init<core::bool, 0>"(<{}> %12)
+  %14 = call <{ i16, [0 x i8] }> @bool_xor_impl(<{ i16, [0 x i8] }> %11, <{ i16, [0 x i8] }> %13)
+  %15 = call i256 @bool_to_felt252(<{ i16, [0 x i8] }> %14)
   ret i256 %15
 }
 

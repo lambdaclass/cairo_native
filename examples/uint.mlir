@@ -60,11 +60,11 @@ module attributes {llvm.data_layout = ""} {
     %9 = llvm.insertvalue %3, %8[1] : !llvm.struct<(i128, i128)> 
     llvm.return %9 : !llvm.struct<(i128, i128)>
   }
-  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
-    %0 = llvm.mlir.undef : !llvm.struct<()>
-    llvm.return %0 : !llvm.struct<()>
+  llvm.func internal @"struct_construct<Unit>"() -> !llvm.struct<packed ()> attributes {llvm.dso_local, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
+    %0 = llvm.mlir.undef : !llvm.struct<packed ()>
+    llvm.return %0 : !llvm.struct<packed ()>
   }
-  llvm.func @"uint::uint::main"() -> !llvm.struct<()> attributes {llvm.dso_local, llvm.emit_c_interface} {
+  llvm.func @"uint::uint::main"() -> !llvm.struct<packed ()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0
     %0 = llvm.mlir.constant(0 : i8) : i8
@@ -84,12 +84,12 @@ module attributes {llvm.data_layout = ""} {
     %14 = llvm.call @u128_wide_mul(%4, %4) : (i128, i128) -> !llvm.struct<(i128, i128)>
     %15 = llvm.extractvalue %14[0] : !llvm.struct<(i128, i128)> 
     %16 = llvm.extractvalue %14[1] : !llvm.struct<(i128, i128)> 
-    %17 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<()>
-    llvm.return %17 : !llvm.struct<()>
+    %17 = llvm.call @"struct_construct<Unit>"() : () -> !llvm.struct<packed ()>
+    llvm.return %17 : !llvm.struct<packed ()>
   }
-  llvm.func @"_mlir_ciface_uint::uint::main"(%arg0: !llvm.ptr<struct<()>>) attributes {llvm.dso_local, llvm.emit_c_interface} {
-    %0 = llvm.call @"uint::uint::main"() : () -> !llvm.struct<()>
-    llvm.store %0, %arg0 : !llvm.ptr<struct<()>>
+  llvm.func @"_mlir_ciface_uint::uint::main"(%arg0: !llvm.ptr<struct<packed ()>>) attributes {llvm.dso_local, llvm.emit_c_interface} {
+    %0 = llvm.call @"uint::uint::main"() : () -> !llvm.struct<packed ()>
+    llvm.store %0, %arg0 : !llvm.ptr<struct<packed ()>>
     llvm.return
   }
 }

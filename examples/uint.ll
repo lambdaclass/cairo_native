@@ -87,11 +87,11 @@ define internal { i128, i128 } @u128_wide_mul(i128 %0, i128 %1) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal {} @"struct_construct<Unit>"() #0 {
-  ret {} undef
+define internal <{}> @"struct_construct<Unit>"() #0 {
+  ret <{}> undef
 }
 
-define {} @"uint::uint::main"() {
+define <{}> @"uint::uint::main"() {
   br label %1
 
 1:                                                ; preds = %0
@@ -107,13 +107,13 @@ define {} @"uint::uint::main"() {
   %11 = call { i128, i128 } @u128_wide_mul(i128 0, i128 0)
   %12 = extractvalue { i128, i128 } %11, 0
   %13 = extractvalue { i128, i128 } %11, 1
-  %14 = call {} @"struct_construct<Unit>"()
-  ret {} %14
+  %14 = call <{}> @"struct_construct<Unit>"()
+  ret <{}> %14
 }
 
 define void @"_mlir_ciface_uint::uint::main"(ptr %0) {
-  %2 = call {} @"uint::uint::main"()
-  store {} %2, ptr %0, align 1
+  %2 = call <{}> @"uint::uint::main"()
+  store <{}> %2, ptr %0, align 1
   ret void
 }
 

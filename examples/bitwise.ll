@@ -23,18 +23,18 @@ define internal { i128, i128, i128 } @bitwise(i128 %0, i128 %1) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal {} @"struct_construct<Unit>"() #0 {
-  ret {} undef
+define internal <{}> @"struct_construct<Unit>"() #0 {
+  ret <{}> undef
 }
 
 ; Function Attrs: norecurse nounwind
-define internal void @print_Unit({} %0) #1 {
+define internal void @print_Unit(<{}> %0) #1 {
   ret void
 }
 
 define void @main() {
-  %1 = call {} @"bitwise::bitwise::main"()
-  call void @print_Unit({} %1)
+  %1 = call <{}> @"bitwise::bitwise::main"()
+  call void @print_Unit(<{}> %1)
   ret void
 }
 
@@ -43,7 +43,7 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define {} @"bitwise::bitwise::main"() {
+define <{}> @"bitwise::bitwise::main"() {
   br label %1
 
 1:                                                ; preds = %0
@@ -59,13 +59,13 @@ define {} @"bitwise::bitwise::main"() {
   %11 = extractvalue { i128, i128, i128 } %10, 0
   %12 = extractvalue { i128, i128, i128 } %10, 1
   %13 = extractvalue { i128, i128, i128 } %10, 2
-  %14 = call {} @"struct_construct<Unit>"()
-  ret {} %14
+  %14 = call <{}> @"struct_construct<Unit>"()
+  ret <{}> %14
 }
 
 define void @"_mlir_ciface_bitwise::bitwise::main"(ptr %0) {
-  %2 = call {} @"bitwise::bitwise::main"()
-  store {} %2, ptr %0, align 1
+  %2 = call <{}> @"bitwise::bitwise::main"()
+  store <{}> %2, ptr %0, align 1
   ret void
 }
 

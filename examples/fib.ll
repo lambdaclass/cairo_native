@@ -40,8 +40,8 @@ define internal i256 @felt252_sub(i256 %0, i256 %1) #0 {
 }
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal {} @"struct_construct<Unit>"() #0 {
-  ret {} undef
+define internal <{}> @"struct_construct<Unit>"() #0 {
+  ret <{}> undef
 }
 
 define i256 @"fib::fib::fib"(i256 %0, i256 %1, i256 %2) {
@@ -77,7 +77,7 @@ define i256 @"_mlir_ciface_fib::fib::fib"(i256 %0, i256 %1, i256 %2) {
   ret i256 %4
 }
 
-define {} @"fib::fib::fib_mid"(i256 %0) {
+define <{}> @"fib::fib::fib_mid"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
@@ -92,32 +92,32 @@ define {} @"fib::fib::fib_mid"(i256 %0) {
   %7 = phi i256 [ %3, %2 ]
   %8 = call i256 @"fib::fib::fib"(i256 0, i256 1, i256 500)
   %9 = call i256 @felt252_sub(i256 %7, i256 1)
-  %10 = call {} @"fib::fib::fib_mid"(i256 %9)
+  %10 = call <{}> @"fib::fib::fib_mid"(i256 %9)
   br label %11
 
 11:                                               ; preds = %5, %6
-  %12 = call {} @"struct_construct<Unit>"()
-  ret {} %12
+  %12 = call <{}> @"struct_construct<Unit>"()
+  ret <{}> %12
 }
 
 define void @"_mlir_ciface_fib::fib::fib_mid"(ptr %0, i256 %1) {
-  %3 = call {} @"fib::fib::fib_mid"(i256 %1)
-  store {} %3, ptr %0, align 1
+  %3 = call <{}> @"fib::fib::fib_mid"(i256 %1)
+  store <{}> %3, ptr %0, align 1
   ret void
 }
 
-define {} @"fib::fib::main"(i256 %0) {
+define <{}> @"fib::fib::main"(i256 %0) {
   br label %2
 
 2:                                                ; preds = %1
-  %3 = call {} @"fib::fib::fib_mid"(i256 100)
-  %4 = call {} @"struct_construct<Unit>"()
-  ret {} %4
+  %3 = call <{}> @"fib::fib::fib_mid"(i256 100)
+  %4 = call <{}> @"struct_construct<Unit>"()
+  ret <{}> %4
 }
 
 define void @"_mlir_ciface_fib::fib::main"(ptr %0, i256 %1) {
-  %3 = call {} @"fib::fib::main"(i256 %1)
-  store {} %3, ptr %0, align 1
+  %3 = call <{}> @"fib::fib::main"(i256 %1)
+  store <{}> %3, ptr %0, align 1
   ret void
 }
 

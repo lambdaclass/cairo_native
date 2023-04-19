@@ -12,14 +12,14 @@ declare ptr @memmove(ptr, ptr, i64)
 declare i32 @dprintf(i32, ptr, ...)
 
 ; Function Attrs: alwaysinline norecurse nounwind
-define internal { i16, [4 x i8] } @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 %0) #0 {
-  %2 = alloca { i16, [4 x i8] }, i64 1, align 8
-  %3 = getelementptr inbounds { i16, [4 x i8] }, ptr %2, i32 0, i32 0
+define internal <{ i16, [4 x i8] }> @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 %0) #0 {
+  %2 = alloca <{ i16, [4 x i8] }>, i64 1, align 8
+  %3 = getelementptr inbounds <{ i16, [4 x i8] }>, ptr %2, i32 0, i32 0
   store i16 1, ptr %3, align 2
-  %4 = getelementptr inbounds { i16, [4 x i8] }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds <{ i16, i16 }>, ptr %2, i32 0, i32 1
   store i16 %0, ptr %4, align 2
-  %5 = load { i16, [4 x i8] }, ptr %2, align 2
-  ret { i16, [4 x i8] } %5
+  %5 = load <{ i16, [4 x i8] }>, ptr %2, align 1
+  ret <{ i16, [4 x i8] }> %5
 }
 
 ; Function Attrs: norecurse nounwind
@@ -42,51 +42,52 @@ define void @_mlir_ciface_main() {
   ret void
 }
 
-define i16 @"enum_match::enum_match::get_my_enum_b"({ i16, [4 x i8] } %0) {
-  br label %7
+define i16 @"enum_match::enum_match::get_my_enum_b"(<{ i16, [4 x i8] }> %0) {
+  br label %8
 
-2:                                                ; preds = %7
-  br label %12
-
-3:                                                ; preds = %7
-  %4 = load i16, ptr %11, align 2
+2:                                                ; preds = %8
   br label %13
 
-5:                                                ; preds = %7
-  br label %15
+3:                                                ; preds = %8
+  %4 = getelementptr inbounds <{ i16, i16 }>, ptr %10, i32 0, i32 1
+  %5 = load i16, ptr %4, align 2
+  br label %14
 
-6:                                                ; preds = %7
+6:                                                ; preds = %8
+  br label %16
+
+7:                                                ; preds = %8
   unreachable
 
-7:                                                ; preds = %1
-  %8 = phi { i16, [4 x i8] } [ %0, %1 ]
-  %9 = extractvalue { i16, [4 x i8] } %8, 0
-  %10 = extractvalue { i16, [4 x i8] } %8, 1
-  %11 = alloca [4 x i8], i64 1, align 1
-  store [4 x i8] %10, ptr %11, align 1
-  switch i16 %9, label %6 [
+8:                                                ; preds = %1
+  %9 = phi <{ i16, [4 x i8] }> [ %0, %1 ]
+  %10 = alloca <{ i16, [4 x i8] }>, i64 1, align 8
+  store <{ i16, [4 x i8] }> %9, ptr %10, align 1
+  %11 = getelementptr inbounds <{ i16, [4 x i8] }>, ptr %10, i32 0, i32 0
+  %12 = load i16, ptr %11, align 2
+  switch i16 %12, label %7 [
     i16 0, label %2
     i16 1, label %3
-    i16 2, label %5
+    i16 2, label %6
   ]
 
-12:                                               ; preds = %2
-  br label %16
+13:                                               ; preds = %2
+  br label %17
 
-13:                                               ; preds = %3
-  %14 = phi i16 [ %4, %3 ]
-  br label %16
+14:                                               ; preds = %3
+  %15 = phi i16 [ %5, %3 ]
+  br label %17
 
-15:                                               ; preds = %5
-  br label %16
+16:                                               ; preds = %6
+  br label %17
 
-16:                                               ; preds = %12, %13, %15
-  %17 = phi i16 [ 0, %15 ], [ %14, %13 ], [ 1, %12 ]
-  ret i16 %17
+17:                                               ; preds = %13, %14, %16
+  %18 = phi i16 [ 0, %16 ], [ %15, %14 ], [ 1, %13 ]
+  ret i16 %18
 }
 
-define i16 @"_mlir_ciface_enum_match::enum_match::get_my_enum_b"({ i16, [4 x i8] } %0) {
-  %2 = call i16 @"enum_match::enum_match::get_my_enum_b"({ i16, [4 x i8] } %0)
+define i16 @"_mlir_ciface_enum_match::enum_match::get_my_enum_b"(<{ i16, [4 x i8] }> %0) {
+  %2 = call i16 @"enum_match::enum_match::get_my_enum_b"(<{ i16, [4 x i8] }> %0)
   ret i16 %2
 }
 
@@ -94,8 +95,8 @@ define i16 @"enum_match::enum_match::main"() {
   br label %1
 
 1:                                                ; preds = %0
-  %2 = call { i16, [4 x i8] } @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 16)
-  %3 = call i16 @"enum_match::enum_match::get_my_enum_b"({ i16, [4 x i8] } %2)
+  %2 = call <{ i16, [4 x i8] }> @"enum_init<enum_match::enum_match::MyEnum, 1>"(i16 16)
+  %3 = call i16 @"enum_match::enum_match::get_my_enum_b"(<{ i16, [4 x i8] }> %2)
   ret i16 %3
 }
 
