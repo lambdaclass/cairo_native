@@ -60,8 +60,7 @@ impl<'ctx> Compiler<'ctx> {
                 let enum_variant_value = block.argument(0)?;
 
                 // allocate the enum, generic form
-                let enum_alloca_op =
-                    self.op_llvm_struct_alloca(&block, &[*tag_type, *storage_type])?;
+                let enum_alloca_op = self.op_llvm_alloca(&block, *ty, 1)?;
                 let enum_ptr: Value = enum_alloca_op.result(0)?.into();
 
                 let tag_op = self.op_const(&block, &enum_tag, *tag_type);

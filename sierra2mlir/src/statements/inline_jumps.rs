@@ -275,7 +275,7 @@ impl<'ctx> Compiler<'ctx> {
         // Get the argument- the enum to case split upon
         let enum_value = variables.get(&invocation.args[0].id).unwrap().get_value();
 
-        let enum_ptr_op = self.op_llvm_alloca(block, enum_value.r#type(), 1)?;
+        let enum_ptr_op = self.op_llvm_alloca(block, *enum_type, 1)?;
         let enum_ptr = enum_ptr_op.result(0)?.into();
 
         self.op_llvm_store(block, enum_value, enum_ptr)?;
