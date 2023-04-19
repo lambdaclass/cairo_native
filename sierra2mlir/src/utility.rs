@@ -301,7 +301,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let function_type = create_fn_signature(&[enum_type], &[]);
 
-        if let SierraType::Enum { tag_type, storage_type, variants_types, .. } = enum_sierra_type {
+        if let SierraType::Enum { tag_type, storage_type: _, variants_types, .. } = enum_sierra_type
+        {
             // get the tag
             let tag_ptr_op = self.op_llvm_gep(&entry_block, &[0, 0], enum_ptr, enum_type)?;
             let tag_ptr = tag_ptr_op.result(0)?;

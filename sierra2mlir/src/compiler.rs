@@ -340,8 +340,8 @@ impl<'ctx> Compiler<'ctx> {
         self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)], false)
     }
 
-    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>], packed: bool) -> Type {
-        llvm::r#type::r#struct(&self.context, fields, packed)
+    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>], _packed: bool) -> Type<'c> {
+        llvm::r#type::r#struct(&self.context, fields, true)
     }
 
     pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
@@ -871,38 +871,11 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    /// creates a llvm struct
-    pub fn op_llvm_struct_from_types<'a>(
-        &self,
-        block: &'a Block,
-        types: &[Type],
-    ) -> OperationRef<'a> {
-        self.op_llvm_struct(
-            block,
-            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
-        )
-    }
-
-    pub fn op_llvm_struct<'a>(&self, block: &'a Block, ty: Type) -> OperationRef<'a> {
+    pub fn op_llvm_undef<'a>(&self, block: &'a Block, ty: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
                 .add_results(&[ty])
                 .build(),
-        )
-    }
-
-    /// creates a llvm struct allocating on the stack
-    ///
-    /// use getelementptr instead of extractvalue
-    pub fn op_llvm_struct_alloca<'a>(
-        &self,
-        block: &'a Block,
-        types: &[Type],
-    ) -> Result<OperationRef<'a>> {
-        self.op_llvm_alloca(
-            block,
-            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
-            1,
         )
     }
 
