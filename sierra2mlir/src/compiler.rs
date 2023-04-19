@@ -183,6 +183,11 @@ impl<'ctx> Compiler<'ctx> {
         self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)], false)
     }
 
+    /// Creates a llvm struct type.
+    ///
+    /// Packed is ignored for now, because we need all structs to be packed for enums to work correctly.
+    ///
+    /// TODO: remove this constraint?
     pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>], _packed: bool) -> Type<'c> {
         llvm::r#type::r#struct(&self.context, fields, true)
     }

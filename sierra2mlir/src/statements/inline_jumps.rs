@@ -287,13 +287,6 @@ impl<'ctx> Compiler<'ctx> {
         let tag_load = self.op_llvm_load(block, tag_ptr.into(), *tag_type)?;
         let tag_value = tag_load.result(0)?.into();
 
-        // put the enum's data on the stack and get a pointer to its value
-        //let data_op = self.op_llvm_extractvalue(block, 1, enum_value, *storage_type)?;
-        //let data = data_op.result(0)?.into();
-        //let data_ptr_op = self.op_llvm_alloca(block, *storage_type, 1)?;
-        //let data_ptr = data_ptr_op.result(0)?.into();
-        //self.op_llvm_store(block, data, data_ptr)?;
-
         // Blocks for the switch statement to jump to. Each extract's the appropriate value and forwards it on
         let variant_blocks: Vec<BlockRef> = variants_types
             .iter()
