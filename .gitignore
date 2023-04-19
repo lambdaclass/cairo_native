@@ -18,7 +18,6 @@ llvm/
 # Others.
 corelib/
 !.github/scripts
-dev-scripts/
 
 # Compiled stuff.
 **/*.ll
