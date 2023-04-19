@@ -173,11 +173,10 @@ impl<'ctx> SierraType<'ctx> {
         element: SierraType<'c>,
     ) -> SierraType<'c> {
         SierraType::Array {
-            ty: compiler.struct_type(&[
-                compiler.u32_type(),
-                compiler.u32_type(),
-                compiler.llvm_ptr_type(),
-            ]),
+            ty: compiler.llvm_struct_type(
+                &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
+                false,
+            ),
             len_type: compiler.u32_type(),
             element_type: Box::new(element),
         }
@@ -338,11 +337,11 @@ impl<'ctx> Compiler<'ctx> {
     ///
     /// Sierra: type core::bool = Enum<ut@core::bool, Unit, Unit>;
     pub fn boolean_enum_type(&self) -> Type {
-        self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)])
+        self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)], false)
     }
 
-    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>]) -> Type {
-        llvm::r#type::r#struct(&self.context, fields, false)
+    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>], packed: bool) -> Type {
+        llvm::r#type::r#struct(&self.context, fields, packed)
     }
 
     pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
@@ -1125,10 +1124,6 @@ impl<'ctx> Compiler<'ctx> {
     pub fn struct_type_string(&self, types: &[Type]) -> String {
         let types = types.iter().map(|x| x.to_string()).join(", ");
         format!("!llvm.struct<({})>", types)
-    }
-
-    pub fn struct_type(&self, types: &[Type]) -> Type {
-        Type::parse(&self.context, &self.struct_type_string(types)).unwrap()
     }
 
     pub fn op_func_call<'a>(

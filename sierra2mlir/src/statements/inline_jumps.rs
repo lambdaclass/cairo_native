@@ -202,7 +202,7 @@ impl<'ctx> Compiler<'ctx> {
                 Location::unknown(&self.context),
             )
             .add_operands(&[arg1, arg2])
-            .add_results(&[self.llvm_struct_type(&[arg1.r#type(), self.bool_type()])])
+            .add_results(&[self.llvm_struct_type(&[arg1.r#type(), self.bool_type()], false)])
             .build(),
         );
 
@@ -263,9 +263,9 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, storage_type, variants_types) = match &args[0].ty {
-            SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
-                (tag_type, storage_type, variants_types)
+        let (tag_type, storage_type, variants_types, enum_type) = match &args[0].ty {
+            SierraType::Enum { tag_type, storage_type, variants_types, ty: enum_type, .. } => {
+                (tag_type, storage_type, variants_types, enum_type)
             }
             _ => {
                 panic!("Argument of enum match should be an enum")
@@ -275,16 +275,23 @@ impl<'ctx> Compiler<'ctx> {
         // Get the argument- the enum to case split upon
         let enum_value = variables.get(&invocation.args[0].id).unwrap().get_value();
 
+        let enum_ptr_op = self.op_llvm_alloca(block, enum_value.r#type(), 1)?;
+        let enum_ptr = enum_ptr_op.result(0)?.into();
+
+        self.op_llvm_store(block, enum_value, enum_ptr)?;
+
         // get the tag
-        let tag_value_op = self.op_llvm_extractvalue(block, 0, enum_value, *tag_type)?;
-        let tag_value = tag_value_op.result(0)?.into();
+        let tag_ptr_op = self.op_llvm_gep(block, &[0, 0], enum_ptr, *enum_type)?;
+        let tag_ptr = tag_ptr_op.result(0)?;
+        let tag_load = self.op_llvm_load(block, tag_ptr.into(), *tag_type)?;
+        let tag_value = tag_load.result(0)?.into();
 
         // put the enum's data on the stack and get a pointer to its value
-        let data_op = self.op_llvm_extractvalue(block, 1, enum_value, *storage_type)?;
-        let data = data_op.result(0)?.into();
-        let data_ptr_op = self.op_llvm_alloca(block, *storage_type, 1)?;
-        let data_ptr = data_ptr_op.result(0)?.into();
-        self.op_llvm_store(block, data, data_ptr)?;
+        //let data_op = self.op_llvm_extractvalue(block, 1, enum_value, *storage_type)?;
+        //let data = data_op.result(0)?.into();
+        //let data_ptr_op = self.op_llvm_alloca(block, *storage_type, 1)?;
+        //let data_ptr = data_ptr_op.result(0)?.into();
+        //self.op_llvm_store(block, data, data_ptr)?;
 
         // Blocks for the switch statement to jump to. Each extract's the appropriate value and forwards it on
         let variant_blocks: Vec<BlockRef> = variants_types
@@ -304,8 +311,18 @@ impl<'ctx> Compiler<'ctx> {
                 let mut args_to_target_block = vec![];
                 for var_idx in target_block_info.variables_at_start.keys() {
                     if *var_idx == invocation.branches[variant_index].results[0].id {
-                        let load_op =
-                            self.op_llvm_load(&variant_block, data_ptr, variant_type.get_type())?;
+                        let variant_enum_type = self
+                            .llvm_struct_type(&[self.u16_type(), variant_type.get_type()], false);
+
+                        let variant_ptr_op =
+                            self.op_llvm_gep(&variant_block, &[0, 1], enum_ptr, variant_enum_type)?;
+                        let variant_ptr = variant_ptr_op.result(0)?;
+
+                        let load_op = self.op_llvm_load(
+                            &variant_block,
+                            variant_ptr.into(),
+                            variant_type.get_type(),
+                        )?;
                         args_to_target_block.push(Variable::Local { op: load_op, result_idx: 0 });
                     } else {
                         args_to_target_block.push(*variables.get(var_idx).unwrap());

@@ -1423,7 +1423,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.boolean_enum_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -1505,7 +1505,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.boolean_enum_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -1579,7 +1579,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.felt_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -2131,7 +2131,10 @@ impl<'ctx> Compiler<'ctx> {
             id.to_string(),
             SierraLibFunc::create_function_all_args(
                 vec![SierraType::Array {
-                    ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
+                    ty: self.llvm_struct_type(
+                        &[self.u32_type(), self.u32_type(), self.llvm_ptr_type()],
+                        false,
+                    ),
                     len_type: self.u32_type(),
                     element_type: Box::new(SierraType::Simple(self.felt_type())),
                 }],
