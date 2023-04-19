@@ -6,8 +6,6 @@ authors = [
     "Edgar <@edg-l>",
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [[bench]]
 name = "execution"
 harness = false
@@ -17,6 +15,7 @@ name = "cairo"
 harness = false
 
 [dependencies]
+cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
 cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
 color-eyre = "0.6.2"
 itertools = "0.10.5"

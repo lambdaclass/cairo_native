@@ -10,6 +10,7 @@
 use melior_next::{pass, utility::register_all_passes, ExecutionEngine};
 use tracing::debug;
 
+use self::utility::run_llvm_config;
 use crate::compiler::Compiler;
 use cairo_lang_sierra::program::Program;
 
@@ -101,7 +102,7 @@ pub fn execute(
     let engine = ExecutionEngine::new(
         &compiler.module,
         2,
-        &["/usr/lib/llvm-16/lib/libmlir_c_runner_utils.so"],
+        &[&format!("{}/libmlir_c_runner_utils.so", run_llvm_config(&["--libdir"]).trim())],
         false,
     );
 

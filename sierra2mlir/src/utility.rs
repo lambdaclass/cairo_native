@@ -1,4 +1,9 @@
-use std::ops::Deref;
+use std::{
+    env,
+    ops::Deref,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
 use itertools::Itertools;
 
@@ -557,4 +562,35 @@ pub fn create_fn_signature(params: &[Type], return_types: &[Type]) -> String {
         params.iter().map(|x| x.to_string()).join(", "),
         &format!("({})", return_types.iter().map(|x| x.to_string()).join(", ")),
     )
+}
+
+fn find_mlir_prefix() -> PathBuf {
+    env::var_os("MLIR_SYS_160_PREFIX").map_or_else(
+        || {
+            let cmd_output = Command::new("../scripts/find-llvm.sh")
+                .stdout(Stdio::piped())
+                .spawn()
+                .unwrap()
+                .wait_with_output()
+                .unwrap();
+
+            PathBuf::from(String::from_utf8(cmd_output.stdout).unwrap().trim())
+        },
+        |x| Path::new(x.to_str().unwrap()).to_owned(),
+    )
+}
+
+pub fn run_llvm_config(args: &[&str]) -> String {
+    let prefix = find_mlir_prefix();
+    let llvm_config = prefix.join("bin/llvm-config");
+
+    let output = Command::new(llvm_config)
+        .args(args)
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+
+    String::from_utf8(output.stdout).unwrap()
 }
