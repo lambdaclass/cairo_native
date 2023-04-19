@@ -1079,7 +1079,7 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_llvm_gep<'a>(
         &self,
         block: &'a Block,
-        index: usize,
+        indexes: &[usize],
         struct_ptr: Value,
         struct_type: Type,
     ) -> Result<OperationRef<'a>> {
@@ -1087,7 +1087,7 @@ impl<'ctx> Compiler<'ctx> {
             operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
                 .add_attributes(&[
                     // 0 is the base offset, check out gep docs for more info
-                    self.named_attribute("rawConstantIndices", &format!("array<i32: 0, {}>", index))?,
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", indexes.iter().join(", ")))?,
                     self.named_attribute("elem_type", &struct_type.to_string())?,
                     self.named_attribute("inbounds", "unit")?,
                 ])

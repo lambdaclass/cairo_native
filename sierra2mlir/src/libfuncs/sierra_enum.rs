@@ -66,12 +66,12 @@ impl<'ctx> Compiler<'ctx> {
                 let tag_op = self.op_const(&block, &enum_tag, *tag_type);
                 let tag_op_value = tag_op.result(0)?;
 
-                let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, *ty)?;
+                let tag_ptr_op = self.op_llvm_gep(&block, &[0, 0], enum_ptr, *ty)?;
                 let tag_ptr = tag_ptr_op.result(0)?;
 
                 self.op_llvm_store(&block, tag_op_value.into(), tag_ptr.into())?;
 
-                let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
+                let variant_ptr_op = self.op_llvm_gep(&block, &[0, 1], enum_ptr, *ty)?;
                 let variant_ptr = variant_ptr_op.result(0)?;
 
                 self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;
