@@ -102,7 +102,7 @@ pub fn execute(
     let engine = ExecutionEngine::new(
         &compiler.module,
         2,
-        &[(run_llvm_config(&["--libfiles"]).trim())],
+        &[&format!("{}/libmlir_c_runner_utils.so", run_llvm_config(&["--libdir"]).trim())],
         false,
     );
 
