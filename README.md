@@ -8,8 +8,7 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
 
 There is an mdbook in the `docs` folder. Build and read it with
 ```bash
-cd docs
-mdbook serve
+make book
 ```
 
 ## Dependencies
@@ -40,18 +39,13 @@ Install mdbook and other documentation dependencies:
 cargo install mdbook mdbook-toc mdbook-mermaid
 ```
 
-Install LLVM with MLIR
+Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
-If you have make:
+If you've compiled LLVM manually, or installed it in a non-standard path, then please set the
+environment variable `MLIR_SYS_160_PREFIX` accordingly.
 
-```bash
-make install-llvm
-```
 
-This will get and compile llvm 16 with the MLIR target.
-You should export a env var `MLIR_SYS_160_PREFIX` to the generated `llvm/dist` folder.
-
-Otherwise manually:
+To build LLVM manually, follow this steps:
 
 ```bash
 wget https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz

@@ -1,4 +1,5 @@
 use debug::PrintTrait;
+use zeroable::IsZeroResult;
 
 fn main() {
     let x = 5;
