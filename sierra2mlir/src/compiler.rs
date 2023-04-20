@@ -162,18 +162,6 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 256)
     }
 
-    /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
-    /// classic segments this type makes no sense, therefore it's implemented as `()`.
-    pub fn bitwise_type(&self) -> Type {
-        Type::none(&self.context)
-    }
-
-    /// Type `Bitwise`. Points to the range check builtin pointer. Since we're not respecting the
-    /// classic segments this type makes no sense, therefore it's implemented as `()`.
-    pub fn range_check_type(&self) -> Type {
-        Type::none(&self.context)
-    }
-
     /// The enum struct type. Needed due to some libfuncs using it.
     ///
     /// The tag value is the boolean value: 0, 1
