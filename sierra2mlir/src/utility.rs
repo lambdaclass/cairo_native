@@ -331,15 +331,6 @@ impl<'ctx> Compiler<'ctx> {
                 self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
             }
 
-            // Store the enum data on the stack, and create a pointer to it
-            // This allows us to interpret a ptr to it as a ptr to any of the variant types
-            //let data_alloca_op = self.op_llvm_alloca(&entry_block, *storage_type, 1)?;
-            //let data_ptr = data_alloca_op.result(0)?.into();
-            //let enum_data_op =
-            //    self.op_llvm_extractvalue(&entry_block, 1, enum_value, *storage_type)?;
-            //let enum_data = enum_data_op.result(0)?.into();
-            //self.op_llvm_store(&entry_block, enum_data, data_ptr)?;
-
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
             let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
 

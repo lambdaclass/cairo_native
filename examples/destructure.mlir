@@ -24,18 +24,6 @@ module attributes {llvm.data_layout = ""} {
     %0 = llvm.mlir.undef : !llvm.struct<packed ()>
     llvm.return %0 : !llvm.struct<packed ()>
   }
-  llvm.func internal @print_Unit(%arg0: !llvm.struct<packed ()>) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
-    llvm.return
-  }
-  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    %0 = llvm.call @"destructure::destructure::main"() : () -> !llvm.struct<packed ()>
-    llvm.call @print_Unit(%0) : (!llvm.struct<packed ()>) -> ()
-    llvm.return
-  }
-  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    llvm.call @main() : () -> ()
-    llvm.return
-  }
   llvm.func @"destructure::destructure::main"() -> !llvm.struct<packed ()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb1
   ^bb1:  // pred: ^bb0

@@ -14,25 +14,6 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<packed (i16, array<4 x i8>)>
     llvm.return %5 : !llvm.struct<packed (i16, array<4 x i8>)>
   }
-  llvm.func internal @print_u16(%arg0: i16) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
-    %0 = llvm.zext %arg0 : i16 to i32
-    %1 = llvm.mlir.constant(4 : i64) : i64
-    %2 = llvm.alloca %1 x i8 : (i64) -> !llvm.ptr
-    %3 = llvm.mlir.constant(dense<[37, 88, 10, 0]> : tensor<4xi8>) : !llvm.array<4 x i8>
-    llvm.store %3, %2 : !llvm.array<4 x i8>, !llvm.ptr
-    %4 = llvm.mlir.constant(1 : i32) : i32
-    %5 = llvm.call @dprintf(%4, %2, %0) : (i32, !llvm.ptr, i32) -> i32
-    llvm.return
-  }
-  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    %0 = llvm.call @"enum_match::enum_match::main"() : () -> i16
-    llvm.call @print_u16(%0) : (i16) -> ()
-    llvm.return
-  }
-  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    llvm.call @main() : () -> ()
-    llvm.return
-  }
   llvm.func @"enum_match::enum_match::get_my_enum_b"(%arg0: !llvm.struct<packed (i16, array<4 x i8>)>) -> i16 attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb5(%arg0 : !llvm.struct<packed (i16, array<4 x i8>)>)
   ^bb1:  // pred: ^bb5

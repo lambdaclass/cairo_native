@@ -157,18 +157,6 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.load %1 : !llvm.ptr -> !llvm.struct<packed (i16, array<16 x i8>)>
     llvm.return %5 : !llvm.struct<packed (i16, array<16 x i8>)>
   }
-  llvm.func internal @print_Unit(%arg0: !llvm.struct<packed ()>) attributes {llvm.dso_local, passthrough = ["norecurse", "nounwind"]} {
-    llvm.return
-  }
-  llvm.func @main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    %0 = llvm.call @"casts::casts::main"() : () -> !llvm.struct<packed ()>
-    llvm.call @print_Unit(%0) : (!llvm.struct<packed ()>) -> ()
-    llvm.return
-  }
-  llvm.func @_mlir_ciface_main() attributes {llvm.dso_local, llvm.emit_c_interface} {
-    llvm.call @main() : () -> ()
-    llvm.return
-  }
   llvm.func @"casts::casts::main"() -> !llvm.struct<packed ()> attributes {llvm.dso_local, llvm.emit_c_interface} {
     llvm.br ^bb16
   ^bb1:  // pred: ^bb16
