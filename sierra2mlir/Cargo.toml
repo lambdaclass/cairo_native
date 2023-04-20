@@ -17,6 +17,7 @@ harness = false
 [dependencies]
 cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
 cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
+cfg-match = "0.2.1"
 color-eyre = "0.6.2"
 itertools = "0.10.5"
 melior-asm = { git = "https://github.com/azteca1998/melior-asm" }
