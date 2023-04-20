@@ -47,7 +47,9 @@ use test_case::test_case;
 #[test_case("uint/downcasts")]
 #[test_case("uint/safe_divmod")]
 #[test_case("uint/wide_mul")]
-// #[test_case("felt_ops/div")] - div blocked on panic and array
+#[test_case("uint/uint_addition")]
+#[test_case("uint/uint_substraction")]
+// #[test_case("felt_ops/div")] - div blocked on bug on div
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
@@ -61,6 +63,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
             cairo_lang_runner::RunResultValue::Success(casm_values) => {
                 println!("llvm result: {:?}\n", llvm_result);
                 println!("Casm result: {:?}\n", casm_values);
+                println!("llvm result: {:?}\n", llvm_result);
                 assert_eq!(
                     casm_values.len(),
                     llvm_result.len(),

@@ -284,6 +284,21 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_lt" => {
                     self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
                 }
+                "u8_overflowing_add" | "u8_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u8_type(), storage);
+                }
+                "u16_overflowing_add" | "u16_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u16_type(), storage);
+                }
+                "u32_overflowing_add" | "u32_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u32_type(), storage);
+                }
+                "u64_overflowing_add" | "u64_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u64_type(), storage);
+                }
+                "u128_overflowing_add" | "u128_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(func_decl, self.u128_type(), storage);
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
                 }
@@ -427,7 +442,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&args_with_location);
 
-        let mut struct_type_op = self.op_llvm_struct_from_types(&block, &args);
+        let struct_type = self.llvm_struct_type(&args, false);
+        let mut struct_type_op = self.op_llvm_undef(&block, struct_type);
 
         for i in 0..block.argument_count() {
             let arg = block.argument(i)?;
@@ -933,6 +949,28 @@ impl<'ctx> Compiler<'ctx> {
         );
     }
 
+    pub fn register_libfunc_uint_overflowing_op(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                ],
+            },
+        );
+    }
+
     pub fn register_libfunc_downcast(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -1387,7 +1425,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.boolean_enum_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -1426,7 +1464,7 @@ impl<'ctx> Compiler<'ctx> {
                 }
             };
 
-            let enum_op = self.op_llvm_struct(&block, self.boolean_enum_type());
+            let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
             let enum_value: Value = enum_op.result(0)?.into();
 
             let enum_res = self.op_llvm_insertvalue(
@@ -1469,7 +1507,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.boolean_enum_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -1496,7 +1534,7 @@ impl<'ctx> Compiler<'ctx> {
             let bool_op_ref =
                 self.op_xor(&block, lhs_tag_value, const_1_op.result(0)?.into(), self.u16_type());
 
-            let enum_op = self.op_llvm_struct(&block, self.boolean_enum_type());
+            let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
             let enum_value: Value = enum_op.result(0)?.into();
 
             let enum_res = self.op_llvm_insertvalue(
@@ -1543,7 +1581,7 @@ impl<'ctx> Compiler<'ctx> {
         let data_out = &[self.felt_type()];
 
         let bool_variant = SierraType::Struct {
-            ty: self.struct_type(&[Type::none(&self.context)]),
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
             field_types: vec![],
         };
 
@@ -1611,7 +1649,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
-        let array_value_op = self.op_llvm_struct(&block, sierra_type.get_type());
+        let array_value_op = self.op_llvm_undef(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
 
         let array_len_op = self.op_u32_const(&block, "0");
@@ -1900,7 +1938,7 @@ impl<'ctx> Compiler<'ctx> {
             "--convert-index-to-llvm",
             "--reconcile-unrealized-casts",
         ) =>
-            func.func @print(%0 : !llvm.struct<(i32, i32, !llvm.ptr)>) -> () {
+            func.func @print(%0 : !llvm.struct<packed (i32, i32, !llvm.ptr)>) -> () {
                 // Allocate buffer.
                 %1 = memref.alloca() : memref<126xi8>
 
@@ -1916,12 +1954,12 @@ impl<'ctx> Compiler<'ctx> {
 
                 // For each element in the array:
                 %6 = index.constant 0
-                %7 = llvm.extractvalue %0[0] : !llvm.struct<(i32, i32, !llvm.ptr)>
+                %7 = llvm.extractvalue %0[0] : !llvm.struct<packed (i32, i32, !llvm.ptr)>
                 %8 = index.castu %7 : i32 to index
                 %9 = index.constant 1
                 scf.for %10 = %6 to %8 step %9 {
                     // Load element to print.
-                    %11 = llvm.extractvalue %0[2] : !llvm.struct<(i32, i32, !llvm.ptr)>
+                    %11 = llvm.extractvalue %0[2] : !llvm.struct<packed (i32, i32, !llvm.ptr)>
 
                     %12 = llvm.ptrtoint %11 : !llvm.ptr to i64
                     %13 = arith.constant 5 : i64
@@ -2095,7 +2133,10 @@ impl<'ctx> Compiler<'ctx> {
             id.to_string(),
             SierraLibFunc::create_function_all_args(
                 vec![SierraType::Array {
-                    ty: self.struct_type(&[self.u32_type(), self.u32_type(), self.llvm_ptr_type()]),
+                    ty: self.llvm_struct_type(
+                        &[self.u32_type(), self.u32_type(), self.llvm_ptr_type()],
+                        false,
+                    ),
                     len_type: self.u32_type(),
                     element_type: Box::new(SierraType::Simple(self.felt_type())),
                 }],

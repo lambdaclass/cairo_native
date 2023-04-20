@@ -8,7 +8,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
     dialect::cf,
-    ir::{Block, BlockRef, Location, Region, Value},
+    ir::{operation, Block, BlockRef, Location, Region, Value, ValueLike},
 };
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
@@ -164,6 +164,93 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/uint.rs#L339
+    pub fn inline_int_overflowing_op(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+        // true = add, false = sub
+        is_add: bool,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let pos_arg_1 = &libfunc.get_args()[0];
+        let pos_arg_2 = &libfunc.get_args()[1];
+
+        let arg_type = pos_arg_1.ty.clone();
+
+        let arg1 = variables
+            .get(&invocation.args[pos_arg_1.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let arg2 = variables
+            .get(&invocation.args[pos_arg_2.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let overflow_result_op = block.append_operation(
+            operation::Builder::new(
+                if is_add {
+                    "llvm.intr.uadd.with.overflow"
+                } else {
+                    "llvm.intr.usub.with.overflow"
+                },
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[arg1, arg2])
+            .add_results(&[self.llvm_struct_type(&[arg1.r#type(), self.bool_type()], false)])
+            .build(),
+        );
+
+        // {iN, i1}
+        let overflow_result = overflow_result_op.result(0)?.into();
+        let result_op =
+            self.op_llvm_extractvalue(block, 0, overflow_result, arg_type.get_type())?;
+        let overflow_op = self.op_llvm_extractvalue(block, 1, overflow_result, self.bool_type())?;
+
+        let result = result_op.result(0)?.into();
+
+        let overflow = overflow_op.result(0)?;
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| {
+                        if *id == invocation.branches[0].results[1].id
+                            || *id == invocation.branches[1].results[1].id
+                        {
+                            result
+                        } else {
+                            variables.get(id).unwrap().get_value()
+                        }
+                    })
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (true_block, true_vars) = &target_blocks[1];
+        let (false_block, false_vars) = &target_blocks[0];
+
+        self.op_cond_br(block, overflow.into(), true_block, false_block, true_vars, false_vars);
+
+        Ok(())
+    }
+
     pub fn inline_enum_match(
         &self,
         id: &str,
@@ -177,9 +264,9 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, storage_type, variants_types) = match &args[0].ty {
-            SierraType::Enum { tag_type, storage_type, variants_types, .. } => {
-                (tag_type, storage_type, variants_types)
+        let (tag_type, variants_types, enum_type) = match &args[0].ty {
+            SierraType::Enum { tag_type, variants_types, ty: enum_type, .. } => {
+                (tag_type, variants_types, enum_type)
             }
             _ => {
                 panic!("Argument of enum match should be an enum")
@@ -189,16 +276,16 @@ impl<'ctx> Compiler<'ctx> {
         // Get the argument- the enum to case split upon
         let enum_value = variables.get(&invocation.args[0].id).unwrap().get_value();
 
-        // get the tag
-        let tag_value_op = self.op_llvm_extractvalue(block, 0, enum_value, *tag_type)?;
-        let tag_value = tag_value_op.result(0)?.into();
+        let enum_ptr_op = self.op_llvm_alloca(block, *enum_type, 1)?;
+        let enum_ptr = enum_ptr_op.result(0)?.into();
 
-        // put the enum's data on the stack and get a pointer to its value
-        let data_op = self.op_llvm_extractvalue(block, 1, enum_value, *storage_type)?;
-        let data = data_op.result(0)?.into();
-        let data_ptr_op = self.op_llvm_alloca(block, *storage_type, 1)?;
-        let data_ptr = data_ptr_op.result(0)?.into();
-        self.op_llvm_store(block, data, data_ptr)?;
+        self.op_llvm_store(block, enum_value, enum_ptr)?;
+
+        // get the tag
+        let tag_ptr_op = self.op_llvm_gep(block, &[0, 0], enum_ptr, *enum_type)?;
+        let tag_ptr = tag_ptr_op.result(0)?;
+        let tag_load = self.op_llvm_load(block, tag_ptr.into(), *tag_type)?;
+        let tag_value = tag_load.result(0)?.into();
 
         // Blocks for the switch statement to jump to. Each extract's the appropriate value and forwards it on
         let variant_blocks: Vec<BlockRef> = variants_types
@@ -218,8 +305,18 @@ impl<'ctx> Compiler<'ctx> {
                 let mut args_to_target_block = vec![];
                 for var_idx in target_block_info.variables_at_start.keys() {
                     if *var_idx == invocation.branches[variant_index].results[0].id {
-                        let load_op =
-                            self.op_llvm_load(&variant_block, data_ptr, variant_type.get_type())?;
+                        let variant_enum_type = self
+                            .llvm_struct_type(&[self.u16_type(), variant_type.get_type()], false);
+
+                        let variant_ptr_op =
+                            self.op_llvm_gep(&variant_block, &[0, 1], enum_ptr, variant_enum_type)?;
+                        let variant_ptr = variant_ptr_op.result(0)?;
+
+                        let load_op = self.op_llvm_load(
+                            &variant_block,
+                            variant_ptr.into(),
+                            variant_type.get_type(),
+                        )?;
                         args_to_target_block.push(Variable::Local { op: load_op, result_idx: 0 });
                     } else {
                         args_to_target_block.push(*variables.get(var_idx).unwrap());
