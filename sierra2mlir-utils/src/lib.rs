@@ -8,6 +8,11 @@ use starknet_crypto::FieldElement;
 /// # Panics
 ///
 /// This function will panic if either operand is out of range for a felt.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_pedersen(dst: *mut u8, lhs: *const u8, rhs: *const u8) {
     // Extract arrays from the pointers.
