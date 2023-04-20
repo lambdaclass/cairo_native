@@ -103,16 +103,25 @@ pub fn execute(
     let engine = ExecutionEngine::new(
         &compiler.module,
         2,
-        &[&format!("{}/libmlir_c_runner_utils.{}", run_llvm_config(&["--libdir"]).trim(), {
-            cfg_match! {
-                target_os = "linux" => "so",
-                target_os = "macos" => "dylib",
-                target_os = "windows" => "dll",
-                _ => compile_error!("Unsupported OS."),
-            }
-        })],
+        &[
+            &format!(
+                "{}/libmlir_c_runner_utils.{}",
+                run_llvm_config(&["--libdir"]).trim(),
+                shared_library_extension()
+            ),
+            &format!("target/debug/libsierra2mlir_utils.{}", shared_library_extension()),
+        ],
         false,
     );
 
     Ok(engine)
+}
+
+pub const fn shared_library_extension() -> &'static str {
+    cfg_match! {
+        target_os = "linux" => "so",
+        target_os = "macos" => "dylib",
+        target_os = "windows" => "dll",
+        _ => compile_error!("Unsupported OS."),
+    }
 }

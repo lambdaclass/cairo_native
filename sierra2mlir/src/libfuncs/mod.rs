@@ -2129,8 +2129,8 @@ impl<'ctx> Compiler<'ctx> {
 
                 // Store lhs and rhs into the temporary buffers.
                 %7 = index.constant 0
-                %8 = memref.view %2[%7][] : memref<32xi8> to memref<i256>
-                %9 = memref.view %3[%7][] : memref<32xi8> to memref<i256>
+                %8 = memref.view %3[%7][] : memref<32xi8> to memref<i256>
+                %9 = memref.view %4[%7][] : memref<32xi8> to memref<i256>
                 memref.store %5, %8[] : memref<i256>
                 memref.store %6, %9[] : memref<i256>
 
