@@ -2219,7 +2219,7 @@ impl<'ctx> Compiler<'ctx> {
                 %19 = llvm.inttoptr %16 : i64 to !llvm.ptr
                 %20 = llvm.inttoptr %17 : i64 to !llvm.ptr
                 %21 = llvm.inttoptr %18 : i64 to !llvm.ptr
-                func.call @sierra2mlir_util_pedersen(%19, %20, %21) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
+                func.call @sierra2mlir_util_hades_permutation(%19, %20, %21) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
 
                 // Load the results from the temporary buffer.
                 %22 = memref.load %10[] : memref<i256>
@@ -2235,7 +2235,7 @@ impl<'ctx> Compiler<'ctx> {
                 return %25, %26, %27 : i256, i256, i256
             }
 
-            func.func private @sierra2mlir_util_pedersen(!llvm.ptr, !llvm.ptr, !llvm.ptr)
+            func.func private @sierra2mlir_util_hades_permutation(!llvm.ptr, !llvm.ptr, !llvm.ptr)
         }
 
         let id = func_decl.id.debug_name.as_deref().unwrap();
