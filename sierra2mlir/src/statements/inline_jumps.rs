@@ -251,6 +251,73 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn inline_try_from_felt252(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        region: &Region,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
+        let pos_arg_1 = &libfunc.get_args()[0]; // always felt type
+        let ret_pos_type = &libfunc.get_return_types()[0][0];
+        let ret_type = &ret_pos_type.ty;
+
+        let arg_type = &pos_arg_1.ty;
+        let arg = variables
+            .get(&invocation.args[pos_arg_1.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let max_value = BigUint::from_i32(1).unwrap().shl(ret_type.get_width());
+        let max_val = self.op_const(block, &max_value.to_string(), arg_type.get_type());
+
+        let cmp_op = self.op_cmp(block, CmpOp::UnsignedLessThan, arg, max_val.result(0)?.into());
+        let cmp = cmp_op.result(0)?.into();
+
+        let trunc_block = region.append_block(Block::new(&[]));
+
+        // truncate block
+        let trunc_op = self.op_trunc(&trunc_block, arg, ret_type.get_type());
+        let trunc_res = trunc_op.result(0)?.into();
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| {
+                        if *id == invocation.branches[0].results[1].id {
+                            trunc_res
+                        } else {
+                            variables.get(id).unwrap().get_value()
+                        }
+                    })
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (true_block, true_vars) = &target_blocks[0];
+        let (false_block, false_vars) = &target_blocks[1];
+
+        self.op_cond_br(block, cmp, &trunc_block, false_block, &[], false_vars);
+        self.op_br(&trunc_block, true_block, true_vars);
+
+        Ok(())
+    }
+
     pub fn inline_enum_match(
         &self,
         id: &str,

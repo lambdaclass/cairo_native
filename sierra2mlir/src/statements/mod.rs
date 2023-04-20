@@ -181,6 +181,22 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
+                            name_without_generics
+                                if is_uint_try_from_libfunc(name_without_generics) =>
+                            {
+                                self.inline_try_from_felt252(
+                                    &id,
+                                    invocation,
+                                    &region,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+
+                                jump_processed = true;
+                            }
                             "enum_match" => {
                                 self.inline_enum_match(
                                     &id,
@@ -481,6 +497,11 @@ fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
 
 fn is_uint_overflow_libfunc(name_without_generics: &str) -> bool {
     let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_(add|sub)"#).unwrap();
+    is_reg.is_match(name_without_generics)
+}
+
+fn is_uint_try_from_libfunc(name_without_generics: &str) -> bool {
+    let is_reg: Regex = Regex::new(r#"u(8|16|32|64|128)_try_from_felt252"#).unwrap();
     is_reg.is_match(name_without_generics)
 }
 

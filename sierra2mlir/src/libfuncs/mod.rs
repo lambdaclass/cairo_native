@@ -299,6 +299,37 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_overflowing_add" | "u128_overflowing_sub" => {
                     self.register_libfunc_uint_overflowing_op(func_decl, self.u128_type(), storage);
                 }
+                "u8_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(func_decl, self.u8_type(), storage);
+                }
+                "u16_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u16_type(),
+                        storage,
+                    );
+                }
+                "u32_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u32_type(),
+                        storage,
+                    );
+                }
+                "u64_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u64_type(),
+                        storage,
+                    );
+                }
+                "u128_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u128_type(),
+                        storage,
+                    );
+                }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
                 }
@@ -966,6 +997,25 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![
                     vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
                     vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                ],
+            },
+        );
+    }
+
+    pub fn register_libfunc_uint_try_from_felt252(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) }],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                    vec![],
                 ],
             },
         );

@@ -49,7 +49,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
                 Ok(())
             }
             SierraLibFunc::Branching { args: _, return_types: _ } => {
-                panic!("Branching SierraLibFunc should have been handled specifically")
+                panic!("Branching SierraLibFunc should have been handled specifically: {:?}", &invocation.libfunc_id.debug_name)
             }
         }
     }
