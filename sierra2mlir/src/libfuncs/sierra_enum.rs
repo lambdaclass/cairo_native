@@ -36,7 +36,7 @@ impl<'ctx> Compiler<'ctx> {
             ty,
             tag_type,
             storage_bytes_len: _,
-            storage_type,
+            storage_type: _,
             variants_types,
         } = &enum_arg_type
         {
@@ -60,19 +60,25 @@ impl<'ctx> Compiler<'ctx> {
             } else {
                 let enum_variant_value = block.argument(0)?;
 
-                let enum_alloca_op =
-                    self.op_llvm_struct_alloca(&block, &[*tag_type, *storage_type])?;
+                // allocate the enum, generic form
+                let enum_alloca_op = self.op_llvm_alloca(&block, *ty, 1)?;
                 let enum_ptr: Value = enum_alloca_op.result(0)?.into();
 
                 let tag_op = self.op_const(&block, &enum_tag, *tag_type);
                 let tag_op_value = tag_op.result(0)?;
 
-                let tag_ptr_op = self.op_llvm_gep(&block, 0, enum_ptr, *ty)?;
+                let tag_ptr_op = self.op_llvm_gep(&block, &[0, 0], enum_ptr, *ty)?;
                 let tag_ptr = tag_ptr_op.result(0)?;
 
+                // store the tag
                 self.op_llvm_store(&block, tag_op_value.into(), tag_ptr.into())?;
 
-                let variant_ptr_op = self.op_llvm_gep(&block, 1, enum_ptr, *ty)?;
+                // get the enum variant type for GEP.
+                let variant_enum_type = self
+                    .llvm_struct_type(&[self.u16_type(), variant_sierra_type.get_type()], false);
+
+                let variant_ptr_op =
+                    self.op_llvm_gep(&block, &[0, 1], enum_ptr, variant_enum_type)?;
                 let variant_ptr = variant_ptr_op.result(0)?;
 
                 self.op_llvm_store(&block, enum_variant_value.into(), variant_ptr.into())?;

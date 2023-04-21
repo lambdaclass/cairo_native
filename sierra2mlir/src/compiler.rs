@@ -168,11 +168,16 @@ impl<'ctx> Compiler<'ctx> {
     ///
     /// Sierra: type core::bool = Enum<ut@core::bool, Unit, Unit>;
     pub fn boolean_enum_type(&self) -> Type {
-        self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)])
+        self.llvm_struct_type(&[self.u16_type(), self.llvm_array_type(self.u8_type(), 0)], false)
     }
 
-    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>]) -> Type {
-        llvm::r#type::r#struct(&self.context, fields, false)
+    /// Creates a llvm struct type.
+    ///
+    /// Packed is ignored for now, because we need all structs to be packed for enums to work correctly.
+    ///
+    /// TODO: remove this constraint?
+    pub fn llvm_struct_type<'c>(&'c self, fields: &[Type<'c>], _packed: bool) -> Type<'c> {
+        llvm::r#type::r#struct(&self.context, fields, true)
     }
 
     pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
@@ -702,38 +707,11 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
-    /// creates a llvm struct
-    pub fn op_llvm_struct_from_types<'a>(
-        &self,
-        block: &'a Block,
-        types: &[Type],
-    ) -> OperationRef<'a> {
-        self.op_llvm_struct(
-            block,
-            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
-        )
-    }
-
-    pub fn op_llvm_struct<'a>(&self, block: &'a Block, ty: Type) -> OperationRef<'a> {
+    pub fn op_llvm_undef<'a>(&self, block: &'a Block, ty: Type) -> OperationRef<'a> {
         block.append_operation(
             operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
                 .add_results(&[ty])
                 .build(),
-        )
-    }
-
-    /// creates a llvm struct allocating on the stack
-    ///
-    /// use getelementptr instead of extractvalue
-    pub fn op_llvm_struct_alloca<'a>(
-        &self,
-        block: &'a Block,
-        types: &[Type],
-    ) -> Result<OperationRef<'a>> {
-        self.op_llvm_alloca(
-            block,
-            Type::parse(&self.context, &self.struct_type_string(types)).unwrap(),
-            1,
         )
     }
 
@@ -909,7 +887,7 @@ impl<'ctx> Compiler<'ctx> {
     pub fn op_llvm_gep<'a>(
         &self,
         block: &'a Block,
-        index: usize,
+        indexes: &[usize],
         struct_ptr: Value,
         struct_type: Type,
     ) -> Result<OperationRef<'a>> {
@@ -917,7 +895,7 @@ impl<'ctx> Compiler<'ctx> {
             operation::Builder::new("llvm.getelementptr", Location::unknown(&self.context))
                 .add_attributes(&[
                     // 0 is the base offset, check out gep docs for more info
-                    self.named_attribute("rawConstantIndices", &format!("array<i32: 0, {}>", index))?,
+                    self.named_attribute("rawConstantIndices", &format!("array<i32: {}>", indexes.iter().join(", ")))?,
                     self.named_attribute("elem_type", &struct_type.to_string())?,
                     self.named_attribute("inbounds", "unit")?,
                 ])
@@ -955,10 +933,6 @@ impl<'ctx> Compiler<'ctx> {
     pub fn struct_type_string(&self, types: &[Type]) -> String {
         let types = types.iter().map(|x| x.to_string()).join(", ");
         format!("!llvm.struct<({})>", types)
-    }
-
-    pub fn struct_type(&self, types: &[Type]) -> Type {
-        Type::parse(&self.context, &self.struct_type_string(types)).unwrap()
     }
 
     pub fn op_func_call<'a>(

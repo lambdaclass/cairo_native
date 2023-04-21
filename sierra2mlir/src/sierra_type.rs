@@ -38,11 +38,10 @@ impl<'ctx> SierraType<'ctx> {
         element: SierraType<'c>,
     ) -> SierraType<'c> {
         SierraType::Array {
-            ty: compiler.struct_type(&[
-                compiler.u32_type(),
-                compiler.u32_type(),
-                compiler.llvm_ptr_type(),
-            ]),
+            ty: compiler.llvm_struct_type(
+                &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
+                false,
+            ),
             len_type: compiler.u32_type(),
             element_type: Box::new(element),
         }

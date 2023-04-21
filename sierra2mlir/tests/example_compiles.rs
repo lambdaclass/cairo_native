@@ -37,6 +37,7 @@ impl_tests!(
     simple,
     types,
     uint,
+    uint_addition
 );
 
 fn load_program(input: &Path) -> Program {
