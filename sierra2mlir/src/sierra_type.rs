@@ -47,6 +47,17 @@ impl<'ctx> SierraType<'ctx> {
         }
     }
 
+    /// gets the sierra nullable type for the given type
+    pub fn create_nullable_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Struct {
+            ty: compiler.llvm_struct_type(&[element.get_type(), compiler.bool_type()], false),
+            field_types: vec![element, SierraType::Simple(compiler.bool_type())],
+        }
+    }
+
     /// Returns the width in bytes of the mlir representation of the type
     pub fn get_width(&self) -> u32 {
         match self {

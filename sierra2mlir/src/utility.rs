@@ -140,6 +140,67 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_print_nullable(
+        &'ctx self,
+        struct_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[(
+            struct_type.get_type(),
+            Location::unknown(&self.context),
+        )]));
+
+        let arg = block.argument(0)?.into();
+
+        let function_type = create_fn_signature(&[struct_type.get_type()], &[]);
+
+        let value_type_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let is_null_op = self.op_llvm_extractvalue(&block, 1, arg, self.bool_type())?;
+        let is_null = is_null_op.result(0)?.into();
+
+        let is_null_block = region.append_block(Block::new(&[]));
+        let is_nonnull_block = region.append_block(Block::new(&[]));
+
+        self.op_cond_br(&block, is_null, &is_nonnull_block, &is_null_block, &[], &[]);
+
+        self.call_dprintf(&is_null_block, "0", &[], storage)?;
+        self.op_return(&is_null_block, &[]);
+
+        let component_type_id = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::Type(x) => x.debug_name.as_ref().unwrap().as_str(),
+            _ => unreachable!(),
+        };
+        // 0 is the element type
+        let value_op = self.op_llvm_extractvalue(
+            &is_nonnull_block,
+            0,
+            arg,
+            struct_type.get_field_types().unwrap()[0],
+        )?;
+        let value = value_op.result(0)?.into();
+        self.op_func_call(
+            &is_nonnull_block,
+            &format!("print_{}", component_type_id),
+            &[value],
+            &[],
+        )?;
+        self.op_return(&is_nonnull_block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", value_type_name.as_str()),
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// like cairo runner, prints the tag value and then the enum value
     pub fn create_print_enum(
         &'ctx self,

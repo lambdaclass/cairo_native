@@ -154,7 +154,6 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "Nullable" => {
                     // Represented as a struct {value,bool} to know if the value is null.
-
                     let value_type = match &type_decl.long_id.generic_args[0] {
                         GenericArg::Type(x) => {
                             storage.types.get(&x.id.to_string()).expect("array type should exist")
@@ -162,15 +161,9 @@ impl<'ctx> Compiler<'ctx> {
                         _ => unreachable!("array type is always a type"),
                     };
 
-                    let nullable_type =
-                        self.llvm_struct_type(&[value_type.get_type(), self.bool_type()], false);
-
-                    let nullable_sierra_type = SierraType::Struct {
-                        ty: nullable_type,
-                        field_types: vec![value_type.clone(), SierraType::Simple(self.bool_type())],
-                    };
-
-                    storage.types.insert(id.to_string(), dbg!(nullable_sierra_type));
+                    let nullable_sierra_type =
+                        SierraType::create_nullable_type(self, value_type.clone());
+                    storage.types.insert(id.to_string(), nullable_sierra_type);
                 }
                 "Snapshot" => {
                     // TODO: make sure this is correct
