@@ -354,7 +354,7 @@ impl<'ctx> Compiler<'ctx> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn inline_array_get(
-        &self,
+        &'ctx self,
         id: &str,
         statement_idx: usize,
         region: &Region,
@@ -362,7 +362,7 @@ impl<'ctx> Compiler<'ctx> {
         blocks: &BTreeMap<usize, BlockInfo>,
         invocation: &Invocation,
         variables: &HashMap<u64, Variable>,
-        storage: &Storage,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let libfunc = storage.libfuncs.get(id).unwrap();
         let array_arg = &libfunc.get_args()[0];
@@ -388,87 +388,89 @@ impl<'ctx> Compiler<'ctx> {
         let target_block_info = target_blocks[0];
         let panic_block_info = target_blocks[1];
 
-        if let SierraType::Array { ty: _, len_type, element_type } = &array_arg.ty {
-            // arg 0 is range check, can ignore
-            // arg 1 is the array
-            // arg 2 is the index
+        let element_type =
+            if let SierraType::Array { ty: _, len_type: _, element_type } = &array_arg.ty {
+                element_type
+            } else {
+                panic!("argument should be array type");
+            };
 
-            let array_var = variables
-                .get(&invocation.args[array_arg.loc].id)
-                .expect("variable array should exist");
-            let index_var = variables
-                .get(&invocation.args[index_arg.loc].id)
-                .expect("variable index should exist");
+        // Our implementation of array_get takes two values: the array and the index (sierra's array_get also takes RangeCheck)
 
-            let array_value = array_var.get_value();
+        let array_value = variables
+            .get(&invocation.args[array_arg.loc].id)
+            .expect("variable array should exist")
+            .get_value();
+        let index_value = variables
+            .get(&invocation.args[index_arg.loc].id)
+            .expect("variable index should exist")
+            .get_value();
 
-            // get the current length
-            let length_op = self.op_llvm_extractvalue(block, 0, array_value, *len_type)?;
-            let length: Value = length_op.result(0)?.into();
+        // get the current length
+        let length_op = self.call_array_len_impl(block, array_value, &array_arg.ty, storage)?;
+        let length: Value = length_op.result(0)?.into();
 
-            // check if index is out of bounds
-            let cmp_op = self.op_cmp(block, CmpOp::UnsignedLessThan, index_var.get_value(), length);
-            let cmp = cmp_op.result(0)?.into();
+        // check if index is out of bounds
+        let in_bounds_op = self.op_cmp(block, CmpOp::UnsignedLessThan, index_value, length);
+        let in_bounds = in_bounds_op.result(0)?.into();
 
-            let block_get_idx = region.append_block(Block::new(&[]));
+        // Create a block in which to get the element once we know its index is valid
+        let in_bounds_block = region.append_block(Block::new(&[]));
 
-            // collect args to the panic block
-            let mut args_to_panic_block = vec![];
-            for var_idx in panic_block_info.variables_at_start.keys().sorted() {
-                args_to_panic_block.push(*variables.get(var_idx).unwrap());
-            }
-            let args_to_panic_block =
-                args_to_panic_block.iter().map(Variable::get_value).collect_vec();
+        // collect args to the panic block
+        let args_to_panic_block = panic_block_info
+            .variables_at_start
+            .keys()
+            .map(|var_idx| variables.get(var_idx).unwrap().get_value())
+            .collect_vec();
 
-            self.op_cond_br(
-                block,
-                cmp,
-                &block_get_idx,
-                &panic_block_info.block,
-                &[],
-                &args_to_panic_block,
-            );
+        // Jump to the in_bounds_block if the index is valid, or to the panic_block if not
+        self.op_cond_br(
+            block,
+            in_bounds,
+            &in_bounds_block,
+            &panic_block_info.block,
+            &[],
+            &args_to_panic_block,
+        );
 
-            // get the value at index
+        // get the value at index
 
-            let data_ptr_op =
-                self.op_llvm_extractvalue(&block_get_idx, 2, array_value, self.llvm_ptr_type())?;
-            let data_ptr: Value = data_ptr_op.result(0)?.into();
-            // get the pointer to the data index
-            let value_ptr_op = self.op_llvm_gep_dynamic(
-                &block_get_idx,
-                &[index_var.get_value()],
-                data_ptr,
-                element_type.get_type(),
-            )?;
-            let value_ptr = value_ptr_op.result(0)?.into();
+        let data_ptr_op =
+            self.op_llvm_extractvalue(&in_bounds_block, 2, array_value, self.llvm_ptr_type())?;
+        let data_ptr: Value = data_ptr_op.result(0)?.into();
+        // get the pointer to the data index
+        let value_ptr_op = self.op_llvm_gep_dynamic(
+            &in_bounds_block,
+            &[index_value],
+            data_ptr,
+            element_type.get_type(),
+        )?;
+        let value_ptr = value_ptr_op.result(0)?.into();
 
-            let target_value_var_id = invocation.branches[0].results[1].id;
+        let target_value_var_id = invocation.branches[0].results[1].id;
 
-            // get the args to the target block (fallthrough here)
-            let args_to_target_block = target_block_info
-                .variables_at_start
-                .keys()
-                .map(|var_idx| {
-                    if *var_idx == target_value_var_id {
-                        let value_load_op = self
-                            .op_llvm_load(&block_get_idx, value_ptr, element_type.get_type())
-                            .unwrap();
-                        Variable::Local { op: value_load_op, result_idx: 0 }
-                    } else {
-                        *variables.get(var_idx).unwrap()
-                    }
-                })
-                .collect_vec();
-            let args_to_target_block =
-                args_to_target_block.iter().map(Variable::get_value).collect_vec();
+        // get the args to the target block (fallthrough here)
+        let args_to_target_block = target_block_info
+            .variables_at_start
+            .keys()
+            .map(|var_idx| {
+                if *var_idx == target_value_var_id {
+                    let value_load_op = self
+                        .op_llvm_load(&in_bounds_block, value_ptr, element_type.get_type())
+                        .unwrap();
+                    Variable::Local { op: value_load_op, result_idx: 0 }
+                } else {
+                    *variables.get(var_idx).unwrap()
+                }
+            })
+            .collect_vec();
+        let args_to_target_block =
+            args_to_target_block.iter().map(Variable::get_value).collect_vec();
 
-            self.op_br(&block_get_idx, &target_block_info.block, &args_to_target_block);
+        self.op_br(&in_bounds_block, &target_block_info.block, &args_to_target_block);
 
-            Ok(())
-        } else {
-            panic!("argument should be array type");
-        }
+        Ok(())
     }
 
     pub fn inline_array_pop_front(

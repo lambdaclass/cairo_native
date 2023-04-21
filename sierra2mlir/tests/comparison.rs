@@ -239,7 +239,7 @@ fn run_mlir_file_via_llvm(
 fn parse_llvm_result(res: &str) -> Option<Result<Vec<BigUint>, String>> {
     println!("Parsing llvm result: '{}', length: {}", res, res.chars().count());
     let lines = res.split('\n').collect_vec();
-    if lines.is_empty() && lines[0] == "Success" {
+    if !lines.is_empty() && lines[0] == "Success" {
         Some(Ok(lines
             .iter()
             .skip(1)

@@ -4,10 +4,11 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region};
 
 use crate::{
-    compiler::{fn_attributes::FnAttributes, Compiler, Storage, mlir_ops::CmpOp},
+    compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
+    sierra_type::SierraType,
     types::is_omitted_builtin_type,
-    utility::create_fn_signature, sierra_type::SierraType,
+    utility::create_fn_signature,
 };
 
 use self::user_func_def::UserFuncDef;
