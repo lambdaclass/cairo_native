@@ -21,7 +21,7 @@ fn main() {
         .unwrap()
         .success());
 
-    println!("cargo:rustc-env=S2M_UTILS_PATH=target/target/{profile}/libsierra2mlir_utils.so");
+    println!("cargo:rustc-env=S2M_UTILS_PATH=target/{profile}/libsierra2mlir_utils.so");
     println!(
         "cargo:rustc-env=SHARED_LIB_EXT={}",
         match env::var("CARGO_CFG_TARGET_OS").unwrap().as_str() {
