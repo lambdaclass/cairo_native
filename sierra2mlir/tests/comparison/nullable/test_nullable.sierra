@@ -1,0 +1,11 @@
+type u8 = u8;
+type Nullable<u8> = Nullable<u8>;
+
+libfunc null<u8> = null<u8>;
+libfunc store_temp<Nullable<u8>> = store_temp<Nullable<u8>>;
+
+null<u8>() -> ([0]);
+store_temp<Nullable<u8>>([0]) -> ([1]);
+return([1]);
+
+test_nullable::test_nullable::main@0() -> (Nullable<u8>);
