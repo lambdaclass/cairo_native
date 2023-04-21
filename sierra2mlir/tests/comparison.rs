@@ -16,8 +16,6 @@ use test_case::test_case;
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
 #[test_case("array/example_array")]
-#[test_case("fib_counter")]
-#[test_case("fib_local")]
 #[test_case("bitwise/and")]
 #[test_case("bitwise/or")]
 #[test_case("bitwise/xor")]
@@ -26,28 +24,31 @@ use test_case::test_case;
 #[test_case("bool/or")]
 #[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
-#[test_case("felt_ops/add")]
-#[test_case("felt_ops/sub")]
-#[test_case("felt_ops/mul")]
-#[test_case("felt_ops/negation")]
-#[test_case("felt_ops/felt_is_zero")]
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
 #[test_case("enums/single_value")]
+#[test_case("felt_ops/add")]
+// #[test_case("felt_ops/div")] - div blocked on panic and array
+#[test_case("felt_ops/felt_is_zero")]
+#[test_case("felt_ops/mul")]
+#[test_case("felt_ops/negation")]
+#[test_case("felt_ops/sub")]
+#[test_case("fib_counter")]
+#[test_case("fib_local")]
+#[test_case("pedersen")]
+#[test_case("returns/enums")]
 #[test_case("returns/simple")]
 #[test_case("returns/tuple")]
-#[test_case("returns/enums")]
 #[test_case("structs/basic")]
 #[test_case("structs/bigger")]
-#[test_case("structs/nested")]
 #[test_case("structs/enum_member")]
-#[test_case("uint/consts")]
+#[test_case("structs/nested")]
 #[test_case("uint/compare")]
-#[test_case("uint/upcasts")]
+#[test_case("uint/consts")]
 #[test_case("uint/downcasts")]
 #[test_case("uint/safe_divmod")]
+#[test_case("uint/upcasts")]
 #[test_case("uint/wide_mul")]
-// #[test_case("felt_ops/div")] - div blocked on panic and array
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let sierra_code =
         fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
@@ -192,11 +193,16 @@ fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigU
 
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
+        .arg("--dlopen=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
+        .arg("--load=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
+        .arg("--extra-archive=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.a")
+        .env("LD_PRELOAD", "/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
     let lli_output = lli_cmd.wait_with_output().unwrap();
+    dbg!(lli_output.status);
 
     if !lli_output.stderr.is_empty() {
         return Err(format!(
