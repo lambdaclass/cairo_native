@@ -4,6 +4,7 @@ use std::{env, fs};
 
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::ProgramParser;
+use cfg_match::cfg_match;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use num_bigint::BigUint;
@@ -191,12 +192,10 @@ fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigU
         );
     }
 
+    let (ld_env, ld_ext) = shared_library_extension();
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
-        .arg("--dlopen=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
-        .arg("--load=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
-        .arg("--extra-archive=/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.a")
-        .env("LD_PRELOAD", "/Users/esteve/Documents/LambdaClass/cairo_sierra_2_MLIR/target/debug/libsierra2mlir_utils.dylib")
+        .env(ld_env, &format!("../target/debug/libsierra2mlir_utils.{ld_ext}"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -247,5 +246,13 @@ fn find_mlir_prefix() -> PathBuf {
 
             PathBuf::from(String::from_utf8(cmd_output.stdout).unwrap().trim())
         }
+    }
+}
+
+pub const fn shared_library_extension() -> (&'static str, &'static str) {
+    cfg_match! {
+        target_os = "linux" => ("LD_PRELOAD", "so"),
+        target_os = "macos" => ("DYLD_INSERT_LIBRARIES", "dylib"),
+        _ => compile_error!("Unsupported OS."),
     }
 }
