@@ -10,7 +10,7 @@ use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 use regex::Regex;
 
-use crate::compiler::{CmpOp, FnAttributes};
+use crate::compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp};
 use crate::sierra_type::SierraType;
 use crate::{
     compiler::{Compiler, Storage},

@@ -4,7 +4,7 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region};
 
 use crate::{
-    compiler::{Compiler, FnAttributes, Storage},
+    compiler::{fn_attributes::FnAttributes, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
     types::is_omitted_builtin_type,
     utility::create_fn_signature,
@@ -74,7 +74,7 @@ impl<'ctx> Compiler<'ctx> {
         for type_decl in types_to_print {
             let type_category = type_decl.long_id.generic_id.0.as_str();
             match type_category {
-                "felt252" => self.create_print_felt()?,
+                "felt252" => self.create_print_felt(storage)?,
                 "NonZero" => todo!("Print box felt representation"),
                 "Box" => todo!("Print box felt representation"),
                 "Struct" => {
@@ -88,8 +88,9 @@ impl<'ctx> Compiler<'ctx> {
                     let arg_type = storage
                         .types
                         .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_enum(arg_type, type_decl.clone())?
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_enum(&arg_type, type_decl.clone(), storage)?
                 }
                 "Array" => {
                     let arg_type = storage
@@ -102,8 +103,9 @@ impl<'ctx> Compiler<'ctx> {
                     let uint_type = storage
                         .types
                         .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_uint(uint_type, type_decl)?
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_uint(&uint_type, type_decl, storage)?
                 }
                 _ => todo!("Felt representation for {}", type_category),
             }
