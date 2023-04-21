@@ -1,4 +1,7 @@
-use std::{env, process::Command};
+use std::{
+    env, fs,
+    process::{Command, Stdio},
+};
 
 fn main() {
     let profile = env::var("PROFILE").unwrap();
@@ -21,7 +24,7 @@ fn main() {
         .unwrap()
         .success());
 
-    println!("cargo:rustc-env=S2M_UTILS_PATH=target/{profile}/libsierra2mlir_utils.so");
+    println!("cargo:rustc-env=S2M_UTILS_PATH={out_dir}/{profile}/libsierra2mlir_utils.so");
     println!(
         "cargo:rustc-env=SHARED_LIB_EXT={}",
         match env::var("CARGO_CFG_TARGET_OS").unwrap().as_str() {
