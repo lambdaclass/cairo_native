@@ -107,12 +107,21 @@ pub fn execute(
             &format!(
                 "{}/libmlir_c_runner_utils.{}",
                 run_llvm_config(&["--libdir"]).trim(),
-                shared_library_extension()
+                env!("SHARED_LIB_EXT"),
             ),
-            &format!(env!("S2M_UTILS_PATH")),
+            env!("S2M_UTILS_PATH"),
         ],
         false,
     );
 
     Ok(engine)
+}
+
+pub const fn shared_library_extension() -> &'static str {
+    cfg_match! {
+        target_os = "linux" => "so",
+        target_os = "macos" => "dylib",
+        target_os = "windows" => "dll",
+        _ => compile_error!("Unsupported OS."),
+    }
 }

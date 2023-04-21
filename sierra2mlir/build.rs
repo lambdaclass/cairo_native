@@ -1,15 +1,9 @@
 use std::{env, process::Command};
 
 fn main() {
-    // Hack to make rust-analyzer load the project.
-    if env::var("RUSTC_WRAPPER").unwrap().ends_with("rust-analyzer") {
-        return;
-    }
-
-    let target_dir = env::var("CARGO_TARGET_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
-
     let out_dir = env::var("OUT_DIR").unwrap();
+
     assert!(Command::new("cargo")
         .arg("build")
         .arg(format!("--target-dir={out_dir}"))
@@ -27,7 +21,14 @@ fn main() {
         .unwrap()
         .success());
 
+    println!("cargo:rustc-env=S2M_UTILS_PATH=target/target/{profile}/libsierra2mlir_utils.so");
     println!(
-        "cargo:rustc-env=S2M_UTILS_PATH=target/{target_dir}/{profile}/libsierra2mlir_utils.so"
+        "cargo:rustc-env=SHARED_LIB_EXT={}",
+        match env::var("CARGO_CFG_TARGET_OS").unwrap().as_str() {
+            "linux" => "so",
+            "macos" => "dylib",
+            "windows" => "dll",
+            _ => panic!("Unsupported OS."),
+        }
     );
 }
