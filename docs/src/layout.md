@@ -10,10 +10,10 @@ Here are stored all the library function implementations in MLIR, this contains 
 
 To store information about the different types of library functions sierra has, we divide them into the following using the enum `SierraLibFunc`:
 
-- Branching: These functions are implemented inline, adding blocks and jumping as necessary based on given conditions.
-- Constant: A constant value, this isn't represented as a function and is inserted inline.
-- Function: Any other function.
-- InlineDataFlow: Functions that can be implemented inline without much problem. For example: dup, store_temp
+- **Branching**: These functions are implemented inline, adding blocks and jumping as necessary based on given conditions.
+- **Constant**: A constant value, this isn't represented as a function and is inserted inline.
+- **Function**: Any other function.
+- **InlineDataFlow**: Functions that can be implemented inline without much problem. For example: dup, store_temp
 
 ## Statements
 
