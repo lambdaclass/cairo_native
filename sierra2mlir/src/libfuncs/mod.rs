@@ -8,8 +8,10 @@ use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
 
+use crate::compiler::fn_attributes::FnAttributes;
+use crate::compiler::mlir_ops::CmpOp;
 use crate::{
-    compiler::{CmpOp, Compiler, FnAttributes, Storage},
+    compiler::{Compiler, Storage},
     sierra_type::SierraType,
     types::{is_omitted_builtin_type, DEFAULT_PRIME},
     utility::create_fn_signature,
@@ -1683,7 +1685,8 @@ impl<'ctx> Compiler<'ctx> {
         let null_ptr_op = self.op_llvm_nullptr(&block);
         let null_ptr = null_ptr_op.result(0)?;
 
-        let ptr_op = self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into())?;
+        let ptr_op =
+            self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into(), storage)?;
         let ptr_val = ptr_op.result(0)?;
 
         let insert_op = self.op_llvm_insertvalue(
@@ -1785,7 +1788,8 @@ impl<'ctx> Compiler<'ctx> {
             self.op_llvm_extractvalue(&realloc_block, 2, array_value.into(), self.llvm_ptr_type())?;
         let data_ptr: Value = data_ptr_op.result(0)?.into();
 
-        let new_ptr_op = self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into())?;
+        let new_ptr_op =
+            self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into(), storage)?;
         let new_ptr = new_ptr_op.result(0)?.into();
 
         // change the ptr

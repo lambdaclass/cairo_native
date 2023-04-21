@@ -13,8 +13,9 @@ use melior_next::{
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 
+use crate::compiler::mlir_ops::CmpOp;
 use crate::{
-    compiler::{CmpOp, Compiler, Storage},
+    compiler::{Compiler, Storage},
     sierra_type::SierraType,
     statements::{BlockInfo, Variable},
 };
@@ -471,7 +472,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn inline_array_pop_front(
-        &self,
+        &'ctx self,
         id: &str,
         statement_idx: usize,
         region: &Region,
@@ -479,7 +480,7 @@ impl<'ctx> Compiler<'ctx> {
         blocks: &BTreeMap<usize, BlockInfo>,
         invocation: &Invocation,
         variables: &HashMap<u64, Variable>,
-        storage: &Storage,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let libfunc = storage.libfuncs.get(id).unwrap();
         let array_arg = &libfunc.get_args()[0];
@@ -593,7 +594,7 @@ impl<'ctx> Compiler<'ctx> {
             let new_length_bytes = new_length_bytes_op.result(0)?.into();
 
             let dst_ptr_op =
-                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_bytes)?;
+                self.call_memmove(&block_pop_idx, data_ptr, src_ptr, new_length_bytes, storage)?;
             let dst_ptr: Value = dst_ptr_op.result(0)?.into();
 
             // insert new length
