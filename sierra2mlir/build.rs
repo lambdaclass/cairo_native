@@ -1,7 +1,4 @@
-use std::{
-    env, fs,
-    process::{Command, Stdio},
-};
+use std::{env, process::Command};
 
 fn main() {
     let profile = env::var("PROFILE").unwrap();
