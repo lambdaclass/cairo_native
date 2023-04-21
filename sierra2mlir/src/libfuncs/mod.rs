@@ -1485,7 +1485,7 @@ impl<'ctx> Compiler<'ctx> {
             ty: self.boolean_enum_type(),
             tag_type: self.u16_type(),
             storage_bytes_len: 0,
-            storage_type: Type::parse(&self.context, "!llvm.array<0 x i8>").unwrap(),
+            storage_type: self.llvm_array_type(self.u8_type(), 0),
             variants_types: vec![bool_variant.clone(), bool_variant],
         };
 
@@ -1567,7 +1567,7 @@ impl<'ctx> Compiler<'ctx> {
             ty: self.boolean_enum_type(),
             tag_type: self.u16_type(),
             storage_bytes_len: 0,
-            storage_type: Type::parse(&self.context, "!llvm.array<0 x i8>").unwrap(),
+            storage_type: self.llvm_array_type(self.u8_type(), 0),
             variants_types: vec![bool_variant.clone()],
         };
 
@@ -1641,7 +1641,7 @@ impl<'ctx> Compiler<'ctx> {
             ty: self.boolean_enum_type(),
             tag_type: self.u16_type(),
             storage_bytes_len: 0,
-            storage_type: Type::parse(&self.context, "!llvm.array<0 x i8>").unwrap(),
+            storage_type: self.llvm_array_type(self.u8_type(), 0),
             variants_types: vec![bool_variant.clone()],
         };
 

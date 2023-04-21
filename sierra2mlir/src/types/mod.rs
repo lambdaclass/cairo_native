@@ -44,9 +44,7 @@ impl<'ctx> Compiler<'ctx> {
                         storage.types.insert(id.to_string(), ty.clone());
                     } else {
                         let struct_types = types.iter().map(SierraType::get_type).collect_vec();
-                        let struct_type =
-                            Type::parse(&self.context, &self.struct_type_string(&struct_types))
-                                .unwrap();
+                        let struct_type = self.llvm_struct_type(&struct_types, false);
 
                         storage.types.insert(
                             id.to_string(),
@@ -79,11 +77,7 @@ impl<'ctx> Compiler<'ctx> {
                         types.push(gen_arg_ty.clone());
                     }
 
-                    // parse is a hack to avoid lifetime issues
-                    let struct_types = types
-                        .iter()
-                        .map(|x| Type::parse(&self.context, &x.get_type().to_string()).unwrap())
-                        .collect_vec();
+                    let struct_types = types.iter().map(SierraType::get_type).collect_vec();
                     let struct_type = self.llvm_struct_type(&struct_types, false);
 
                     storage.types.insert(
