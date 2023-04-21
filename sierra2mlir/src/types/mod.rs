@@ -125,7 +125,6 @@ impl<'ctx> Compiler<'ctx> {
                         storage_type: enum_memory_array,
                         variants_types: enum_variant_types,
                     };
-
                     storage.types.insert(id.to_string(), enum_sierra_type);
                 }
                 "Array" => {
@@ -152,6 +151,26 @@ impl<'ctx> Compiler<'ctx> {
                     };
 
                     storage.types.insert(id.to_string(), sierra_type);
+                }
+                "Nullable" => {
+                    // Represented as a struct {value,bool} to know if the value is null.
+
+                    let value_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => {
+                            storage.types.get(&x.id.to_string()).expect("array type should exist")
+                        }
+                        _ => unreachable!("array type is always a type"),
+                    };
+
+                    let nullable_type =
+                        self.llvm_struct_type(&[value_type.get_type(), self.bool_type()], false);
+
+                    let nullable_sierra_type = SierraType::Struct {
+                        ty: nullable_type,
+                        field_types: vec![value_type.clone(), SierraType::Simple(self.bool_type())],
+                    };
+
+                    storage.types.insert(id.to_string(), dbg!(nullable_sierra_type));
                 }
                 "Snapshot" => {
                     // TODO: make sure this is correct
