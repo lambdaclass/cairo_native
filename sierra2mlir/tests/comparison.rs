@@ -195,10 +195,10 @@ fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigU
         );
     }
 
-    let (ld_env, ld_ext) = shared_library_extension();
+    let ld_env = library_preload_env_var();
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
-        .env(ld_env, &format!("../target/debug/libsierra2mlir_utils.{ld_ext}"))
+        .env(ld_env, env!("S2M_UTILS_PATH"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -252,10 +252,10 @@ fn find_mlir_prefix() -> PathBuf {
     }
 }
 
-pub const fn shared_library_extension() -> (&'static str, &'static str) {
+pub const fn library_preload_env_var() -> &'static str {
     cfg_match! {
-        target_os = "linux" => ("LD_PRELOAD", "so"),
-        target_os = "macos" => ("DYLD_INSERT_LIBRARIES", "dylib"),
+        target_os = "linux" => "LD_PRELOAD",
+        target_os = "macos" => "DYLD_INSERT_LIBRARIES",
         _ => compile_error!("Unsupported OS."),
     }
 }
