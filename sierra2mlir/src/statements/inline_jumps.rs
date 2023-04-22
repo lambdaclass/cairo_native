@@ -253,7 +253,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn inline_enum_match(
-        &self,
+        &'ctx self,
         id: &str,
         statement_idx: usize,
         region: &Region,
@@ -261,38 +261,28 @@ impl<'ctx> Compiler<'ctx> {
         blocks: &BTreeMap<usize, BlockInfo>,
         invocation: &Invocation,
         variables: &HashMap<u64, Variable>,
-        storage: &Storage,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let args = storage.libfuncs.get(id).unwrap().get_args();
 
-        let (tag_type, variants_types, enum_type) = match &args[0].ty {
-            SierraType::Enum { tag_type, variants_types, ty: enum_type, .. } => {
-                (tag_type, variants_types, enum_type)
-            }
-            _ => {
-                panic!("Argument of enum match should be an enum")
-            }
+        let enum_type = &args[0].ty;
+        let enum_name = id.strip_prefix("enum_match<").unwrap().strip_suffix('>').unwrap();
+
+        let variant_count = match enum_type {
+            SierraType::Enum { variants_types, .. } => variants_types.len(),
+            _ => panic!("Argument of enum match should be an enum"),
         };
 
         // Get the argument- the enum to case split upon
         let enum_value = variables.get(&invocation.args[0].id).unwrap().get_value();
 
-        let enum_ptr_op = self.op_llvm_alloca(block, *enum_type, 1)?;
-        let enum_ptr = enum_ptr_op.result(0)?.into();
-
-        self.op_llvm_store(block, enum_value, enum_ptr)?;
-
         // get the tag
-        let tag_ptr_op = self.op_llvm_gep(block, &[0, 0], enum_ptr, *enum_type)?;
-        let tag_ptr = tag_ptr_op.result(0)?;
-        let tag_load = self.op_llvm_load(block, tag_ptr.into(), *tag_type)?;
-        let tag_value = tag_load.result(0)?.into();
+        let tag_op = self.call_enum_get_tag(block, enum_value, enum_type, storage)?;
+        let tag = tag_op.result(0)?.into();
 
         // Blocks for the switch statement to jump to. Each extract's the appropriate value and forwards it on
-        let variant_blocks: Vec<BlockRef> = variants_types
-            .iter()
-            .enumerate()
-            .map(|(variant_index, variant_type)| {
+        let variant_blocks: Vec<BlockRef> = (0..variant_count)
+            .map(|variant_index| {
                 // Intermediary block in which to extract the correct data from the enum
                 let variant_block = region.append_block(Block::new(&[]));
                 // Target block to jump to as the result of the match
@@ -306,19 +296,16 @@ impl<'ctx> Compiler<'ctx> {
                 let mut args_to_target_block = vec![];
                 for var_idx in target_block_info.variables_at_start.keys() {
                     if *var_idx == invocation.branches[variant_index].results[0].id {
-                        let variant_enum_type = self
-                            .llvm_struct_type(&[self.u16_type(), variant_type.get_type()], false);
-
-                        let variant_ptr_op =
-                            self.op_llvm_gep(&variant_block, &[0, 1], enum_ptr, variant_enum_type)?;
-                        let variant_ptr = variant_ptr_op.result(0)?;
-
-                        let load_op = self.op_llvm_load(
+                        let get_data_op = self.call_enum_get_data_as_variant_type(
                             &variant_block,
-                            variant_ptr.into(),
-                            variant_type.get_type(),
+                            enum_name,
+                            enum_value,
+                            enum_type,
+                            variant_index,
+                            storage,
                         )?;
-                        args_to_target_block.push(Variable::Local { op: load_op, result_idx: 0 });
+                        args_to_target_block
+                            .push(Variable::Local { op: get_data_op, result_idx: 0 });
                     } else {
                         args_to_target_block.push(*variables.get(var_idx).unwrap());
                     }
@@ -332,7 +319,7 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect::<Result<Vec<BlockRef>>>()?;
 
-        let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
+        let case_values = (0..variant_count).map(|x| x.to_string()).collect_vec();
         // The default block is unreachable
         // NOTE To truly guarantee this, we'll need guards on external inputs once we take them
         let default_block = region.append_block(Block::new(&[]));
@@ -343,7 +330,7 @@ impl<'ctx> Compiler<'ctx> {
         block.append_operation(cf::switch(
             &self.context,
             &case_values,
-            tag_value,
+            tag,
             (&default_block, &[]),
             variant_blocks_with_ops.as_slice(),
             Location::unknown(&self.context),

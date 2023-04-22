@@ -129,8 +129,10 @@ impl<'ctx> Compiler<'ctx> {
 
         let success_block = region.append_block(Block::new(&[]));
 
+        let ret_type_name = ret_types[0].1.debug_name.as_ref().unwrap();
+
         // Then, print whether or not the execution was successful
-        if ret_types[0].1.debug_name.as_ref().unwrap().starts_with("core::PanicResult::<") {
+        if ret_type_name.starts_with("core::PanicResult::<") {
             let panic_enum_type = &ret_types[0].0;
             let panic_value = raw_res.result(0)?.into();
             // Get the tag from the panic enum to determine whether execution was successful or not
@@ -147,7 +149,13 @@ impl<'ctx> Compiler<'ctx> {
             let panic_block = region.append_block(Block::new(&[]));
             self.op_cond_br(&block, is_success, &success_block, &panic_block, &[], &[]);
 
-            self.call_print_panic_message(&panic_block, panic_value, panic_enum_type, storage)?;
+            self.call_print_panic_message(
+                &panic_block,
+                ret_type_name.as_str(),
+                panic_value,
+                panic_enum_type,
+                storage,
+            )?;
             self.op_return(&panic_block, &[]);
         } else {
             self.op_br(&block, &success_block, &[]);

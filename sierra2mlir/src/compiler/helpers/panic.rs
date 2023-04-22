@@ -12,6 +12,7 @@ use crate::{
 impl<'ctx> Compiler<'ctx> {
     fn create_print_panic_message(
         &'ctx self,
+        panic_enum_name: &str,
         panic_type: &SierraType,
         storage: &mut Storage<'ctx>,
     ) -> Result<String> {
@@ -62,8 +63,14 @@ impl<'ctx> Compiler<'ctx> {
         // In the panic block, extract the error message. This should be an Array<felt252>
         // In order to do this, the enum's data needs to be stored on the stack
         self.call_dprintf(&block, "Program panicked\n", &[], storage)?;
-        let err_message_data_op =
-            self.call_enum_get_data_as_variant_type(&block, panic_value, panic_type, 1, storage)?;
+        let err_message_data_op = self.call_enum_get_data_as_variant_type(
+            &block,
+            panic_enum_name,
+            panic_value,
+            panic_type,
+            1,
+            storage,
+        )?;
         // An Array<felt252>, containing one character per byte
         let err_message_array = err_message_data_op.result(0)?.into();
         let len_op =
@@ -175,11 +182,12 @@ impl<'ctx> Compiler<'ctx> {
     pub fn call_print_panic_message<'block>(
         &'ctx self,
         block: &'block Block,
+        panic_enum_name: &str,
         panic_value: Value,
         panic_type: &SierraType<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<OperationRef<'block>> {
-        let func_name = self.create_print_panic_message(panic_type, storage)?;
+        let func_name = self.create_print_panic_message(panic_enum_name, panic_type, storage)?;
         self.op_llvm_call(block, &func_name, &[panic_value], &[])
     }
 }

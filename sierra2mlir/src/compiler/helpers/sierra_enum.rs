@@ -63,24 +63,17 @@ impl<'ctx> Compiler<'ctx> {
 
     fn create_enum_get_data_as_variant_type(
         &'ctx self,
+        enum_name: &str,
         enum_type: &SierraType,
         variant: usize,
         storage: &mut Storage<'ctx>,
     ) -> Result<String> {
-        let (enum_mlir_type, storage_type, variant_type) = if let SierraType::Enum {
-            ty,
-            tag_type: _,
-            storage_bytes_len: _,
-            storage_type,
-            variants_types,
-        } = enum_type
-        {
-            (*ty, *storage_type, variants_types[variant].get_type())
-        } else {
-            panic!("create_enum_get_data_as_variant_type should have been passed an Enum SierraType, but was instead passed {:?}", enum_type)
+        let (storage_type, variant_type) = match enum_type {
+            SierraType::Enum { storage_type, variants_types, .. } => (*storage_type, variants_types[variant].get_type()),
+            _ => panic!("create_enum_get_data_as_variant_type should have been passed an Enum SierraType, but was instead passed {:?}", enum_type),
         };
 
-        let func_name = format!("enum_get_data_as_variant_type<{}, {}>", enum_mlir_type, variant);
+        let func_name = format!("enum_get_data_as_variant_type<{}, {}>", enum_name, variant);
 
         if storage.helperfuncs.contains(&func_name) {
             return Ok(func_name);
@@ -150,6 +143,7 @@ impl<'ctx> Compiler<'ctx> {
     pub fn call_enum_get_data_as_variant_type<'block>(
         &'ctx self,
         block: &'block Block,
+        enum_name: &str,
         enum_value: Value,
         enum_type: &SierraType,
         variant: usize,
@@ -167,7 +161,8 @@ impl<'ctx> Compiler<'ctx> {
         } else {
             panic!("call_enum_get_data_as_variant_type should have been passed an enum type, but instead was passed {:?}", enum_type)
         };
-        let func_name = self.create_enum_get_data_as_variant_type(enum_type, variant, storage)?;
+        let func_name =
+            self.create_enum_get_data_as_variant_type(enum_name, enum_type, variant, storage)?;
         self.op_llvm_call(block, &func_name, &[enum_value], &[variant_type])
     }
 }
