@@ -3,8 +3,8 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::{env, fs};
 
-use cairo_lang_compiler::CompilerConfig;
 use cairo_felt::Felt252;
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
