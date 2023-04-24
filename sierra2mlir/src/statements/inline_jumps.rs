@@ -779,4 +779,83 @@ impl<'ctx> Compiler<'ctx> {
 
         Ok(())
     }
+
+    pub fn inline_match_nullable(
+        &'ctx self,
+        id: &str,
+        statement_idx: usize,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let nullable_arg = &libfunc.get_args()[0];
+
+        // fallthrough if null
+        // jump otherwise
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match &branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let fallthrough_block = target_blocks[0];
+        let notnull_block = target_blocks[1];
+
+        let nullable_value_type = nullable_arg.ty.get_field_types().unwrap()[0];
+
+        let nullable_value =
+            variables.get(&invocation.args[nullable_arg.loc].id).expect("variable should exist");
+
+        let is_null_op =
+            self.op_llvm_extractvalue(block, 1, nullable_value.get_value(), self.bool_type())?;
+        let is_null = is_null_op.result(0)?.into();
+
+        // collect args to the none block
+        let args_to_fallthrough = fallthrough_block
+            .variables_at_start
+            .keys()
+            .map(|var_idx| *variables.get(var_idx).unwrap())
+            .collect_vec();
+
+        let get_value_op =
+            self.op_llvm_extractvalue(block, 0, nullable_value.get_value(), nullable_value_type)?;
+
+        // collect args to the none block
+        let args_to_notnull = notnull_block
+            .variables_at_start
+            .keys()
+            .map(|var_idx| {
+                if *var_idx == invocation.branches[1].results[0].id {
+                    Variable::Local { op: get_value_op, result_idx: 0 }
+                } else {
+                    *variables.get(var_idx).unwrap()
+                }
+            })
+            .collect_vec();
+
+        let args_to_fallthrough = args_to_fallthrough.iter().map(Variable::get_value).collect_vec();
+        let args_to_notnull = args_to_notnull.iter().map(Variable::get_value).collect_vec();
+
+        self.op_cond_br(
+            block,
+            is_null,
+            &notnull_block.block,
+            &fallthrough_block.block,
+            &args_to_notnull,
+            &args_to_fallthrough,
+        );
+
+        Ok(())
+    }
 }

@@ -95,6 +95,9 @@ impl<'ctx> Compiler<'ctx> {
                 "nullable_from_box" => {
                     self.create_libfunc_nullable_from_box(func_decl, parent_block, storage)?;
                 }
+                "match_nullable" => {
+                    self.register_match_nullable(func_decl, storage);
+                }
                 "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
                 }
@@ -2323,5 +2326,37 @@ impl<'ctx> Compiler<'ctx> {
         parent_block.append_operation(func);
 
         Ok(())
+    }
+
+    pub fn register_match_nullable(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("match_nullable argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+        let nullable_type = SierraType::create_nullable_type(self, arg_type.clone());
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: nullable_type }, // array
+                ],
+                return_types: vec![
+                    // fallthrough: null, nothing
+                    vec![],
+                    // jump: value
+                    vec![PositionalArg { loc: 0, ty: arg_type }],
+                ],
+            },
+        );
     }
 }
