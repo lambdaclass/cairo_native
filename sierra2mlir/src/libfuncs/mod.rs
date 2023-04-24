@@ -1936,13 +1936,10 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
+            _ => unreachable!()
         };
         let region = Region::new();
 
