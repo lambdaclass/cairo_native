@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">2.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">3.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">4.</strong> MLIR</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.</strong> Project Setup</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">3.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">4.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">5.</strong> MLIR</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -152,18 +152,96 @@
 <p>A compiler to convert Cairo's intermediate representation &quot;Sierra&quot; code to MLIR.</p>
 <h2 id="compilation-process"><a class="header" href="#compilation-process">Compilation process</a></h2>
 <pre class="mermaid">stateDiagram-v2
+    state &quot;Load sierra program&quot; as sierra
+    state &quot;Initialize compiler&quot; as init
+    state &quot;Initialize execution engine&quot; as engine
+    state if_skip_jit &lt;&lt;choice&gt;&gt;
+    state &quot;Load MLIR dialects&quot; as dialects
+    state &quot;Create builtin module&quot; as module
+    state &quot;Create libc wrappers&quot; as libc
     state &quot;Process Types&quot; as types
     state &quot;Process Library functions&quot; as libfuncs
-    state &quot;Process next user function&quot; as funcs
+    state &quot;Save non-flow function info&quot; as func_info
+    state &quot;Process functions&quot; as funcs
+    state &quot;Calculate block ranges per function&quot; as blocks
     state &quot;Process statements&quot; as statements
-    [*] --&gt; types
-    types --&gt; libfuncs
-    libfuncs --&gt; funcs
-    funcs --&gt; statements
-    statements --&gt; funcs
-    funcs --&gt; [*]
+    state &quot;Apply MLIR passes&quot; as passes
+    [*] --&gt; Initialize
+    state Initialize {
+        sierra --&gt; init
+        init --&gt; if_skip_jit
+        if_skip_jit --&gt; engine: if JIT
+        if_skip_jit --&gt; dialects: if Compile
+        engine --&gt; dialects
+    }
+    Initialize --&gt; Compile
+    state Compile {
+        module --&gt; libc
+        libc --&gt; types
+        types --&gt; libfuncs
+        types --&gt; func_info
+        func_info --&gt; libfuncs
+        libfuncs --&gt; funcs
+        funcs --&gt; blocks
+        blocks --&gt; statements
+    }
+    Compile --&gt; passes
+    passes --&gt; Output
+    Output --&gt; [*]
 </pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="setup-the-project"><a class="header" href="#setup-the-project">Setup the project</a></h1>
+<p>First clone the repository:</p>
+<pre><code class="language-bash">git clone git@github.com:lambdaclass/cairo_sierra_2_MLIR.git
+</code></pre>
+<h2 id="get-the-dependencies"><a class="header" href="#get-the-dependencies">Get the dependencies</a></h2>
+<p>You will need:</p>
+<ul>
+<li>LLVM 16, with MLIR project enabled</li>
+<li>Rust</li>
+<li>mdbook: if you want to build this book.</li>
+</ul>
+<h2 id="about-llvm"><a class="header" href="#about-llvm">About LLVM</a></h2>
+<p>If your system doesn't have LLVM 16 available, you can point the build script to it by setting up the environment variable <code>MLIR_SYS_160_PREFIX</code></p>
+<p>For example:</p>
+<pre><code class="language-bash">MLIR_SYS_160_PREFIX=/usr/lib/llvm/16
+</code></pre>
+<h2 id="use-make"><a class="header" href="#use-make">Use make</a></h2>
+<p>With make you can make your life easier, we got some common targets set up:</p>
+<pre><code class="language-bash"># first build the project
+make build
+
+# build the example programs
+make compile-mlir
+
+# build the example programs with optimizations on
+make compile-mlir-opt
+
+# run tests
+make test
+
+# benchmark
+make bench
+
+# clean
+make clean
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="code-layout"><a class="header" href="#code-layout">Code Layout</a></h1>
+<p>The code is laid out in the following sections:</p>
+<h2 id="libfuncs"><a class="header" href="#libfuncs">libfuncs</a></h2>
+<p>Path: <code>src/libfuncs</code></p>
+<p>Here are stored all the library function implementations in MLIR, this contains the majority of the code.</p>
+<p>To store information about the different types of library functions sierra has, we divide them into the following using the enum <code>SierraLibFunc</code>:</p>
+<ul>
+<li><strong>Branching</strong>: These functions are implemented inline, adding blocks and jumping as necessary based on given conditions.</li>
+<li><strong>Constant</strong>: A constant value, this isn't represented as a function and is inserted inline.</li>
+<li><strong>Function</strong>: Any other function.</li>
+<li><strong>InlineDataFlow</strong>: Functions that can be implemented inline without much problem. For example: dup, store_temp</li>
+</ul>
+<h2 id="statements"><a class="header" href="#statements">Statements</a></h2>
+<p>Path: <code>src/statements</code></p>
+<p>Here is the code that processes the statements of non-library functions. It handles dataflow, branching, function calls, variable storage and also has implementations for the inline library functions.</p>
+<h2 id="user-functions"><a class="header" href="#user-functions">User functions</a></h2>
+<p>These are extra utility functions unrelated to sierra that aid in the development, such as wrapping return values and printing them.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sierra-cairo-intermediate-representation"><a class="header" href="#sierra-cairo-intermediate-representation">Sierra: Cairo Intermediate Representation</a></h1>
 <h2 id="online-resources"><a class="header" href="#online-resources">Online Resources</a></h2>
 <ul>
