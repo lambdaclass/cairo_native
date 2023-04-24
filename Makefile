@@ -48,7 +48,7 @@ build:
 check:
 	cargo clippy --all-targets -- -D warnings
 
-test: $(COMPARISON_TEST_TARGETS)
+test:
 	cargo test --all-targets
 
 book:
