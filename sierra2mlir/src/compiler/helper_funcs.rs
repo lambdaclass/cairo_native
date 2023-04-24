@@ -46,6 +46,7 @@ impl<'ctx> Compiler<'ctx> {
                     "@helper_felt_pow",
                 )?])
                 .add_operands(&[base, exponent])
+                .add_results(&[self.felt_type()])
                 .build(),
         );
 
