@@ -166,7 +166,7 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_cond_br(&block, is_null, &is_nonnull_block, &is_null_block, &[], &[]);
 
-        self.call_dprintf(&is_null_block, "0", &[], storage)?;
+        self.call_dprintf(&is_null_block, "0\n", &[], storage)?;
         self.op_return(&is_null_block, &[]);
 
         let component_type_id = match &sierra_type_declaration.long_id.generic_args[0] {

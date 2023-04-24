@@ -1,11 +1,23 @@
 type u8 = u8;
 type Nullable<u8> = Nullable<u8>;
+type Box<u8> = Box<u8>;
+type Tuple<Nullable<u8>, Nullable<u8>> = Struct<ut@Tuple, Nullable<u8>, Nullable<u8>>;
 
 libfunc null<u8> = null<u8>;
-libfunc store_temp<Nullable<u8>> = store_temp<Nullable<u8>>;
+libfunc u8_const<4> = u8_const<4>;
+libfunc store_temp<u8> = store_temp<u8>;
+libfunc into_box<u8> = into_box<u8>;
+libfunc nullable_from_box<u8> = nullable_from_box<u8>;
+libfunc struct_construct<Tuple<Nullable<u8>, Nullable<u8>>> = struct_construct<Tuple<Nullable<u8>, Nullable<u8>>>;
+libfunc store_temp<Tuple<Nullable<u8>, Nullable<u8>>> = store_temp<Tuple<Nullable<u8>, Nullable<u8>>>;
 
 null<u8>() -> ([0]);
-store_temp<Nullable<u8>>([0]) -> ([1]);
-return([1]);
+u8_const<4>() -> ([1]);
+store_temp<u8>([1]) -> ([1]);
+into_box<u8>([1]) -> ([2]);
+nullable_from_box<u8>([2]) -> ([3]);
+struct_construct<Tuple<Nullable<u8>, Nullable<u8>>>([0], [3]) -> ([4]);
+store_temp<Tuple<Nullable<u8>, Nullable<u8>>>([4]) -> ([5]);
+return([5]);
 
-test_nullable::test_nullable::main@0() -> (Nullable<u8>);
+test_nullable::test_nullable::main@0() -> (Tuple<Nullable<u8>, Nullable<u8>>);
