@@ -1,4 +1,4 @@
-.PHONY: book build check clean clean-all compile-mlir compile-mlir-opt sierra test
+.PHONY: book build coverage check clean clean-all compile-mlir compile-mlir-opt sierra test
 
 
 #
@@ -50,6 +50,9 @@ check:
 
 test:
 	cargo test --all-targets
+
+coverage:
+	cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
 book:
 	mdbook serve docs

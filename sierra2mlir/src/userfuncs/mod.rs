@@ -4,7 +4,7 @@ use itertools::Itertools;
 use melior_next::ir::{Block, Location, Region};
 
 use crate::{
-    compiler::{Compiler, FnAttributes, Storage},
+    compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
     types::is_omitted_builtin_type,
     utility::create_fn_signature,
@@ -49,7 +49,7 @@ impl<'ctx> Compiler<'ctx> {
         let ret_types = userfunc_def
             .return_types
             .iter()
-            .map(|arg| (arg.ty.get_type(), func.signature.ret_types[arg.loc].clone()))
+            .map(|arg| (arg.ty.clone(), func.signature.ret_types[arg.loc].clone()))
             .collect_vec();
 
         // We need to collect the sierra type declarations to know how to convert the mlir types to their felt representation
@@ -74,7 +74,7 @@ impl<'ctx> Compiler<'ctx> {
         for type_decl in types_to_print {
             let type_category = type_decl.long_id.generic_id.0.as_str();
             match type_category {
-                "felt252" => self.create_print_felt()?,
+                "felt252" => self.create_print_felt(storage)?,
                 "NonZero" => todo!("Print box felt representation"),
                 "Box" => todo!("Print box felt representation"),
                 "Struct" => {
@@ -88,8 +88,9 @@ impl<'ctx> Compiler<'ctx> {
                     let arg_type = storage
                         .types
                         .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_enum(arg_type, type_decl.clone())?
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_enum(&arg_type, type_decl.clone(), storage)?
                 }
                 "Array" => {
                     let arg_type = storage
@@ -102,8 +103,9 @@ impl<'ctx> Compiler<'ctx> {
                     let uint_type = storage
                         .types
                         .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_uint(uint_type, type_decl)?
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_uint(&uint_type, type_decl, storage)?
                 }
                 _ => todo!("Felt representation for {}", type_category),
             }
@@ -112,7 +114,7 @@ impl<'ctx> Compiler<'ctx> {
         let region = Region::new();
         let arg_types_with_locations =
             arg_types.iter().map(|t| (*t, Location::unknown(&self.context))).collect::<Vec<_>>();
-        let block = Block::new(&arg_types_with_locations);
+        let block = region.append_block(Block::new(&arg_types_with_locations));
 
         let mut arg_values: Vec<_> = vec![];
         for i in 0..block.argument_count() {
@@ -120,21 +122,63 @@ impl<'ctx> Compiler<'ctx> {
             arg_values.push(arg.into());
         }
         let arg_values = arg_values;
-        let mlir_ret_types = ret_types.iter().map(|(t, _id)| *t).collect_vec();
+        let mlir_ret_types = ret_types.iter().map(|(t, _id)| t.get_type()).collect_vec();
 
+        // First, call the wrapped function
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
+
+        let success_block = region.append_block(Block::new(&[]));
+
+        let ret_type_name = ret_types[0].1.debug_name.as_ref().unwrap();
+
+        // Then, print whether or not the execution was successful
+        if ret_type_name.starts_with("core::PanicResult::<") {
+            let panic_enum_type = &ret_types[0].0;
+            let panic_value = raw_res.result(0)?.into();
+            // Get the tag from the panic enum to determine whether execution was successful or not
+            let panic_enum_tag_op =
+                self.call_enum_get_tag(&block, panic_value, panic_enum_type, storage)?;
+            let panic_enum_tag = panic_enum_tag_op.result(0)?.into();
+            let zero_op = self.op_const(&block, "0", panic_enum_type.get_enum_tag_type().unwrap());
+            let zero = zero_op.result(0)?.into();
+            // If it equals 0 then it's a success
+            let is_success_op = self.op_cmp(&block, CmpOp::Equal, panic_enum_tag, zero);
+            let is_success = is_success_op.result(0)?.into();
+
+            // Create a block for printing the error message if execution failed
+            let panic_block = region.append_block(Block::new(&[]));
+            self.op_cond_br(&block, is_success, &success_block, &panic_block, &[], &[]);
+
+            self.call_print_panic_message(
+                &panic_block,
+                ret_type_name.as_str(),
+                panic_value,
+                panic_enum_type,
+                storage,
+            )?;
+            self.op_return(&panic_block, &[]);
+        } else {
+            self.op_br(&block, &success_block, &[]);
+        }
+
+        self.call_dprintf(&success_block, "Success\n", &[], storage)?;
+
+        // Finally, print the result if it was, or the error message if not
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
             let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();
             if is_omitted_builtin_type(type_name) {
                 continue;
             }
             let result_val = raw_res.result(position)?;
-            self.op_func_call(&block, &format!("print_{}", type_name), &[result_val.into()], &[])?;
+            self.op_func_call(
+                &success_block,
+                &format!("print_{}", type_name),
+                &[result_val.into()],
+                &[],
+            )?;
         }
 
-        self.op_return(&block, &[]);
-
-        region.append_block(block);
+        self.op_return(&success_block, &[]);
 
         // Currently this wrapper is only put on the entrypoint, so we call it main
         // We might want to change this in the future

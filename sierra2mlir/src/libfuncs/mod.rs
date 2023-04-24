@@ -8,8 +8,10 @@ use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
 
+use crate::compiler::fn_attributes::FnAttributes;
+use crate::compiler::mlir_ops::CmpOp;
 use crate::{
-    compiler::{CmpOp, Compiler, FnAttributes, Storage},
+    compiler::{Compiler, Storage},
     sierra_type::SierraType,
     types::{is_omitted_builtin_type, DEFAULT_PRIME},
     utility::create_fn_signature,
@@ -298,6 +300,37 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_overflowing_add" | "u128_overflowing_sub" => {
                     self.register_libfunc_uint_overflowing_op(func_decl, self.u128_type(), storage);
+                }
+                "u8_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(func_decl, self.u8_type(), storage);
+                }
+                "u16_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u16_type(),
+                        storage,
+                    );
+                }
+                "u32_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u32_type(),
+                        storage,
+                    );
+                }
+                "u64_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u64_type(),
+                        storage,
+                    );
+                }
+                "u128_try_from_felt252" => {
+                    self.register_libfunc_uint_try_from_felt252(
+                        func_decl,
+                        self.u128_type(),
+                        storage,
+                    );
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
@@ -966,6 +999,25 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![
                     vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
                     vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                ],
+            },
+        );
+    }
+
+    pub fn register_libfunc_uint_try_from_felt252(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        op_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) }],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                    vec![],
                 ],
             },
         );
@@ -1683,7 +1735,8 @@ impl<'ctx> Compiler<'ctx> {
         let null_ptr_op = self.op_llvm_nullptr(&block);
         let null_ptr = null_ptr_op.result(0)?;
 
-        let ptr_op = self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into())?;
+        let ptr_op =
+            self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into(), storage)?;
         let ptr_val = ptr_op.result(0)?;
 
         let insert_op = self.op_llvm_insertvalue(
@@ -1743,30 +1796,28 @@ impl<'ctx> Compiler<'ctx> {
         let array_type = sierra_type.get_type();
         let array_type_with_loc = sierra_type.get_type_location(&self.context);
 
-        let array_value = block.argument(0)?;
-        let append_value = block.argument(1)?;
+        let array_value = block.argument(0)?.into();
+        let append_value = block.argument(1)?.into();
 
         // check if len < capacity
-        let array_len_op =
-            self.op_llvm_extractvalue(&block, 0, array_value.into(), self.u32_type())?;
-        let array_len = array_len_op.result(0)?;
+        let array_len_op = self.call_array_len_impl(&block, array_value, &sierra_type, storage)?;
+        let array_len = array_len_op.result(0)?.into();
 
         let array_capacity_op =
-            self.op_llvm_extractvalue(&block, 1, array_value.into(), self.u32_type())?;
-        let array_capacity = array_capacity_op.result(0)?;
+            self.call_array_capacity_impl(&block, array_value, &sierra_type, storage)?;
+        let array_capacity = array_capacity_op.result(0)?.into();
 
         let realloc_block = region.append_block(Block::new(&[]));
         let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
 
-        let is_less =
-            self.op_cmp(&block, CmpOp::UnsignedLessThan, array_len.into(), array_capacity.into());
+        let is_less = self.op_cmp(&block, CmpOp::UnsignedLessThan, array_len, array_capacity);
 
         self.op_cond_br(
             &block,
             is_less.result(0)?.into(),
             &append_value_block,
             &realloc_block,
-            &[array_value.into()],
+            &[array_value],
             &[],
         );
 
@@ -1775,22 +1826,23 @@ impl<'ctx> Compiler<'ctx> {
         let const_2_op = self.op_u32_const(&realloc_block, "2");
         let const_2 = const_2_op.result(0)?;
 
-        let new_capacity_op = self.op_mul(&realloc_block, array_capacity.into(), const_2.into());
+        let new_capacity_op = self.op_mul(&realloc_block, array_capacity, const_2.into());
         let new_capacity = new_capacity_op.result(0)?.into();
 
         let new_capacity_as_u64_op = self.op_zext(&realloc_block, new_capacity, self.u64_type());
         let new_capacity_as_u64 = new_capacity_as_u64_op.result(0)?;
 
         let data_ptr_op =
-            self.op_llvm_extractvalue(&realloc_block, 2, array_value.into(), self.llvm_ptr_type())?;
+            self.op_llvm_extractvalue(&realloc_block, 2, array_value, self.llvm_ptr_type())?;
         let data_ptr: Value = data_ptr_op.result(0)?.into();
 
-        let new_ptr_op = self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into())?;
+        let new_ptr_op =
+            self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into(), storage)?;
         let new_ptr = new_ptr_op.result(0)?.into();
 
         // change the ptr
         let insert_ptr_op =
-            self.op_llvm_insertvalue(&realloc_block, 2, array_value.into(), new_ptr, array_type)?;
+            self.op_llvm_insertvalue(&realloc_block, 2, array_value, new_ptr, array_type)?;
         let array_value = insert_ptr_op.result(0)?;
 
         // update the capacity
@@ -1820,18 +1872,17 @@ impl<'ctx> Compiler<'ctx> {
         // get the pointer to the data index
         let value_ptr_op = self.op_llvm_gep_dynamic(
             &append_value_block,
-            &[array_len.into()],
+            &[array_len],
             data_ptr,
             arg_type.get_type(),
         )?;
         let value_ptr = value_ptr_op.result(0)?.into();
         // update the value
-        self.op_llvm_store(&append_value_block, append_value.into(), value_ptr)?;
+        self.op_llvm_store(&append_value_block, append_value, value_ptr)?;
 
         // increment the length
         let const_1 = self.op_const(&append_value_block, "1", array_len.r#type());
-        let len_plus_1 =
-            self.op_add(&append_value_block, array_len.into(), const_1.result(0)?.into());
+        let len_plus_1 = self.op_add(&append_value_block, array_len, const_1.result(0)?.into());
 
         let insert_op = self.op_llvm_insertvalue(
             &append_value_block,
@@ -1873,13 +1924,10 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
             GenericArg::Type(type_id) => {
                 storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
+            _ => unreachable!("Generic arg for array_len should be a Type"),
         };
         let region = Region::new();
 
@@ -1888,16 +1936,14 @@ impl<'ctx> Compiler<'ctx> {
         let block =
             region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));
 
-        let array_type = sierra_type.get_type();
-        let array_value = block.argument(0)?;
+        let arg = block.argument(0)?.into();
+        let impl_call = self.call_array_len_impl(&block, arg, &sierra_type, storage)?;
+        let impl_result = impl_call.result(0)?.into();
 
-        let array_len_op =
-            self.op_llvm_extractvalue(&block, 0, array_value.into(), self.u32_type())?;
-        let array_len = array_len_op.result(0)?.into();
+        self.op_return(&block, &[impl_result]);
 
-        self.op_return(&block, &[array_len]);
-
-        let function_type = create_fn_signature(&[array_type], &[self.u32_type()]);
+        // TODO replace self.u32_type() once a helper to get array properties from a SierraType is implemented
+        let function_type = create_fn_signature(&[sierra_type.get_type()], &[self.u32_type()]);
 
         let func =
             self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
