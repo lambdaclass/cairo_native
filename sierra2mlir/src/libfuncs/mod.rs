@@ -2232,11 +2232,11 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[]);
 
         let nullable_sierra_type = SierraType::create_nullable_type(self, arg_type.clone());
-        let mut struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
+        let struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
 
         let const_0 = self.op_const(&block, "0", self.bool_type());
         let struct_value = struct_type_op.result(0)?.into();
-        struct_type_op = self.op_llvm_insertvalue(
+        let struct_type_op = self.op_llvm_insertvalue(
             &block,
             1,
             struct_value,
@@ -2286,11 +2286,11 @@ impl<'ctx> Compiler<'ctx> {
         let block = Block::new(&[arg_type.get_type_location(&self.context)]);
 
         let nullable_sierra_type = SierraType::create_nullable_type(self, arg_type.clone());
-        let mut struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
+        let struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
 
         let const_1 = self.op_const(&block, "1", self.bool_type());
         let struct_value = struct_type_op.result(0)?.into();
-        struct_type_op = self.op_llvm_insertvalue(
+        let struct_type_op = self.op_llvm_insertvalue(
             &block,
             1,
             struct_value,
@@ -2299,7 +2299,7 @@ impl<'ctx> Compiler<'ctx> {
         )?;
         let struct_value: Value = struct_type_op.result(0)?.into();
 
-        struct_type_op = self.op_llvm_insertvalue(
+        let struct_type_op = self.op_llvm_insertvalue(
             &block,
             0,
             struct_value,
