@@ -106,7 +106,8 @@ jobs:
         run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'
 
   coverage:
-    name: test
+    name: coverage
+    needs: test
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
