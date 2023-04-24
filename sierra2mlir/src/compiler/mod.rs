@@ -17,6 +17,7 @@ use self::fn_attributes::FnAttributes;
 
 pub mod external_funcs;
 pub mod fn_attributes;
+pub mod helper_funcs;
 pub mod mlir_ops;
 pub mod types;
 

@@ -64,7 +64,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_mul(func_decl, parent_block, storage)?;
                 }
                 "felt252_div" => {
-                    self.create_libfunc_felt_div(func_decl, parent_block, storage)?;
+                    self.create_libfunc_felt_div(func_decl, &parent_block, storage)?;
                 }
                 "felt252_is_zero" => {
                     // Note no actual function is created here, however types are registered
@@ -837,7 +837,7 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_felt_div(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
+        parent_block: &Block,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
@@ -846,17 +846,16 @@ impl<'ctx> Compiler<'ctx> {
         let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
         let region = Region::new();
-        let block = Block::new(&[felt_type_location, felt_type_location]);
+        let block = region.append_block(Block::new(&[felt_type_location, felt_type_location]));
 
         // res = lhs / rhs (where / is modular division)
         let lhs = block.argument(0)?.into();
         let rhs = block.argument(1)?.into();
-        let res_op = self.op_felt_div(&region, &block, lhs, rhs)?;
+        let res_op = self.op_felt_div(&block, lhs, rhs, storage)?;
         let res = res_op.result(0)?.into();
 
         self.op_return(&block, &[res]);
 
-        region.append_block(block);
         let func = self.op_func(
             &id,
             &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
