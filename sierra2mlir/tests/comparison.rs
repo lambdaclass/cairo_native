@@ -5,8 +5,8 @@ use std::{env, fs};
 
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
-use cairo_lang_sierra::ProgramParser;
 use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::ProgramParser;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use num_bigint::BigUint;
@@ -113,35 +113,34 @@ fn compile_sierra_program(test_name: &str) -> Program {
 
     if sierra_path.exists() {
         let sierra_code =
-            fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
+            fs::read_to_string(format!("./tests/comparison/{test_name}.sierra")).unwrap();
         ProgramParser::new().parse(&sierra_code).unwrap()
+    } else if cairo_path.exists() {
+        let program_ptr = cairo_lang_compiler::compile_cairo_project_at_path(
+            &cairo_path,
+            CompilerConfig { replace_ids: true, ..Default::default() },
+        )
+        .expect("Cairo compilation failed");
+        let program = Arc::try_unwrap(program_ptr).unwrap();
+        fs::write(sierra_path, program.to_string()).unwrap();
+        program
     } else {
-        if cairo_path.exists() {
-            let program_ptr = cairo_lang_compiler::compile_cairo_project_at_path(
-                &cairo_path,
-                CompilerConfig { replace_ids: true, ..Default::default() },
-            ).expect("Cairo compilation failed");
-            let program = Arc::try_unwrap(program_ptr).unwrap();
-            fs::write(sierra_path, program.to_string()).unwrap();
-            program
-        } else {
-            panic!("Cannot find {test_name}.sierra or {test_name}.cairo")
-        }
+        panic!("Cannot find {test_name}.sierra or {test_name}.cairo")
     }
 }
 
 fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
     let out_dir = get_outdir();
     let test_file_name = flatten_test_name(test_name);
-    let compiled_code = compile(&program, false, false, true, 1).unwrap();
-    let optimised_compiled_code = compile(&program, false, false, true, 1).unwrap();
+    let compiled_code = compile(program, false, false, true, 1).unwrap();
+    let optimised_compiled_code = compile(program, false, false, true, 1).unwrap();
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let optimised_mlir_file =
         out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
     std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
     for _ in 0..5 {
-        let repeat_compiled_code = compile(&program, false, false, true, 1).unwrap();
+        let repeat_compiled_code = compile(program, false, false, true, 1).unwrap();
         if compiled_code != repeat_compiled_code {
             let mlir_repeat_file =
                 out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
