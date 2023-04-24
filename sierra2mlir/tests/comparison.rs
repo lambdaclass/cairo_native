@@ -1,9 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::{env, fs};
 
 use cairo_felt::Felt252;
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
+use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
@@ -57,12 +60,11 @@ use test_case::test_case;
 #[test_case("uint/uint_try_from_felt")]
 // #[test_case("felt_ops/div")] - div blocked on bug on div
 fn comparison_test(test_name: &str) -> Result<(), String> {
-    let sierra_code =
-        fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
-    compile_to_mlir_with_consistency_check(test_name, &sierra_code);
+    let program = compile_sierra_program(test_name);
+    compile_to_mlir_with_consistency_check(test_name, &program);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(&sierra_code);
+    let casm_result = run_sierra_via_casm(program);
 
     match casm_result {
         Ok(result) => match result.value {
@@ -122,19 +124,41 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn compile_to_mlir_with_consistency_check(test_name: &str, sierra_code: &str) {
-    let program = ProgramParser::new().parse(sierra_code).unwrap();
+fn compile_sierra_program(test_name: &str) -> Program {
+    let test_path = Path::new(".").join("tests").join("comparison").join(test_name);
+    let sierra_path = test_path.with_extension("sierra");
+    let cairo_path = test_path.with_extension("cairo");
+
+    if sierra_path.exists() {
+        let sierra_code =
+            fs::read_to_string(format!("./tests/comparison/{test_name}.sierra")).unwrap();
+        ProgramParser::new().parse(&sierra_code).unwrap()
+    } else if cairo_path.exists() {
+        let program_ptr = cairo_lang_compiler::compile_cairo_project_at_path(
+            &cairo_path,
+            CompilerConfig { replace_ids: true, ..Default::default() },
+        )
+        .expect("Cairo compilation failed");
+        let program = Arc::try_unwrap(program_ptr).unwrap();
+        fs::write(sierra_path, program.to_string()).unwrap();
+        program
+    } else {
+        panic!("Cannot find {test_name}.sierra or {test_name}.cairo")
+    }
+}
+
+fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
     let out_dir = get_outdir();
     let test_file_name = flatten_test_name(test_name);
-    let compiled_code = compile(&program, false, false, true, 1).unwrap();
-    let optimised_compiled_code = compile(&program, false, false, true, 1).unwrap();
+    let compiled_code = compile(program, false, false, true, 1).unwrap();
+    let optimised_compiled_code = compile(program, false, false, true, 1).unwrap();
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let optimised_mlir_file =
         out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
     std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
     for _ in 0..5 {
-        let repeat_compiled_code = compile(&program, false, false, true, 1).unwrap();
+        let repeat_compiled_code = compile(program, false, false, true, 1).unwrap();
         if compiled_code != repeat_compiled_code {
             let mlir_repeat_file =
                 out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
@@ -149,11 +173,9 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, sierra_code: &str) {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
-    let sierra_program = ProgramParser::new().parse(sierra_code).unwrap();
-
+fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
     let runner =
-        SierraCasmRunner::new(sierra_program, None).with_context(|| "Failed setting up runner.")?;
+        SierraCasmRunner::new(program, None).with_context(|| "Failed setting up runner.")?;
 
     runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
 }
