@@ -165,4 +165,17 @@ impl<'ctx> SierraType<'ctx> {
             _ => None,
         }
     }
+
+    pub const fn get_enum_tag_type(&self) -> Option<Type> {
+        match self {
+            SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types: _,
+            } => Some(*tag_type),
+            _ => None,
+        }
+    }
 }
