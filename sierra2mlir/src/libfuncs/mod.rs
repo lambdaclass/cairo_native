@@ -92,7 +92,7 @@ impl<'ctx> Compiler<'ctx> {
                 "null" => {
                     self.create_libfunc_null(func_decl, parent_block, storage)?;
                 }
-                "store_temp" | "rename" | "unbox" => {
+                "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
                 }
                 "u8_const" => {
