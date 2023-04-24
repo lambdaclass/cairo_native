@@ -49,7 +49,7 @@ use test_case::test_case;
 #[test_case("uint/downcasts")]
 #[test_case("uint/safe_divmod")]
 #[test_case("uint/uint_addition")]
-#[test_case("uint/uint_substraction")]
+#[test_case("uint/uint_subtraction")]
 #[test_case("uint/upcasts")]
 #[test_case("uint/wide_mul")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
