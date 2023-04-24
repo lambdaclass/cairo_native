@@ -2213,7 +2213,7 @@ impl<'ctx> Compiler<'ctx> {
             GenericArg::Type(type_id) => {
                 storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         let region = Region::new();
