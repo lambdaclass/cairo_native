@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use melior_next::{dialect::llvm, ir::Type};
 
 use super::Compiler;
@@ -75,14 +74,5 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
         llvm::r#type::array(element_type, len)
-    }
-
-    pub fn struct_type_string(&self, types: &[Type]) -> String {
-        let types = types.iter().map(|x| x.to_string()).join(", ");
-        format!("!llvm.struct<({})>", types)
-    }
-
-    pub fn struct_type(&self, types: &[Type]) -> Type {
-        Type::parse(&self.context, &self.struct_type_string(types)).unwrap()
     }
 }

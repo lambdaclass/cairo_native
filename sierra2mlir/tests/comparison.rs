@@ -42,6 +42,7 @@ use test_case::test_case;
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
 #[test_case("enums/single_value")]
+#[test_case("nullable/test_nullable")]
 #[test_case("returns/simple")]
 #[test_case("returns/tuple")]
 #[test_case("returns/enums")]
