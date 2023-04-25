@@ -44,9 +44,7 @@ impl<'ctx> Compiler<'ctx> {
                         storage.types.insert(id.to_string(), ty.clone());
                     } else {
                         let struct_types = types.iter().map(SierraType::get_type).collect_vec();
-                        let struct_type =
-                            Type::parse(&self.context, &self.struct_type_string(&struct_types))
-                                .unwrap();
+                        let struct_type = self.llvm_struct_type(&struct_types, false);
 
                         storage.types.insert(
                             id.to_string(),
@@ -79,11 +77,7 @@ impl<'ctx> Compiler<'ctx> {
                         types.push(gen_arg_ty.clone());
                     }
 
-                    // parse is a hack to avoid lifetime issues
-                    let struct_types = types
-                        .iter()
-                        .map(|x| Type::parse(&self.context, &x.get_type().to_string()).unwrap())
-                        .collect_vec();
+                    let struct_types = types.iter().map(SierraType::get_type).collect_vec();
                     let struct_type = self.llvm_struct_type(&struct_types, false);
 
                     storage.types.insert(
@@ -131,7 +125,6 @@ impl<'ctx> Compiler<'ctx> {
                         storage_type: enum_memory_array,
                         variants_types: enum_variant_types,
                     };
-
                     storage.types.insert(id.to_string(), enum_sierra_type);
                 }
                 "Array" => {
@@ -158,6 +151,19 @@ impl<'ctx> Compiler<'ctx> {
                     };
 
                     storage.types.insert(id.to_string(), sierra_type);
+                }
+                "Nullable" => {
+                    // Represented as a struct {value,bool} to know if the value is null.
+                    let value_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => {
+                            storage.types.get(&x.id.to_string()).expect("array type should exist")
+                        }
+                        _ => unreachable!("array type is always a type"),
+                    };
+
+                    let nullable_sierra_type =
+                        SierraType::create_nullable_type(self, value_type.clone());
+                    storage.types.insert(id.to_string(), nullable_sierra_type);
                 }
                 "Snapshot" => {
                     // TODO: make sure this is correct

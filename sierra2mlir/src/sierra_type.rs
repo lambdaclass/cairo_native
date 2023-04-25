@@ -47,6 +47,17 @@ impl<'ctx> SierraType<'ctx> {
         }
     }
 
+    /// gets the sierra nullable type for the given type
+    pub fn create_nullable_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Struct {
+            ty: compiler.llvm_struct_type(&[element.get_type(), compiler.bool_type()], false),
+            field_types: vec![element, SierraType::Simple(compiler.bool_type())],
+        }
+    }
+
     /// Returns the width in bits of the mlir representation of the type
     pub fn get_width(&self) -> u32 {
         match self {
@@ -103,7 +114,7 @@ impl<'ctx> SierraType<'ctx> {
     }
 
     /// Returns the MLIR type of this sierra type
-    pub const fn get_type(&self) -> Type {
+    pub const fn get_type(&self) -> Type<'ctx> {
         match self {
             Self::Simple(ty) => *ty,
             Self::Struct { ty, field_types: _ } => *ty,
@@ -138,7 +149,7 @@ impl<'ctx> SierraType<'ctx> {
     }
 
     /// Returns a vec of field types if this is a struct type.
-    pub fn get_field_types(&self) -> Option<Vec<Type>> {
+    pub fn get_field_types(&self) -> Option<Vec<Type<'ctx>>> {
         match self {
             SierraType::Struct { ty: _, field_types } => {
                 Some(field_types.iter().map(|x| x.get_type()).collect_vec())
