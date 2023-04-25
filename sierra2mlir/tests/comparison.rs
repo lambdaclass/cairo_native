@@ -1,3 +1,5 @@
+#![allow(clippy::items_after_test_module)]
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -19,7 +21,6 @@ use test_case::test_case;
 
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
-
 #[test_case("array/append")]
 #[test_case("array/index_invalid")]
 #[test_case("array/pop_front_invalid")]
