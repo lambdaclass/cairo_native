@@ -1548,7 +1548,8 @@ impl<'ctx> Compiler<'ctx> {
         let append_value = entry_block.argument(1)?.into();
 
         // check if len < capacity
-        let array_len_op = self.call_array_len_impl(&entry_block, array_value, &array_type, storage)?;
+        let array_len_op =
+            self.call_array_len_impl(&entry_block, array_value, &array_type, storage)?;
         let array_len = array_len_op.result(0)?.into();
 
         let array_capacity_op =
@@ -1558,10 +1559,18 @@ impl<'ctx> Compiler<'ctx> {
         let realloc_block = self.new_block(&[]);
         let append_value_block = self.new_block(&[array_type.get_type()]);
 
-        let is_less_op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, array_len, array_capacity);
+        let is_less_op =
+            self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, array_len, array_capacity);
         let is_less = is_less_op.result(0)?.into();
 
-        self.op_cond_br(&entry_block, is_less, &append_value_block, &realloc_block, &[array_value], &[]);
+        self.op_cond_br(
+            &entry_block,
+            is_less,
+            &append_value_block,
+            &realloc_block,
+            &[array_value],
+            &[],
+        );
 
         // ---reallocation block---
         // reallocate with more capacity, for now with a simple algorithm:
