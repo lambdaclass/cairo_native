@@ -39,11 +39,9 @@ Put on your seatbelts. 3, 2, 1... Let's jam.
 
 ### Compilers, LLVM
 
-Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the 
+Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the foremost compiler tooling project. It powers many of the analisys and code generation components of the Clang, Swift, Rust, and many more languages.
 
-At the heart of LLVM is LLVM IR, it's intermediate representation. 
-
-IRs are compiler writers way of solving problems by building abstraction ladders.
+At the heart of LLVM is LLVM IR, it's intermediate representation. IRs are compiler writer's way of solving problems by building abstraction ladders, they are essentially a combination of data formats and algorithms that allow best expressing the properties a tool wishes to guarantee or prove about code.
 
 You may have become aware that machine learning algorithms are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, AI has settled on a set of techniques which involve dealing with math on enormous matrices of numbers, and stringing together large numbers of these operations into graphs. 
 This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale
