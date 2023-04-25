@@ -1,7 +1,0 @@
-ignore:
-- "scripts"
-- "sierra2mlir/benches"
-- "sierra2mlir/tests"
-- "**/*.sh"
-- "docs"
-- "examples"
