@@ -26,7 +26,7 @@ impl_tests!(
     destructure,
     enum_match,
     example_array,
-    //felt_div,
+    felt_div,
     felt_is_zero,
     fib_simple,
     fib,
