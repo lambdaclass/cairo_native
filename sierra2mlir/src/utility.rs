@@ -21,6 +21,36 @@ use crate::{
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
+    /// Packages the given blocks in a function and adds it to module.body()
+    /// `blocks` must not be empty
+    pub fn create_function(
+        &self,
+        name: &str,
+        blocks: Vec<Block>,
+        ret_types: &[Type],
+        attributes: FnAttributes,
+    ) -> Result<()> {
+        // Need to first collect the arguments, as r#type does not outlive the argument
+        let mut args = vec![];
+        for arg_index in 0..blocks[0].argument_count() {
+            args.push(blocks[0].argument(arg_index)?);
+        }
+        let args = args;
+        let arg_types = args.iter().map(|arg| arg.r#type()).collect_vec();
+
+        let function_signature = create_fn_signature(&arg_types, ret_types);
+
+        let region = Region::new();
+        for block in blocks {
+            region.append_block(block);
+        }
+
+        let func = self.op_func(name, &function_signature, vec![region], attributes)?;
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
     pub fn create_print_felt(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         let region = Region::new();
