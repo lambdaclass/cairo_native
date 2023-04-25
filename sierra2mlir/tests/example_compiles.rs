@@ -31,6 +31,7 @@ impl_tests!(
     fib_simple,
     fib,
     index_array,
+    pedersen,
     print,
     print_test,
     simple_enum,

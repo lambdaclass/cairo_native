@@ -102,6 +102,10 @@ fn main() -> color_eyre::Result<()> {
         }
         Commands::Run { function, input, main_print, print_target } => {
             let program = load_program(&input);
+            if !program.funcs.iter().any(|x| x.id.debug_name.as_deref() == Some(&function)) {
+                panic!("Entry point {function} doesn't exist.");
+            }
+
             let engine = sierra2mlir::execute(&program, main_print, print_target)?;
 
             unsafe {
