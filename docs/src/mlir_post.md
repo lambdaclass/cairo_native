@@ -51,7 +51,7 @@ All this to say that IRs are a compiler writer's way of solving problems by buil
 
 You may have become aware that machine learning algorithms and their applications are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, the statistical school of AI has settled (?) on a set of techniques which involve dealing with numerical operations on enormous matrices of numbers, and stringing together large numbers of these operations into computation graphs. The fundamental elements in these computational graphs are things like matrix multiplications, convolutions, data manipulations and data movements. This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale these approaches, make them cheaper and more effective on ever larger sets of data. 
 
-A key observation at some point was that many of the problems these algorithms solve have inherent or given parallelism, and that we already had an industry producing machines specifically designed for embarassingly parallel numerical problems, namely shaders running on GPUs. Thus the first wave of this effort was repurposing video graphics card hardware to make them applicable to this new area.
+At some point a key observation was made: many of the problems these algorithms solve have inherent or given parallelism, and that we already had an industry producing machines specifically designed for embarassingly parallel numerical problems, namely shaders running on GPUs. Thus the first wave of this effort was repurposing video graphics card hardware to make them applicable to this new area.
 
 Why did we change the tune from LLVM to AI and graphics card? Because as they matured, these algorithms, models, techniques, tools, libraries were standarized into frameworks that could be used by many a layman programmer, and that required appropriate languages in which to express them, and their compilers. 
 
@@ -60,6 +60,8 @@ New hardware was designed, and LLVM was again used to target these new tensor pr
 
 But after twenty years, expanding hardware targets, and changing problem spaces, LLVM was starting to be found lacking.
 
+	> the idea behind mlir: is what people started to realize that the complexity of the software stack above the low level ir was getting so high that forcing the features of that into this level was was putting too much of a burden on it, so it's better to split that into multiple pieces
+	
 ## What? (is MLIR?)
 
 [MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation) is a young project started by Chris Lattner et al of LLVM fame with the goal of solving some issues that have arisen in compilerland. 
@@ -316,16 +318,17 @@ Ref Lex Fridman Podcast #162: Jim Keller
 
 	so is it possible to build something that natively runs graphs 
 
-		yes so that's what ten storm did
+		yes so that's what tenstorrent did
 
-		tense torrance started by a friend of mine labisha bajak and i i was his first investor so i've been
-		you know kind of following him and talking to him about it for years and in the fall when i was considering
-		things to do i decided you know the we we held a conference last year with a
-		friend organized it and and we we wanted to bring in thinkers and two of the people were andre
-		carpassi and chris lattner and andre gave this talk on youtube
-		called software 2.0 which i think is great which is we went from
-		programmed computers where you write programs to data program computers you know like the futures you know of
-		software as data programs the the networks and i think that's true and then
+		tenstorrent started by a friend of mine Ljubisa Bajic and i 
+		i was his first investor so i've been
+		you know kind of following him and talking to him about it for years and in the fall when i was considering things to do i decided to hold a conference last year
+		a friend organized it and and we we wanted to bring in thinkers and two of the people were andrej karpathi and chris lattner 
+
+		andre gave this talk on youtube called software 2.0
+		we went from programmed computers where you write programs to data program computers 
+		the futures of software as data programs the networks
+
 		chris has been work he worked on llvm the low-level virtual machine which became the intermediate representation
 		for all compilers and now he's working on another project called mlir which is mid-level
 		intermediate representation which is essentially under the graph about how do
@@ -419,28 +422,6 @@ Ref Lex Fridman Podcast #162: Jim Keller
 
 	Andrej Karpathy and Chris Lattner
 
-		good i love the idea of you
-		inside the room with the carpathi andre kapathi and chris ladner
-		uh very um very interesting very brilliant people
-		very out of the box thinkers but also like first principles thinkers well they both
-		get stuff done they only get stuff done to get their own projects done they they talk about it clearly they educate
-		large numbers of people and they've created platforms for other people to go do their stuff on yeah the the clear thinking that's able
-		to be communicated is kind of impressive it's kind of remarkable to yeah i'm a fan well let me ask because
-		uh i talked to chris actually a lot these days he's been uh one of the cool just to give him a shout
-		out and he's been so supportive as a human being so
-		everybody's quite different like great engineers are different but he's been like sensitive to the human element in a way
-		that's been fascinating like he was one of the early people on this stupid podcast that i do to say
-		like don't quit this thing and also talk to whoever the hell you want to
-		talk to that kind of from a legit engineer to get like props and be like you can do this that
-		was i mean that's what a good leader does right they just kind of let a little kid do his thing like go go
-		do it let's see let's see see what turns out that that's a that's a pretty powerful thing but
-		what do you um what's your sense about he used to be he no i think stepped away from google
-		right he said sci-fi i think uh what what's really impressive to you
-		about the things that chris has worked on because it's that we mentioned the optimization the compiled design stuff the llvm uh
-		then there's he's also a google work that the tpu stuff he's obviously worked on swift so the
-		programming language side talking about people that work in the entirety of the stack yeah
-		uh what uh from your time interacting with chris and knowing the guy what's really impressive to you it just inspires you
-		well well like llvm became
 		you know the platform the de facto platform for you know compilers like it's it's
 		amazing and you know it was good code quality good design choices he hit the right level of abstraction
 		there's a little bit of the right time in the right place and then he built a new programming language called swift
@@ -448,7 +429,9 @@ Ref Lex Fridman Podcast #162: Jim Keller
 		i don't know that much about his work at google although i know that you know that was the typical they
 		started tensorflow stuff and they you know it was new is you know they wrote a lot of code and then at
 		some point it needed to be refactored to be you know because it its development slowed down why
-		pytorch started a little later and then passed it so he did a lot of work on that and then his idea about mlir which is
+		pytorch started a little later and then passed it so he did a lot of work on that and then 
+
+		his idea about mlir which is
 		what people started to realize is the complexity of the software stack above the low level ir was getting so high
 		that forcing the features of that into a level was was putting too much of a burden on it so he's splitting that into multiple
 		pieces and that was one of the inspirations for our software stack where we have several intermediate representations
