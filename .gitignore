@@ -22,7 +22,6 @@ corelib/
 # Compiled stuff.
 **/*.ll
 **/*.mlir
-**/*.sierra
 
 # coverage files
 lcov.info
