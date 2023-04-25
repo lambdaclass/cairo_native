@@ -236,6 +236,18 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "match_nullable" => {
+                                self.inline_match_nullable(
+                                    &id,
+                                    statement_idx,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "downcast" => {
                                 self.inline_downcast(
                                     &id,

@@ -76,6 +76,14 @@ impl<'ctx> Compiler<'ctx> {
                 "felt252" => self.create_print_felt(storage)?,
                 "NonZero" => todo!("Print box felt representation"),
                 "Box" => todo!("Print box felt representation"),
+                "Nullable" => {
+                    let arg_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .cloned()
+                        .expect("Type should be registered");
+                    self.create_print_nullable(&arg_type, type_decl.clone(), storage)?
+                }
                 "Struct" => {
                     let arg_type = storage
                         .types
@@ -319,6 +327,30 @@ fn get_all_types_to_print(
 
                 for ty in &program.type_declarations {
                     if ty.id == *array_type {
+                        let types_to_print_here = get_all_types_to_print(&[ty.clone()], program);
+                        for type_decl in types_to_print_here {
+                            if !types_to_print.contains(&type_decl) {
+                                types_to_print.push(type_decl);
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "Nullable" => {
+                let nullable_type = match &type_decl.long_id.generic_args[0] {
+                    GenericArg::Type(type_id) => type_id,
+                    _ => panic!(
+                        "Struct type declaration arguments after the first should all be resolved"
+                    ),
+                };
+
+                for ty in &program.type_declarations {
+                    if ty.id == *nullable_type {
                         let types_to_print_here = get_all_types_to_print(&[ty.clone()], program);
                         for type_decl in types_to_print_here {
                             if !types_to_print.contains(&type_decl) {
