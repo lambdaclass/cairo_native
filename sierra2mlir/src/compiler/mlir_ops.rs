@@ -93,6 +93,16 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    /// Shift left.
+    pub fn op_shl<'a>(&self, block: &'a Block, value: Value, shift_by: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.shli", Location::unknown(&self.context))
+                .add_operands(&[value, shift_by])
+                .add_results(&[value.r#type()])
+                .build(),
+        )
+    }
+
     /// Only the MLIR op.
     ///
     /// > Source: https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-mlirarithcmpiop

@@ -1,12 +1,17 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::{env, fs};
 
+use cairo_felt::Felt252;
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
+use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
 use cfg_match::cfg_match;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
+use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Num;
 use sierra2mlir::compile;
@@ -16,7 +21,7 @@ use test_case::test_case;
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
-#[test_case("array/example_array")]
+#[test_case("array/append")]
 #[test_case("bitwise/and")]
 #[test_case("bitwise/or")]
 #[test_case("bitwise/xor")]
@@ -53,19 +58,20 @@ use test_case::test_case;
 #[test_case("uint/upcasts")]
 #[test_case("uint/wide_mul")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
-    let sierra_code =
-        fs::read_to_string(&format!("./tests/comparison/{test_name}.sierra")).unwrap();
-    compile_to_mlir_with_consistency_check(test_name, &sierra_code);
+    let program = compile_sierra_program(test_name);
+    compile_to_mlir_with_consistency_check(test_name, &program);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(&sierra_code);
+    let casm_result = run_sierra_via_casm(program);
 
     match casm_result {
         Ok(result) => match result.value {
+            // Casm runner succeeded
             cairo_lang_runner::RunResultValue::Success(casm_values) => {
                 println!("llvm result: {:?}\n", llvm_result);
                 println!("Casm result: {:?}\n", casm_values);
-                println!("llvm result: {:?}\n", llvm_result);
+                // Since the casm runner succeeded, we expect that llvm program didn't panic
+                let llvm_result = llvm_result.unwrap();
                 assert_eq!(
                     casm_values.len(),
                     llvm_result.len(),
@@ -95,8 +101,18 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
                     )
                 }
             }
-            cairo_lang_runner::RunResultValue::Panic(_) => {
-                todo!("Comparison tests where the cairo runner panics");
+            cairo_lang_runner::RunResultValue::Panic(panic_data) => {
+                // The casm runner panicked, so we expect that lli returned a (controlled) failure
+                let casm_panic_message = get_string_from_felts(panic_data);
+                if llvm_result.is_ok() {
+                    panic!("Casm runner panicked with error message: \"{}\", but llvm run returned: {:?}", casm_panic_message, llvm_result.unwrap());
+                }
+                let llvm_panic_message = llvm_result.unwrap_err();
+
+                assert_eq!(
+                    llvm_panic_message, casm_panic_message,
+                    "LLvm panic message (lhs) should equal casm panic message (rhs)"
+                );
             }
         },
         Err(_) => {
@@ -106,19 +122,41 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn compile_to_mlir_with_consistency_check(test_name: &str, sierra_code: &str) {
-    let program = ProgramParser::new().parse(sierra_code).unwrap();
+fn compile_sierra_program(test_name: &str) -> Program {
+    let test_path = Path::new(".").join("tests").join("comparison").join(test_name);
+    let sierra_path = test_path.with_extension("sierra");
+    let cairo_path = test_path.with_extension("cairo");
+
+    if sierra_path.exists() {
+        let sierra_code =
+            fs::read_to_string(format!("./tests/comparison/{test_name}.sierra")).unwrap();
+        ProgramParser::new().parse(&sierra_code).unwrap()
+    } else if cairo_path.exists() {
+        let program_ptr = cairo_lang_compiler::compile_cairo_project_at_path(
+            &cairo_path,
+            CompilerConfig { replace_ids: true, ..Default::default() },
+        )
+        .expect("Cairo compilation failed");
+        let program = Arc::try_unwrap(program_ptr).unwrap();
+        fs::write(sierra_path, program.to_string()).unwrap();
+        program
+    } else {
+        panic!("Cannot find {test_name}.sierra or {test_name}.cairo")
+    }
+}
+
+fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
     let out_dir = get_outdir();
     let test_file_name = flatten_test_name(test_name);
-    let compiled_code = compile(&program, false, false, true, 1).unwrap();
-    let optimised_compiled_code = compile(&program, false, false, true, 1).unwrap();
+    let compiled_code = compile(program, false, false, true, 1).unwrap();
+    let optimised_compiled_code = compile(program, false, false, true, 1).unwrap();
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let optimised_mlir_file =
         out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
     std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
     for _ in 0..5 {
-        let repeat_compiled_code = compile(&program, false, false, true, 1).unwrap();
+        let repeat_compiled_code = compile(program, false, false, true, 1).unwrap();
         if compiled_code != repeat_compiled_code {
             let mlir_repeat_file =
                 out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
@@ -133,17 +171,15 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, sierra_code: &str) {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(sierra_code: &str) -> Result<RunResult> {
-    let sierra_program = ProgramParser::new().parse(sierra_code).unwrap();
-
+fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
     let runner =
-        SierraCasmRunner::new(sierra_program, None).with_context(|| "Failed setting up runner.")?;
+        SierraCasmRunner::new(program, None).with_context(|| "Failed setting up runner.")?;
 
     runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
-fn run_mlir(test_name: &str) -> Result<Vec<BigUint>, String> {
+fn run_mlir(test_name: &str) -> Result<Result<Vec<BigUint>, String>, String> {
     let out_dir = get_outdir();
 
     // Allows folders of comparison tests without write producing a file not found
@@ -167,12 +203,15 @@ fn run_mlir(test_name: &str) -> Result<Vec<BigUint>, String> {
     Ok(result)
 }
 
-fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigUint>, String> {
+// Outer result is for whether lli succeeded and produced a parsable result
+// Inner result is for whether the program panicked
+fn run_mlir_file_via_llvm(
+    mlir_file: &str,
+    output_file: &str,
+) -> Result<Result<Vec<BigUint>, String>, String> {
     let mlir_prefix = find_mlir_prefix();
     let lli_path = mlir_prefix.join("bin").join("lli");
     let mlir_translate_path = mlir_prefix.join("bin").join("mlir-translate");
-    dbg!(&lli_path);
-    dbg!(&mlir_translate_path);
 
     let mlir_output = Command::new(mlir_translate_path)
         .arg("--mlir-to-llvmir")
@@ -215,17 +254,27 @@ fn run_mlir_file_via_llvm(mlir_file: &str, output_file: &str) -> Result<Vec<BigU
 
     let output = std::str::from_utf8(&lli_output.stdout).unwrap().trim();
 
-    Ok(parse_llvm_result(output))
+    parse_llvm_result(output).ok_or("Unable to parse llvm result".to_string())
 }
 
 // Parses the human-readable output from running the llir code into a raw list of outputs
-fn parse_llvm_result(res: &str) -> Vec<BigUint> {
+// Option is for whether it was parsable
+// Result is for whether the run succeeded or failed
+fn parse_llvm_result(res: &str) -> Option<Result<Vec<BigUint>, String>> {
     println!("Parsing llvm result: '{}', length: {}", res, res.chars().count());
-    return res
-        .split('\n')
-        .filter(|s| !s.is_empty())
-        .map(|x| BigUint::from_str_radix(x, 16).unwrap())
-        .collect();
+    let lines = res.split('\n').collect_vec();
+    if !lines.is_empty() && lines[0] == "Success" {
+        Some(Ok(lines
+            .iter()
+            .skip(1)
+            .filter(|s| !s.is_empty())
+            .map(|x| BigUint::from_str_radix(x, 16).unwrap())
+            .collect()))
+    } else if !lines.is_empty() && lines[0] == "Program panicked" {
+        Some(Err(lines[1..].join("\n")))
+    } else {
+        None
+    }
 }
 
 fn flatten_test_name(test_name: &str) -> String {
@@ -257,5 +306,18 @@ pub const fn library_preload_env_var() -> &'static str {
         target_os = "linux" => "LD_PRELOAD",
         target_os = "macos" => "DYLD_INSERT_LIBRARIES",
         _ => compile_error!("Unsupported OS."),
+    }
+}
+
+fn get_string_from_felts(felts: Vec<Felt252>) -> String {
+    let char_data = felts.iter().flat_map(|felt| felt.to_be_bytes()).collect_vec();
+    println!("Parsing char_data {:?}", char_data);
+    let zero_count_opt = char_data.iter().position(|c| *c != 0);
+    println!("Zero count {:?}", zero_count_opt);
+
+    if let Some(zero_count) = zero_count_opt {
+        String::from_utf8_lossy(&char_data[zero_count..char_data.len()]).to_string()
+    } else {
+        "".to_string()
     }
 }

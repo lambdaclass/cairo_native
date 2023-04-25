@@ -543,7 +543,7 @@ enum_init<core::PanicResult::<(core::integer::u128,)>, 1>([8]) -> ([9]);
 store_temp<core::PanicResult::<(core::integer::u128,)>>([9]) -> ([10]);
 return([10]);
 
-uint_substraction::uint_substraction::main@0([0]: RangeCheck) -> (RangeCheck, core::PanicResult::<(((core::integer::u16, core::integer::u16, core::integer::u16), (core::integer::u32, core::integer::u32, core::integer::u32), (core::integer::u64, core::integer::u64, core::integer::u64), (core::integer::u128, core::integer::u128, core::integer::u128)),)>);
+uint_subtraction::uint_subtraction::main@0([0]: RangeCheck) -> (RangeCheck, core::PanicResult::<(((core::integer::u16, core::integer::u16, core::integer::u16), (core::integer::u32, core::integer::u32, core::integer::u32), (core::integer::u64, core::integer::u64, core::integer::u64), (core::integer::u128, core::integer::u128, core::integer::u128)),)>);
 core::integer::U16Sub::sub@208([0]: RangeCheck, [1]: u16, [2]: u16) -> (RangeCheck, core::PanicResult::<(core::integer::u16,)>);
 core::integer::u16_wrapping_sub@235([0]: RangeCheck, [1]: u16, [2]: u16) -> (RangeCheck, u16);
 core::integer::U32Sub::sub@246([0]: RangeCheck, [1]: u32, [2]: u32) -> (RangeCheck, core::PanicResult::<(core::integer::u32,)>);
@@ -555,4 +555,3 @@ core::result::ResultTraitImpl::<core::integer::u16, core::integer::u16>::expect:
 core::result::ResultTraitImpl::<core::integer::u32, core::integer::u32>::expect::<core::integer::u32Drop>@363([0]: core::result::Result::<core::integer::u32, core::integer::u32>, [1]: felt252) -> (core::PanicResult::<(core::integer::u32,)>);
 core::result::ResultTraitImpl::<core::integer::u64, core::integer::u64>::expect::<core::integer::u64Drop>@377([0]: core::result::Result::<core::integer::u64, core::integer::u64>, [1]: felt252) -> (core::PanicResult::<(core::integer::u64,)>);
 core::result::ResultTraitImpl::<core::integer::u128, core::integer::u128>::expect::<core::integer::u128Drop>@391([0]: core::result::Result::<core::integer::u128, core::integer::u128>, [1]: felt252) -> (core::PanicResult::<(core::integer::u128,)>);
-

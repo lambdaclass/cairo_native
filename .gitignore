@@ -23,3 +23,6 @@ corelib/
 **/*.ll
 **/*.mlir
 **/*.sierra
+
+# coverage files
+lcov.info

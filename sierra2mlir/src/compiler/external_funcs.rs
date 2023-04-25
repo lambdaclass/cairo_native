@@ -120,9 +120,9 @@ impl<'ctx> Compiler<'ctx> {
 impl<'ctx> Compiler<'ctx> {
     /// Utility function to create a printf call.
     /// Null-terminates the string iff it is not already null-terminated
-    pub fn call_dprintf<'a>(
+    pub fn call_dprintf<'block>(
         &'ctx self,
-        block: &'a Block,
+        block: &'block Block,
         fmt: &str,
         values: &[Value],
         storage: &mut Storage<'ctx>,
@@ -172,25 +172,25 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// value needs to be u64 and is the size in bytes.
-    pub fn call_realloc<'a>(
+    pub fn call_realloc<'block>(
         &'ctx self,
-        block: &'a Block,
+        block: &'block Block,
         ptr: Value,
         size: Value,
         storage: &mut Storage<'ctx>,
-    ) -> Result<OperationRef<'a>> {
+    ) -> Result<OperationRef<'block>> {
         self.create_realloc(storage)?;
         self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
     }
 
-    pub fn call_memmove<'a>(
+    pub fn call_memmove<'block>(
         &'ctx self,
-        block: &'a Block,
+        block: &'block Block,
         dst: Value,
         src: Value,
         size: Value,
         storage: &mut Storage<'ctx>,
-    ) -> Result<OperationRef<'a>> {
+    ) -> Result<OperationRef<'block>> {
         self.create_memmove(storage)?;
         self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
     }
