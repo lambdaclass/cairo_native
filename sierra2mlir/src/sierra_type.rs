@@ -47,7 +47,7 @@ impl<'ctx> SierraType<'ctx> {
         }
     }
 
-    /// Returns the width in bytes of the mlir representation of the type
+    /// Returns the width in bits of the mlir representation of the type
     pub fn get_width(&self) -> u32 {
         match self {
             SierraType::Simple(ty) => {
