@@ -1,24 +1,31 @@
 # MLIR
 
-```
-Move history of llvm to start
-About 20 years ago llvm …
-Irs are compiler writers way of solving problems bu building abstraction ladders
-Lead up to mlir
-Then machine learning algos
-Hw accel
-Compiler proliferation
-Llvm unsuitability
-Enter mlir
-Meanwhile in cryptoland
-Goals
-Hw accelerated crypto
-On gpu
-On asics
-So what is mlir?
-If you think of llvm ir as an abstraction of all assembly langs
-Mlir is a llevel above
-```
+structure:
+
+- INTRO
+	- LLVM background
+	- Lead up to MLIR:
+		- Then machine learning algos
+		- HW acceleleration
+		- Compiler infra proliferation, duplication
+		- LLVM unsuitability
+- WHAT
+	- Enter MLIR
+	- So what is MLIR?
+- WHY 
+	- Advantages over LLVM
+		- Running on GPU
+	- Meanwhile in cryptoland
+		- Goals
+		- HW accelerated crypto, GPU, ASIC future
+	-  Why (use MLIR in the context of Cairo)?
+- HOW
+	- sierra2mlir compilation process
+	- how to run emitted code
+	- example: felt add
+	- example: conditional
+- BUT
+- CONCLUSION 
 
 ---
 I love jazz. Of all the jazz styles I love, jazz fusion is the one I enjoy most, because I find any fusion of different things more stimulating.
@@ -36,13 +43,214 @@ Some 20-something years ago at the University of Illinois a group of compiler re
 
 At the heart of LLVM is LLVM IR, it's intermediate representation. 
 
+IRs are compiler writers way of solving problems by building abstraction ladders.
+
 You may have become aware that machine learning algorithms are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, AI has settled on a set of techniques which involve dealing with math on enormous matrices of numbers, and stringing together large numbers of these operations into graphs. 
 This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale
 
 The first wave of this was repurposing video graphics card hardware to make them applicable to this.
 
+> ELABORATE
+
+## What? (is MLIR?)
+
+[MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation) is a young project started by Chris Lattner et al of LLVM fame with the goal of solving some issues that have arisen in compilerland. 
+
+If you think of llvm ir as an abstraction of all assembly langs
+Mlir is a level above.
+
+> Ref Paper: MLIR: A Compiler Infrastructure for the End of Moore’s Law
+
+MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together.
+
+### What are is advantages over llvm?
+
+> Ref: The other side of the coin
+
+- Source code location tracking by default
+- All functions run on multiple cores by default (uses OpenMP)
+- Better code reuse for compiler stack (for new library and hardware) and hence, optimizations done by other languages can be reused
+- Intermediate IR to capture data flow information and apply optimizations, better source code tracking than LLVM, flexible design, Reuse LLVM for Machine code generation
+
+> Ref: opengenus
+
+### Running on GPU
+
+```	
+	In terms of evolution, using LLVM for GPU compilation will require moving away from LLVM IR itself, I think. The tradeoffs and semantics start diverging quickly, and even different GPU-based IRs may/will have slightly different semantics. So, a container IR would be ideal to allow different middle/back-ends express their own semantic needs. Do you see MLIR as that container IR? How would different backends use MLIR to further describe their semantics (say SPIRV vs DXIL vs CUDA).
+
+	I think MLIR can be the infrastructure for such purposes. It provides a consistent infra and scaffolding for different variants of GPU IRs. What op and what semantics to have is up to each GPU IR to define. Actually as of right now we already have multiple GPU related dialects, GPU dialect being vendor-agonistic common host/device abstractions, NVGPU dialect/AMDGPU dialect for NVIDIA/AMD-specific stuff, SPIR-V dialect for lowering and existing MLIR system, etc.
+
+	https://mlir.llvm.org/docs/Dialects/GPU/
+	https://mlir.llvm.org/docs/Dialects/NVGPU/
+	https://mlir.llvm.org/docs/Dialects/AMDGPU/
+```
+- [src](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
+
+## Why (use MLIR in the context of Cairo)?
+
+> ELABORATE
+
+- Parallel with intro beat story
+- initial wave of repurposing video graphics hardware, then app specific HW
+
+A similar story has been playing out in the area of cryptography applied to blockchains: as new techniques have been discovered, and older ones matured, the are of Zero Knowledge Proofs has exploded. 
+type systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
+
+Virtual machines have been designed to provide computational guarantees about the programs they run. 
+
+Type systems help in producing code that has properties the tools can reason 
+about, such as termination or bounded resource consumption of transaction fees. 
+
+> ELABORATE
+
+- Enable faster checking of Cairo contract TX
+- Faster Gas computation
+
+### Why target MLIR instead of something like C, Rust?
+
+Targeting a higher level language such as C or Rust would seem to be easier in the short run, but at the cost of having to take into account the semantics of that language implementation and having to ensure that the code being emitted matches your semantics.
+
+> ELABORATE
+
+<!-- ### What optimizations does it have or enable? -->
+
+## How (does one use it)?
+
+> ELABORATE
+
+- MLIR ships with LLVM
+- Rust: Inkwell Melior
+- Dialects
+- Operations
+
+### sierra2mlir
+
+- compilation process
+
+```mermaid
+stateDiagram-v2
+    state "Load sierra program" as sierra
+    state "Initialize compiler" as init
+    state "Initialize execution engine" as engine
+    state if_skip_jit <<choice>>
+    state "Load MLIR dialects" as dialects
+    state "Create builtin module" as module
+    state "Create libc wrappers" as libc
+    state "Process Types" as types
+    state "Process Library functions" as libfuncs
+    state "Save non-flow function info" as func_info
+    state "Process functions" as funcs
+    state "Calculate block ranges per function" as blocks
+    state "Process statements" as statements
+    state "Apply MLIR passes" as passes
+    [*] --> Initialize
+    state Initialize {
+        sierra --> init
+        init --> if_skip_jit
+        if_skip_jit --> engine: if JIT
+        if_skip_jit --> dialects: if Compile
+        engine --> dialects
+    }
+    Initialize --> Compile
+    state Compile {
+        module --> libc
+        libc --> types
+        types --> libfuncs
+        types --> func_info
+        func_info --> libfuncs
+        libfuncs --> funcs
+        funcs --> blocks
+        blocks --> statements
+    }
+    Compile --> passes
+    passes --> Output
+    Output --> [*]
+```
+
+### How to run 
+- [src](https://github.com/lambdaclass/cairo_sierra_2_MLIR/blob/main/sierra2mlir/benches/execution.rs)
+
+```rust
+pub fn criterion_benchmark(c: &mut Criterion) {
+    let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
+    let engine = sierra2mlir::execute(&program, false, 1).unwrap();
+
+    unsafe {
+        engine.invoke_packed("fib::fib::main", &mut []).unwrap();
+    };
+
+    c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
+        b.iter(|| {
+            unsafe {
+                engine.invoke_packed("fib::fib::main", &mut []).ok();
+            };
+        });
+    });
+
+    // Requires sierra files to be generated previously.
+    let mut compile_group = c.benchmark_group("compile");
+
+    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    for entry in fs::read_dir(format!("{base_dir}/../examples")).unwrap() {
+        let entry = entry.unwrap();
+        let path = fs::canonicalize(entry.path()).unwrap();
+
+        if let Some(ext) = path.extension() {
+            if ext.eq_ignore_ascii_case("sierra") {
+                compile_group.bench_function(
+                    &format!("examples/{}", path.file_stem().unwrap().to_string_lossy()),
+                    move |x| {
+                        let sierra_code = fs::read_to_string(&path).unwrap();
+                        let program = ProgramParser::new().parse(&sierra_code).unwrap();
+                        x.iter(|| {
+                            sierra2mlir::compile(&program, false, false, false, 1).unwrap();
+                        });
+                    },
+                );
+            }
+        }
+    }
+}
+```
+
+### sierra2mlir examples
+
+#### Felt Add
+
+#### Conditionals
+
+## But?
+
+As said, MLIR is a young project. Although there is a healthy number of case studies and [users](https://mlir.llvm.org/users/), enough to look at the sunset sky and muse "this is the way", there are a few caveats.
+
+First, although it is clear that the project has made an effort, documentation is scarce. The API is documented and there are great getting started tutorials, but if you stray off the signalled path, you end up looking at test code, other projects, and trial and error.
+
+Second, the project is written in C++. It provides a C-compatible API with which to fashion bindigs in your language, but it is under development and unstable. The Python bindings are also under development and not enabled by default. The Rust bindings are somewhat auto-generated and not very mature. You may end up having to build some tools to build this tool to build the tool you want to ship, also known as yak shaving of an especially hairy breed.
+
+Third, like any powerful tool that allows one to operate on a high level of abstraction, it requires you to be able to bridge abstraction layers and truly understand your goals and the obstacles you face in reaching them. Knowledge of compiler technology and the techniques and vocabulary involved is a must. Perhaps with more maturity other tools will be able to be fashioned which can hide complexity for more specific domains. 
+
+## Conclusions
+
+> TODO
+
+We would like to salute and thank the team and community behind LLVM and MLIR. Foundational technologies are rare, difficult to develop, and require great insight and vision to come to term, and MLIR is definitely one of them.	
+
+## References and Resources
+
+- [MLIR Homepage](https://mlir.llvm.org/)
+- 2019 EuroLLVM Developers’ Meeting: T. Shpeisman & C. Lattner “MLIR: Multi-Level Intermediate Representation Compiler Infrastructure” [Video](https://www.youtube.com/watch?v=qzljG6DKgic) and [Slides](https://llvm.org/devmtg/2019-04/slides/Keynote-ShpeismanLattner-MLIR.pdf)
+- MLIR Tutorial [Video](https://www.youtube.com/watch?v=Y4SvqTtOIDk) and [Slides](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
+- [Yizhou Shan's notes on MLIR](http://lastweek.io/notes/MLIR/)
+- [Lei Zhang's "Compilers and IRs: LLVM IR, SPIR-V, and MLIR"](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
+
+
 ---
-Lex Fridman Podcast #162: Jim Keller
+Notas y material no parte del text:
+
+---
+Ref Lex Fridman Podcast #162: Jim Keller
 
 	49:50 Hardware for deep learning
 
@@ -238,14 +446,8 @@ Lex Fridman Podcast #162: Jim Keller
 		projects allovm swift and mlir did that successfully so i'm interested what's
 		what he's going to do next in the same kind of way yes so on either the tpu or maybe the
 
-## What? (is MLIR?)
-
-[MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation) is a young project started by Chris Lattner et al of LLVM fame with the goal of solving some issues that have arisen in compilerland. 
-
-Even though you might be familiar with intermediate representations and LLVM, it's worthwhile to dwell on these concepts for a bit. 
-
 ---
-Lex Fridman Podcast #21: Chris Lattner
+Ref Lex Fridman Podcast #21: Chris Lattner
 
 	MLIR was a project announced Feb 2019 at the Compilers for Machine Learning Conference.
 	If you look at tensorflow as a compiler stack it has a number of compiler algorithms within it.
@@ -269,7 +471,7 @@ Lex Fridman Podcast #21: Chris Lattner
 	and we need we need some new technology
 
 ---
-Lex Fridman Podcast #131: Chris Lattner
+Ref Lex Fridman Podcast #131: Chris Lattner
 
 	we built this new compiler framework called MLIR
 	MLIR is a a new framework
@@ -302,7 +504,7 @@ Lex Fridman Podcast #131: Chris Lattner
 	so llvm is a subset of what mlir does
 
 ---
-MLIR Homepage
+Ref MLIR Homepage
 	The MLIR project is a novel approach to building reusable and extensible compiler infrastructure. MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together.
 
 	What is MLIR for?
@@ -326,13 +528,8 @@ MLIR Homepage
 - [src](https://mlir.llvm.org/)
 
 ---
-Paper: MLIR: A Compiler Infrastructure for the End of Moore’s Law
-
-MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together.
-
-### What are is advantages over llvm?
-
-	The other side of the coin
+Ref: The other side of the coin
+- [src](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
 
 	LLVM is a great leap forward to compiler development. With its good designs and the effort of a vigorous open-source community, we have seen so many great tools come into existence and improve developer productivity. However, it is said that every coin has two sides. Now with the existing LLVM ecosystem as the basis, there are shades casted by the design tradeoffs that become more and more obvious.
 	
@@ -414,87 +611,7 @@ MLIR aims to address software fragmentation, improve compilation for heterogeneo
 
 	MLIR decouples compilers and IRs further by breaking down monolithic IRs into mixable dialects. Its infrastructure unleashes the power of defining and converting abstractions at different levels with ease. This matches the general direction of going from monolithic to more and more modular and let each domain have their customized solutions with their own tradeoffs. Hopefully writing domain-specific compilers could be as easy as choosing, customizing, and mixing open dialects in the future!
 
-- [src](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
+---
+Ref: opengenus
 
-	Summary:
-    - same compiler infrastructure for different languages, no reuse
-    - similar to compiler infrastructure in Swift and other languages
-    - tensorflow has support for a lot of backends with different IRs with no code reuse
-    - aim is to increase code reuse to quickly adapt to new hardware backends
-    - Intermediate IR to capture data flow information and apply optimizations, better source code tracking than LLVM, flexible design, Reuse LLVM for Machine code generation
-
-    Following are the advantages of using MLIR:
-    - Source code location tracking by default
-    - All functions run on multiple cores by default (uses OpenMP)
-    - Better code reuse for compiler stack (for new library and hardware) and hence, optimizations done by other languages can be reused
-    - Better compiler stack for C by developing CIL IR
-    - For TensorFlow, optimizations in one path can be reused in other paths and hence, massive code reuse.
-
-- [src](https://iq.opengenus.org/mlir-compiler-infrastructure/)
-
-### Running on GPU
-	
-	In terms of evolution, using LLVM for GPU compilation will require moving away from LLVM IR itself, I think. The tradeoffs and semantics start diverging quickly, and even different GPU-based IRs may/will have slightly different semantics. So, a container IR would be ideal to allow different middle/back-ends express their own semantic needs. Do you see MLIR as that container IR? How would different backends use MLIR to further describe their semantics (say SPIRV vs DXIL vs CUDA).
-
-	I think MLIR can be the infrastructure for such purposes. It provides a consistent infra and scaffolding for different variants of GPU IRs. What op and what semantics to have is up to each GPU IR to define. Actually as of right now we already have multiple GPU related dialects, GPU dialect being vendor-agonistic common host/device abstractions, NVGPU dialect/AMDGPU dialect for NVIDIA/AMD-specific stuff, SPIR-V dialect for lowering and existing MLIR system, etc.
-
-	https://mlir.llvm.org/docs/Dialects/GPU/
-	https://mlir.llvm.org/docs/Dialects/NVGPU/
-	https://mlir.llvm.org/docs/Dialects/AMDGPU/
-
-- [src](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
-
-## Why (use MLIR in the context of Applied Cryptography)?
-
-Parallels with intro beat story
-initial wave of repurposing video graphics hardware
-asics
-
-A similar story has been playing out in the area of cryptography applied to blockchains: as new techniques have been discovered, and older ones matured, the are of Zero Knowledge Proofs has exploded. 
-type systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
-
-Virtual machines have been designed to provide computational guarantees about the programs they run. 
-Type systems help in producing code that has properties the tools can reason about, such as termination or bounded resource consumption of transaction fees. 
-
-### Why target MLIR instead of something like C, Rust?
-
-
-<!-- ### What optimizations does it have or enable? -->
-
-## How (does one use it)?
-
-MLIR ships with LLVM
-
-Rust: Inkwell Melior
-
-Dialects
-Operations
-Examples
-
-<!-- ### API -->
-
-<!-- ### Blocks, Phi Nodes -->
-
-## But?
-
-As said, MLIR is a young project. Although there is a healthy number of case studies and [users](https://mlir.llvm.org/users/), enough to look at the sunset sky and muse "this is the way", there are a few caveats.
-
-First, although it is clear that the project has made an effort, documentation is scarce. The API is documented and there are great getting started tutorials, but if you stray off the signalled path, you end up looking at test code, other projects, and trial and error.
-
-Second, the project is written in C++. It provides a C-compatible API with which to fashion bindigs in your language, but it is under development and unstable. The Python bindings are also under development and not enabled by default. The Rust bindings are somewhat auto-generated and not very mature. You may end up having to build some tools to build this tool to build the tool you want to ship, also known as yak shaving of an especially hairy breed.
-
-Third, like any powerful tool that allows one to operate on a high level of abstraction, it requires you to be able to bridge abstraction layers and truly understand your goals and the obstacles you face in reaching them. Knowledge of compiler technology and the techniques and vocabulary involved is a must. Perhaps with more maturity other tools will be able to be fashioned which can hide complexity for more specific domains. 
-
-## Conclusions
-
-TODO
-
-We would like to salute and thank the team and community behind LLVM and MLIR. Foundational technologies are rare, difficult to develop, and require great insight and vision to come to term, and MLIR is definitely one of them.	
-
-## References and Resources
-
-- [MLIR Homepage](https://mlir.llvm.org/)
-- 2019 EuroLLVM Developers’ Meeting: T. Shpeisman & C. Lattner “MLIR: Multi-Level Intermediate Representation Compiler Infrastructure” [Video](https://www.youtube.com/watch?v=qzljG6DKgic) and [Slides](https://llvm.org/devmtg/2019-04/slides/Keynote-ShpeismanLattner-MLIR.pdf)
-- MLIR Tutorial [Video](https://www.youtube.com/watch?v=Y4SvqTtOIDk) and [Slides](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
-- [Yizhou Shan's notes on MLIR](http://lastweek.io/notes/MLIR/)
-- [Lei Zhang's "Compilers and IRs: LLVM IR, SPIR-V, and MLIR"](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
+	- [src](https://iq.opengenus.org/mlir-compiler-infrastructure/)
