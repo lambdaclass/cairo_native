@@ -3,7 +3,7 @@ authors = ["LambdaClass"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Denwen Documentation"
+title = "Cairo sierra2mlir Documentation"
 
 [output.html]
 default-theme = "rust"

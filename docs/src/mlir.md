@@ -1,6 +1,5 @@
 # Multi-Level Intermediate Representation
 
-
 ## Useful notes
 
 ### LLVM alloca notes
@@ -27,11 +26,12 @@ llvm.store %array_data, %array_ptr : !llvm.array<5 x i8>, !llvm.ptr
 ### Websites
 - [MLIR Homepage](https://mlir.llvm.org/)
 - [MLIR: A Compiler Infrastructure for the End of Moore’s Law](https://arxiv.org/pdf/2002.11054.pdf)
+  - [Read a paper: Multi-level Intermediate Representation (MLIR)](https://www.youtube.com/watch?v=6BwqK6E8v3g)
 - [MLIR: Scaling Compiler Infrastructure for Domain Specific Computation](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/85bf23fe88bd5c7ff60365bd0c6882928562cbeb.pdf)
 - MLIR Tutorial
-  - [MLIR Tutorial](https://llvm.org/devmtg/2019-04/slides/Tutorial-AminiVasilacheZinenko-MLIR.pdf)
-  - [MLIR Tutorial](https://users.cs.utah.edu/~mhall/mlir4hpc/pienaar-MLIR-Tutorial.pdf)
-  - [MLIR Tutorial](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
+  - [MLIR Tutorial: Building a Compiler with MLIR (MLIR 4 HPC, 2019, Jacques Pienaar, Sana Damani)](https://users.cs.utah.edu/~mhall/mlir4hpc/pienaar-MLIR-Tutorial.pdf)
+  - [MLIR Tutorial: Building a Compiler with MLIR (Euro-LLVM 2019, Mehdi Amini, Alex Zinenko, Nicolas Vasilache)](https://llvm.org/devmtg/2019-04/slides/Tutorial-AminiVasilacheZinenko-MLIR.pdf)
+  - [MLIR: Building a Compiler with MLIR (LLVM Dev Mtg, 2020, Mehdi Amini, River Riddle)](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
 - [MLIR Language Reference](https://mlir.llvm.org/docs/LangRef/)
 - [MLIR Docs: Defining Dialects](https://mlir.llvm.org/docs/DefiningDialects/)
 - [MLIR Notes](http://lastweek.io/notes/MLIR/)
@@ -56,16 +56,20 @@ llvm.store %array_data, %array_ptr : !llvm.array<5 x i8>, !llvm.ptr
 
 ### Video
 - [MLIR Compiler](https://www.youtube.com/MLIRCompiler)
-- [Read a paper: Multi-level Intermediate Representation (MLIR)](https://www.youtube.com/watch?v=6BwqK6E8v3g)
 - [2019 EuroLLVM Developers’ Meeting: T. Shpeisman & C. Lattner “MLIR: Multi-Level Intermediate Repr..”](https://www.youtube.com/watch?v=qzljG6DKgic)
 - [2019 EuroLLVM Developers’ Meeting: Mehdi & Vasilache & Zinenko “Building a Compiler with MLIR”](https://www.youtube.com/watch?v=cyICUIZ56wQ)
 - [2020 LLVM Developers’ Meeting: M. Amini & R. Riddle “MLIR Tutorial”](https://www.youtube.com/watch?v=Y4SvqTtOIDk)
 - [2020 LLVM in HPC Workshop: Keynote: MLIR: an Agile Infrastructure for Building a Compiler Ecosystem](https://www.youtube.com/watch?v=0bxyZDGs-aA)
 - [2021 LLVM Dev Mtg “Representing Concurrency with Graph Regions in MLIR”](https://www.youtube.com/watch?v=Vfk9n3ir_5s)
-- [2022 LLVM Dev Mtg: Paths towards unifying LLVM and MLIR](https://www.youtube.com/watch?v=VbFqA9rvxPs)
-- [2022 LLVM Dev Mtg: VAST: MLIR for program analysis of C/C++](https://www.youtube.com/watch?v=YFqWa4pxXzM)
-- [2022 LLVM Dev Mtg: MLIR for Functional Programming](https://www.youtube.com/watch?v=cyMQbZ0B84Q)
-- [2022 EuroLLVM Dev Mtg “Prototyping a Compiler for Homomorphic Encryption Using MLIR”](https://www.youtube.com/watch?v=QyxiqmO6_qQ)
+- [2022 LLVM Dev Mtg](https://www.youtube.com/playlist?list=PL_R5A0lGi1ACZDCQw533fo2dBljmOqIYx)
+  - [2022 LLVM Dev Mtg: Paths towards unifying LLVM and MLIR](https://www.youtube.com/watch?v=VbFqA9rvxPs)
+  - [2022 LLVM Dev Mtg: VAST: MLIR for program analysis of C/C++](https://www.youtube.com/watch?v=YFqWa4pxXzM)
+  - [2022 LLVM Dev Mtg: MLIR for Functional Programming](https://www.youtube.com/watch?v=cyMQbZ0B84Q)
+  - [2022 LLVM Dev Mtg: IRDL: A Dialect for dialects](https://www.youtube.com/watch?v=nxFD4DBVxOk)
+  - [2022 EuroLLVM Dev Mtg “Prototyping a Compiler for Homomorphic Encryption Using MLIR”](https://www.youtube.com/watch?v=QyxiqmO6_qQ)
+- MLIR Open Meeting
+  - [MLIR Open Meeting 2021-12-02: Discussion on end-to-end flow for ML compilers](https://www.youtube.com/watch?v=NCMme4H_HYQ)
+  - [MLIR Open Meeting 2022-08-11: MLIR-based IR for Accelerator Design with Decoupled Customizations](https://www.youtube.com/watch?v=yOk63LWbkqk)
 - [MLIR-based code generation for GPU tensor cores](https://www.youtube.com/watch?v=3LLzHKeL2hs)
 - [cirgen: MLIR based compiler for zk-STARK circuit generation - Frank Laub (RISC Zero)](https://www.youtube.com/watch?v=TsP14-hI_W0)
 - [Prototyping a compiler for homomorphic encryption using MLIR](https://www.youtube.com/watch?v=F9qXBuSkQFY)
@@ -94,3 +98,31 @@ llvm.store %array_data, %array_ptr : !llvm.array<5 x i8>, !llvm.ptr
 - [Jim Keller: Moore's Law, Microprocessors, and First Principles | Lex Fridman Podcast #70](https://www.youtube.com/watch?v=Nb2tebYAaOA)
 - [Jim Keller: The Future of Computing, AI, Life, and Consciousness | Lex Fridman Podcast #162](https://www.youtube.com/watch?v=G4hL5Om4IJ4&t=2990s)
 - [Building the Software 2 0 Stack (Andrej Karpathy)](https://www.youtube.com/watch?v=y57wwucbXR8)
+- [ASPLOS Keynote: The Golden Age of Compiler Design in an Era of HW/SW Co-design by Dr. Chris Lattner](https://www.youtube.com/watch?v=4HgShra-KnY)
+
+### LLVM
+- [LLVM Documentation Home](https://llvm.org/docs/index.html)
+- [LLVM Youtube Channel](https://www.youtube.com/@LLVMPROJ/playlists)
+- [Performance Tips for Frontend Authors](https://llvm.org/docs/Frontend/PerformanceTips.html)
+- [LLVM: A Compilation Framework for Lifelong Program Analysis & Transformation](https://llvm.org/pubs/2004-01-30-CGO-LLVM.html)
+- [`learn-llvm/awesome-llvm`](https://github.com/learn-llvm/awesome-llvm)
+
+#### LLVM & JIT
+- [Unladen Swallow Retrospective # Lessons About LLVM](https://qinsb.blogspot.com/2011/03/unladen-swallow-retrospective.html)
+- [Building An Efficient JIT](https://llvm.org/devmtg/2008-08/Begeman_EfficientJIT.pdf)
+- [Stack Overflow: Why is the LLVM execution engine faster than compiled code?](https://stackoverflow.com/questions/5988444/why-is-the-llvm-execution-engine-faster-than-compiled-code)
+- [LLVM Docs: Debugging JIT-ed Code With GDB](https://releases.llvm.org/8.0.1/docs/DebuggingJITedCode.html)
+- [LLDB Tutorial: Adding debugger support for your target](https://llvm.org/devmtg/2016-03/Tutorials/LLDB-tutorial.pdf)
+- [A crash course in just-in-time (JIT) compilers](https://hacks.mozilla.org/2017/02/a-crash-course-in-just-in-time-jit-compilers/)
+- [Articles in tag "Code generation"](https://eli.thegreenplace.net/tag/code-generation)
+  - [2017/05/10 Adventures in JIT compilation: Part 4 - in Python](https://eli.thegreenplace.net/2017/adventures-in-jit-compilation-part-4-in-python/)
+  - [2017/05/01 Adventures in JIT compilation: Part 3 - LLVM](https://eli.thegreenplace.net/2017/adventures-in-jit-compilation-part-3-llvm/)
+  - [2017/03/22 Adventures in JIT compilation: Part 2 - an x64 JIT](https://eli.thegreenplace.net/2017/adventures-in-jit-compilation-part-2-an-x64-jit/)
+  - [2017/03/20 Adventures in JIT compilation: Part 1 - an interpreter](https://eli.thegreenplace.net/2017/adventures-in-jit-compilation-part-1-an-interpreter/)
+  - [2014/01/15 Some thoughts on LLVM vs. libjit](https://eli.thegreenplace.net/2014/01/15/some-thoughts-on-llvm-vs-libjit)
+  - [2014/01/07 Getting started with libjit - part 3](https://eli.thegreenplace.net/2014/01/07/getting-started-with-libjit-part-3)
+  - [2013/11/12 Getting started with libjit - part 2](https://eli.thegreenplace.net/2013/11/12/getting-started-with-libjit-part-2)
+  - [2013/11/05 How to JIT - an introduction](https://eli.thegreenplace.net/2013/11/05/how-to-jit-an-introduction)
+  - [2013/10/17 Getting started with libjit - part 1](https://eli.thegreenplace.net/2013/10/17/getting-started-with-libjit-part-1)
+  - [2013/02/25 A deeper look into the LLVM code generator, Part 1](https://eli.thegreenplace.net/2013/02/25/a-deeper-look-into-the-llvm-code-generator-part-1)
+  - [2012/11/24 Life of an instruction in LLVM](https://eli.thegreenplace.net/2012/11/24/life-of-an-instruction-in-llvm)
