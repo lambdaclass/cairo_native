@@ -441,47 +441,6 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
-    /// Compute the multiplicative inverse of a felt.
-    ///
-    /// > Source: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
-    /// TODO replace with extended euclidean algorithm
-    pub fn op_felt_inverse<'a>(
-        &self,
-        region: &'a Region,
-        block: &'a Block,
-        value: Value,
-    ) -> Result<OperationRef<'a>> {
-        let const_p = self.prime_constant(block);
-        let const_two = self.op_felt_const(block, "2");
-        let p_minus_2 = self.op_sub(block, const_p.result(0)?.into(), const_two.result(0)?.into());
-
-        self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())
-    }
-
-    /// Perform a felt divison (not euclidean, but modular).
-    ///
-    /// In other words, find x in `a / b = x` such that `x * b = a` in modulo prime.
-    pub fn op_felt_div<'a>(
-        &self,
-        region: &'a Region,
-        block: &'a Block,
-        dividend: Value,
-        divisor: Value,
-    ) -> Result<OperationRef<'a>> {
-        // Find the multiplicative inverse of the divisor.
-        let divisor_inverse = self.op_felt_inverse(region, block, divisor)?;
-
-        // Multiply by the dividend to find the quotient.
-        let lhs = self.op_zext(block, dividend, self.double_felt_type());
-        let rhs = self.op_zext(block, divisor_inverse.result(0)?.into(), self.double_felt_type());
-
-        let op_mul = self.op_mul(block, lhs.result(0)?.into(), rhs.result(0)?.into());
-        let op_mod = self.op_felt_modulo(block, op_mul.result(0)?.into())?;
-        let op_trunc = self.op_trunc(block, op_mod.result(0)?.into(), self.felt_type());
-
-        Ok(op_trunc)
-    }
-
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func<'a>(
         &'a self,

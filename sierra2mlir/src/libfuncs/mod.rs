@@ -868,42 +868,41 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_felt_div(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let sierra_felt_type = SierraType::Simple(self.felt_type());
-        let felt_type = sierra_felt_type.get_type();
-        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
-        let region = Region::new();
-        let block = Block::new(&[felt_type_location, felt_type_location]);
+        // Second argument is NonZero<felt252>
+        let block = self.new_block(&[self.felt_type(), self.felt_type()]);
 
-        // res = lhs / rhs (where / is modular division)
         let lhs = block.argument(0)?.into();
         let rhs = block.argument(1)?.into();
-        let res_op = self.op_felt_div(&region, &block, lhs, rhs)?;
+
+        // In order to calculate lhs / rhs (mod PRIME), first calculate 1/rhs (mod PRIME)
+        let rhs_inverse_op = self.call_egcd_felt_inverse(&block, rhs, storage)?;
+        let rhs_inverse = rhs_inverse_op.result(0)?.into();
+
+        // Next calculate lhs * (1/rhs) (mod PRIME)
+        let res_op = self.call_felt_mul_impl(&block, lhs, rhs_inverse, storage)?;
         let res = res_op.result(0)?.into();
 
         self.op_return(&block, &[res]);
 
-        region.append_block(block);
-        let func = self.op_func(
-            &id,
-            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
-        parent_block.append_operation(func);
-
+        let sierra_felt_type = SierraType::Simple(self.felt_type());
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![sierra_felt_type.clone(), sierra_felt_type.clone()],
                 vec![sierra_felt_type],
             ),
         );
-        Ok(())
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.felt_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn register_libfunc_int_is_zero(
