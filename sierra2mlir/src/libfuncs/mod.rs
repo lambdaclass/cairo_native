@@ -88,10 +88,10 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_struct_deconstruct(func_decl, storage)?;
                 }
                 "null" => {
-                    self.create_libfunc_null(func_decl, parent_block, storage)?;
+                    self.create_libfunc_null(func_decl, storage)?;
                 }
                 "nullable_from_box" => {
-                    self.create_libfunc_nullable_from_box(func_decl, parent_block, storage)?;
+                    self.create_libfunc_nullable_from_box(func_decl, storage)?;
                 }
                 "match_nullable" => {
                     self.register_match_nullable(func_decl, storage);
@@ -1949,20 +1949,16 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_null(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            _ => unreachable!(),
-        };
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
 
-        let region = Region::new();
-
-        let block = Block::new(&[]);
+        let block = self.new_block(&[]);
 
         let nullable_sierra_type = SierraType::create_nullable_type(self, arg_type.clone());
         let struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
@@ -1977,46 +1973,35 @@ impl<'ctx> Compiler<'ctx> {
             nullable_sierra_type.get_type(),
         )?;
 
-        let struct_value: Value = struct_type_op.result(0)?.into();
+        let struct_value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let function_type = create_fn_signature(&[], &[nullable_sierra_type.get_type()]);
-
-        region.append_block(block);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
         storage.libfuncs.insert(
-            id,
-            SierraLibFunc::create_function_all_args(vec![], vec![nullable_sierra_type]),
+            id.clone(),
+            SierraLibFunc::create_function_all_args(vec![], vec![nullable_sierra_type.clone()]),
         );
 
-        parent_block.append_operation(func);
-
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[nullable_sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_nullable_from_box(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
-        };
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
 
-        let region = Region::new();
-
-        let block = Block::new(&[arg_type.get_type_location(&self.context)]);
+        let block = self.new_block(&[arg_type.get_type()]);
 
         let nullable_sierra_type = SierraType::create_nullable_type(self, arg_type.clone());
         let struct_type_op = self.op_llvm_undef(&block, nullable_sierra_type.get_type());
@@ -2030,7 +2015,7 @@ impl<'ctx> Compiler<'ctx> {
             const_1.result(0)?.into(),
             nullable_sierra_type.get_type(),
         )?;
-        let struct_value: Value = struct_type_op.result(0)?.into();
+        let struct_value = struct_type_op.result(0)?.into();
 
         let struct_type_op = self.op_llvm_insertvalue(
             &block,
@@ -2039,26 +2024,24 @@ impl<'ctx> Compiler<'ctx> {
             block.argument(0)?.into(),
             nullable_sierra_type.get_type(),
         )?;
-        let struct_value: Value = struct_type_op.result(0)?.into();
+        let struct_value = struct_type_op.result(0)?.into();
 
         self.op_return(&block, &[struct_value]);
 
-        let function_type =
-            create_fn_signature(&[arg_type.get_type()], &[nullable_sierra_type.get_type()]);
-
-        region.append_block(block);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
         storage.libfuncs.insert(
-            id,
-            SierraLibFunc::create_function_all_args(vec![arg_type], vec![nullable_sierra_type]),
+            id.clone(),
+            SierraLibFunc::create_function_all_args(
+                vec![arg_type],
+                vec![nullable_sierra_type.clone()],
+            ),
         );
 
-        parent_block.append_operation(func);
-
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[nullable_sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn register_match_nullable(
