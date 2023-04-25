@@ -274,7 +274,7 @@ fn get_all_types_to_print(
     for type_decl in type_declarations {
         let type_category = type_decl.long_id.generic_id.0.as_str();
         match type_category {
-            "felt252" => {
+            "felt252" | "u8" | "u16" | "u32" | "u64" | "u128" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }
@@ -361,11 +361,6 @@ fn get_all_types_to_print(
                     }
                 }
 
-                if !types_to_print.contains(type_decl) {
-                    types_to_print.push(type_decl.clone());
-                }
-            }
-            "u8" | "u16" | "u32" | "u64" | "u128" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }
