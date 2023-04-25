@@ -41,14 +41,24 @@ Put on your seatbelts. 3, 2, 1... Let's jam.
 
 Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the foremost compiler tooling project. It powers many of the analisys and code generation components of the Clang, Swift, Rust, and many more languages.
 
-At the heart of LLVM is LLVM IR, it's intermediate representation. IRs are compiler writer's way of solving problems by building abstraction ladders, they are essentially a combination of data formats and algorithms that allow best expressing the properties a tool wishes to guarantee or prove about code.
+At the heart of LLVM is LLVM IR, it's Intermediate Representation. IRs are essentially a combination of data formats and algorithms that allow best expressing the properties a tool wishes to guarantee or prove about code.
 
-You may have become aware that machine learning algorithms are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, AI has settled on a set of techniques which involve dealing with math on enormous matrices of numbers, and stringing together large numbers of these operations into graphs. 
-This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale
+An example of this is the fact that LLVM IR is what's known as an SSA form, or Static Single Assignment, in which each variable will have a value assigned only once. This allows the compiler to reason about it better than otherwise, it enables analysis and optimizations such as dead code elimination, constant propagation, constant folding, and facilitates other stages such as register allocation.  
 
-The first wave of this was repurposing video graphics card hardware to make them applicable to this.
+All this to say that IRs are a compiler writer's way of solving problems by building abstraction ladders. 
 
-> ELABORATE
+### Rise of AI
+
+You may have become aware that machine learning algorithms and their applications are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, the statistical school of AI has settled (?) on a set of techniques which involve dealing with numerical operations on enormous matrices of numbers, and stringing together large numbers of these operations into computation graphs. The fundamental elements in these computational graphs are things like matrix multiplications, convolutions, data manipulations and data movements. This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale these approaches, make them cheaper and more effective on ever larger sets of data. 
+
+A key observation at some point was that many of the problems these algorithms solve have inherent or given parallelism, and that we already had an industry producing machines specifically designed for embarassingly parallel numerical problems, namely shaders running on GPUs. Thus the first wave of this effort was repurposing video graphics card hardware to make them applicable to this new area.
+
+Why did we change the tune from LLVM to AI and graphics card? Because as they matured, these algorithms, models, techniques, tools, libraries were standarized into frameworks that could be used by many a layman programmer, and that required appropriate languages in which to express them, and their compilers. 
+
+Since LLVM had an IR that could, with some effort, be abstracted over GPU processors as well, it was used in tools such as PyTorch and Tensorflow to produce the code that would run on these graphical processing units. 
+New hardware was designed, and LLVM was again used to target these new tensor processing units.
+
+But after twenty years, expanding hardware targets, and changing problem spaces, LLVM was starting to be found lacking.
 
 ## What? (is MLIR?)
 
@@ -252,54 +262,62 @@ Ref Lex Fridman Podcast #162: Jim Keller
 
 	49:50 Hardware for deep learning
 
-		but but speaking about this uh you know uh this walk along the path of innovation
-		towards uh the dumb things being smarter than humans you are now the cto of uh
-		tens torrent as of two months ago they uh build hardware for deep learning
-		how do you build scalable and efficient deep learning this is such a fascinating space yeah yeah so it's interesting so
-		um up until recently i thought there was two kinds of computers there are serial computers
-		that run like c programs and then there's parallel computers so the way i think about it is you know
-		parallel computers you have given parallelism like gpus are great because you have a million pixels
-		and modern gpus run a program on every pixel they call the shader program right so or like finite element analysis
-		you you build something you know you make this into little tiny chunks you give each chunk to a computer so you're giving all these chunks a
-		parallel something like that but most c programs you write this linear narrative and you have to make it go fast to make
-		it go fast you predict all the branches all the data fetches and you run that more in parallel but that's found
-		parallelism ai is i'm still trying to decide how
-		fundamental this is it's a given parallelism problem but the way people
-		describe the neural networks and then how they write them in pi torch it makes graphs yeah
-		that might be fundamentally different than the gpu kind of parallelism yeah it might be because the when you run the gpu program
-		on all the pixels you're running like you know depends you know this group of pixels say it's
-		background blue and that runs a really simple program this pixel is you know some patch of your face so you
-		have some really interesting shader program to give you impression of translucency but the pixels themselves don't talk to
-		each other there's no graph right so you you do the image and then
-		you do the next image and you do the next image and you run 8 million pixels 8 million
-		programs every time and modern gpus have like 6 000 thread engines in them so you know to
-		get 8 million pixels each one runs a program on you know 10 or 20 pixels and that's how that's how they
-		work but there's no graph but you think graph might be a totally new way to think about hardware so raja
-		gadori and i've been having this good conversation about giving versus found parallelism and then
-		the kind of walk cause we got more transistors like you know computers way back when did stuff on scalar data then we did it on
-		vector data famous vector machines now we're making computers that operate on matrices
-		right and then the the category we we said that was next was spatial like imagine you have so much data that
-		you know you want to do the compute on this data and then when it's done it says send the result to this pile of data run some
-		software on that and it's better to to think about it spatially than
-		to move all the data to a central processor and do all the work so especially i mean moving in the space
-		of data as opposed to moving the data yeah you have a you have a petabyte data space spread across some huge array of
-		computers and when you do a computation somewhere you send the result of that computation
-		or maybe a pointer to the next program some other piece of data and do it but i think a better word might be graph
-		and all the ai neural networks are graphs do some computations send the result here do another computation do a data
-		transformation do a merging do a pooling do another computation is it possible to
-		compress and say how we make this thing efficient this whole process efficient that's different so first uh
+		how do you build scalable and efficient deep learning?
+		
+		up until recently i thought there was two kinds of computers: serial computers that run like c programs and parallel computers 
+
+		you know parallel computers you have given parallelism like gpus are great because you have a million pixels, and modern gpus run a program on every pixel they call the shader program right so 
+		or like finite element analysis
+		you build something you know you make this into little tiny chunks you give each chunk to a computer so you're giving all these chunks a
+		parallel something like that 
+
+		but most c programs you write this linear narrative and you have to make it go fast 
+		to make it go fast you predict all the branches, all the data fetches and you run that more in parallel but that's found parallelism 
+
+		ai is i'm still trying to decide how fundamental this is 
+		it's a given parallelism problem but the way people describe the neural networks and then how they write them in pytorch it makes graphs
+
+		that might be fundamentally different than the gpu kind of parallelism 
+
+		it might be because the when you run the gpu program on all the pixels you're running like you know depends 
+		you know this group of pixels say it's background blue and that runs a really simple program this pixel is you know some patch of your face so you have some really interesting shader program to give you impression of translucency 
+
+		but the pixels themselves don't talk to each other, there's no graph right 
+		so you you do the image and then you do the next image and you do the next image and you run 8 million pixels 8 million programs every time 
+
+		and modern gpus have like 6 000 thread engines in them so you know to
+		get 8 million pixels each one runs a program on you know 10 or 20 pixels and that's how that's how they work
+
+		but there's no graph 
+
+		you think graph might be a totally new way to think about hardware? 
+
+		so raja kapori and i've been having this good conversation about given versus found parallelism and then the kind of walk cause we got more transistors 
+		like you know computers way back when did stuff on scalar data then we did it on vector data famous vector machines 
+		now we're making computers that operate on matrices right 
+		and then the the category we we said that was next was spatial 
+		
+		like imagine you have so much data that you know you want to do the compute on this data and then when it's done it says send the result to this pile of data run some software on that and it's better to to think about it spatially than to move all the data to a central processor and do all the work 
+
+		you have a petabyte data space spread across some huge array of
+		computers and when you do a computation somewhere you send the result of that computation or maybe a pointer to the next program some other piece of data and do it 
+		but i think a better word might be graph
+		and all the ai neural networks are graphs: do some computations send the result here do another computation do a data transformation do a merging do a pooling do another computation 
+
+		is it possible to compress and say how we make this thing efficient? this whole process efficient? 
+
 		the fundamental elements in the graphs are things like matrix multiplies convolutions data manipulations and data
-		movements so gpus emulate those things with their little singles
-		you know basically running a single threaded program and then there's a you know nvidia calls
-		it a work where they group a bunch of programs that are similar together so for efficiency and instruction use
-		and then at a higher level you kind of you take this graph and you say this part of the graph is a matrix multiplier
-		which runs on these 32 threads but the model at the bottom was
-		built for running programs on pixels not executing graphs so it's emulation yes 
+		movements 
+		so gpus emulate those things with their little singles
+		you know basically running a single threaded program and then there's a you know nvidia calls it a work 
+		where they group a bunch of programs that are similar together so for efficiency and instruction use and then at a higher level you kind of you take this graph and you say this part of the graph is a matrix multiplier which runs on these 32 threads 
+
+		but the model at the bottom was built for running programs on pixels not executing graphs so it's emulation
 
 	so is it possible to build something that natively runs graphs 
 
 		yes so that's what ten storm did
-		so where are we on that how like in the history of that effort are we in the early days yeah i think so
+
 		tense torrance started by a friend of mine labisha bajak and i i was his first investor so i've been
 		you know kind of following him and talking to him about it for years and in the fall when i was considering
 		things to do i decided you know the we we held a conference last year with a
