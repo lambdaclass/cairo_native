@@ -188,6 +188,6 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<OperationRef<'block>> {
         let func_name = self.create_print_panic_message(panic_enum_name, panic_type, storage)?;
-        self.op_llvm_call(block, &func_name, &[panic_value], &[])
+        self.op_func_call(block, &func_name, &[panic_value], &[])
     }
 }

@@ -137,7 +137,7 @@ impl<'ctx> Compiler<'ctx> {
             panic!("call_enum_get_tag should have been passed an enum type, but instead was passed {:?}", enum_type)
         };
         let func_name = self.create_enum_get_tag(enum_type, storage)?;
-        self.op_llvm_call(block, &func_name, &[enum_value], &[tag_type])
+        self.op_func_call(block, &func_name, &[enum_value], &[tag_type])
     }
 
     pub fn call_enum_get_data_as_variant_type<'block>(
@@ -163,6 +163,6 @@ impl<'ctx> Compiler<'ctx> {
         };
         let func_name =
             self.create_enum_get_data_as_variant_type(enum_name, enum_type, variant, storage)?;
-        self.op_llvm_call(block, &func_name, &[enum_value], &[variant_type])
+        self.op_func_call(block, &func_name, &[enum_value], &[variant_type])
     }
 }
