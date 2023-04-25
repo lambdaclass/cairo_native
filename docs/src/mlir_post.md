@@ -1,14 +1,40 @@
 # MLIR
 
+```
+Move history of llvm to start
+About 20 years ago llvm …
+Irs are compiler writers way of solving problems bu building abstraction ladders
+Lead up to mlir
+Then machine learning algos
+Hw accel
+Compiler proliferation
+Llvm unsuitability
+Enter mlir
+Meanwhile in cryptoland
+Goals
+Hw accelerated crypto
+On gpu
+On asics
+So what is mlir?
+If you think of llvm ir as an abstraction of all assembly langs
+Mlir is a llevel above
+```
+
+---
 I love jazz. Of all the jazz styles I love, jazz fusion is the one I enjoy most, because I find any fusion of different things more stimulating.
 Something especially interesting is happening at the intersection of programming language theory, compiler implementation, and applied cryptography.
 
-But the thing with jazz fusion is that it's harder to get into unless you're familiar with the elements being combined.
-Let me show you a few songs, and how we're mixing it up. 
+But the thing with jazz fusion is that it's harder to get into unless you're familiar with the elements being combined. Let me show you a few songs, and how we're mixing it up. 
 
 Put on your seatbelts. 3, 2, 1... Let's jam.
 
 ## Intro beat
+
+### Compilers, LLVM
+
+Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the 
+
+At the heart of LLVM is LLVM IR, it's intermediate representation. 
 
 You may have become aware that machine learning algorithms are now a big deal. The driver of many economic fortunes and solutions to problems we only dreamed of solving before, AI has settled on a set of techniques which involve dealing with math on enormous matrices of numbers, and stringing together large numbers of these operations into graphs. 
 This sounds very computationally expensive, and it is, and so the industry has (and is) going to great lengths to scale
