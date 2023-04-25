@@ -3,18 +3,18 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value, ValueLike};
+use melior_next::ir::{Block, Location, Type, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
 
 use crate::compiler::fn_attributes::FnAttributes;
 use crate::compiler::mlir_ops::CmpOp;
+use crate::utility::get_type_id;
 use crate::{
     compiler::{Compiler, Storage},
     sierra_type::SierraType,
     types::{is_omitted_builtin_type, DEFAULT_PRIME},
-    utility::create_fn_signature,
 };
 
 use self::lib_func_def::{PositionalArg, SierraLibFunc};
@@ -37,8 +37,6 @@ impl<'ctx> Compiler<'ctx> {
             let name = func_decl.long_id.generic_id.0.as_str();
             debug!(name, id, "processing libfunc decl");
 
-            let parent_block = self.module.body();
-
             match name {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
@@ -55,16 +53,16 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_felt_const(func_decl, self.felt_type(), storage)?;
                 }
                 "felt252_add" => {
-                    self.create_libfunc_felt_add(func_decl, parent_block, storage)?;
+                    self.create_libfunc_felt_add(func_decl, storage)?;
                 }
                 "felt252_sub" => {
-                    self.create_libfunc_felt_sub(func_decl, parent_block, storage)?;
+                    self.create_libfunc_felt_sub(func_decl, storage)?;
                 }
                 "felt252_mul" => {
-                    self.create_libfunc_felt_mul(func_decl, parent_block, storage)?;
+                    self.create_libfunc_felt_mul(func_decl, storage)?;
                 }
                 "felt252_div" => {
-                    self.create_libfunc_felt_div(func_decl, parent_block, storage)?;
+                    self.create_libfunc_felt_div(func_decl, storage)?;
                 }
                 "felt252_is_zero" => {
                     // Note no actual function is created here, however types are registered
@@ -77,17 +75,17 @@ impl<'ctx> Compiler<'ctx> {
                     self.register_libfunc_snapshot_take(func_decl, storage)?;
                 }
                 "enum_init" => {
-                    self.create_libfunc_enum_init(func_decl, parent_block, storage)?;
+                    self.create_libfunc_enum_init(func_decl, storage)?;
                 }
                 "enum_match" => {
                     // Note no actual function is created here, however types are registered
                     self.register_libfunc_enum_match(func_decl, storage);
                 }
                 "struct_construct" => {
-                    self.create_libfunc_struct_construct(func_decl, parent_block, storage)?;
+                    self.create_libfunc_struct_construct(func_decl, storage)?;
                 }
                 "struct_deconstruct" => {
-                    self.create_libfunc_struct_deconstruct(func_decl, parent_block, storage)?;
+                    self.create_libfunc_struct_deconstruct(func_decl, storage)?;
                 }
                 "store_temp" | "rename" | "unbox" => {
                     self.register_identity_function(func_decl, storage)?;
@@ -123,123 +121,69 @@ impl<'ctx> Compiler<'ctx> {
                     self.register_libfunc_int_is_zero(func_decl, self.u128_type(), storage);
                 }
                 "u8_to_felt252" => {
-                    self.create_libfunc_uint_to_felt252(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u8_type(),
-                    )?;
+                    self.create_libfunc_uint_to_felt252(func_decl, self.u8_type(), storage)?;
                 }
                 "u16_to_felt252" => {
-                    self.create_libfunc_uint_to_felt252(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u16_type(),
-                    )?;
+                    self.create_libfunc_uint_to_felt252(func_decl, self.u16_type(), storage)?;
                 }
                 "u32_to_felt252" => {
-                    self.create_libfunc_uint_to_felt252(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u32_type(),
-                    )?;
+                    self.create_libfunc_uint_to_felt252(func_decl, self.u32_type(), storage)?;
                 }
                 "u64_to_felt252" => {
-                    self.create_libfunc_uint_to_felt252(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u64_type(),
-                    )?;
+                    self.create_libfunc_uint_to_felt252(func_decl, self.u64_type(), storage)?;
                 }
                 "u128_to_felt252" => {
-                    self.create_libfunc_uint_to_felt252(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u128_type(),
-                    )?;
+                    self.create_libfunc_uint_to_felt252(func_decl, self.u128_type(), storage)?;
                 }
                 "u8_wide_mul" => {
                     self.create_libfunc_uint_wide_mul(
                         func_decl,
-                        parent_block,
-                        storage,
                         self.u8_type(),
                         self.u16_type(),
+                        storage,
                     )?;
                 }
                 "u16_wide_mul" => {
                     self.create_libfunc_uint_wide_mul(
                         func_decl,
-                        parent_block,
-                        storage,
                         self.u16_type(),
                         self.u32_type(),
+                        storage,
                     )?;
                 }
                 "u32_wide_mul" => {
                     self.create_libfunc_uint_wide_mul(
                         func_decl,
-                        parent_block,
-                        storage,
                         self.u32_type(),
                         self.u64_type(),
+                        storage,
                     )?;
                 }
                 "u64_wide_mul" => {
                     self.create_libfunc_uint_wide_mul(
                         func_decl,
-                        parent_block,
-                        storage,
                         self.u64_type(),
                         self.u128_type(),
+                        storage,
                     )?;
                 }
                 "u128_wide_mul" => {
-                    self.create_libfunc_u128_wide_mul(func_decl, parent_block, storage)?;
+                    self.create_libfunc_u128_wide_mul(func_decl, storage)?;
                 }
                 "u8_safe_divmod" => {
-                    self.create_libfunc_uint_safe_divmod(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u8_type(),
-                    )?;
+                    self.create_libfunc_uint_safe_divmod(func_decl, self.u8_type(), storage)?;
                 }
                 "u16_safe_divmod" => {
-                    self.create_libfunc_uint_safe_divmod(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u16_type(),
-                    )?;
+                    self.create_libfunc_uint_safe_divmod(func_decl, self.u16_type(), storage)?;
                 }
                 "u32_safe_divmod" => {
-                    self.create_libfunc_uint_safe_divmod(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u32_type(),
-                    )?;
+                    self.create_libfunc_uint_safe_divmod(func_decl, self.u32_type(), storage)?;
                 }
                 "u64_safe_divmod" => {
-                    self.create_libfunc_uint_safe_divmod(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u64_type(),
-                    )?;
+                    self.create_libfunc_uint_safe_divmod(func_decl, self.u64_type(), storage)?;
                 }
                 "u128_safe_divmod" => {
-                    self.create_libfunc_uint_safe_divmod(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        self.u128_type(),
-                    )?;
+                    self.create_libfunc_uint_safe_divmod(func_decl, self.u128_type(), storage)?;
                 }
                 "u8_eq" => {
                     self.register_libfunc_int_eq(func_decl, self.u8_type(), storage);
@@ -333,52 +277,37 @@ impl<'ctx> Compiler<'ctx> {
                     );
                 }
                 "bitwise" => {
-                    self.create_libfunc_bitwise(func_decl, parent_block, storage)?;
+                    self.create_libfunc_bitwise(func_decl, storage)?;
                 }
                 "upcast" => {
-                    self.create_libfunc_upcast(func_decl, parent_block, storage)?;
+                    self.create_libfunc_upcast(func_decl, storage)?;
                 }
                 "downcast" => {
                     self.register_libfunc_downcast(func_decl, storage);
                 }
                 "bool_or_impl" => {
-                    self.create_libfunc_bool_binop_impl(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BoolBinaryOp::Or,
-                    )?;
+                    self.create_libfunc_bool_binop_impl(func_decl, storage, BoolBinaryOp::Or)?;
                 }
                 "bool_and_impl" => {
-                    self.create_libfunc_bool_binop_impl(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BoolBinaryOp::And,
-                    )?;
+                    self.create_libfunc_bool_binop_impl(func_decl, storage, BoolBinaryOp::And)?;
                 }
                 "bool_xor_impl" => {
-                    self.create_libfunc_bool_binop_impl(
-                        func_decl,
-                        parent_block,
-                        storage,
-                        BoolBinaryOp::Xor,
-                    )?;
+                    self.create_libfunc_bool_binop_impl(func_decl, storage, BoolBinaryOp::Xor)?;
                 }
                 "bool_not_impl" => {
-                    self.create_libfunc_bool_not_impl(func_decl, parent_block, storage)?;
+                    self.create_libfunc_bool_not_impl(func_decl, storage)?;
                 }
                 "bool_to_felt252" => {
-                    self.create_libfunc_bool_to_felt252(func_decl, parent_block, storage)?;
+                    self.create_libfunc_bool_to_felt252(func_decl, storage)?;
                 }
                 "array_new" => {
-                    self.create_libfunc_array_new(func_decl, parent_block, storage)?;
+                    self.create_libfunc_array_new(func_decl, storage)?;
                 }
                 "array_append" => {
-                    self.create_libfunc_array_append(func_decl, parent_block, storage)?;
+                    self.create_libfunc_array_append(func_decl, storage)?;
                 }
                 "array_len" => {
-                    self.create_libfunc_array_len(func_decl, parent_block, storage)?;
+                    self.create_libfunc_array_len(func_decl, storage)?;
                 }
                 "array_get" => {
                     self.register_libfunc_array_get(func_decl, storage);
@@ -387,7 +316,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.register_libfunc_array_pop_front(func_decl, storage);
                 }
                 "print" => {
-                    self.create_libfunc_print(func_decl, parent_block, storage)?;
+                    self.create_libfunc_print(func_decl, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -452,28 +381,15 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_struct_construct(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
-        };
+        let type_id = get_type_id(&func_decl.long_id.generic_args[0]);
+        let arg_type = storage.types.get(&type_id).cloned().expect("type to exist");
 
         let args =
             arg_type.get_field_types().expect("arg should be a struct type and have field types");
-        let args_with_location =
-            args.iter().map(|x| (*x, Location::unknown(&self.context))).collect_vec();
-
-        let region = Region::new();
-
-        let block = Block::new(&args_with_location);
+        let block = self.new_block(&args);
 
         let struct_type = self.llvm_struct_type(&args, false);
         let mut struct_type_op = self.op_llvm_undef(&block, struct_type);
@@ -488,12 +404,12 @@ impl<'ctx> Compiler<'ctx> {
         let struct_value: Value = struct_type_op.result(0)?.into();
         self.op_return(&block, &[struct_value]);
 
-        let function_type = create_fn_signature(&args, &[arg_type.get_type()]);
-
-        region.append_block(block);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
+        self.create_function(
+            &id,
+            vec![block],
+            &[arg_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
 
         storage.libfuncs.insert(
             id,
@@ -503,8 +419,6 @@ impl<'ctx> Compiler<'ctx> {
             ),
         );
 
-        parent_block.append_operation(func);
-
         Ok(())
     }
 
@@ -512,48 +426,40 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_struct_deconstruct(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let struct_type = storage
             .types
-            .get(&match &func_decl.long_id.generic_args[0] {
-                GenericArg::Type(x) => x.id.to_string(),
-                _ => todo!("handler other types (error?)"),
-            })
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
             .expect("struct type not found");
         let (struct_ty, field_types) = match struct_type {
             SierraType::Struct { ty, field_types } => (*ty, field_types.as_slice()),
             _ => todo!("handle non-struct types (error)"),
         };
 
-        let region = Region::new();
-        region.append_block({
-            let block = Block::new(&[(struct_ty, Location::unknown(&self.context))]);
+        let block = Block::new(&[(struct_ty, Location::unknown(&self.context))]);
 
-            let struct_value = block.argument(0)?;
+        let struct_value = block.argument(0)?;
 
-            let mut result_ops = Vec::with_capacity(field_types.len());
-            for (i, arg_ty) in field_types.iter().enumerate() {
-                let op_ref =
-                    self.op_llvm_extractvalue(&block, i, struct_value.into(), arg_ty.get_type())?;
-                result_ops.push(op_ref);
-            }
+        let mut result_ops = Vec::with_capacity(field_types.len());
+        for (i, arg_ty) in field_types.iter().enumerate() {
+            let op_ref =
+                self.op_llvm_extractvalue(&block, i, struct_value.into(), arg_ty.get_type())?;
+            result_ops.push(op_ref);
+        }
 
-            let result_values: Vec<_> =
-                result_ops.iter().map(|x| x.result(0).map(Into::into)).try_collect()?;
-            self.op_return(&block, &result_values);
-
-            block
-        });
+        let result_values: Vec<_> =
+            result_ops.iter().map(|x| x.result(0).map(Into::into)).try_collect()?;
+        self.op_return(&block, &result_values);
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
-        let fn_ty = create_fn_signature(
-            &[struct_ty],
-            field_types.iter().map(|x| x.get_type()).collect::<Vec<_>>().as_slice(),
-        );
-        let fn_op =
-            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
+
+        self.create_function(
+            &fn_id,
+            vec![block],
+            &field_types.iter().map(SierraType::get_type).collect_vec(),
+            FnAttributes::libfunc(false, true),
+        )?;
 
         let return_types = field_types.to_vec();
         let struct_type = struct_type.clone();
@@ -561,8 +467,6 @@ impl<'ctx> Compiler<'ctx> {
             fn_id,
             SierraLibFunc::create_function_all_args(vec![struct_type], return_types),
         );
-
-        parent_block.append_operation(fn_op);
         Ok(())
     }
 
@@ -686,21 +590,17 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_felt_add(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
-        let felt_type = sierra_felt_type.get_type();
-        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
-        let region = Region::new();
         // Block in which the calculation occurs
-        let entry_block = Block::new(&[felt_type_location, felt_type_location]);
+        let entry_block = self.new_block(&[self.felt_type(), self.felt_type()]);
         // Block for wrapping values >= PRIME
-        let gte_prime_block = Block::new(&[]);
+        let gte_prime_block = self.new_block(&[]);
         // Block for returning values < PRIME
-        let in_range_block = Block::new(&[]);
+        let in_range_block = self.new_block(&[]);
 
         // res = lhs + rhs
         let lhs = entry_block.argument(0)?.into();
@@ -725,17 +625,13 @@ impl<'ctx> Compiler<'ctx> {
         //in range block
         self.op_return(&in_range_block, &[res]);
 
-        region.append_block(entry_block);
-        region.append_block(in_range_block);
-        region.append_block(gte_prime_block);
-        let func = self.op_func(
+        self.create_function(
             &id,
-            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
-            vec![region],
+            vec![entry_block, in_range_block, gte_prime_block],
+            &[self.felt_type()],
             FnAttributes::libfunc(false, true),
         )?;
 
-        parent_block.append_operation(func);
         storage.libfuncs.insert(
             id,
             SierraLibFunc::create_function_all_args(
@@ -749,21 +645,17 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_felt_sub(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
-        let felt_type = sierra_felt_type.get_type();
-        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
-        let region = Region::new();
         // Block in which the calculation occurs
-        let entry_block = Block::new(&[felt_type_location, felt_type_location]);
+        let entry_block = self.new_block(&[self.felt_type(), self.felt_type()]);
         // Block for wrapping values < 0
-        let lt_zero_block = Block::new(&[]);
+        let lt_zero_block = self.new_block(&[]);
         // Block for returning values >= 0
-        let in_range_block = Block::new(&[]);
+        let in_range_block = self.new_block(&[]);
 
         // res = lhs - rhs
         let lhs = entry_block.argument(0)?.into();
@@ -772,7 +664,7 @@ impl<'ctx> Compiler<'ctx> {
         let res = res_op.result(0)?.into();
 
         // lt_zero <=> res_result < 0
-        let zero_op = self.op_const(&entry_block, "0", felt_type);
+        let zero_op = self.op_const(&entry_block, "0", self.felt_type());
         let zero = zero_op.result(0)?.into();
         let lt_zero_op = self.op_cmp(&entry_block, CmpOp::SignedLessThan, res, zero);
         let lt_zero = lt_zero_op.result(0)?.into();
@@ -790,17 +682,13 @@ impl<'ctx> Compiler<'ctx> {
         //in range block
         self.op_return(&in_range_block, &[res]);
 
-        region.append_block(entry_block);
-        region.append_block(in_range_block);
-        region.append_block(lt_zero_block);
-        let func = self.op_func(
+        self.create_function(
             &id,
-            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
-            vec![region],
+            vec![entry_block, in_range_block, lt_zero_block],
+            &[self.felt_type()],
             FnAttributes::libfunc(false, true),
         )?;
 
-        parent_block.append_operation(func);
         storage.libfuncs.insert(
             id,
             SierraLibFunc::create_function_all_args(
@@ -814,46 +702,26 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_felt_mul(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         let sierra_felt_type = SierraType::Simple(self.felt_type());
-        let felt_type = sierra_felt_type.get_type();
-        let felt_type_location = sierra_felt_type.get_type_location(&self.context);
 
-        let region = Region::new();
-        let block = Block::new(&[felt_type_location, felt_type_location]);
-
-        // Need to first widen arguments so we can accurately calculate the non-modular product before wrapping it back into range
-        let wide_type = self.double_felt_type();
+        let block = self.new_block(&[self.felt_type(), self.felt_type()]);
         let lhs = block.argument(0)?.into();
         let rhs = block.argument(1)?.into();
-        let lhs_wide_op = self.op_zext(&block, lhs, wide_type);
-        let rhs_wide_op = self.op_zext(&block, rhs, wide_type);
-        let lhs_wide = lhs_wide_op.result(0)?.into();
-        let rhs_wide = rhs_wide_op.result(0)?.into();
 
-        // res_wide = lhs_wide * rhs_wide
-        let res_wide_op = self.op_mul(&block, lhs_wide, rhs_wide);
-        let res_wide = res_wide_op.result(0)?.into();
-
-        //res = res_wide mod PRIME
-        let in_range_op = self.op_felt_modulo(&block, res_wide)?;
-        let in_range = in_range_op.result(0)?.into();
-        let res_op = self.op_trunc(&block, in_range, felt_type);
+        let res_op = self.call_felt_mul_impl(&block, lhs, rhs, storage)?;
         let res = res_op.result(0)?.into();
 
         self.op_return(&block, &[res]);
 
-        region.append_block(block);
-        let func = self.op_func(
+        self.create_function(
             &id,
-            &create_fn_signature(&[felt_type, felt_type], &[felt_type]),
-            vec![region],
+            vec![block],
+            &[self.felt_type()],
             FnAttributes::libfunc(false, true),
         )?;
-        parent_block.append_operation(func);
 
         storage.libfuncs.insert(
             id,
@@ -1167,50 +1035,40 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_uint_to_felt252(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
-        storage: &mut Storage<'ctx>,
         src_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let region = Region::new();
-        let block =
-            region.append_block(Block::new(&[(src_type, Location::unknown(&self.context))]));
+        let block = self.new_block(&[src_type]);
 
         let op_zext = self.op_zext(&block, block.argument(0)?.into(), self.felt_type());
         self.op_return(&block, &[op_zext.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let func = self.op_func(
-            &id,
-            &create_fn_signature(&[src_type], &[self.felt_type()]),
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
 
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![SierraType::Simple(src_type)],
                 vec![SierraType::Simple(self.felt_type())],
             ),
         );
-        parent_block.append_operation(func);
 
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.felt_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_uint_wide_mul(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
-        storage: &mut Storage<'ctx>,
         src_type: Type<'ctx>,
         dst_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[
-            (src_type, Location::unknown(&self.context)),
-            (src_type, Location::unknown(&self.context)),
-        ]));
+        let block = self.new_block(&[src_type, src_type]);
 
         let op_zext_lhs = self.op_zext(&block, block.argument(0)?.into(), dst_type);
         let op_zext_rhs = self.op_zext(&block, block.argument(1)?.into(), dst_type);
@@ -1220,36 +1078,24 @@ impl<'ctx> Compiler<'ctx> {
         self.op_return(&block, &[op_mul.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let func = self.op_func(
-            &id,
-            &create_fn_signature(&[src_type, src_type], &[dst_type]),
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
 
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![SierraType::Simple(src_type), SierraType::Simple(src_type)],
                 vec![SierraType::Simple(dst_type)],
             ),
         );
-        parent_block.append_operation(func);
 
-        Ok(())
+        self.create_function(&id, vec![block], &[dst_type], FnAttributes::libfunc(false, true))
     }
 
     pub fn create_libfunc_u128_wide_mul(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[
-            (self.u128_type(), Location::unknown(&self.context)),
-            (self.u128_type(), Location::unknown(&self.context)),
-        ]));
+        let block = self.new_block(&[self.u128_type(), self.u128_type()]);
 
         let op_zext_lhs = self.op_zext(&block, block.argument(0)?.into(), self.u256_type());
         let op_zext_rhs = self.op_zext(&block, block.argument(1)?.into(), self.u256_type());
@@ -1268,18 +1114,9 @@ impl<'ctx> Compiler<'ctx> {
         self.op_return(&block, &[op_mul_hi.result(0)?.into(), op_mul_lo.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let func = self.op_func(
-            &id,
-            &create_fn_signature(
-                &[self.u128_type(), self.u128_type()],
-                &[self.u128_type(), self.u128_type()],
-            ),
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
 
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::Function {
                 // Skip the range check argument and return
                 args: vec![
@@ -1292,23 +1129,22 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
-        parent_block.append_operation(func);
 
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.u128_type(), self.u128_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_uint_safe_divmod(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
-        storage: &mut Storage<'ctx>,
         src_type: Type<'ctx>,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[
-            (src_type, Location::unknown(&self.context)),
-            (src_type, Location::unknown(&self.context)),
-        ]));
+        let block = self.new_block(&[src_type, src_type]);
 
         let lhs = block.argument(0)?.into();
         let rhs = block.argument(1)?.into();
@@ -1319,15 +1155,9 @@ impl<'ctx> Compiler<'ctx> {
         self.op_return(&block, &[op_div.result(0)?.into(), op_rem.result(0)?.into()]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let func = self.op_func(
-            &id,
-            &create_fn_signature(&[src_type, src_type], &[src_type, src_type]),
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
 
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::Function {
                 // Skip range check
                 args: vec![
@@ -1340,47 +1170,42 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
-        parent_block.append_operation(func);
 
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[src_type, src_type],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_bitwise(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.u128_type(), self.u128_type()];
         let data_out = &[self.u128_type(), self.u128_type(), self.u128_type()];
 
-        let region = Region::new();
-        region.append_block({
-            let block = self.new_block(data_in);
+        let block = self.new_block(data_in);
 
-            let lhs = block.argument(0)?;
-            let rhs = block.argument(1)?;
-            let to = self.u128_type();
+        let lhs = block.argument(0)?;
+        let rhs = block.argument(1)?;
+        let to = self.u128_type();
 
-            let and_ref = self.op_and(&block, lhs.into(), rhs.into(), to);
-            let xor_ref = self.op_xor(&block, lhs.into(), rhs.into(), to);
-            let or_ref = self.op_or(&block, lhs.into(), rhs.into(), to);
+        let and_ref = self.op_and(&block, lhs.into(), rhs.into(), to);
+        let xor_ref = self.op_xor(&block, lhs.into(), rhs.into(), to);
+        let or_ref = self.op_or(&block, lhs.into(), rhs.into(), to);
 
-            self.op_return(
-                &block,
-                &[and_ref.result(0)?.into(), xor_ref.result(0)?.into(), or_ref.result(0)?.into()],
-            );
-
-            block
-        });
+        self.op_return(
+            &block,
+            &[and_ref.result(0)?.into(), xor_ref.result(0)?.into(), or_ref.result(0)?.into()],
+        );
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
-        let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op =
-            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
-            fn_id,
+            fn_id.clone(),
             SierraLibFunc::Function {
                 // Skip bitwise argument and return
                 args: vec![
@@ -1395,80 +1220,62 @@ impl<'ctx> Compiler<'ctx> {
             },
         );
 
-        parent_block.append_operation(fn_op);
-        Ok(())
+        self.create_function(&fn_id, vec![block], data_out, FnAttributes::libfunc(false, true))
     }
 
     pub fn create_libfunc_upcast(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
-        let src_sierra_type = storage
+        let src_type = storage
             .types
-            .get(&match &func_decl.long_id.generic_args[0] {
-                GenericArg::Type(x) => x.id.to_string(),
-                _ => todo!("invalid generic kind"),
-            })
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
             .expect("type to exist")
             .clone();
-        let dst_sierra_type = storage
+        let dst_type = storage
             .types
-            .get(&match &func_decl.long_id.generic_args[1] {
-                GenericArg::Type(x) => x.id.to_string(),
-                _ => todo!("invalid generic kind"),
-            })
+            .get(&get_type_id(&func_decl.long_id.generic_args[1]))
             .expect("type to exist")
             .clone();
 
-        let src_type = src_sierra_type.get_type();
-        let dst_type = dst_sierra_type.get_type();
-
-        match src_type.get_width().unwrap().cmp(&dst_type.get_width().unwrap()) {
+        match src_type.get_width().cmp(&dst_type.get_width()) {
             Ordering::Less => {
-                let region = Region::new();
-                let block = Block::new(&[(src_type, Location::unknown(&self.context))]);
+                let block = self.new_block(&[src_type.get_type()]);
 
-                let op_ref = self.op_zext(&block, block.argument(0)?.into(), dst_type);
+                let op_ref = self.op_zext(&block, block.argument(0)?.into(), dst_type.get_type());
 
                 self.op_return(&block, &[op_ref.result(0)?.into()]);
-                region.append_block(block);
-
-                let func = self.op_func(
-                    &id,
-                    &create_fn_signature(&[src_type], &[dst_type]),
-                    vec![region],
-                    FnAttributes::libfunc(false, true),
-                )?;
 
                 storage.libfuncs.insert(
-                    id,
+                    id.clone(),
                     SierraLibFunc::create_function_all_args(
-                        vec![src_sierra_type],
-                        vec![dst_sierra_type],
+                        vec![src_type.clone()],
+                        vec![dst_type.clone()],
                     ),
                 );
 
-                parent_block.append_operation(func);
+                self.create_function(
+                    &id,
+                    vec![block],
+                    &[dst_type.get_type()],
+                    FnAttributes::libfunc(false, true),
+                )
             }
             Ordering::Equal => {
                 // Similar to store_local and rename, create a libfuncdef that tells statement processing to just forward its argument
-                self.register_identity_function(func_decl, storage)?;
+                self.register_identity_function(func_decl, storage)
             }
             Ordering::Greater => todo!("invalid generics for libfunc `upcast`"),
         }
-
-        Ok(())
     }
 
     /// 2 boolean enums -> 1 bool enum
     pub fn create_libfunc_bool_binop_impl(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
         bool_op: BoolBinaryOp,
     ) -> Result<()> {
@@ -1488,70 +1295,52 @@ impl<'ctx> Compiler<'ctx> {
             variants_types: vec![bool_variant.clone(), bool_variant],
         };
 
-        let region = Region::new();
-        region.append_block({
-            let block = self.new_block(data_in);
+        let block = self.new_block(data_in);
 
-            let lhs = block.argument(0)?;
-            let rhs = block.argument(1)?;
+        let lhs = block.argument(0)?;
+        let rhs = block.argument(1)?;
 
-            let lhs_tag_value_op =
-                self.op_llvm_extractvalue(&block, 0, lhs.into(), self.u16_type())?;
-            let lhs_tag_value: Value = lhs_tag_value_op.result(0)?.into();
+        let lhs_tag_value_op = self.op_llvm_extractvalue(&block, 0, lhs.into(), self.u16_type())?;
+        let lhs_tag_value: Value = lhs_tag_value_op.result(0)?.into();
 
-            let rhs_tag_value_op =
-                self.op_llvm_extractvalue(&block, 0, rhs.into(), self.u16_type())?;
-            let rhs_tag_value: Value = rhs_tag_value_op.result(0)?.into();
+        let rhs_tag_value_op = self.op_llvm_extractvalue(&block, 0, rhs.into(), self.u16_type())?;
+        let rhs_tag_value: Value = rhs_tag_value_op.result(0)?.into();
 
-            let bool_op_ref = match bool_op {
-                BoolBinaryOp::And => {
-                    self.op_and(&block, lhs_tag_value, rhs_tag_value, self.u16_type())
-                }
-                BoolBinaryOp::Xor => {
-                    self.op_xor(&block, lhs_tag_value, rhs_tag_value, self.u16_type())
-                }
-                BoolBinaryOp::Or => {
-                    self.op_or(&block, lhs_tag_value, rhs_tag_value, self.u16_type())
-                }
-            };
+        let bool_op_ref = match bool_op {
+            BoolBinaryOp::And => self.op_and(&block, lhs_tag_value, rhs_tag_value, self.u16_type()),
+            BoolBinaryOp::Xor => self.op_xor(&block, lhs_tag_value, rhs_tag_value, self.u16_type()),
+            BoolBinaryOp::Or => self.op_or(&block, lhs_tag_value, rhs_tag_value, self.u16_type()),
+        };
 
-            let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
-            let enum_value: Value = enum_op.result(0)?.into();
+        let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
+        let enum_value: Value = enum_op.result(0)?.into();
 
-            let enum_res = self.op_llvm_insertvalue(
-                &block,
-                0,
-                enum_value,
-                bool_op_ref.result(0)?.into(),
-                self.boolean_enum_type(),
-            )?;
+        let enum_res = self.op_llvm_insertvalue(
+            &block,
+            0,
+            enum_value,
+            bool_op_ref.result(0)?.into(),
+            self.boolean_enum_type(),
+        )?;
 
-            self.op_return(&block, &[enum_res.result(0)?.into()]);
-
-            block
-        });
+        self.op_return(&block, &[enum_res.result(0)?.into()]);
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
-        let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op =
-            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
-            fn_id,
+            fn_id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![bool_sierra_type.clone(), bool_sierra_type.clone()],
                 vec![bool_sierra_type.clone()],
             ),
         );
 
-        parent_block.append_operation(fn_op);
-        Ok(())
+        self.create_function(&fn_id, vec![block], data_out, FnAttributes::libfunc(false, true))
     }
 
     pub fn create_libfunc_bool_not_impl(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.boolean_enum_type()];
@@ -1570,52 +1359,42 @@ impl<'ctx> Compiler<'ctx> {
             variants_types: vec![bool_variant.clone()],
         };
 
-        let region = Region::new();
-        region.append_block({
-            let block = self.new_block(data_in);
+        let block = self.new_block(data_in);
 
-            let lhs = block.argument(0)?;
+        let lhs = block.argument(0)?;
 
-            let lhs_tag_value_op =
-                self.op_llvm_extractvalue(&block, 0, lhs.into(), self.u16_type())?;
-            let lhs_tag_value: Value = lhs_tag_value_op.result(0)?.into();
+        let lhs_tag_value_op = self.op_llvm_extractvalue(&block, 0, lhs.into(), self.u16_type())?;
+        let lhs_tag_value: Value = lhs_tag_value_op.result(0)?.into();
 
-            let const_1_op = self.op_const(&block, "1", self.u16_type());
+        let const_1_op = self.op_const(&block, "1", self.u16_type());
 
-            let bool_op_ref =
-                self.op_xor(&block, lhs_tag_value, const_1_op.result(0)?.into(), self.u16_type());
+        let bool_op_ref =
+            self.op_xor(&block, lhs_tag_value, const_1_op.result(0)?.into(), self.u16_type());
 
-            let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
-            let enum_value: Value = enum_op.result(0)?.into();
+        let enum_op = self.op_llvm_undef(&block, self.boolean_enum_type());
+        let enum_value: Value = enum_op.result(0)?.into();
 
-            let enum_res = self.op_llvm_insertvalue(
-                &block,
-                0,
-                enum_value,
-                bool_op_ref.result(0)?.into(),
-                self.boolean_enum_type(),
-            )?;
+        let enum_res = self.op_llvm_insertvalue(
+            &block,
+            0,
+            enum_value,
+            bool_op_ref.result(0)?.into(),
+            self.boolean_enum_type(),
+        )?;
 
-            self.op_return(&block, &[enum_res.result(0)?.into()]);
-
-            block
-        });
+        self.op_return(&block, &[enum_res.result(0)?.into()]);
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
-        let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op =
-            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
-            fn_id,
+            fn_id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![bool_sierra_type.clone()],
                 vec![bool_sierra_type],
             ),
         );
 
-        parent_block.append_operation(fn_op);
-        Ok(())
+        self.create_function(&fn_id, vec![block], data_out, FnAttributes::libfunc(false, true))
     }
 
     /// bool to felt
@@ -1625,7 +1404,6 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_bool_to_felt252(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let data_in = &[self.boolean_enum_type()];
@@ -1644,38 +1422,29 @@ impl<'ctx> Compiler<'ctx> {
             variants_types: vec![bool_variant.clone()],
         };
 
-        let region = Region::new();
-        region.append_block({
-            let block = self.new_block(data_in);
+        let block = self.new_block(data_in);
 
-            let bool_enum = block.argument(0)?;
+        let bool_enum = block.argument(0)?;
 
-            let tag_value_op =
-                self.op_llvm_extractvalue(&block, 0, bool_enum.into(), self.u16_type())?;
-            let tag_value: Value = tag_value_op.result(0)?.into();
+        let tag_value_op =
+            self.op_llvm_extractvalue(&block, 0, bool_enum.into(), self.u16_type())?;
+        let tag_value: Value = tag_value_op.result(0)?.into();
 
-            let felt_value = self.op_zext(&block, tag_value, self.felt_type());
+        let felt_value = self.op_zext(&block, tag_value, self.felt_type());
 
-            self.op_return(&block, &[felt_value.result(0)?.into()]);
-
-            block
-        });
+        self.op_return(&block, &[felt_value.result(0)?.into()]);
 
         let fn_id = func_decl.id.debug_name.as_deref().unwrap().to_string();
-        let fn_ty = create_fn_signature(data_in, data_out);
-        let fn_op =
-            self.op_func(&fn_id, &fn_ty, vec![region], FnAttributes::libfunc(false, true))?;
 
         storage.libfuncs.insert(
-            fn_id,
+            fn_id.clone(),
             SierraLibFunc::create_function_all_args(
                 vec![bool_sierra_type],
                 vec![SierraType::Simple(self.felt_type())],
             ),
         );
 
-        parent_block.append_operation(fn_op);
-        Ok(())
+        self.create_function(&fn_id, vec![block], data_out, FnAttributes::libfunc(false, true))
     }
 
     // `extern fn array_new<T>() -> Array<T> nopanic;`
@@ -1683,48 +1452,48 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_array_new(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            _ => unreachable!(),
-        };
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
 
-        let region = Region::new();
-
-        let block = Block::new(&[]);
+        let block = self.new_block(&[]);
 
         let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
+        // Initially create an undefined struct to insert the values into
         let array_value_op = self.op_llvm_undef(&block, sierra_type.get_type());
         let array_value: Value = array_value_op.result(0)?.into();
 
+        // Length is 0 on creation
         let array_len_op = self.op_u32_const(&block, "0");
         let array_len = array_len_op.result(0)?.into();
 
+        // Capacity is 8 on creation to avoid lots of early reallocations
         let array_capacity_op = self.op_u32_const(&block, "8");
         let array_capacity = array_capacity_op.result(0)?.into();
 
+        // The size in bytes of one array element
         let array_element_size_bytes = (arg_type.get_width() + 7) / 8;
 
         // length
-        let insert_op =
-            self.op_llvm_insertvalue(&block, 0, array_value, array_len, sierra_type.get_type())?;
-        let array_value: Value = insert_op.result(0)?.into();
+        let set_len_op =
+            self.call_array_set_len_impl(&block, array_value, array_len, &sierra_type, storage)?;
+        let array_value: Value = set_len_op.result(0)?.into();
 
         // capacity
-        let insert_op = self.op_llvm_insertvalue(
+        let set_capacity_op = self.call_array_set_capacity_impl(
             &block,
-            1,
             array_value,
             array_capacity,
-            sierra_type.get_type(),
+            &sierra_type,
+            storage,
         )?;
-        let array_value: Value = insert_op.result(0)?.into();
+        let array_value: Value = set_capacity_op.result(0)?.into();
 
         // 8 here is the capacity
         let const_arr_size_bytes_op =
@@ -1736,33 +1505,25 @@ impl<'ctx> Compiler<'ctx> {
 
         let ptr_op =
             self.call_realloc(&block, null_ptr.into(), const_arr_size_bytes.into(), storage)?;
-        let ptr_val = ptr_op.result(0)?;
+        let ptr_val = ptr_op.result(0)?.into();
 
-        let insert_op = self.op_llvm_insertvalue(
-            &block,
-            2,
-            array_value,
-            ptr_val.into(),
-            sierra_type.get_type(),
-        )?;
-        let array_value: Value = insert_op.result(0)?.into();
+        let set_data_ptr_op =
+            self.call_array_set_data_ptr(&block, array_value, ptr_val, &sierra_type, storage)?;
+        let array_value: Value = set_data_ptr_op.result(0)?.into();
 
         self.op_return(&block, &[array_value]);
 
-        let function_type = create_fn_signature(&[], &[sierra_type.get_type()]);
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::create_function_all_args(vec![], vec![sierra_type.clone()]),
+        );
 
-        region.append_block(block);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
-        storage
-            .libfuncs
-            .insert(id, SierraLibFunc::create_function_all_args(vec![], vec![sierra_type]));
-
-        parent_block.append_operation(func);
-
-        Ok(())
+        self.create_function(
+            &id,
+            vec![block],
+            &[sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     // `extern fn array_append<T>(ref arr: Array<T>, value: T) nopanic;`
@@ -1770,56 +1531,39 @@ impl<'ctx> Compiler<'ctx> {
     pub fn create_libfunc_array_append(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::UserType(_) => todo!(),
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            GenericArg::Value(_) => todo!(),
-            GenericArg::UserFunc(_) => todo!(),
-            GenericArg::Libfunc(_) => todo!(),
-        };
-        let region = Region::new();
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
 
-        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
+        let array_type = SierraType::create_array_type(self, arg_type.clone());
 
-        let block = region.append_block(Block::new(&[
-            sierra_type.get_type_location(&self.context),
-            arg_type.get_type_location(&self.context),
-        ]));
-
-        let array_type = sierra_type.get_type();
-        let array_type_with_loc = sierra_type.get_type_location(&self.context);
-
-        let array_value = block.argument(0)?.into();
-        let append_value = block.argument(1)?.into();
+        // ---entry block---
+        let entry_block = self.new_block(&[array_type.get_type(), arg_type.get_type()]);
+        let array_value = entry_block.argument(0)?.into();
+        let append_value = entry_block.argument(1)?.into();
 
         // check if len < capacity
-        let array_len_op = self.call_array_len_impl(&block, array_value, &sierra_type, storage)?;
+        let array_len_op = self.call_array_len_impl(&entry_block, array_value, &array_type, storage)?;
         let array_len = array_len_op.result(0)?.into();
 
         let array_capacity_op =
-            self.call_array_capacity_impl(&block, array_value, &sierra_type, storage)?;
+            self.call_array_capacity_impl(&entry_block, array_value, &array_type, storage)?;
         let array_capacity = array_capacity_op.result(0)?.into();
 
-        let realloc_block = region.append_block(Block::new(&[]));
-        let append_value_block = region.append_block(Block::new(&[array_type_with_loc]));
+        let realloc_block = self.new_block(&[]);
+        let append_value_block = self.new_block(&[array_type.get_type()]);
 
-        let is_less = self.op_cmp(&block, CmpOp::UnsignedLessThan, array_len, array_capacity);
+        let is_less_op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, array_len, array_capacity);
+        let is_less = is_less_op.result(0)?.into();
 
-        self.op_cond_br(
-            &block,
-            is_less.result(0)?.into(),
-            &append_value_block,
-            &realloc_block,
-            &[array_value],
-            &[],
-        );
+        self.op_cond_br(&entry_block, is_less, &append_value_block, &realloc_block, &[array_value], &[]);
 
+        // ---reallocation block---
         // reallocate with more capacity, for now with a simple algorithm:
         // new_capacity = capacity * 2
         let const_2_op = self.op_u32_const(&realloc_block, "2");
@@ -1829,111 +1573,105 @@ impl<'ctx> Compiler<'ctx> {
         let new_capacity = new_capacity_op.result(0)?.into();
 
         let new_capacity_as_u64_op = self.op_zext(&realloc_block, new_capacity, self.u64_type());
-        let new_capacity_as_u64 = new_capacity_as_u64_op.result(0)?;
+        let new_capacity_as_u64 = new_capacity_as_u64_op.result(0)?.into();
+        let element_byte_width = (arg_type.get_width() + 7) / 8;
+        let element_size_op = self.op_u64_const(&realloc_block, &element_byte_width.to_string());
+        let element_size = element_size_op.result(0)?.into();
+        let new_capacity_in_bytes_op =
+            self.op_mul(&realloc_block, new_capacity_as_u64, element_size);
+        let new_capacity_in_bytes = new_capacity_in_bytes_op.result(0)?.into();
 
         let data_ptr_op =
-            self.op_llvm_extractvalue(&realloc_block, 2, array_value, self.llvm_ptr_type())?;
+            self.call_array_get_data_ptr(&realloc_block, array_value, &array_type, storage)?;
         let data_ptr: Value = data_ptr_op.result(0)?.into();
 
         let new_ptr_op =
-            self.call_realloc(&realloc_block, data_ptr, new_capacity_as_u64.into(), storage)?;
+            self.call_realloc(&realloc_block, data_ptr, new_capacity_in_bytes, storage)?;
         let new_ptr = new_ptr_op.result(0)?.into();
 
         // change the ptr
-        let insert_ptr_op =
-            self.op_llvm_insertvalue(&realloc_block, 2, array_value, new_ptr, array_type)?;
-        let array_value = insert_ptr_op.result(0)?;
-
-        // update the capacity
-        let insert_ptr_op = self.op_llvm_insertvalue(
+        let insert_ptr_op = self.call_array_set_data_ptr(
             &realloc_block,
-            1,
-            array_value.into(),
-            new_capacity,
-            array_type,
+            array_value,
+            new_ptr,
+            &array_type,
+            storage,
         )?;
-        let array_value = insert_ptr_op.result(0)?;
+        let array_value = insert_ptr_op.result(0)?.into();
+
+        let update_capacity_op = self.call_array_set_capacity_impl(
+            &realloc_block,
+            array_value,
+            new_capacity,
+            &array_type,
+            storage,
+        )?;
+        let array_value = update_capacity_op.result(0)?;
 
         self.op_br(&realloc_block, &append_value_block, &[array_value.into()]);
 
+        // ---append value block---
         // append value and len + 1
-        let array_value = append_value_block.argument(0)?;
+        let array_value = append_value_block.argument(0)?.into();
 
-        // get the data pointer
-        let data_ptr_op = self.op_llvm_extractvalue(
-            &append_value_block,
-            2,
-            array_value.into(),
-            self.llvm_ptr_type(),
-        )?;
-        let data_ptr: Value = data_ptr_op.result(0)?.into();
-
-        // get the pointer to the data index
-        let value_ptr_op = self.op_llvm_gep_dynamic(
-            &append_value_block,
-            &[array_len],
-            data_ptr,
-            arg_type.get_type(),
-        )?;
-        let value_ptr = value_ptr_op.result(0)?.into();
         // update the value
-        self.op_llvm_store(&append_value_block, append_value, value_ptr)?;
+        self.call_array_set_unchecked(
+            &append_value_block,
+            array_value,
+            array_len,
+            append_value,
+            &array_type,
+            storage,
+        )?;
 
         // increment the length
         let const_1 = self.op_const(&append_value_block, "1", array_len.r#type());
-        let len_plus_1 = self.op_add(&append_value_block, array_len, const_1.result(0)?.into());
+        let len_plus_1_op = self.op_add(&append_value_block, array_len, const_1.result(0)?.into());
+        let len_plus_1 = len_plus_1_op.result(0)?.into();
 
-        let insert_op = self.op_llvm_insertvalue(
+        let set_len_op = self.call_array_set_len_impl(
             &append_value_block,
-            0,
-            array_value.into(),
-            len_plus_1.result(0)?.into(),
-            array_type,
+            array_value,
+            len_plus_1,
+            &array_type,
+            storage,
         )?;
-        let array_value = insert_op.result(0)?;
+        let array_value = set_len_op.result(0)?.into();
 
-        self.op_return(&append_value_block, &[array_value.into()]);
-
-        let function_type = create_fn_signature(
-            &[sierra_type.get_type(), arg_type.get_type()],
-            &[sierra_type.get_type()],
-        );
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
+        self.op_return(&append_value_block, &[array_value]);
 
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::create_function_all_args(
-                vec![sierra_type.clone(), arg_type],
-                vec![sierra_type],
+                vec![array_type.clone(), arg_type.clone()],
+                vec![array_type.clone()],
             ),
         );
 
-        parent_block.append_operation(func);
-
-        Ok(())
+        self.create_function(
+            &id,
+            vec![entry_block, realloc_block, append_value_block],
+            &[array_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_array_len(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        let arg_type = match &func_decl.long_id.generic_args[0] {
-            GenericArg::Type(type_id) => {
-                storage.types.get(&type_id.id.to_string()).cloned().expect("type to exist")
-            }
-            _ => unreachable!("Generic arg for array_len should be a Type"),
-        };
-        let region = Region::new();
+
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
 
         let sierra_type = SierraType::create_array_type(self, arg_type.clone());
 
-        let block =
-            region.append_block(Block::new(&[sierra_type.get_type_location(&self.context)]));
+        let block = self.new_block(&[sierra_type.get_type()]);
 
         let arg = block.argument(0)?.into();
         let impl_call = self.call_array_len_impl(&block, arg, &sierra_type, storage)?;
@@ -1941,32 +1679,30 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_return(&block, &[impl_result]);
 
-        // TODO replace self.u32_type() once a helper to get array properties from a SierraType is implemented
-        let function_type = create_fn_signature(&[sierra_type.get_type()], &[self.u32_type()]);
-
-        let func =
-            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
-
         storage.libfuncs.insert(
-            id,
+            id.clone(),
             SierraLibFunc::create_function_all_args(
-                vec![sierra_type],
+                vec![sierra_type.clone()],
                 vec![SierraType::Simple(self.u32_type())],
             ),
         );
 
-        parent_block.append_operation(func);
-
-        Ok(())
+        // TODO replace self.u32_type() once a helper to get array properties from a SierraType is implemented
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.u32_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn create_libfunc_print(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
-        mlir_asm! { parent_block, opt(
+        let block = self.module.body();
+        mlir_asm! { block, opt(
             "--convert-scf-to-cf",
             "--convert-linalg-to-loops",
             "--lower-affine",

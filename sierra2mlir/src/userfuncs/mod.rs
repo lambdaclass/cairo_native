@@ -1,13 +1,12 @@
 use cairo_lang_sierra::program::{GenFunction, GenericArg, Program, StatementIdx, TypeDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Location, Region};
+use melior_next::ir::Value;
 
 use crate::{
     compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
     types::is_omitted_builtin_type,
-    utility::create_fn_signature,
 };
 
 use self::user_func_def::UserFuncDef;
@@ -96,8 +95,9 @@ impl<'ctx> Compiler<'ctx> {
                     let arg_type = storage
                         .types
                         .get(&type_decl.id.id.to_string())
-                        .expect("Type should be registered");
-                    self.create_print_array(arg_type, type_decl.clone())?
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_array(&arg_type, type_decl.clone(), storage)?
                 }
                 "u8" | "u16" | "u32" | "u64" | "u128" => {
                     let uint_type = storage
@@ -111,28 +111,30 @@ impl<'ctx> Compiler<'ctx> {
             }
         }
 
-        let region = Region::new();
-        let arg_types_with_locations =
-            arg_types.iter().map(|t| (*t, Location::unknown(&self.context))).collect::<Vec<_>>();
-        let block = region.append_block(Block::new(&arg_types_with_locations));
+        let block = self.new_block(&arg_types);
 
-        let mut arg_values: Vec<_> = vec![];
-        for i in 0..block.argument_count() {
-            let arg = block.argument(i)?;
-            arg_values.push(arg.into());
-        }
-        let arg_values = arg_values;
+        let arg_values = (0..block.argument_count())
+            .map(|idx| block.argument(idx).map(|arg| arg.into()))
+            .collect::<Result<Vec<Value>, melior_next::Error>>()?;
+
         let mlir_ret_types = ret_types.iter().map(|(t, _id)| t.get_type()).collect_vec();
 
         // First, call the wrapped function
         let raw_res = self.op_func_call(&block, wrapped_func_name, &arg_values, &mlir_ret_types)?;
 
-        let success_block = region.append_block(Block::new(&[]));
+        let success_block = self.new_block(&[]);
 
         let ret_type_name = ret_types[0].1.debug_name.as_ref().unwrap();
 
+        // Create a block for panic processing if the result is a panic enum
+        let panic_block = if ret_type_name.starts_with("core::PanicResult::<") {
+            Some(self.new_block(&[]))
+        } else {
+            None
+        };
+
         // Then, print whether or not the execution was successful
-        if ret_type_name.starts_with("core::PanicResult::<") {
+        if let Some(panic_block) = &panic_block {
             let panic_enum_type = &ret_types[0].0;
             let panic_value = raw_res.result(0)?.into();
             // Get the tag from the panic enum to determine whether execution was successful or not
@@ -146,17 +148,16 @@ impl<'ctx> Compiler<'ctx> {
             let is_success = is_success_op.result(0)?.into();
 
             // Create a block for printing the error message if execution failed
-            let panic_block = region.append_block(Block::new(&[]));
-            self.op_cond_br(&block, is_success, &success_block, &panic_block, &[], &[]);
+            self.op_cond_br(&block, is_success, &success_block, panic_block, &[], &[]);
 
             self.call_print_panic_message(
-                &panic_block,
+                panic_block,
                 ret_type_name.as_str(),
                 panic_value,
                 panic_enum_type,
                 storage,
             )?;
-            self.op_return(&panic_block, &[]);
+            self.op_return(panic_block, &[]);
         } else {
             self.op_br(&block, &success_block, &[]);
         }
@@ -180,18 +181,20 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_return(&success_block, &[]);
 
+        let all_blocks = if let Some(panic_block) = panic_block {
+            vec![block, success_block, panic_block]
+        } else {
+            vec![block, success_block]
+        };
+
         // Currently this wrapper is only put on the entrypoint, so we call it main
         // We might want to change this in the future
-        let op = self.op_func(
+        self.create_function(
             "main",
-            create_fn_signature(&arg_types, &[]).as_str(),
-            vec![region],
+            all_blocks,
+            &[],
             FnAttributes { public: true, emit_c_interface: true, ..Default::default() },
-        )?;
-
-        self.module.body().append_operation(op);
-
-        Ok(())
+        )
     }
 
     fn save_nonflow_function_info_to_storage(
