@@ -70,7 +70,7 @@ As a result, Tensorflow has a number of compiler components embedded in it, made
 
 ### Back to languages
 
-In these intervening years since the early 2000s, the pendulum has swung back from dynamic to staticly typed languages with more advanced type systems and code analysis phases. LLVM enabled Clang, and then new languages such as Rust, Julia, and Swift. Something these projects share in common is that they have found that many language implementation problems are best modeled at higher abstraction levels, and implemented their own intermediate representations to solve domain-specific problems, like language/library-specific optimizations, flow-sensitive type checking (e.g. for linear types), and to improve the implementation of the lowering process. Swift has SIL, Rust has MIR, and so on.
+In these intervening years since the early 2000s, the pendulum has swung back from dynamic to statically typed languages with more advanced type systems and code analysis phases. LLVM enabled Clang, and then new languages such as Rust, Julia, and Swift. Something these projects share in common is that they have found that many language implementation problems are best modeled at higher abstraction levels, and implemented their own intermediate representations to solve domain-specific problems, like language/library-specific optimizations, flow-sensitive type checking (e.g. for linear types), and to improve the implementation of the lowering process. Swift has SIL, Rust has MIR, and so on.
 
 ![Figure 2 from the paper "MLIR:  A Compiler Infrastructure for the End of Moore’s Law"](./assets/mlir/fig2.jpg "Figure 2 from the paper 'MLIR:  A Compiler Infrastructure for the End of Moore’s Law'")
 
@@ -78,133 +78,88 @@ In other words people started to realize that the complexity of the software sta
 
 After twenty years, expanding hardware targets, and changing problem spaces, LLVM was starting to be found lacking for certain areas.
 
-## What? (is MLIR?)
+## What (is MLIR?)
 
 ![](./assets/mlir/mlir-identity-03.jpg)
 
 Out of this came [MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation), a project started by Chris Lattner et al with the aim to build a common infrastructure to support all these different subsystems, and to learn from the mistakes made and lessons learned in the development of LLVM. 
 
-I highly encourage you to read the introductory [paper](https://arxiv.org/pdf/2002.11054.pdf) from whence these imags came, as it is very readable, or to listen to the talk Lattner and Shpeisman gave presenting it. 
+I highly encourage you to read the introductory [paper](https://arxiv.org/pdf/2002.11054.pdf) from whence these graphics came, as it is very readable, or to listen to the talk Lattner and Shpeisman gave presenting it. 
 
 > MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together.
 
 There are several types of intermediate representations: linear (like assembly, a sequence of instructions), tree-like (like ASTs), graph-like (like data-flow or call-graphs). As the project site states, "MLIR is intended to be a hybrid IR which can support multiple different requirements in a unified infrastructure."
 
-### What are is advantages over LLVM?
+Unlike LLVM IR where there is one central IR containing a complete set of instructions to represent the CPU/GPU programs in MLIR there is no one IR. 
 
-So aside from code reuse across the industry, what advantages does MLIR provide?
+Rather, MLIR provides a set of very abstract concepts: dialects, operations, regions, etc. 
 
-- Source code location tracking by default
+From the [glossary](https://mlir.llvm.org/getting_started/Glossary/):
+
+	> A dialect is a grouping of functionality which can be used to extend the MLIR system.
+	> A dialect creates a unique namespace within which new operations, attributes, and types are defined. This is the fundamental method by which to extend MLIR.
+	> In this way, MLIR is a meta-IR: its extensible framework allows it to be leveraged in many different ways
+
+An **operation** is unit of code in MLIR. Operations are the building blocks for all code and computations represented by MLIR. They are fully extensible (there is no fixed list of operations) and have application-specific semantics.
+
+When implementing the code emitter, operations could map to procesor instructions. When implementing an AST, nodes representing type conversions, function calls, language operands could be mapped to operations. 
+
+Operations can have an arbitrary number of operands, results, and attributes, and may contain an arbitrary number of regions. 
+
+A **region** is a control-flow-graph of MLIR blocks. 
+
+A **block**, or basic block, is a sequential list of operations without control flow.
+
+Note that this creates a nested IR structure, as regions consist of blocks, which in turn, consist of a list of operations. Regions are a powerful mechanism to allow nested operations and localize information, simplifying code analysis and transformation.
+
+A **module** is an operation which contains a single region containing a single block that is comprised of operations, providing an organizational structure for MLIR operations.
+
+MLIR allows for multiple dialects, even those outside of MLIR's codebase, to co-exist together within one module.
+
+In the context of MLIR, conversion is distinct from translation. 
+The transformation of code represented in a dialect is called conversion, and can be either inter-dialect (when the conversion is into a semantically equivalent representation in another dialect) or intra-dialect, whereas translation refers to a transformation between MLIR and an external representation.
+
+Thus an application using MLIR will typically use a collection of dialects as needed. 
+
+### What are the advantages over LLVM?
+
+So you're writing a compiler, or need to add a backend to an existing compiler. Aside from code reuse across the industry, what advantages does MLIR provide? Why would you choose it over LLVM?
+
+To begin with, the choice is not that binary since MLIR include an LLVM IR dialect to which you can convert your application-specific dialect and thus leverage the existing LLVM toolchain.
+
+MLIR also tries to provide universal patterns or passes that can just apply to suitable operations without hardcoding them.
+
+So MLIR allows you to easily defined your own dialect, pick from a growing ecosystem of midle and low level dialects targeting different computation models, and integrate them into your own domain-specific compiler.
+
+As [Lei Zhang](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/) says: 
+
+> In other words, if LLVM IR is centralized by nature and favors unified compiler flows, the MLIR infrastructure and its dialect ecosystem is decentralized by nature and favors diverse compiler flows.
+> What is quite powerful is that MLIR enables different levels to be represented using the same infrastructure; so that the flow between different levels can become seamless.
+
+The UNIX way!
+
+![](./assets/mlir/mlir-app.jpg)
+
+Other benefits include:
+- Source code location tracking by default (each operand has a source code memory address attribute so errors directly point to the line of source code in which error occured)
 - All functions run on multiple cores by default (uses OpenMP)
-- Better code reuse for compiler stack (for new library and hardware) and hence, optimizations done by other languages can be reused
-- Intermediate IR to capture data flow information and apply optimizations, better source code tracking than LLVM, flexible design, Reuse LLVM for Machine code generation
+- Optimizations done by other languages can be reused
+- Reuse LLVM for machine code generation
 
-> Ref: opengenus
+Finally, if your domain does benefit from running all or some of your code in a GPU, TPU, or ASIC, MLIR provides a way to either reuse an existing dialect targeting that computation model and hardware by writing a conversion to it, and plugging in a code generator for final translation.
 
-> Within MLIR, we can implement multiple Dialects for distinct inputs. For instance, we could use a Dialect to deal with tensors. Further, we can deploy a shared optimization layer to unify things. Once we have an optimal IR, MLIR can now lower it onto the backends such as LLVM for CPUs, CIRCT for FPGAs. If you are targeting specialized hardware such as FPGA or TPU, you still need vendor-tools for final compilation (e.g., use Vivado to synthesis Verilog). 
-
-> MLIR is something that lies across language AST and LLVM IR.
-
-> Ref: The other side of the coin
-
-	LLVM is a great leap forward to compiler development. With its good designs and the effort of a vigorous open-source community, we have seen so many great tools come into existence and improve developer productivity. However, it is said that every coin has two sides. Now with the existing LLVM ecosystem as the basis, there are shades casted by the design tradeoffs that become more and more obvious.
+It includes dialects for SPIR-V, a general [GPU](https://mlir.llvm.org/docs/Dialects/GPU/) dialect and specific ones for [NVidia](https://mlir.llvm.org/docs/Dialects/NVGPU/) and [AMD](https://mlir.llvm.org/docs/Dialects/AMDGPU) GPUs.
 	
-	Centralization and forks, forks, forks
+All these advantages are direct results of MLIR's abstraction level.
 
-	LLVM IR is centric to the whole LLVM ecosystem. That is the foundation to the great decoupling of frontend and backend. However, it also means a full flow must pass through via LLVM IR.
+## Why?
 
-	Changing LLVM IR itself needs to meet a very lofty bar nowadays because of its nature of center of gravity. All the tools are expected to process it, and there are so many transformations and different organizations' workflows go through it. Even if you don’t need to plumb through the full flow that frequency, tweaking a small aspect of the IR can still trigger a surprising ripple effect. So that naturally means changes are slow and requires extensive discussions and sign offs from many stakeholders. That is all necessary to guarantee the quality of LLVM IR; but if I just have a very isolated need, it would be quite hard to motivate a change and justify its landing.
-
-	One way, and also the typical way actually, is just to fork LLVM and keep the modification local. But that has a high cost too. LLVM IR being centric really favors upstreaming as much as possible. There are almost 100 commits lands per day in the monorepo, bringing various new features and bug fixes. If not merging consistently, it risks divergence more and more and then it eventually becomes unmanageable, unless staleness is fine. On the other hand, consistently catching up with upstream would mean dedicated teams and engineering efforts.
-
-	So the end result is that we have many different flavors of LLVM forks at different versions or commits, with varying degrees of freshness. Maintaining and updating those forks certainly take a significant amount of engineering effort if taken globally.
-
-	Though it’s hard to say the problem is unique to LLVM; large and complex systems that are developed by open-source communities and productionzied by various organizations have similar problems. However, those projects typically expect customization of some sorts; in contrast, LLVM IR’s absolute centric role makes it hard. In a sense, it’s a strong coupling. MLIR goes another step towards decoupling the IR.
-	Evolution and compatibility
-
-	Another LLVM IR’s design choice is to co-evolve the IR with various analysis and transformations. This is crucial for better and better toolchains. But it does mean weak compatibility guarantees. The community will try to maintain compatibility as much as possible, but the ability to make breaking changes are certainly reserved.
-
-	Compilers typically operate at a level that is close to the operating system and hardware device. So it’s quite natural that people leverage LLVM IR as the program representation to device drivers, especially given the great ecosystem and the fact that LLVM IR has a bytecode form!
-
-	However, using LLVM IR as the representation to flow through a coherent set of software and tools is the well supported path; if hardware and devices are involved, it’s a different story. Hardware devices may be in some end product (e.g., a cell phone) and thus controlled by the device manufacturer and end consumer; so there is no guarantee when the driver, which contains LLVM libraries to consume LLVM IR, will be updated, if ever.
-
-	There are quite a few attempts of using LLVM IR this way, with mixed success. A notable example is Standard Portable Intermediate Representation (SPIR). SPIR was meant to represent OpenCL kernels. It is LLVM IR pinned at specific versions, with OpenCL compute constructs defined as LLVM intrinsics and metadata. Over the years, the Khronos Group gradually realized that LLVM IR is not really designed for this kind of task, which led to the birth of SPIR-V.
-
-	MLIR
-
-	MLIR landed in the LLVM monorepo at the end of 2019. So it’s just 2 years old. My feeling is that it takes at least 5 years to see a reasonably mature ecosystem. So in that sense, MLIR is still very young and there is lots of development to happen. But still, MLIR is already bringing many novel ideas or profound changes to compilers, notably infrastructurization to further decouple compilers and IRs.
-	
-	Infrastructurization
-
-	Infrastructurization is a natural endpoint for technology evolution. Being a part of the infrastructure means the solution is mature enough and widely deployed. Based on that, the next technology evolution can then happen. We see this for transportation, electricity, internet, public cloud, and so on. Those are massive ones for sure; it also happens for smaller scaled technology, because it helps to share the cost of developing infrastructure and let each other focus on core business logic.
-
-	Many people get to know about MLIR as one way to implement machine learning compilers. Serving the ML domain and power ML compilers is indeed the initial application and still one important role for MLIR; but MLIR is much more than that.
-
-	MLIR is a compiler infrastructure that aims to provide reusable and extensible fundamental components to facilitate building domain specific compilers. Unlike LLVM IR or SPIR-V, where we have one central IR containing a complete set of instructions to represent the CPU/GPU programs they aim to compile, in MLIR, there is no one IR that is clearly at the center.
-
-	What MLIR provides is just infrastructure to define operations (instructions in the broader sense) and form logical groups of them (called dialects in MLIR) based on functionality. MLIR also tries to provide universal patterns or passes that can just apply to suitable operations without hardcoding them.
-
-	Both goals require MLIR to look at compilers in a more fine-grained manner to decompose concepts further. Instead of seeing operations at the atom, as an infrastructure, the granularity goes down to types, values, attributes, regions, and interfaces (like attribute/type/operation interfaces).
-
-	Operations can have an arbitrary number of operands, results, and attributes, and may contain an arbitrary number of regions. Region is a powerful mechanism to allow nested levels of operations and make information localized, which simplifies analysis and transformation. Operations also implement certain interfaces. That allows patterns and passes to be written to operate on interfaces, so detached from concrete operations.
-
-	All concepts in MLIR are abstract and detached by design, in order to map to various domains and use cases.
-	Dialects, dialects, dialects
-
-	But the purpose of an infrastructure is to help build products (here, domain specific compilers). We program C++ by calling into STL or even higher level libraries. Rarely one would write everything from scratch. Also infrastructure also needs to co-evolve with its products, as there are where the needs come. So in MLIR, there are also in-tree dialects for abstractions at different levels. They are like STL to C++.
-
-	MLIR’s dialect ecosystem is still in its organically growing phase, but there are already early signs of stability and maturity. For example, we have both LLVM and SPIR-V as edge dialects to convert to/from IRs in other systems. (This fact alone actually signifies that MLIR is really an infrastructure as it’s able to define other IRs entirely!) We have middle level abstractions like Linalg, Tensor, Vector, SCF for structured code generation. We have Affine, Math, Arithmetic for low level computation. AI framework dialects like TensorFlow, TFLite, MHLO, Torch, TOSA for importing ML model graphs into MLIR. And many others.
-
-	Alex posted an awesome graph and discussions of different dialects in MLIR, which is well worth a read if you are interested. I’ll also write up my understanding of the dialect ecosystem later. These dialects (and eventually partial or full flows connecting and wrapping them) will make developing domain-specific compilers much more simpler.
-	Further unbundling compilers and IRs
-
-	The infrastructurization and plethora of dialects are actually another step towards decoupling and modularizing both compilers and IRs.
-
-	Instead of one single central IR, now we have many reusable “partial” IRs that are logically organized into MLIR dialects. If those readily available ones aren’t satisfying your needs, defining new ones and writing their validations are also very easy with the declarative op definition. So given a few more years for MLIR to mature further, we can imagine a world where developing domain-specific compilers means just defining the edge dialect for project specific operations, and picking existing middle or low level dialects and chain them together to form a full flow! This certainly takes much less effort than building everything from the ground up.
-
-	Also, the decoupling gives us the flexibility to make tradeoffs based on the specific needs of the domain. We can choose only the necessary partial IRs to piece together a full-fledged compiler; we are not required to pick up a full IR like LLVM IR in its entirety with all its complexity. Extending the functionality of existing components is also simpler given that interfaces are what connects operations and patterns/passes. We can both define new ops implementing existing interfaces to make patterns and passes work immediately, or actually attach new interfaces to existing operations to make them support external patterns and passes.
-
-	In other words, if LLVM IR is centralized by nature and favors unified compiler flows, the MLIR infrastructure and its dialect ecosystem is decentralized by nature and favors diverse compiler flows.
-
-	The typical trend of technology is evolving from single monolithic options to abundant diverse choices. It’s especially the case for upper layers, because there we are more close to the concrete business needs, which is diverse by nature. For example, think of how many web frontend frameworks, distributed data processing frameworks, ML frameworks we have.
-
-	For lower layers, it has been quite stable; we just have the few main hardware architectures, compilers, and operating systems. But the slow down of semiconductor advancement and the ever-growing computation need are driving changes here too. It’s hard to still only rely on general architectures and optimize towards all domains. Developing domain-specific end-to-end solutions is an interesting way out. We see RISC-V pioneering customization and modularization at the ISA level; MLIR is effectively customizing and modularizing the compilers and IRs. It would be very interesting to see how they can work together to push the frontier for low tech layers.
-	Progressive lowering across system boundaries
-
-	There is another aspect I’d like to touch on before closing this section. There are two dimensions that we can look at the unbundling that is brought by MLIR:
-
-	Horizontally, dialects split a complete IR into separate partial IRs at the same level, e.g., scalar operations, vector operation, control flow operations, etc. Vertically, MLIR enables dialects and operations to model concepts at different abstraction levels.
-
-	This is very useful for domain-specific compilers, which typically have a very high-level source program that describes the job in a declarative way and needs to be compiled down to imperative machine code. Going in one step is unmanageable. Performing progressive lowering with multiple levels of abstractions is preferable, because it separates concerns and lets each layer focus on one dedicated task. Again, decoupling is the key to make complex systems tractable.
-
-	But this isn’t entirely new for sure, as we have IR-like constructs in various projects for a long time, like Clang AST and ML framework graphs. What is quite powerful is that MLIR enables different levels to be represented using the same infrastructure; so that the flow between different levels can become seamless.
-
-	One of the major tasks in developing modern complex systems is actually choosing various subsystems and chain them together. The boundaries between subsystems place rigid barriers. Much of the efforts are spent taking the output from a previous subsystem, verifying, mutating, and then feeding into a next one. Now if all the systems use the same internal representation and infrastructure, it would save that effort entirely. What’s more, it would also make cross-team cross-project collaboration easier because of the same mindset and tools!
-
-	Closing Words
-
-	LLVM decoupled and modularized compilers with LLVM IR and libraries. It also brings the UNIX simplicity to compilers with textural forms. However, certain design choices in LLVM IR makes it not suitable for certain domains, e.g., it does not have a hard guarantee over stability and compatibility, and LLVM IR itself is a monolithic central IR.
-
-	MLIR decouples compilers and IRs further by breaking down monolithic IRs into mixable dialects. Its infrastructure unleashes the power of defining and converting abstractions at different levels with ease. This matches the general direction of going from monolithic to more and more modular and let each domain have their customized solutions with their own tradeoffs. Hopefully writing domain-specific compilers could be as easy as choosing, customizing, and mixing open dialects in the future!
-
-### Running on GPU
-
-```	
-	In terms of evolution, using LLVM for GPU compilation will require moving away from LLVM IR itself, I think. The tradeoffs and semantics start diverging quickly, and even different GPU-based IRs may/will have slightly different semantics. So, a container IR would be ideal to allow different middle/back-ends express their own semantic needs. Do you see MLIR as that container IR? How would different backends use MLIR to further describe their semantics (say SPIRV vs DXIL vs CUDA).
-
-	I think MLIR can be the infrastructure for such purposes. It provides a consistent infra and scaffolding for different variants of GPU IRs. What op and what semantics to have is up to each GPU IR to define. Actually as of right now we already have multiple GPU related dialects, GPU dialect being vendor-agonistic common host/device abstractions, NVGPU dialect/AMDGPU dialect for NVIDIA/AMD-specific stuff, SPIR-V dialect for lowering and existing MLIR system, etc.
-
-	https://mlir.llvm.org/docs/Dialects/GPU/
-	https://mlir.llvm.org/docs/Dialects/NVGPU/
-	https://mlir.llvm.org/docs/Dialects/AMDGPU/
-```
-
-## Why (use MLIR in the context of Cairo)?
-
-> ELABORATE
+Let's change the tune again. 
 
 - Parallel with intro beat story
 - initial wave of repurposing video graphics hardware, then app specific HW
+
+> ELABORATE
 
 A similar story has been playing out in the area of cryptography applied to blockchains: as new techniques have been discovered, and older ones matured, the are of Zero Knowledge Proofs has exploded. 
 type systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
@@ -215,6 +170,8 @@ Type systems help in producing code that has properties the tools can reason
 about, such as termination or bounded resource consumption of transaction fees. 
 
 > ELABORATE
+
+### Why use MLIR in the context of Cairo?
 
 - Enable faster checking of Cairo contract TX
 - Faster Gas computation
