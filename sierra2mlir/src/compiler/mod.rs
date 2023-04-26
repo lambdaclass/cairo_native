@@ -3,10 +3,16 @@ use std::collections::{HashMap, HashSet};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
     },
+    ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes};
+use cairo_lang_sierra_gas::gas_info::GasInfo;
+use cairo_lang_sierra_gas::{calc_gas_postcost_info, calc_gas_precost_info};
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use melior_next::{
     dialect,
     ir::{operation, Block, Location, Module, NamedAttribute, OperationRef, Region, Type},
@@ -30,6 +36,10 @@ pub mod types;
 pub struct Compiler<'ctx> {
     pub program: &'ctx Program,
     pub registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    /// AP changes information for Sierra user functions.
+    pub ap_change_info: ApChangeInfo,
+    /// Gas information for validating Sierra code and taking the appropriate amount of gas.
+    pub gas_info: GasInfo,
     pub available_gas: usize,
     pub context: Context,
     pub module: Module<'ctx>,
@@ -55,6 +65,45 @@ impl<'ctx> Compiler<'ctx> {
         available_gas: usize,
     ) -> color_eyre::Result<Self> {
         let sierra_program_registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
+
+        let function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>> =
+            Default::default();
+        dbg!(&function_set_costs);
+
+        // todo: move to helper function
+        let pre_function_set_costs = function_set_costs
+            .iter()
+            .map(|(func, costs)| {
+                (
+                    func.clone(),
+                    CostTokenType::iter_precost()
+                        .filter_map(|token| costs.get(token).map(|v| (*token, *v)))
+                        .collect(),
+                )
+            })
+            .collect();
+        let pre_gas_info = calc_gas_precost_info(program, pre_function_set_costs)?;
+
+        let ap_change_info = calc_ap_changes(program, |idx, token_type| {
+            pre_gas_info.variable_values[(idx, token_type)] as usize
+        })?;
+
+        let post_function_set_costs = function_set_costs
+            .iter()
+            .map(|(func, costs)| {
+                (
+                    func.clone(),
+                    std::iter::once(&CostTokenType::Const)
+                        .filter_map(|token| costs.get(token).map(|v| (*token, *v)))
+                        .collect(),
+                )
+            })
+            .collect();
+        let post_gas_info =
+            calc_gas_postcost_info(program, post_function_set_costs, &pre_gas_info, |idx| {
+                ap_change_info.variable_values.get(&idx).copied().unwrap_or_default()
+            })?;
+        //
 
         let registry = dialect::Registry::new();
         register_all_dialects(&registry);
@@ -86,15 +135,20 @@ impl<'ctx> Compiler<'ctx> {
         Ok(Self {
             program,
             registry: sierra_program_registry,
+            ap_change_info,
             context,
             module,
             main_print,
             print_fd,
             available_gas,
+            gas_info: pre_gas_info.combine(post_gas_info),
         })
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        dbg!(&self.ap_change_info);
+        dbg!(&self.gas_info);
+
         let mut storage = Storage::default();
         self.create_gas_global()?;
         self.process_types(&mut storage)?;
