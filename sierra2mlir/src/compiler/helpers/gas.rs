@@ -3,7 +3,7 @@ use melior_next::ir::{Block, OperationRef, Value};
 
 use crate::compiler::{mlir_ops::CmpOp, Compiler};
 
-/// Gas type is u64 for now.
+/// Gas type is u128.
 pub static GAS_COUNTER_SYMBOL: &str = "__gas_counter";
 
 impl<'ctx> Compiler<'ctx> {
@@ -12,23 +12,23 @@ impl<'ctx> Compiler<'ctx> {
         self.op_llvm_global(
             &self.module.body(),
             GAS_COUNTER_SYMBOL,
-            self.u64_type(),
+            self.u128_type(),
             &self.available_gas.to_string(),
         )?;
         Ok(())
     }
 
-    /// The result 0 of the operation has the current gas counter value, u64.
+    /// The result 0 of the operation has the current gas counter value, u128.
     pub fn call_get_gas_counter<'block>(
         &'ctx self,
         block: &'block Block,
     ) -> Result<OperationRef<'block>> {
         let addr_op = self.op_llvm_addressof(block, GAS_COUNTER_SYMBOL)?;
         let addr = addr_op.result(0)?.into();
-        self.op_llvm_load(block, addr, self.u64_type())
+        self.op_llvm_load(block, addr, self.u128_type())
     }
 
-    /// Value must be u64.
+    /// Value must be u128_type.
     pub fn call_decrease_gas_counter<'block>(
         &'ctx self,
         block: &'block Block,
@@ -45,6 +45,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    /// Value must be u128.
     pub fn call_increase_gas_counter<'block>(
         &'ctx self,
         block: &'block Block,
