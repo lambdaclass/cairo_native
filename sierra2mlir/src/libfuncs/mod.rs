@@ -2205,6 +2205,75 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_libfunc_pedersen(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        mlir_asm! { parent_block =>
+            func.func @pedersen(%0 : i256, %1 : i256) -> i256 {
+                // Allocate temporary buffers.
+                %2 = memref.alloca() : memref<32xi8>
+                %3 = memref.alloca() : memref<32xi8>
+                %4 = memref.alloca() : memref<32xi8>
+
+                // Swap endianness (LE -> BE).
+                // TODO: Find a way to check the target's endianness.
+                %5 = llvm.call_intrinsic "llvm.bswap.i256"(%0) : (i256) -> i256
+                %6 = llvm.call_intrinsic "llvm.bswap.i256"(%1) : (i256) -> i256
+
+                // Store lhs and rhs into the temporary buffers.
+                %7 = index.constant 0
+                %8 = memref.view %3[%7][] : memref<32xi8> to memref<i256>
+                %9 = memref.view %4[%7][] : memref<32xi8> to memref<i256>
+                memref.store %5, %8[] : memref<i256>
+                memref.store %6, %9[] : memref<i256>
+
+                // Call the auxiliary library's pedersen function.
+                %10 = memref.extract_aligned_pointer_as_index %2 : memref<32xi8> -> index
+                %11 = memref.extract_aligned_pointer_as_index %3 : memref<32xi8> -> index
+                %12 = memref.extract_aligned_pointer_as_index %4 : memref<32xi8> -> index
+                %13 = index.castu %10 : index to i64
+                %14 = index.castu %11 : index to i64
+                %15 = index.castu %12 : index to i64
+                %16 = llvm.inttoptr %13 : i64 to !llvm.ptr
+                %17 = llvm.inttoptr %14 : i64 to !llvm.ptr
+                %18 = llvm.inttoptr %15 : i64 to !llvm.ptr
+                func.call @sierra2mlir_util_pedersen(%16, %17, %18) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
+
+                // Load dst from the temporary buffer.
+                %19 = memref.view %2[%7][] : memref<32xi8> to memref<i256>
+                %20 = memref.load %19[] : memref<i256>
+
+                // Swap endianness (BE -> LE).
+                // TODO: Find a way to check the target's endianness.
+                %21 = llvm.call_intrinsic "llvm.bswap.i256"(%20) : (i256) -> i256
+
+                return %21 : i256
+            }
+
+            func.func private @sierra2mlir_util_pedersen(!llvm.ptr, !llvm.ptr, !llvm.ptr)
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::Function {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.felt_type()) },
+                ],
+                return_types: vec![PositionalArg {
+                    loc: 1,
+                    ty: SierraType::Simple(self.felt_type()),
+                }],
+            },
+        );
+
+        Ok(())
+    }
+
     pub fn create_libfunc_null(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -2350,74 +2419,5 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
-    }
-
-    pub fn create_libfunc_pedersen(
-        &'ctx self,
-        func_decl: &LibfuncDeclaration,
-        parent_block: BlockRef<'ctx>,
-        storage: &mut Storage<'ctx>,
-    ) -> Result<()> {
-        mlir_asm! { parent_block =>
-            func.func @pedersen(%0 : i256, %1 : i256) -> i256 {
-                // Allocate temporary buffers.
-                %2 = memref.alloca() : memref<32xi8>
-                %3 = memref.alloca() : memref<32xi8>
-                %4 = memref.alloca() : memref<32xi8>
-
-                // Swap endianness (LE -> BE).
-                // TODO: Find a way to check the target's endianness.
-                %5 = llvm.call_intrinsic "llvm.bswap.i256"(%0) : (i256) -> i256
-                %6 = llvm.call_intrinsic "llvm.bswap.i256"(%1) : (i256) -> i256
-
-                // Store lhs and rhs into the temporary buffers.
-                %7 = index.constant 0
-                %8 = memref.view %3[%7][] : memref<32xi8> to memref<i256>
-                %9 = memref.view %4[%7][] : memref<32xi8> to memref<i256>
-                memref.store %5, %8[] : memref<i256>
-                memref.store %6, %9[] : memref<i256>
-
-                // Call the auxiliary library's pedersen function.
-                %10 = memref.extract_aligned_pointer_as_index %2 : memref<32xi8> -> index
-                %11 = memref.extract_aligned_pointer_as_index %3 : memref<32xi8> -> index
-                %12 = memref.extract_aligned_pointer_as_index %4 : memref<32xi8> -> index
-                %13 = index.castu %10 : index to i64
-                %14 = index.castu %11 : index to i64
-                %15 = index.castu %12 : index to i64
-                %16 = llvm.inttoptr %13 : i64 to !llvm.ptr
-                %17 = llvm.inttoptr %14 : i64 to !llvm.ptr
-                %18 = llvm.inttoptr %15 : i64 to !llvm.ptr
-                func.call @sierra2mlir_util_pedersen(%16, %17, %18) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
-
-                // Load dst from the temporary buffer.
-                %19 = memref.view %2[%7][] : memref<32xi8> to memref<i256>
-                %20 = memref.load %19[] : memref<i256>
-
-                // Swap endianness (BE -> LE).
-                // TODO: Find a way to check the target's endianness.
-                %21 = llvm.call_intrinsic "llvm.bswap.i256"(%20) : (i256) -> i256
-
-                return %21 : i256
-            }
-
-            func.func private @sierra2mlir_util_pedersen(!llvm.ptr, !llvm.ptr, !llvm.ptr)
-        }
-
-        let id = func_decl.id.debug_name.as_deref().unwrap();
-        storage.libfuncs.insert(
-            id.to_string(),
-            SierraLibFunc::Function {
-                args: vec![
-                    PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) },
-                    PositionalArg { loc: 2, ty: SierraType::Simple(self.felt_type()) },
-                ],
-                return_types: vec![PositionalArg {
-                    loc: 1,
-                    ty: SierraType::Simple(self.felt_type()),
-                }],
-            },
-        );
-
-        Ok(())
     }
 }

@@ -24,6 +24,9 @@ use test_case::test_case;
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
 #[test_case("array/append")]
+#[test_case("array/index_invalid")]
+#[test_case("array/pop_front_invalid")]
+// #[test_case("array/pop_front_valid")]
 #[test_case("bitwise/and")]
 #[test_case("bitwise/or")]
 #[test_case("bitwise/xor")]
@@ -301,6 +304,19 @@ fn find_mlir_prefix() -> PathBuf {
 
             PathBuf::from(String::from_utf8(cmd_output.stdout).unwrap().trim())
         }
+    }
+}
+
+fn get_string_from_felts(felts: Vec<Felt252>) -> String {
+    let char_data = felts.iter().flat_map(|felt| felt.to_be_bytes()).collect_vec();
+    println!("Parsing char_data {:?}", char_data);
+    let zero_count_opt = char_data.iter().position(|c| *c != 0);
+    println!("Zero count {:?}", zero_count_opt);
+
+    if let Some(zero_count) = zero_count_opt {
+        String::from_utf8_lossy(&char_data[zero_count..char_data.len()]).to_string()
+    } else {
+        "".to_string()
     }
 }
 
