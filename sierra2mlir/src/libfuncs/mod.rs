@@ -2436,7 +2436,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let block = Block::new(&[]);
 
-        let gas_value_op = self.call_get_gas_counter(&block)?;
+        let (_, gas_value_op) = self.call_get_gas_counter(&block)?;
 
         self.op_return(&block, &[gas_value_op.result(0)?.into()]);
 

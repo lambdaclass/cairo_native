@@ -381,6 +381,14 @@ impl<'ctx> Compiler<'ctx> {
                 .map(|t| (t.ty.get_type(), Location::unknown(&self.context)))
                 .collect_vec(),
         );
+
+        // reduce the gas cost of this user function call
+        let costs = self.gas_info.function_costs.get(&func.id).unwrap();
+        for (_cost_type, cost_value) in costs.iter() {
+            let value = self.op_u128_const(&entry_block, &cost_value.to_string());
+            self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
+        }
+
         let block_info = &blocks.get(&func_start).unwrap();
 
         let mut args_to_pass = vec![];

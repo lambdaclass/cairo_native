@@ -179,10 +179,12 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
 fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
-    let runner =
-        SierraCasmRunner::new(program, None).with_context(|| "Failed setting up runner.")?;
+    let runner = SierraCasmRunner::new(program, Some(Default::default()))
+        .with_context(|| "Failed setting up runner.")?;
 
-    runner.run_function("::main", &[], Some(99999999)).with_context(|| "Failed to run the function.")
+    runner
+        .run_function("::main", &[], Some(99999999))
+        .with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
