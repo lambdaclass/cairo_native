@@ -10,157 +10,19 @@ use itertools::Itertools;
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
 use melior_next::{
     dialect::cf,
-    ir::{
-        operation, Block, BlockRef, Location, NamedAttribute, OperationRef, Region, Type, TypeLike,
-        Value, ValueLike,
-    },
+    ir::{Block, BlockRef, Location, Region, Type, TypeLike, Value, ValueLike},
 };
 
 use crate::{
-    compiler::{Compiler, FnAttributes},
+    compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     sierra_type::SierraType,
     statements::Variable,
 };
 use color_eyre::Result;
 
 impl<'ctx> Compiler<'ctx> {
-    pub fn create_libc_funcs(&self) -> Result<()> {
-        let region = Region::new();
-
-        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
-            .add_attributes(&NamedAttribute::new_parsed_vec(
-                &self.context,
-                &[
-                    ("sym_name", "\"realloc\""),
-                    ("function_type", "!llvm.func<ptr (ptr, i64)>"),
-                    ("linkage", "#llvm.linkage<external>"),
-                ],
-            )?)
-            .add_regions(vec![region])
-            .build();
-
-        self.module.body().append_operation(func);
-
-        let region = Region::new();
-        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
-            .add_attributes(&NamedAttribute::new_parsed_vec(
-                &self.context,
-                &[
-                    ("sym_name", "\"memmove\""),
-                    ("function_type", "!llvm.func<ptr (ptr, ptr, i64)>"),
-                    ("linkage", "#llvm.linkage<external>"),
-                ],
-            )?)
-            .add_regions(vec![region])
-            .build();
-
-        self.module.body().append_operation(func);
-
-        let region = Region::new();
-        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
-            .add_attributes(&NamedAttribute::new_parsed_vec(
-                &self.context,
-                &[
-                    ("sym_name", "\"free\""),
-                    ("function_type", "!llvm.func<void (ptr)>"),
-                    ("linkage", "#llvm.linkage<external>"),
-                ],
-            )?)
-            .add_regions(vec![region])
-            .build();
-
-        self.module.body().append_operation(func);
-        Ok(())
-    }
-
-    /// Creates the external function definition for printf.
-    pub fn create_printf(&'ctx self) -> Result<()> {
-        let region = Region::new();
-
-        // needs to be a llvm function due to variadic args.
-        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
-            .add_attributes(&NamedAttribute::new_parsed_vec(
-                &self.context,
-                &[
-                    ("sym_name", "\"dprintf\""),
-                    ("function_type", "!llvm.func<i32 (i32, !llvm.ptr, ...)>"),
-                    ("linkage", "#llvm.linkage<external>"),
-                ],
-            )?)
-            .add_regions(vec![region])
-            .build();
-
-        self.module.body().append_operation(func);
-        Ok(())
-    }
-
-    /// Utility function to create a printf call.
-    /// Null-terminates the string iff it is not already null-terminated
-    pub fn call_printf<'a>(&'a self, block: &'a Block, fmt: &str, values: &[Value]) -> Result<()> {
-        let terminated_fmt_string = if fmt.ends_with('\0') {
-            fmt.to_string()
-        } else if fmt.contains('\0') {
-            panic!("Format string \"{fmt}\" to printf contains data after \\0")
-        } else {
-            format!("{fmt}\0")
-        };
-
-        let i32_type = Type::integer(&self.context, 32);
-        let fmt_len = terminated_fmt_string.as_bytes().len();
-
-        let i8_type = Type::integer(&self.context, 8);
-        let arr_ty =
-            Type::parse(&self.context, &format!("!llvm.array<{fmt_len} x {i8_type}>")).unwrap();
-        let data_op = self.op_llvm_alloca(block, i8_type, fmt_len)?;
-        let addr: Value = data_op.result(0)?.into();
-
-        // https://discourse.llvm.org/t/array-globals-in-llvm-dialect/68229
-        // To create a constant array, we need to use a dense array attribute, which has a tensor type,
-        // which is then interpreted as a llvm.array type.
-        let fmt_data = self.op_llvm_const(
-            block,
-            &format!(
-                "dense<[{}]> : tensor<{} x {}>",
-                terminated_fmt_string.as_bytes().iter().join(", "),
-                fmt_len,
-                i8_type
-            ),
-            arr_ty,
-        );
-
-        self.op_llvm_store(block, fmt_data.result(0)?.into(), addr)?;
-
-        let target_fd = self.op_u32_const(block, "1");
-
-        let mut args = vec![target_fd.result(0)?.into(), addr];
-        args.extend(values);
-
-        self.op_llvm_call(block, "dprintf", &args, &[i32_type])?;
-        Ok(())
-    }
-
-    /// value needs to be u64 and is the size in bytes.
-    pub fn call_realloc<'a>(
-        &'a self,
-        block: &'a Block,
-        ptr: Value,
-        size: Value,
-    ) -> Result<OperationRef<'a>> {
-        self.op_llvm_call(block, "realloc", &[ptr, size], &[self.llvm_ptr_type()])
-    }
-
-    pub fn call_memmove<'a>(
-        &'a self,
-        block: &'a Block,
-        dst: Value,
-        src: Value,
-        size: Value,
-    ) -> Result<OperationRef<'a>> {
-        self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
-    }
-
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
-    pub fn create_print_felt(&'ctx self) -> Result<()> {
+    pub fn create_print_felt(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         let region = Region::new();
 
         let args_types = [self.felt_type()];
@@ -196,12 +58,12 @@ impl<'ctx> Compiler<'ctx> {
 
             let truncated_op = self.op_trunc(&block, shift_result, self.i32_type());
             let truncated = truncated_op.result(0)?.into();
-            self.call_printf(&block, "%08X\0", &[truncated])?;
+            self.call_dprintf(&block, "%08X\0", &[truncated], storage)?;
 
             bit_width = bit_width.saturating_sub(32);
         }
 
-        self.call_printf(&block, "\n\0", &[])?;
+        self.call_dprintf(&block, "\n\0", &[], storage)?;
 
         self.op_return(&block, &[]);
 
@@ -278,17 +140,81 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_print_nullable(
+        &'ctx self,
+        struct_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[(
+            struct_type.get_type(),
+            Location::unknown(&self.context),
+        )]));
+
+        let arg = block.argument(0)?.into();
+
+        let function_type = create_fn_signature(&[struct_type.get_type()], &[]);
+
+        let value_type_name = sierra_type_declaration.id.debug_name.unwrap();
+
+        let is_null_op = self.op_llvm_extractvalue(&block, 1, arg, self.bool_type())?;
+        let is_null = is_null_op.result(0)?.into();
+
+        let is_null_block = region.append_block(Block::new(&[]));
+        let is_nonnull_block = region.append_block(Block::new(&[]));
+
+        self.op_cond_br(&block, is_null, &is_nonnull_block, &is_null_block, &[], &[]);
+
+        self.call_dprintf(&is_null_block, "0\n", &[], storage)?;
+        self.op_return(&is_null_block, &[]);
+
+        let component_type_id = match &sierra_type_declaration.long_id.generic_args[0] {
+            GenericArg::Type(x) => x.debug_name.as_ref().unwrap().as_str(),
+            _ => unreachable!(),
+        };
+        // 0 is the element type
+        let value_op = self.op_llvm_extractvalue(
+            &is_nonnull_block,
+            0,
+            arg,
+            struct_type.get_field_types().unwrap()[0],
+        )?;
+        let value = value_op.result(0)?.into();
+        self.op_func_call(
+            &is_nonnull_block,
+            &format!("print_{}", component_type_id),
+            &[value],
+            &[],
+        )?;
+        self.op_return(&is_nonnull_block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", value_type_name.as_str()),
+            &function_type,
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// like cairo runner, prints the tag value and then the enum value
     pub fn create_print_enum(
         &'ctx self,
-        enum_type: &SierraType,
+        enum_sierra_type: &SierraType,
         sierra_type_declaration: TypeDeclaration,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
-        let entry_block = region
-            .append_block(Block::new(&[(enum_type.get_type(), Location::unknown(&self.context))]));
+        let enum_type = enum_sierra_type.get_type();
 
-        let enum_value = entry_block.argument(0)?.into();
+        let entry_block =
+            region.append_block(Block::new(&[(enum_type, Location::unknown(&self.context))]));
+
+        let enum_value: Value = entry_block.argument(0)?.into();
 
         // if its a panic enum wrapper, don't print the tag, as they are meant to be invisible
         let is_panic_enum = match &sierra_type_declaration.long_id.generic_args[0] {
@@ -298,38 +224,36 @@ impl<'ctx> Compiler<'ctx> {
             _ => unreachable!(),
         };
 
-        let function_type = create_fn_signature(&[enum_type.get_type()], &[]);
+        // put the enum in a alloca
+        let enum_ptr_op = self.op_llvm_alloca(&entry_block, enum_type, 1)?;
+        let enum_ptr = enum_ptr_op.result(0)?.into();
+        self.op_llvm_store(&entry_block, enum_value, enum_ptr)?;
 
-        if let SierraType::Enum { tag_type, storage_type, variants_types, .. } = enum_type {
+        let function_type = create_fn_signature(&[enum_type], &[]);
+
+        if let SierraType::Enum { tag_type, storage_type: _, variants_types, .. } = enum_sierra_type
+        {
+            // get the tag
+            let tag_ptr_op = self.op_llvm_gep(&entry_block, &[0, 0], enum_ptr, enum_type)?;
+            let tag_ptr = tag_ptr_op.result(0)?;
+            let tag_load = self.op_llvm_load(&entry_block, tag_ptr.into(), *tag_type)?;
+            let tag_value = tag_load.result(0)?.into();
+
             // create a block for each variant of the enum
             let blocks = variants_types
                 .iter()
                 .map(|var_ty| (region.append_block(Block::new(&[])), var_ty))
                 .collect_vec();
 
+            // default block
             let default_block = region.append_block(Block::new(&[]));
             self.op_return(&default_block, &[]);
-
-            // type is !llvm.struct<(i16, array<N x i8>)>
-
-            // get the tag
-            let tag_value_op = self.op_llvm_extractvalue(&entry_block, 0, enum_value, *tag_type)?;
-            let tag_value = tag_value_op.result(0)?.into();
 
             if !is_panic_enum {
                 // Print the tag. Extending it to 32 bits allows for better printf portability
                 let tag_32bit = self.op_zext(&entry_block, tag_value, self.u32_type());
-                self.call_printf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()])?;
+                self.call_dprintf(&entry_block, "%X\n\0", &[tag_32bit.result(0)?.into()], storage)?;
             }
-
-            // Store the enum data on the stack, and create a pointer to it
-            // This allows us to interpret a ptr to it as a ptr to any of the variant types
-            let data_alloca_op = self.op_llvm_alloca(&entry_block, *storage_type, 1)?;
-            let data_ptr = data_alloca_op.result(0)?.into();
-            let enum_data_op =
-                self.op_llvm_extractvalue(&entry_block, 1, enum_value, *storage_type)?;
-            let enum_data = enum_data_op.result(0)?.into();
-            self.op_llvm_store(&entry_block, enum_data, data_ptr)?;
 
             let blockrefs = blocks.iter().map(|x| x.0).collect_vec();
             let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
@@ -356,17 +280,27 @@ impl<'ctx> Compiler<'ctx> {
                 })
                 .collect_vec();
 
-            let enum_felt_width = enum_type.get_felt_representation_width();
+            let enum_felt_width = enum_sierra_type.get_felt_representation_width();
 
             for (i, (block, var_ty)) in blocks.iter().enumerate() {
                 let variant_felt_width = var_ty.get_felt_representation_width();
                 let unused_felt_count = enum_felt_width - 1 - variant_felt_width;
                 if unused_felt_count != 0 && !is_panic_enum {
-                    self.call_printf(block, &"0\n".repeat(unused_felt_count), &[])?;
+                    self.call_dprintf(block, &"0\n".repeat(unused_felt_count), &[], storage)?;
                 }
 
                 let component_type_name = component_type_ids[i].debug_name.as_ref().unwrap();
-                let value_op = self.op_llvm_load(block, data_ptr, var_ty.get_type())?;
+
+                // get the whole enum type for the specified variant so GEP calculates correctly.
+                let variant_enum_type =
+                    self.llvm_struct_type(&[self.u16_type(), var_ty.get_type()], false);
+
+                let variant_ptr_op =
+                    self.op_llvm_gep(block, &[0, 1], enum_ptr, variant_enum_type)?;
+                let variant_ptr = variant_ptr_op.result(0)?;
+
+                let value_op = self.op_llvm_load(block, variant_ptr.into(), var_ty.get_type())?;
+
                 let value = value_op.result(0)?.into();
                 self.op_func_call(block, &format!("print_{}", component_type_name), &[value], &[])?;
                 self.op_return(block, &[]);
@@ -434,12 +368,8 @@ impl<'ctx> Compiler<'ctx> {
             self.op_br(&entry_block, &check_block, &[lower_bound]);
 
             let lower_bound = check_block.argument(0)?.into();
-            let cmp_op = self.op_cmp(
-                &check_block,
-                crate::compiler::CmpOp::UnsignedLessThan,
-                lower_bound,
-                upper_bound,
-            );
+            let cmp_op =
+                self.op_cmp(&check_block, CmpOp::UnsignedLessThan, lower_bound, upper_bound);
             let cmp = cmp_op.result(0)?.into();
             self.op_cond_br(
                 &check_block,
@@ -497,6 +427,7 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         uint_type: &SierraType,
         sierra_type_declaration: TypeDeclaration,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
         let block = region
@@ -511,25 +442,26 @@ impl<'ctx> Compiler<'ctx> {
         match uint_name.as_str() {
             "u8" => {
                 let value_32bit = self.op_zext(&block, arg, self.u32_type());
-                self.call_printf(&block, "%X\n", &[value_32bit.result(0)?.into()])?;
+                self.call_dprintf(&block, "%X\n", &[value_32bit.result(0)?.into()], storage)?;
             }
             "u16" => {
                 let value_32bit = self.op_zext(&block, arg, self.u32_type());
-                self.call_printf(&block, "%X\n", &[value_32bit.result(0)?.into()])?;
+                self.call_dprintf(&block, "%X\n", &[value_32bit.result(0)?.into()], storage)?;
             }
             "u32" => {
-                self.call_printf(&block, "%X\n", &[arg])?;
+                self.call_dprintf(&block, "%X\n", &[arg], storage)?;
             }
-            "u64" => self.call_printf(&block, "%lX\n", &[arg])?,
+            "u64" => self.call_dprintf(&block, "%lX\n", &[arg], storage)?,
             "u128" => {
                 let lower = self.op_trunc(&block, arg, self.u64_type());
                 let shift_amount = self.op_u128_const(&block, "64");
                 let upper_shifted = self.op_shru(&block, arg, shift_amount.result(0)?.into());
                 let upper = self.op_trunc(&block, upper_shifted.result(0)?.into(), self.u64_type());
-                self.call_printf(
+                self.call_dprintf(
                     &block,
                     "%lX%016lX\n",
                     &[upper.result(0)?.into(), lower.result(0)?.into()],
+                    storage,
                 )?;
             }
             _ => unreachable!("Encountered unexpected type {} when creating uint print", uint_name),

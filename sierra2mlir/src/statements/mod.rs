@@ -10,7 +10,7 @@ use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 use regex::Regex;
 
-use crate::compiler::{CmpOp, FnAttributes};
+use crate::compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp};
 use crate::sierra_type::SierraType;
 use crate::{
     compiler::{Compiler, Storage},
@@ -165,6 +165,38 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
+                            name_without_generics
+                                if is_uint_overflow_libfunc(name_without_generics) =>
+                            {
+                                self.inline_int_overflowing_op(
+                                    name_without_generics,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                    name_without_generics.ends_with("add"),
+                                )?;
+
+                                jump_processed = true;
+                            }
+                            name_without_generics
+                                if is_uint_try_from_libfunc(name_without_generics) =>
+                            {
+                                self.inline_try_from_felt252(
+                                    &id,
+                                    invocation,
+                                    &region,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+
+                                jump_processed = true;
+                            }
                             "enum_match" => {
                                 self.inline_enum_match(
                                     &id,
@@ -196,6 +228,18 @@ impl<'ctx> Compiler<'ctx> {
                                     &id,
                                     statement_idx,
                                     &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
+                            "match_nullable" => {
+                                self.inline_match_nullable(
+                                    &id,
+                                    statement_idx,
                                     block,
                                     &blocks,
                                     invocation,
@@ -461,6 +505,16 @@ fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
 fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
     let is_cmp: Regex = Regex::new(r#"u\d{1,3}_(eq|le|lt)"#).unwrap();
     is_cmp.is_match(name_without_generics)
+}
+
+fn is_uint_overflow_libfunc(name_without_generics: &str) -> bool {
+    let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_(add|sub)"#).unwrap();
+    is_reg.is_match(name_without_generics)
+}
+
+fn is_uint_try_from_libfunc(name_without_generics: &str) -> bool {
+    let is_reg: Regex = Regex::new(r#"u(8|16|32|64|128)_try_from_felt252"#).unwrap();
+    is_reg.is_match(name_without_generics)
 }
 
 fn calculate_block_ranges_per_function(

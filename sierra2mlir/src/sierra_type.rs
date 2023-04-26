@@ -38,13 +38,23 @@ impl<'ctx> SierraType<'ctx> {
         element: SierraType<'c>,
     ) -> SierraType<'c> {
         SierraType::Array {
-            ty: compiler.struct_type(&[
-                compiler.u32_type(),
-                compiler.u32_type(),
-                compiler.llvm_ptr_type(),
-            ]),
+            ty: compiler.llvm_struct_type(
+                &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
+                false,
+            ),
             len_type: compiler.u32_type(),
             element_type: Box::new(element),
+        }
+    }
+
+    /// gets the sierra nullable type for the given type
+    pub fn create_nullable_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Struct {
+            ty: compiler.llvm_struct_type(&[element.get_type(), compiler.bool_type()], false),
+            field_types: vec![element, SierraType::Simple(compiler.bool_type())],
         }
     }
 
@@ -104,7 +114,7 @@ impl<'ctx> SierraType<'ctx> {
     }
 
     /// Returns the MLIR type of this sierra type
-    pub const fn get_type(&self) -> Type {
+    pub const fn get_type(&self) -> Type<'ctx> {
         match self {
             Self::Simple(ty) => *ty,
             Self::Struct { ty, field_types: _ } => *ty,
@@ -139,7 +149,7 @@ impl<'ctx> SierraType<'ctx> {
     }
 
     /// Returns a vec of field types if this is a struct type.
-    pub fn get_field_types(&self) -> Option<Vec<Type>> {
+    pub fn get_field_types(&self) -> Option<Vec<Type<'ctx>>> {
         match self {
             SierraType::Struct { ty: _, field_types } => {
                 Some(field_types.iter().map(|x| x.get_type()).collect_vec())
@@ -152,6 +162,19 @@ impl<'ctx> SierraType<'ctx> {
     pub fn get_field_sierra_types(&self) -> Option<&[Self]> {
         match self {
             SierraType::Struct { ty: _, field_types } => Some(field_types),
+            _ => None,
+        }
+    }
+
+    pub const fn get_enum_tag_type(&self) -> Option<Type> {
+        match self {
+            SierraType::Enum {
+                ty: _,
+                tag_type,
+                storage_bytes_len: _,
+                storage_type: _,
+                variants_types: _,
+            } => Some(*tag_type),
             _ => None,
         }
     }
