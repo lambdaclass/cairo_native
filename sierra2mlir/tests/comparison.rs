@@ -43,6 +43,7 @@ use test_case::test_case;
 #[test_case("felt_ops/sub")]
 #[test_case("fib_counter")]
 #[test_case("fib_local")]
+#[test_case("nullable/test_nullable")]
 #[test_case("pedersen")]
 #[test_case("returns/enums")]
 #[test_case("returns/simple")]
