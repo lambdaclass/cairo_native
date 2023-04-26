@@ -327,16 +327,3 @@ pub const fn library_preload_env_var() -> &'static str {
         _ => compile_error!("Unsupported OS."),
     }
 }
-
-fn get_string_from_felts(felts: Vec<Felt252>) -> String {
-    let char_data = felts.iter().flat_map(|felt| felt.to_be_bytes()).collect_vec();
-    println!("Parsing char_data {:?}", char_data);
-    let zero_count_opt = char_data.iter().position(|c| *c != 0);
-    println!("Zero count {:?}", zero_count_opt);
-
-    if let Some(zero_count) = zero_count_opt {
-        String::from_utf8_lossy(&char_data[zero_count..char_data.len()]).to_string()
-    } else {
-        "".to_string()
-    }
-}
