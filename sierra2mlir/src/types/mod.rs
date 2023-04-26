@@ -226,12 +226,10 @@ impl<'ctx> Compiler<'ctx> {
                 }
             }
         }
-
-        // debug!(types = ?storage.borrow().types, "processed");
         Ok(())
     }
 }
 
 pub fn is_omitted_builtin_type(type_name: &str) -> bool {
-    type_name == "Bitwise" || type_name == "Pedersen" || type_name == "RangeCheck"
+    type_name == "Bitwise" || type_name == "Pedersen" || type_name == "RangeCheck" || type_name == "GasBuiltin"
 }
