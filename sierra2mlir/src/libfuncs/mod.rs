@@ -401,6 +401,9 @@ impl<'ctx> Compiler<'ctx> {
                 "pedersen" => {
                     self.create_libfunc_pedersen(func_decl, parent_block, storage)?;
                 }
+                "get_available_gas" => {
+                    self.create_libfunc_get_available_gas(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2419,5 +2422,44 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
+    }
+
+    pub fn create_libfunc_get_available_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let region = Region::new();
+
+        let block = Block::new(&[]);
+
+        let gas_value_op = self.call_get_gas_counter(&block)?;
+
+        self.op_return(&block, &[gas_value_op.result(0)?.into()]);
+
+        let function_type = create_fn_signature(&[], &[self.u128_type()]);
+
+        region.append_block(block);
+
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Function {
+                args: vec![],
+                return_types: vec![PositionalArg {
+                    loc: 1,
+                    ty: SierraType::Simple(self.u128_type()),
+                }],
+            },
+        );
+
+        parent_block.append_operation(func);
+
+        Ok(())
     }
 }

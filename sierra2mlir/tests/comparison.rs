@@ -63,6 +63,7 @@ use test_case::test_case;
 #[test_case("uint/uint_subtraction")]
 #[test_case("uint/upcasts")]
 #[test_case("uint/wide_mul")]
+#[test_case("gas/available_gas")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
     compile_to_mlir_with_consistency_check(test_name, &program);
@@ -181,7 +182,7 @@ fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
     let runner =
         SierraCasmRunner::new(program, None).with_context(|| "Failed setting up runner.")?;
 
-    runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
+    runner.run_function("::main", &[], Some(99999999)).with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it

@@ -61,6 +61,7 @@ enum Commands {
         print_target: i32,
 
         /// The available gas
+        #[arg(short, long)]
         available_gas: Option<usize>,
     },
     /// Compile and run a program. The entry point must be a function without arguments.
@@ -86,6 +87,7 @@ enum Commands {
         print_target: i32,
 
         /// The available gas
+        #[arg(short, long)]
         available_gas: Option<usize>,
     },
 }
@@ -124,7 +126,11 @@ fn main() -> color_eyre::Result<()> {
         }
         Commands::Run { function, input, main_print, print_target, available_gas } => {
             let program = load_program(&input);
-            if !program.funcs.iter().any(|x| x.id.debug_name.as_deref() == Some(&function)) {
+            if !program.funcs.iter().any(|x| {
+                x.id.debug_name.as_deref() == Some(&function)
+                    || (main_print
+                        && x.id.debug_name.as_ref().is_some_and(|x| x.as_str().ends_with("::main")))
+            }) {
                 panic!("Entry point {function} doesn't exist.");
             }
 
