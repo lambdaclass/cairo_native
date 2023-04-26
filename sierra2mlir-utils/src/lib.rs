@@ -1,5 +1,6 @@
 use core::slice;
 use starknet_crypto::FieldElement;
+use starknet_curve::AffinePoint;
 
 /// Compute `pedersen(lhs, rhs)` and store it into `dst`.
 ///
@@ -27,4 +28,28 @@ pub unsafe extern "C" fn sierra2mlir_util_pedersen(dst: *mut u8, lhs: *const u8,
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_be());
+}
+
+/// Compute `ec_point_zero()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_util_ec_point_zero(x: *mut u8, y: *mut u8, infinite: *mut u8) {
+    // Extract arrays from the pointers.
+    let x = slice::from_raw_parts_mut(x, 32);
+    let y = slice::from_raw_parts_mut(y, 32);
+    let infinite = slice::from_raw_parts_mut(infinite, 1);
+
+    let ec_point =
+        AffinePoint { x: FieldElement::default(), y: FieldElement::default(), infinity: true };
+
+    // Compute pedersen hash and copy the result into `dst`.
+    x.copy_from_slice(&ec_point.x.to_bytes_be());
+    y.copy_from_slice(&ec_point.y.to_bytes_be());
+    infinite.copy_from_slice(&(ec_point.infinity as u8).to_be_bytes());
 }

@@ -35,6 +35,7 @@ use test_case::test_case;
 #[test_case("bool/or")]
 #[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
+#[test_case("ec/ec_point_zero")]
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
 #[test_case("enums/single_value")]

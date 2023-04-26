@@ -401,6 +401,9 @@ impl<'ctx> Compiler<'ctx> {
                 "pedersen" => {
                     self.create_libfunc_pedersen(func_decl, parent_block, storage)?;
                 }
+                "ec_point_zero" => {
+                    self.create_libfunc_ec_point_zero(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2419,5 +2422,67 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
+    }
+
+    pub fn create_libfunc_ec_point_zero(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        mlir_asm! { parent_block =>
+            func.func @ec_point_zero() -> !llvm.struct<packed (i256, i256, i1)> {
+                // Allocate temporary buffers.
+                %0 = memref.alloca() : memref<32xi8>
+                %1 = memref.alloca() : memref<32xi8>
+                %2 = memref.alloca() : memref<i8>
+
+                // Call the auxiliary library's ec_point_zero function.
+                %3 = memref.extract_aligned_pointer_as_index %0 : memref<32xi8> -> index
+                %4 = memref.extract_aligned_pointer_as_index %1 : memref<32xi8> -> index
+                %5 = memref.extract_aligned_pointer_as_index %2 : memref<i8> -> index
+                %6 = index.castu %3 : index to i64
+                %7 = index.castu %4 : index to i64
+                %8 = index.castu %5 : index to i64
+                %9 = llvm.inttoptr %6 : i64 to !llvm.ptr
+                %10 = llvm.inttoptr %7 : i64 to !llvm.ptr
+                %11 = llvm.inttoptr %8 : i64 to !llvm.ptr
+                func.call @sierra2mlir_util_ec_point_zero(%9, %10, %11) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
+
+                // Load EcPoint from the temporary buffer.
+                %12 = index.constant 0
+                %13 = memref.view %0[%12][] : memref<32xi8> to memref<i256>
+                %14 = memref.view %1[%12][] : memref<32xi8> to memref<i256>
+                %15 = memref.load %13[] : memref<i256>
+                %16 = memref.load %14[] : memref<i256>
+                %17 = memref.load %2[] : memref<i8>
+                %18 = arith.trunci %17 : i8 to i1
+
+                // Swap endiannaess (BE -> LE).
+                %19 = llvm.call_intrinsic "llvm.bswap.i256"(%15) : (i256) -> i256
+                %20 = llvm.call_intrinsic "llvm.bswap.i256"(%16) : (i256) -> i256
+
+                // Construct EcPoint.
+                %21 = llvm.mlir.undef : !llvm.struct<packed (i256, i256, i1)>
+                %22 = llvm.insertvalue %19, %21[0] : !llvm.struct<packed (i256, i256, i1)>
+                %23 = llvm.insertvalue %20, %22[1] : !llvm.struct<packed (i256, i256, i1)>
+                %24 = llvm.insertvalue %18, %23[2] : !llvm.struct<packed (i256, i256, i1)>
+
+                func.return %24 : !llvm.struct<packed (i256, i256, i1)>
+            }
+
+            func.func private @sierra2mlir_util_ec_point_zero(!llvm.ptr, !llvm.ptr, !llvm.ptr)
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::create_function_all_args(
+                vec![],
+                vec![SierraType::Simple(self.ec_point_type())],
+            ),
+        );
+
+        Ok(())
     }
 }

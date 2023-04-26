@@ -115,6 +115,15 @@ impl<'ctx> Compiler<'ctx> {
                         .clone();
                     self.create_print_uint(&uint_type, type_decl, storage)?
                 }
+                "EcPoint" => {
+                    self.create_print_felt(storage)?;
+                    let ec_point_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_ec_point(&ec_point_type, type_decl, storage)?;
+                }
                 _ => todo!("Felt representation for {}", type_category),
             }
         }
@@ -363,6 +372,11 @@ fn get_all_types_to_print(
                 }
             }
             "u8" | "u16" | "u32" | "u64" | "u128" => {
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "EcPoint" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }

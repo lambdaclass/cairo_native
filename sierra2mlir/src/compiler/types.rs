@@ -47,18 +47,6 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 256)
     }
 
-    /// Type `Bitwise`. Points to the bitwise builtin pointer. Since we're not respecting the
-    /// classic segments this type makes no sense, therefore it's implemented as `()`.
-    pub fn bitwise_type(&self) -> Type {
-        Type::none(&self.context)
-    }
-
-    /// Type `Bitwise`. Points to the range check builtin pointer. Since we're not respecting the
-    /// classic segments this type makes no sense, therefore it's implemented as `()`.
-    pub fn range_check_type(&self) -> Type {
-        Type::none(&self.context)
-    }
-
     /// The enum struct type. Needed due to some libfuncs using it.
     ///
     /// The tag value is the boolean value: 0, 1
@@ -74,5 +62,9 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn llvm_array_type<'c>(&'c self, element_type: Type<'c>, len: u32) -> Type {
         llvm::r#type::array(element_type, len)
+    }
+
+    pub fn ec_point_type(&self) -> Type {
+        self.llvm_struct_type(&[self.felt_type(), self.felt_type(), self.bool_type()], false)
     }
 }

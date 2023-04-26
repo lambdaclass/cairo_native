@@ -8,3 +8,4 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
 starknet-crypto = "0.4.3"
+starknet-curve = "0.2.1"

@@ -481,9 +481,40 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_print_ec_point(
+        &'ctx self,
+        ec_point_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[(
+            ec_point_type.get_type(),
+            Location::unknown(&self.context),
+        )]));
+
+        let arg: Value = block.argument(0)?.into();
+        let x = self.op_llvm_extractvalue(&block, 0, arg, self.felt_type())?;
+        let y = self.op_llvm_extractvalue(&block, 1, arg, self.felt_type())?;
+
+        self.call_print_felt(block, x.result(0)?.into())?;
+        self.call_print_felt(block, y.result(0)?.into())?;
+        self.op_return(&block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", &sierra_type_declaration.id.debug_name.unwrap()),
+            &create_fn_signature(&[self.ec_point_type()], &[]),
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// Utility method to create a print_felt call.
     pub fn call_print_felt(&'ctx self, block: BlockRef<'ctx>, value: Value) -> Result<()> {
-        self.op_func_call(&block, "print_felt", &[value], &[])?;
+        self.op_func_call(&block, "print_felt252", &[value], &[])?;
         Ok(())
     }
 }
