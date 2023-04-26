@@ -39,7 +39,7 @@ Put on your seatbelts. 3, 2, 1... Let's jam.
 
 ### Compilers, LLVM
 
-Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the foremost compiler tooling project. It powers many of the analisys and code generation components of the Clang, Swift, Rust, and many more languages.
+Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the foremost compiler tooling project. It powers many of the analysis and code generation components of the compilers for Clang, Swift, Rust, and many more languages.
 
 At the heart of LLVM is LLVM IR, it's Intermediate Representation. IRs are essentially a combination of data formats and algorithms that allow best expressing the properties a tool wishes to guarantee or prove about code.
 
@@ -61,10 +61,35 @@ New hardware was designed, and LLVM was again used to target these new tensor pr
 But after twenty years, expanding hardware targets, and changing problem spaces, LLVM was starting to be found lacking.
 
 	> the idea behind mlir: is what people started to realize that the complexity of the software stack above the low level ir was getting so high that forcing the features of that into this level was was putting too much of a burden on it, so it's better to split that into multiple pieces
-	
+
+	> If you look at tensorflow as a compiler stack it has a number of compiler algorithms within it.
+	> It also has a number of compilers that get embedded into it and they're made by different vendors. 
+	> For example Google has XLA, NVIDIA has TensorRT, Intel has NGraph.
+	> There's a number of these different compiler systems and they're very hardware specific and they're trying to solve different parts of the problems 
+	> but they're all kind of similar in a sense of they want to integrate with tensorflow 
+	> Tensorflow has an optimizer and it has these different code generation technologies builtin 
+
+	> the idea of MLIR is to build a common infrastructure to support all these different subsystems 
+	> initially it's to be able to make it so that they all plug in together and they can share a lot more code and can be reusable 
+	> over time we hope that the industry will start collaborating and sharing code and instead of reinventing the same things over and over again 
+	> we can foster working together to solve common problems. 
+
+	> beyond that MLIR is kind of LLVM 2
+	> it learns a lot about what LLVM done good and what LLVM has done wrong 
+	> and it's a chance to fix that 
+
+	> also there are challenges in the LLVM ecosystem as well.
+	> where LLVM is very good at the thing was designed to do but you know 20 years later the world has changed and people are trying to solve higher-level problems 
+	> and we need we need some new technology
+
+
 ## What? (is MLIR?)
 
+Ref http://lastweek.io/notes/MLIR/#motivation-from-the-google-mlir-paper
+
 [MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation) is a young project started by Chris Lattner et al of LLVM fame with the goal of solving some issues that have arisen in compilerland. 
+
+MLIR is short for Multi-Level Intermediate Representation. MLIR helps to build reusage compiler infrastructure and reduce duplicate codes.
 
 If you think of llvm ir as an abstraction of all assembly langs
 Mlir is a level above.
@@ -72,6 +97,11 @@ Mlir is a level above.
 > Ref Paper: MLIR: A Compiler Infrastructure for the End of Moore’s Law
 
 MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together.
+
+Within MLIR, we can implement multiple Dialects for distinct inputs. For instance, we could use a Dialect to deal with tensors. Further, we can deploy a shared optimization layer to unify things.
+Once we have an optimal IR, MLIR can now lower it onto the backends such as LLVM for CPUs, CIRCT for FPGAs. If you are targeting specialized hardware such as FPGA or TPU, you still need vendor-tools for final compilation (e.g., use Vivado to synthesis Verilog).
+
+MLIR is something that lies across language AST and LLVM IR.
 
 ### What are is advantages over llvm?
 
