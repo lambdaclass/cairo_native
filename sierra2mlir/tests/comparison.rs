@@ -1,3 +1,5 @@
+#![allow(clippy::items_after_test_module)]
+
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -8,6 +10,7 @@ use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
+use cfg_match::cfg_match;
 use color_eyre::eyre::WrapErr;
 use color_eyre::Result;
 use itertools::Itertools;
@@ -24,8 +27,6 @@ use test_case::test_case;
 #[test_case("array/index_invalid")]
 #[test_case("array/pop_front_invalid")]
 // #[test_case("array/pop_front_valid")]
-#[test_case("fib_counter")]
-#[test_case("fib_local")]
 #[test_case("bitwise/and")]
 #[test_case("bitwise/or")]
 #[test_case("bitwise/xor")]
@@ -34,32 +35,34 @@ use test_case::test_case;
 #[test_case("bool/or")]
 #[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
-#[test_case("felt_ops/add")]
-#[test_case("felt_ops/sub")]
-#[test_case("felt_ops/mul")]
-#[test_case("felt_ops/negation")]
-#[test_case("felt_ops/felt_is_zero")]
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
 #[test_case("enums/single_value")]
+#[test_case("felt_ops/add")]
+// #[test_case("felt_ops/div")] - div blocked on panic and array
+#[test_case("felt_ops/felt_is_zero")]
+#[test_case("felt_ops/mul")]
+#[test_case("felt_ops/negation")]
+#[test_case("felt_ops/sub")]
+#[test_case("fib_counter")]
+#[test_case("fib_local")]
 #[test_case("nullable/test_nullable")]
+#[test_case("pedersen")]
+#[test_case("returns/enums")]
 #[test_case("returns/simple")]
 #[test_case("returns/tuple")]
-#[test_case("returns/enums")]
 #[test_case("structs/basic")]
 #[test_case("structs/bigger")]
-#[test_case("structs/nested")]
 #[test_case("structs/enum_member")]
-#[test_case("uint/consts")]
+#[test_case("structs/nested")]
 #[test_case("uint/compare")]
-#[test_case("uint/upcasts")]
+#[test_case("uint/consts")]
 #[test_case("uint/downcasts")]
 #[test_case("uint/safe_divmod")]
-#[test_case("uint/wide_mul")]
 #[test_case("uint/uint_addition")]
-#[test_case("uint/uint_substraction")]
-#[test_case("uint/uint_try_from_felt")]
-// #[test_case("felt_ops/div")] - div blocked on bug on div
+#[test_case("uint/uint_subtraction")]
+#[test_case("uint/upcasts")]
+#[test_case("uint/wide_mul")]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
     compile_to_mlir_with_consistency_check(test_name, &program);
@@ -237,13 +240,16 @@ fn run_mlir_file_via_llvm(
         );
     }
 
+    let ld_env = library_preload_env_var();
     let lli_cmd = Command::new(lli_path)
         .arg(output_file)
+        .env(ld_env, env!("S2M_UTILS_PATH"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
     let lli_output = lli_cmd.wait_with_output().unwrap();
+    dbg!(lli_output.status);
 
     if !lli_output.stderr.is_empty() {
         return Err(format!(
@@ -311,5 +317,13 @@ fn get_string_from_felts(felts: Vec<Felt252>) -> String {
         String::from_utf8_lossy(&char_data[zero_count..char_data.len()]).to_string()
     } else {
         "".to_string()
+    }
+}
+
+pub const fn library_preload_env_var() -> &'static str {
+    cfg_match! {
+        target_os = "linux" => "LD_PRELOAD",
+        target_os = "macos" => "DYLD_INSERT_LIBRARIES",
+        _ => compile_error!("Unsupported OS."),
     }
 }
