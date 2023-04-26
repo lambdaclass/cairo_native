@@ -648,6 +648,23 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    /// Creates a pointer pointing to a global or a function
+    pub fn op_llvm_addressof<'a>(
+        &self,
+        block: &'a Block,
+        symbol: &str,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.addressof", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[("global_name", &format!("@\"{symbol}\""))],
+                )?)
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        ))
+    }
+
     pub fn op_llvm_store<'a>(
         &self,
         block: &'a Block,
