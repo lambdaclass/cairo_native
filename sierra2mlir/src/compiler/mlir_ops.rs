@@ -638,7 +638,7 @@ impl<'ctx> Compiler<'ctx> {
                     &[
                         //("alignment", &align.to_string()),
                         ("sym_name", &format!("\"{name}\"")),
-                        ("value", &format!("{initial_value} : {}", global_type.to_string())),
+                        ("value", &format!("{initial_value} : {}", global_type)),
                         ("global_type", &global_type.to_string()),
                         ("linkage", "#llvm.linkage<\"internal\">"),
                     ],
