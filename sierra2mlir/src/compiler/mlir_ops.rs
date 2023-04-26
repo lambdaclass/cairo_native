@@ -623,6 +623,31 @@ impl<'ctx> Compiler<'ctx> {
         )
     }
 
+    pub fn op_llvm_global<'a>(
+        &self,
+        block: &'a Block,
+        name: &str,
+        global_type: Type,
+        initial_value: &str,
+    ) -> Result<OperationRef<'a>> {
+        let region = Region::new();
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.global", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        //("alignment", &align.to_string()),
+                        ("sym_name", &format!("\"{name}\"")),
+                        ("value", &format!("{initial_value} : {}", global_type.to_string())),
+                        ("global_type", &global_type.to_string()),
+                        ("linkage", "#llvm.linkage<\"internal\">"),
+                    ],
+                )?)
+                .add_regions(vec![region])
+                .build(),
+        ))
+    }
+
     pub fn op_llvm_store<'a>(
         &self,
         block: &'a Block,

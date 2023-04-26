@@ -1,6 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::{
+    extensions::core::{CoreLibfunc, CoreType},
+    program::Program,
+    program_registry::ProgramRegistry,
+};
+use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes};
 use melior_next::{
     dialect,
     ir::{operation, Block, Location, Module, NamedAttribute, OperationRef, Region, Type},
@@ -23,6 +28,9 @@ pub mod types;
 
 pub struct Compiler<'ctx> {
     pub program: &'ctx Program,
+    pub registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub ap_change_info: ApChangeInfo,
+    pub available_gas: usize,
     pub context: Context,
     pub module: Module<'ctx>,
     pub main_print: bool,
@@ -44,7 +52,11 @@ impl<'ctx> Compiler<'ctx> {
         program: &'ctx Program,
         main_print: bool,
         print_fd: i32,
+        available_gas: usize,
     ) -> color_eyre::Result<Self> {
+        let sierra_program_registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
+        let ap_change_info = calc_ap_changes(program, |_, _| 0)?;
+
         let registry = dialect::Registry::new();
         register_all_dialects(&registry);
 
@@ -72,10 +84,27 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self { program, context, module, main_print, print_fd })
+        Ok(Self {
+            program,
+            registry: sierra_program_registry,
+            ap_change_info,
+            context,
+            module,
+            main_print,
+            print_fd,
+            available_gas,
+        })
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
+        // Add the gas counter global
+        self.op_llvm_global(
+            &self.module.body(),
+            "__gas_counter",
+            self.u64_type(),
+            &self.available_gas.to_string(),
+        )?;
+
         let mut storage = Storage::default();
         self.process_types(&mut storage)?;
         self.process_libfuncs(&mut storage)?;

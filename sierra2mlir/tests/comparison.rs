@@ -154,15 +154,15 @@ fn compile_sierra_program(test_name: &str) -> Program {
 fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
     let out_dir = get_outdir();
     let test_file_name = flatten_test_name(test_name);
-    let compiled_code = compile(program, false, false, true, 1).unwrap();
-    let optimised_compiled_code = compile(program, false, false, true, 1).unwrap();
+    let compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
+    let optimised_compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let optimised_mlir_file =
         out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
     std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
     for _ in 0..5 {
-        let repeat_compiled_code = compile(program, false, false, true, 1).unwrap();
+        let repeat_compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
         if compiled_code != repeat_compiled_code {
             let mlir_repeat_file =
                 out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
