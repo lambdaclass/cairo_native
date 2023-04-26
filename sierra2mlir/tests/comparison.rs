@@ -23,53 +23,53 @@ use test_case::test_case;
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
 
-#[test_case("array/append")]
-#[test_case("array/index_invalid")]
-#[test_case("array/pop_front_invalid")]
+#[test_case("array/append", None)]
+#[test_case("array/index_invalid", None)]
+#[test_case("array/pop_front_invalid", None)]
 // #[test_case("array/pop_front_valid")]
-#[test_case("bitwise/and")]
-#[test_case("bitwise/or")]
-#[test_case("bitwise/xor")]
-#[test_case("bool/and")]
-#[test_case("bool/not")]
-#[test_case("bool/or")]
-#[test_case("bool/to_felt252")]
-#[test_case("bool/xor")]
-#[test_case("enums/enum_init")]
-#[test_case("enums/enum_match")]
-#[test_case("enums/single_value")]
-#[test_case("felt_ops/add")]
+#[test_case("bitwise/and", None)]
+#[test_case("bitwise/or", None)]
+#[test_case("bitwise/xor", None)]
+#[test_case("bool/and", None)]
+#[test_case("bool/not", None)]
+#[test_case("bool/or", None)]
+#[test_case("bool/to_felt252", None)]
+#[test_case("bool/xor", None)]
+#[test_case("enums/enum_init", None)]
+#[test_case("enums/enum_match", None)]
+#[test_case("enums/single_value", None)]
+#[test_case("felt_ops/add", None)]
 // #[test_case("felt_ops/div")] - div blocked on panic and array
-#[test_case("felt_ops/felt_is_zero")]
-#[test_case("felt_ops/mul")]
-#[test_case("felt_ops/negation")]
-#[test_case("felt_ops/sub")]
-#[test_case("fib_counter")]
-#[test_case("fib_local")]
-#[test_case("nullable/test_nullable")]
-#[test_case("pedersen")]
-#[test_case("returns/enums")]
-#[test_case("returns/simple")]
-#[test_case("returns/tuple")]
-#[test_case("structs/basic")]
-#[test_case("structs/bigger")]
-#[test_case("structs/enum_member")]
-#[test_case("structs/nested")]
-#[test_case("uint/compare")]
-#[test_case("uint/consts")]
-#[test_case("uint/downcasts")]
-#[test_case("uint/safe_divmod")]
-#[test_case("uint/uint_addition")]
-#[test_case("uint/uint_subtraction")]
-#[test_case("uint/upcasts")]
-#[test_case("uint/wide_mul")]
-#[test_case("gas/available_gas")]
-fn comparison_test(test_name: &str) -> Result<(), String> {
+#[test_case("felt_ops/felt_is_zero", None)]
+#[test_case("felt_ops/mul", None)]
+#[test_case("felt_ops/negation", None)]
+#[test_case("felt_ops/sub", None)]
+#[test_case("fib_counter", None)]
+#[test_case("fib_local", None)]
+#[test_case("nullable/test_nullable", None)]
+#[test_case("pedersen", None)]
+#[test_case("returns/enums", None)]
+#[test_case("returns/simple", None)]
+#[test_case("returns/tuple", None)]
+#[test_case("structs/basic", None)]
+#[test_case("structs/bigger", None)]
+#[test_case("structs/enum_member", None)]
+#[test_case("structs/nested", None)]
+#[test_case("uint/compare", None)]
+#[test_case("uint/consts", None)]
+#[test_case("uint/downcasts", None)]
+#[test_case("uint/safe_divmod", None)]
+#[test_case("uint/uint_addition", None)]
+#[test_case("uint/uint_subtraction", None)]
+#[test_case("uint/upcasts", None)]
+#[test_case("uint/wide_mul", None)]
+#[test_case("gas/available_gas", Some(200))]
+fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
-    compile_to_mlir_with_consistency_check(test_name, &program);
+    compile_to_mlir_with_consistency_check(test_name, &program, available_gas);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(program);
+    let casm_result = run_sierra_via_casm(program, available_gas);
 
     match casm_result {
         Ok(result) => match result.value {
@@ -152,18 +152,22 @@ fn compile_sierra_program(test_name: &str) -> Program {
     }
 }
 
-fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
+fn compile_to_mlir_with_consistency_check(
+    test_name: &str,
+    program: &Program,
+    available_gas: Option<usize>,
+) {
     let out_dir = get_outdir();
     let test_file_name = flatten_test_name(test_name);
-    let compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
-    let optimised_compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
+    let compiled_code = compile(program, false, false, true, 1, available_gas).unwrap();
+    let optimised_compiled_code = compile(program, false, false, true, 1, available_gas).unwrap();
     let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
     let optimised_mlir_file =
         out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
     std::fs::write(mlir_file.as_str(), &compiled_code).unwrap();
     std::fs::write(optimised_mlir_file.as_str(), &optimised_compiled_code).unwrap();
     for _ in 0..5 {
-        let repeat_compiled_code = compile(program, false, false, true, 1, 99999999).unwrap();
+        let repeat_compiled_code = compile(program, false, false, true, 1, available_gas).unwrap();
         if compiled_code != repeat_compiled_code {
             let mlir_repeat_file =
                 out_dir.join(format!("{test_file_name}-repeat.mlir")).display().to_string();
@@ -178,13 +182,11 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
-    let runner = SierraCasmRunner::new(program, Some(Default::default()))
+fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result<RunResult> {
+    let runner = SierraCasmRunner::new(program, available_gas.map(|_| Default::default()))
         .with_context(|| "Failed setting up runner.")?;
 
-    runner
-        .run_function("::main", &[], Some(99999999))
-        .with_context(|| "Failed to run the function.")
+    runner.run_function("::main", &[], available_gas).with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it

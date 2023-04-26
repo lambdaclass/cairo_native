@@ -9,11 +9,12 @@ pub static GAS_COUNTER_SYMBOL: &str = "__gas_counter";
 impl<'ctx> Compiler<'ctx> {
     /// Add the gas counter global
     pub fn create_gas_global(&self) -> Result<()> {
+        let gas = self.gas.as_ref().expect("gas should exist when using gas helper functions");
         self.op_llvm_global(
             &self.module.body(),
             GAS_COUNTER_SYMBOL,
             self.u128_type(),
-            &self.available_gas.to_string(),
+            &gas.available_gas.to_string(),
         )?;
         Ok(())
     }
@@ -24,6 +25,7 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         block: &'block Block,
     ) -> Result<(OperationRef<'block>, OperationRef<'block>)> {
+        assert!(self.gas.is_some(), "gas should exist when using gas helper functions");
         let addr_op = self.op_llvm_addressof(block, GAS_COUNTER_SYMBOL)?;
         let addr = addr_op.result(0)?.into();
         Ok((addr_op, self.op_llvm_load(block, addr, self.u128_type())?))
@@ -35,6 +37,7 @@ impl<'ctx> Compiler<'ctx> {
         block: &'block Block,
         value: Value,
     ) -> Result<()> {
+        assert!(self.gas.is_some(), "gas should exist when using gas helper functions");
         let (addr_op, current_value_op) = self.call_get_gas_counter(block)?;
         let addr = addr_op.result(0)?.into();
         let current_value = current_value_op.result(0)?.into();
@@ -50,6 +53,7 @@ impl<'ctx> Compiler<'ctx> {
         block: &'block Block,
         value: Value,
     ) -> Result<()> {
+        assert!(self.gas.is_some(), "gas should exist when using gas helper functions");
         let (addr_op, current_value_op) = self.call_get_gas_counter(block)?;
         let addr = addr_op.result(0)?.into();
         let current_value = current_value_op.result(0)?.into();
@@ -67,6 +71,7 @@ impl<'ctx> Compiler<'ctx> {
         block: &'block Block,
         value: Value,
     ) -> Result<OperationRef<'block>> {
+        assert!(self.gas.is_some(), "gas should exist when using gas helper functions");
         let (_, gas_value_op) = self.call_get_gas_counter(block)?;
         let gas_value = gas_value_op.result(0)?.into();
         let cmp_op = self.op_cmp(block, CmpOp::UnsignedLessThanEqual, value, gas_value);

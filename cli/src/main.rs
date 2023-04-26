@@ -115,7 +115,7 @@ fn main() -> color_eyre::Result<()> {
                 debug,
                 main_print,
                 print_target,
-                available_gas.unwrap_or(0),
+                available_gas,
             )?;
 
             if let Some(output) = output {
@@ -134,12 +134,7 @@ fn main() -> color_eyre::Result<()> {
                 panic!("Entry point {function} doesn't exist.");
             }
 
-            let engine = sierra2mlir::execute(
-                &program,
-                main_print,
-                print_target,
-                available_gas.unwrap_or(0),
-            )?;
+            let engine = sierra2mlir::execute(&program, main_print, print_target, available_gas)?;
 
             unsafe {
                 engine.invoke_packed(&function, &mut [])?;
