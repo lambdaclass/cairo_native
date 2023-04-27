@@ -156,11 +156,6 @@ All these advantages are direct results of MLIR's abstraction level.
 
 Let's change the tune again. 
 
-- Parallel with intro beat story
-- initial wave of repurposing video graphics hardware, then app specific HW
-
-> ELABORATE
-
 A similar story has been playing out in the area of cryptography applied to blockchains: as new techniques have been discovered, and older ones matured, the are of Zero Knowledge Proofs has exploded. 
 type systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
 
@@ -169,12 +164,18 @@ Virtual machines have been designed to provide computational guarantees about th
 Type systems help in producing code that has properties the tools can reason 
 about, such as termination or bounded resource consumption of transaction fees. 
 
+> Parallel with intro beat story
+> initial wave of repurposing video graphics hardware, then app specific HW
 > ELABORATE
 
 ### Why use MLIR in the context of Cairo?
 
 - Enable faster checking of Cairo contract TX
 - Faster Gas computation
+- To enable better L2 sequencers
+- To enable better developer tooling
+
+#### Cairo & Sierra
 
 <!-- 
 ### Why target MLIR instead of something like C, Rust?
@@ -184,17 +185,17 @@ Targeting a higher level language such as C or Rust would seem to be easier in t
 > ELABORATE
 -->
 
-
 <!-- ### What optimizations does it have or enable? -->
 
 ## How (does one use it)?
 
-> ELABORATE
+In our context, the Cairo & StarkNet software stack, most is transitioning or being developed in Rust, so we would like to be able to integrate into that seamlessly.
 
-- MLIR ships with LLVM
-- Rust: Inkwell Melior
-- Dialects
-- Operations
+MLIR comes with a [C-compatible API](https://mlir.llvm.org/docs/CAPI/, which can be easily interfaced with. [mlir-sys](https://crates.io/crates/mlir-sys) provides auto-generated bindings to this interface, and [melior](https://crates.io/crates/melior-next) provides a somewhat more idiomatic wrapper around it.
+
+MLIR as a library is part of the LLVM distribution, so if you have the latest LLVM as a system library, you will have access to MLIR. 
+
+Our project resides at [`github.com/lambdaclass/cairo_sierra2mlir`](https://github.com/lambdaclass/cairo_sierra2mlir). You can find detailed setup instructions there that should leave you with a working development environment.
 
 ### sierra2mlir
 
