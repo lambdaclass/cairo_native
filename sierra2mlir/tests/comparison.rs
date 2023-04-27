@@ -8,6 +8,7 @@ use std::{env, fs};
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
+use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
 use cfg_match::cfg_match;
@@ -36,6 +37,7 @@ use test_case::test_case;
 #[test_case("bool/to_felt252")]
 #[test_case("bool/xor")]
 #[test_case("ec/ec_point_zero")]
+#[test_case("ec/ec_point_unwrap")]
 #[test_case("enums/enum_init")]
 #[test_case("enums/enum_match")]
 #[test_case("enums/single_value")]
@@ -69,7 +71,10 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     compile_to_mlir_with_consistency_check(test_name, &program);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(program);
+    let casm_result = run_sierra_via_casm(
+        &program,
+        &FunctionId::from_string(format!("{test_name}::{test_name}::main")),
+    );
 
     match casm_result {
         Ok(result) => match result.value {
@@ -178,11 +183,14 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(program: Program) -> Result<RunResult> {
-    let runner =
-        SierraCasmRunner::new(program, None).with_context(|| "Failed setting up runner.")?;
+fn run_sierra_via_casm(program: &Program, main_id: &FunctionId) -> Result<RunResult> {
+    let main_function = program.funcs.iter().find(|x| &x.id == main_id).unwrap();
+    let runner = SierraCasmRunner::new(program.clone(), None, Default::default())
+        .with_context(|| "Failed setting up runner.")?;
 
-    runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
+    runner
+        .run_function(main_function, &[], None, Default::default())
+        .with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it

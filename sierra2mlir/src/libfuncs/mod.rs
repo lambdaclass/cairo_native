@@ -404,6 +404,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_point_zero" => {
                     self.create_libfunc_ec_point_zero(func_decl, parent_block, storage)?;
                 }
+                "ec_point_unwrap" => {
+                    self.create_libfunc_ec_point_unwrap(func_decl, parent_block, storage)?;
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2480,6 +2483,33 @@ impl<'ctx> Compiler<'ctx> {
             SierraLibFunc::create_function_all_args(
                 vec![],
                 vec![SierraType::Simple(self.ec_point_type())],
+            ),
+        );
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_ec_point_unwrap(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        mlir_asm! { parent_block =>
+            func.func @ec_point_unwrap(%0 : !llvm.struct<packed (i256, i256, i1)>) -> (i256, i256) {
+                %1 = llvm.extractvalue %0[0] : !llvm.struct<packed (i256, i256, i1)>
+                %2 = llvm.extractvalue %0[1] : !llvm.struct<packed (i256, i256, i1)>
+
+                func.return %1, %2 : i256, i256
+            }
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::create_function_all_args(
+                vec![SierraType::Simple(self.ec_point_type())],
+                vec![SierraType::Simple(self.felt_type()), SierraType::Simple(self.felt_type())],
             ),
         );
 

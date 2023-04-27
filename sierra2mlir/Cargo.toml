@@ -15,8 +15,8 @@ name = "cairo"
 harness = false
 
 [dependencies]
-cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
+cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo" }
+cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo" }
 cfg-match = "0.2.1"
 color-eyre = "0.6.2"
 itertools = "0.10.5"
@@ -29,7 +29,7 @@ tracing = "0.1.37"
 
 [dev-dependencies]
 cairo-felt = "0.3.0-rc1"
-cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.0.0-alpha.7" }
+cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo" }
 cairo-vm = "0.3.0-rc1"
 criterion = "0.4.0"
 test-case = "3.0.0"
