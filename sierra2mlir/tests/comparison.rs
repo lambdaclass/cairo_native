@@ -8,7 +8,6 @@ use std::{env, fs};
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::{RunResult, SierraCasmRunner};
-use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::ProgramParser;
 use cfg_match::cfg_match;

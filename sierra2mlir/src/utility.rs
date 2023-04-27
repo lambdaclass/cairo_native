@@ -485,7 +485,6 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         ec_point_type: &SierraType,
         sierra_type_declaration: TypeDeclaration,
-        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
         let region = Region::new();
         let block = region.append_block(Block::new(&[(

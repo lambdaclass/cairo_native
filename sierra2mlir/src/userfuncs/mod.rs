@@ -122,7 +122,7 @@ impl<'ctx> Compiler<'ctx> {
                         .get(&type_decl.id.id.to_string())
                         .expect("Type should be registered")
                         .clone();
-                    self.create_print_ec_point(&ec_point_type, type_decl, storage)?;
+                    self.create_print_ec_point(&ec_point_type, type_decl)?;
                 }
                 _ => todo!("Felt representation for {}", type_category),
             }
@@ -272,6 +272,7 @@ fn should_create_wrapper(raw_func_name: &str) -> bool {
 }
 
 // Produces an ordered list of all types and component types
+#[allow(clippy::cognitive_complexity)]
 fn get_all_types_to_print(
     type_declarations: &[TypeDeclaration],
     program: &Program,
