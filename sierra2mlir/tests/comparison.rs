@@ -71,10 +71,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     compile_to_mlir_with_consistency_check(test_name, &program);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(
-        &program,
-        &FunctionId::from_string(format!("{test_name}::{test_name}::main")),
-    );
+    let casm_result = run_sierra_via_casm(&program);
 
     match casm_result {
         Ok(result) => match result.value {
@@ -183,14 +180,11 @@ fn compile_to_mlir_with_consistency_check(test_name: &str, program: &Program) {
 
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
-fn run_sierra_via_casm(program: &Program, main_id: &FunctionId) -> Result<RunResult> {
-    let main_function = program.funcs.iter().find(|x| &x.id == main_id).unwrap();
-    let runner = SierraCasmRunner::new(program.clone(), None, Default::default())
+fn run_sierra_via_casm(program: &Program) -> Result<RunResult> {
+    let runner = SierraCasmRunner::new(program.clone(), None)
         .with_context(|| "Failed setting up runner.")?;
 
-    runner
-        .run_function(main_function, &[], None, Default::default())
-        .with_context(|| "Failed to run the function.")
+    runner.run_function("::main", &[], None).with_context(|| "Failed to run the function.")
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
