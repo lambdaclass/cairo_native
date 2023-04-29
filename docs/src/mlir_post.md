@@ -142,7 +142,7 @@ The UNIX way!
 
 Other benefits include:
 - Source code location tracking by default (each operand has a source code memory address attribute so errors directly point to the line of source code in which error occured)
-- All functions run on multiple cores by default (uses OpenMP)
+- All functions run on multiple cores by default
 - Optimizations done by other languages can be reused
 - Reuse LLVM for machine code generation
 
@@ -156,10 +156,18 @@ All these advantages are direct results of MLIR's abstraction level.
 
 Let's change the tune again. 
 
-A similar story has been playing out in the area of cryptography applied to blockchains: as new techniques have been discovered, and older ones matured, the are of Zero Knowledge Proofs has exploded. 
-type systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
+A similar story has been playing out in the area of cryptography applied to blockchains. 
+New techniques have been discovered, older ones have matured, Zero Knowledge Proof systems are the future. 
+The more established blockchains have walked the path of offloading as much hashing as possible to GPUs and later ASICs (fating us mere mortals to scrabbling for the crumbs or resigned to playing emacs tetris on my Raspberry Pi)
+
+..., codegen infrastructure has also become relevant. 
+
+But it is this last area, ZKP, which I believe brings fresh winds of change. 
+
+wtype systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
 
 Virtual machines have been designed to provide computational guarantees about the programs they run. 
+miden, starkvm, among others
 
 Type systems help in producing code that has properties the tools can reason 
 about, such as termination or bounded resource consumption of transaction fees. 
@@ -168,7 +176,29 @@ about, such as termination or bounded resource consumption of transaction fees.
 > initial wave of repurposing video graphics hardware, then app specific HW
 > ELABORATE
 
+la motivacion en el contexto general de crypto, estaba viendo el post que sacaste vos el otro dia. o sea la pregunta es: 
+fuera de cairo/starknet, que es lo que paso que llevo que todos esten desarrollando infraestructura de compiladores/lenguajes.
+resumen de mi argumento seria: zkp busca proveer garantias, las herramientas mediante las cuales se pueden aplicar las garantias son 1) VMs 2) sistemas de tipos ,
+ejemplo es la compilacion de codigo a circuitos, aritmetizacion
+10:58
+despues lo hago en el contexto de cairo, presento brevemente sierra y porque existe, eso ya lo tengo
+y despues un walkthrough breve sin tanto codigo de lo que tenemos en sierra2mlir
+
+lo que paso es que están en un cumple
+por que crypto está intentando reinventar todo
+de manera muy termo
+hablemos en un rato
+
 ### Why use MLIR in the context of Cairo?
+
+>  STARK-based validity proofs to ensure an Ethereum-secure, fast and seamless user experience. They support a range of data availability modes.
+> A Permissionless Decentralized Validity-Rollup (often referred to as ZK-Rollup).
+Any developer can deploy any dApp, using smart contracts, and achieve unlimited scale.
+    STARKs enable blockchain scaling by efficiently proving the integrity of computations
+    StarkEx is an application-specific scaling engine
+    StarkNet is a permissionless, smart contract Layer 2 network
+
+   STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations. It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
 
 - Enable faster checking of Cairo contract TX
 - Faster Gas computation
@@ -176,14 +206,6 @@ about, such as termination or bounded resource consumption of transaction fees.
 - To enable better developer tooling
 
 #### Cairo & Sierra
-
-<!-- 
-### Why target MLIR instead of something like C, Rust?
-
-Targeting a higher level language such as C or Rust would seem to be easier in the short run, but at the cost of having to take into account the semantics of that language implementation and having to ensure that the code being emitted matches your semantics.
-
-> ELABORATE
--->
 
 <!-- ### What optimizations does it have or enable? -->
 
@@ -241,7 +263,15 @@ stateDiagram-v2
     Output --> [*]
 ```
 
-### How to run 
+
+- parse sierra
+
+```
+cairo_lang_sierra::ProgramParser::new()
+            .parse(fs::read_to_string(input).unwrap().as_str())
+            .unwrap(),
+```
+
 - [src](https://github.com/lambdaclass/cairo_sierra_2_MLIR/blob/main/sierra2mlir/benches/execution.rs)
 
 ```rust
@@ -288,11 +318,129 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 }
 ```
 
-### sierra2mlir examples
+
 
 #### Felt Add
 
+```
+fn something(a: felt252) -> (felt252, felt252) {
+    (a + 2, a - 2)
+}
+```
+
+```
+type felt252 = felt252;
+type Tuple<felt252, felt252> = Struct<ut@Tuple, felt252, felt252>;
+
+libfunc felt252_const<2> = felt252_const<2>;
+libfunc dup<felt252> = dup<felt252>;
+libfunc felt252_add = felt252_add;
+libfunc felt252_sub = felt252_sub;
+libfunc struct_construct<Tuple<felt252, felt252>> = struct_construct<Tuple<felt252, felt252>>;
+libfunc store_temp<Tuple<felt252, felt252>> = store_temp<Tuple<felt252, felt252>>;
+
+felt252_const<2>() -> ([1]);
+dup<felt252>([0]) -> ([0], [3]);
+felt252_add([3], [1]) -> ([2]);
+felt252_const<2>() -> ([4]);
+felt252_sub([0], [4]) -> ([5]);
+struct_construct<Tuple<felt252, felt252>>([2], [5]) -> ([6]);
+store_temp<Tuple<felt252, felt252>>([6]) -> ([7]);
+return([7]);
+
+simple::simple::something@0([0]: felt252) -> (Tuple<felt252, felt252>);
+```
+
+```
+module {
+  func.func @felt252_add(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, llvm.linkage = #llvm.linkage<internal>, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
+    %0 = arith.addi %arg0, %arg1 : i256
+    %c3618502788666131213697322783095070105623107215331596699973092056135872020481_i256 = arith.constant 3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256
+    %1 = arith.cmpi uge, %0, %c3618502788666131213697322783095070105623107215331596699973092056135872020481_i256 : i256
+    cf.cond_br %1, ^bb2, ^bb1
+  ^bb1:  // pred: ^bb0
+    return %0 : i256
+  ^bb2:  // pred: ^bb0
+    %2 = arith.subi %0, %c3618502788666131213697322783095070105623107215331596699973092056135872020481_i256 : i256
+    return %2 : i256
+  }
+  func.func @felt252_sub(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, llvm.linkage = #llvm.linkage<internal>, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
+    %0 = arith.subi %arg0, %arg1 : i256
+    %c0_i256 = arith.constant 0 : i256
+    %1 = arith.cmpi slt, %0, %c0_i256 : i256
+    cf.cond_br %1, ^bb2, ^bb1
+  ^bb1:  // pred: ^bb0
+    return %0 : i256
+  ^bb2:  // pred: ^bb0
+    %c3618502788666131213697322783095070105623107215331596699973092056135872020481_i256 = arith.constant 3618502788666131213697322783095070105623107215331596699973092056135872020481 : i256
+    %2 = arith.addi %0, %c3618502788666131213697322783095070105623107215331596699973092056135872020481_i256 : i256
+    return %2 : i256
+  }
+  func.func @"struct_construct<Tuple<felt252, felt252>>"(%arg0: i256, %arg1: i256) -> !llvm.struct<packed (i256, i256)> attributes {llvm.dso_local, llvm.linkage = #llvm.linkage<internal>, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
+    %0 = llvm.mlir.undef : !llvm.struct<packed (i256, i256)>
+    %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<packed (i256, i256)> 
+    %2 = llvm.insertvalue %arg1, %1[1] : !llvm.struct<packed (i256, i256)> 
+    return %2 : !llvm.struct<packed (i256, i256)>
+  }
+  func.func @"simple::simple::something"(%arg0: i256) -> !llvm.struct<packed (i256, i256)> attributes {llvm.dso_local, llvm.emit_c_interface} {
+    cf.br ^bb1(%arg0 : i256)
+  ^bb1(%0: i256):  // pred: ^bb0
+    %c2_i256 = arith.constant 2 : i256
+    %1 = call @felt252_add(%0, %c2_i256) : (i256, i256) -> i256
+    %c2_i256_0 = arith.constant 2 : i256
+    %2 = call @felt252_sub(%0, %c2_i256_0) : (i256, i256) -> i256
+    %3 = call @"struct_construct<Tuple<felt252, felt252>>"(%1, %2) : (i256, i256) -> !llvm.struct<packed (i256, i256)>
+    return %3 : !llvm.struct<packed (i256, i256)>
+  }
+}
+```
+
 #### Conditionals
+
+```
+fn mul_if_not_zero(a: felt252) -> felt252 {
+    match a {
+        0 => 0,
+        _ => a * 2,
+    }
+}
+```
+
+```
+type felt252 = felt252;
+type NonZero<felt252> = NonZero<felt252>;
+
+libfunc dup<felt252> = dup<felt252>;
+libfunc felt252_is_zero = felt252_is_zero;
+libfunc branch_align = branch_align;
+libfunc drop<felt252> = drop<felt252>;
+libfunc felt252_const<0> = felt252_const<0>;
+libfunc store_temp<felt252> = store_temp<felt252>;
+libfunc jump = jump;
+libfunc drop<NonZero<felt252>> = drop<NonZero<felt252>>;
+libfunc felt252_const<2> = felt252_const<2>;
+libfunc felt252_mul = felt252_mul;
+libfunc rename<felt252> = rename<felt252>;
+
+dup<felt252>([0]) -> ([0], [1]);
+felt252_is_zero([1]) { fallthrough() 7([2]) };
+branch_align() -> ();
+drop<felt252>([0]) -> ();
+felt252_const<0>() -> ([3]);
+store_temp<felt252>([3]) -> ([4]);
+jump() { 12() };
+branch_align() -> ();
+drop<NonZero<felt252>>([2]) -> ();
+felt252_const<2>() -> ([5]);
+felt252_mul([0], [5]) -> ([6]);
+store_temp<felt252>([6]) -> ([4]);
+rename<felt252>([4]) -> ([7]);
+return([7]);
+
+felt_is_zero::felt_is_zero::mul_if_not_zero@0([0]: felt252) -> (felt252);
+```
+
+
 
 ## But?
 
