@@ -48,7 +48,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
                 self.process_dataflow_libfunc(args_forwarded, invocation, variables);
                 Ok(())
             }
-            SierraLibFunc::Branching { args: _, return_types: _ } => {
+            SierraLibFunc::Branching { .. } => {
                 panic!(
                     "Branching SierraLibFunc should have been handled specifically: {:?}",
                     &invocation.libfunc_id.debug_name

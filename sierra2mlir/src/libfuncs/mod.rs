@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Location, Type, Value, ValueLike};
+use melior_next::ir::{Block, Location, Type, TypeLike, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
@@ -17,7 +17,7 @@ use crate::{
     types::{is_omitted_builtin_type, DEFAULT_PRIME},
 };
 
-use self::lib_func_def::{PositionalArg, SierraLibFunc};
+use self::lib_func_def::{BranchProcessing, BranchSelector, PositionalArg, SierraLibFunc};
 use melior_asm::mlir_asm;
 
 pub mod lib_func_def;
@@ -28,6 +28,11 @@ pub enum BoolBinaryOp {
     And,
     Xor,
     Or,
+}
+
+pub enum OverflowOp {
+    Add,
+    Sub,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -79,7 +84,7 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "enum_match" => {
                     // Note no actual function is created here, however types are registered
-                    self.register_libfunc_enum_match(func_decl, storage);
+                    self.register_libfunc_enum_match(func_decl, storage)?;
                 }
                 "struct_construct" => {
                     self.create_libfunc_struct_construct(func_decl, storage)?;
@@ -94,7 +99,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_nullable_from_box(func_decl, storage)?;
                 }
                 "match_nullable" => {
-                    self.register_match_nullable(func_decl, storage);
+                    self.register_match_nullable(func_decl, storage)?;
                 }
                 "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
@@ -195,95 +200,249 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_uint_safe_divmod(func_decl, self.u128_type(), storage)?;
                 }
                 "u8_eq" => {
-                    self.register_libfunc_int_eq(func_decl, self.u8_type(), storage);
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u8_type(),
+                        CmpOp::Equal,
+                        storage,
+                    )?;
                 }
                 "u16_eq" => {
-                    self.register_libfunc_int_eq(func_decl, self.u16_type(), storage);
-                }
-                "u32_eq" => {
-                    self.register_libfunc_int_eq(func_decl, self.u32_type(), storage);
-                }
-                "u64_eq" => {
-                    self.register_libfunc_int_eq(func_decl, self.u64_type(), storage);
-                }
-                "u128_eq" => {
-                    self.register_libfunc_int_eq(func_decl, self.u128_type(), storage);
-                }
-                "u8_le" => {
-                    self.register_libfunc_int_le(func_decl, self.u8_type(), storage);
-                }
-                "u16_le" => {
-                    self.register_libfunc_int_le(func_decl, self.u16_type(), storage);
-                }
-                "u32_le" => {
-                    self.register_libfunc_int_le(func_decl, self.u32_type(), storage);
-                }
-                "u64_le" => {
-                    self.register_libfunc_int_le(func_decl, self.u64_type(), storage);
-                }
-                "u128_le" => {
-                    self.register_libfunc_int_le(func_decl, self.u128_type(), storage);
-                }
-                "u8_lt" => {
-                    self.register_libfunc_int_lt(func_decl, self.u8_type(), storage);
-                }
-                "u16_lt" => {
-                    self.register_libfunc_int_lt(func_decl, self.u16_type(), storage);
-                }
-                "u32_lt" => {
-                    self.register_libfunc_int_lt(func_decl, self.u32_type(), storage);
-                }
-                "u64_lt" => {
-                    self.register_libfunc_int_lt(func_decl, self.u64_type(), storage);
-                }
-                "u128_lt" => {
-                    self.register_libfunc_int_lt(func_decl, self.u128_type(), storage);
-                }
-                "u8_overflowing_add" | "u8_overflowing_sub" => {
-                    self.register_libfunc_uint_overflowing_op(func_decl, self.u8_type(), storage);
-                }
-                "u16_overflowing_add" | "u16_overflowing_sub" => {
-                    self.register_libfunc_uint_overflowing_op(func_decl, self.u16_type(), storage);
-                }
-                "u32_overflowing_add" | "u32_overflowing_sub" => {
-                    self.register_libfunc_uint_overflowing_op(func_decl, self.u32_type(), storage);
-                }
-                "u64_overflowing_add" | "u64_overflowing_sub" => {
-                    self.register_libfunc_uint_overflowing_op(func_decl, self.u64_type(), storage);
-                }
-                "u128_overflowing_add" | "u128_overflowing_sub" => {
-                    self.register_libfunc_uint_overflowing_op(func_decl, self.u128_type(), storage);
-                }
-                "u8_try_from_felt252" => {
-                    self.register_libfunc_uint_try_from_felt252(func_decl, self.u8_type(), storage);
-                }
-                "u16_try_from_felt252" => {
-                    self.register_libfunc_uint_try_from_felt252(
+                    self.register_libfunc_int_cmp(
                         func_decl,
                         self.u16_type(),
+                        CmpOp::Equal,
                         storage,
-                    );
+                    )?;
                 }
-                "u32_try_from_felt252" => {
-                    self.register_libfunc_uint_try_from_felt252(
+                "u32_eq" => {
+                    self.register_libfunc_int_cmp(
                         func_decl,
                         self.u32_type(),
+                        CmpOp::Equal,
                         storage,
-                    );
+                    )?;
                 }
-                "u64_try_from_felt252" => {
-                    self.register_libfunc_uint_try_from_felt252(
+                "u64_eq" => {
+                    self.register_libfunc_int_cmp(
                         func_decl,
                         self.u64_type(),
+                        CmpOp::Equal,
                         storage,
-                    );
+                    )?;
                 }
-                "u128_try_from_felt252" => {
-                    self.register_libfunc_uint_try_from_felt252(
+                "u128_eq" => {
+                    self.register_libfunc_int_cmp(
                         func_decl,
                         self.u128_type(),
+                        CmpOp::Equal,
                         storage,
-                    );
+                    )?;
+                }
+                "u8_le" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u8_type(),
+                        CmpOp::UnsignedLessThanEqual,
+                        storage,
+                    )?;
+                }
+                "u16_le" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u16_type(),
+                        CmpOp::UnsignedLessThanEqual,
+                        storage,
+                    )?;
+                }
+                "u32_le" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u32_type(),
+                        CmpOp::UnsignedLessThanEqual,
+                        storage,
+                    )?;
+                }
+                "u64_le" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u64_type(),
+                        CmpOp::UnsignedLessThanEqual,
+                        storage,
+                    )?;
+                }
+                "u128_le" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u128_type(),
+                        CmpOp::UnsignedLessThanEqual,
+                        storage,
+                    )?;
+                }
+                "u8_lt" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u8_type(),
+                        CmpOp::UnsignedLessThan,
+                        storage,
+                    )?;
+                }
+                "u16_lt" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u16_type(),
+                        CmpOp::UnsignedLessThan,
+                        storage,
+                    )?;
+                }
+                "u32_lt" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u32_type(),
+                        CmpOp::UnsignedLessThan,
+                        storage,
+                    )?;
+                }
+                "u64_lt" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u64_type(),
+                        CmpOp::UnsignedLessThan,
+                        storage,
+                    )?;
+                }
+                "u128_lt" => {
+                    self.register_libfunc_int_cmp(
+                        func_decl,
+                        self.u128_type(),
+                        CmpOp::UnsignedLessThan,
+                        storage,
+                    )?;
+                }
+                "u8_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u8_type(),
+                        OverflowOp::Add,
+                        storage,
+                    )?;
+                }
+                "u16_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u16_type(),
+                        OverflowOp::Add,
+                        storage,
+                    )?;
+                }
+                "u32_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u32_type(),
+                        OverflowOp::Add,
+                        storage,
+                    )?;
+                }
+                "u64_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u64_type(),
+                        OverflowOp::Add,
+                        storage,
+                    )?;
+                }
+                "u128_overflowing_add" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u128_type(),
+                        OverflowOp::Add,
+                        storage,
+                    )?;
+                }
+                "u8_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u8_type(),
+                        OverflowOp::Sub,
+                        storage,
+                    )?;
+                }
+                "u16_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u16_type(),
+                        OverflowOp::Sub,
+                        storage,
+                    )?;
+                }
+                "u32_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u32_type(),
+                        OverflowOp::Sub,
+                        storage,
+                    )?;
+                }
+                "u64_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u64_type(),
+                        OverflowOp::Sub,
+                        storage,
+                    )?;
+                }
+                "u128_overflowing_sub" => {
+                    self.register_libfunc_uint_overflowing_op(
+                        func_decl,
+                        self.u128_type(),
+                        OverflowOp::Sub,
+                        storage,
+                    )?;
+                }
+                "u8_try_from_felt252" => {
+                    self.register_libfunc_narrow_uint(
+                        func_decl,
+                        self.felt_type(),
+                        self.u8_type(),
+                        true,
+                        storage,
+                    )?;
+                }
+                "u16_try_from_felt252" => {
+                    self.register_libfunc_narrow_uint(
+                        func_decl,
+                        self.felt_type(),
+                        self.u16_type(),
+                        true,
+                        storage,
+                    )?;
+                }
+                "u32_try_from_felt252" => {
+                    self.register_libfunc_narrow_uint(
+                        func_decl,
+                        self.felt_type(),
+                        self.u32_type(),
+                        true,
+                        storage,
+                    )?;
+                }
+                "u64_try_from_felt252" => {
+                    self.register_libfunc_narrow_uint(
+                        func_decl,
+                        self.felt_type(),
+                        self.u64_type(),
+                        true,
+                        storage,
+                    )?;
+                }
+                "u128_try_from_felt252" => {
+                    self.register_libfunc_narrow_uint(
+                        func_decl,
+                        self.felt_type(),
+                        self.u128_type(),
+                        true,
+                        storage,
+                    )?;
                 }
                 "bitwise" => {
                     self.create_libfunc_bitwise(func_decl, storage)?;
@@ -292,7 +451,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_upcast(func_decl, storage)?;
                 }
                 "downcast" => {
-                    self.register_libfunc_downcast(func_decl, storage);
+                    self.register_libfunc_downcast(func_decl, storage)?;
                 }
                 "bool_or_impl" => {
                     self.create_libfunc_bool_binop_impl(func_decl, storage, BoolBinaryOp::Or)?;
@@ -319,10 +478,10 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_array_len(func_decl, storage)?;
                 }
                 "array_get" => {
-                    self.register_libfunc_array_get(func_decl, storage);
+                    self.register_libfunc_array_get(func_decl, storage)?;
                 }
                 "array_pop_front" => {
-                    self.register_libfunc_array_pop_front(func_decl, storage);
+                    self.register_libfunc_array_pop_front(func_decl, storage)?;
                 }
                 "print" => {
                     self.create_libfunc_print(func_decl, storage)?;
@@ -795,199 +954,295 @@ impl<'ctx> Compiler<'ctx> {
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![PositionalArg { loc: 0, ty: SierraType::Simple(op_type) }],
-                return_types: vec![
-                    vec![],
-                    vec![PositionalArg { loc: 0, ty: SierraType::Simple(op_type) }],
+                selector: BranchSelector::Arg(PositionalArg {
+                    loc: 0,
+                    ty: SierraType::Simple(op_type),
+                }),
+                branch_processing: vec![
+                    BranchProcessing::none(),
+                    BranchProcessing::Args(vec![(
+                        PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                        0,
+                    )]),
                 ],
             },
         );
     }
 
-    pub fn register_libfunc_int_eq(
+    pub fn register_libfunc_int_cmp(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         op_type: Type<'ctx>,
+        comparison: CmpOp,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        storage.libfuncs.insert(
-            id,
-            SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
-                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
-                ],
-                return_types: vec![vec![], vec![]],
-            },
-        );
-    }
 
-    pub fn register_libfunc_int_le(
-        &'ctx self,
-        func_decl: &LibfuncDeclaration,
-        op_type: Type<'ctx>,
-        storage: &mut Storage<'ctx>,
-    ) {
-        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        storage.libfuncs.insert(
-            id,
-            SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
-                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
-                ],
-                return_types: vec![vec![], vec![]],
-            },
-        );
-    }
+        // Create a simple selector function
+        let impl_func_name = format!("{id}_impl");
+        let block = self.new_block(&[op_type, op_type]);
+        let cmp_op =
+            self.op_cmp(&block, comparison, block.argument(0)?.into(), block.argument(1)?.into());
+        self.op_return(&block, &[cmp_op.result(0)?.into()]);
 
-    pub fn register_libfunc_int_lt(
-        &'ctx self,
-        func_decl: &LibfuncDeclaration,
-        op_type: Type<'ctx>,
-        storage: &mut Storage<'ctx>,
-    ) {
-        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
-                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
-                ],
-                return_types: vec![vec![], vec![]],
+                selector: BranchSelector::Call {
+                    name: impl_func_name.clone(),
+                    args: vec![
+                        PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                        PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    ],
+                    return_type: self.bool_type(),
+                    return_pos: 0,
+                },
+                branch_processing: vec![BranchProcessing::none(), BranchProcessing::none()],
             },
         );
+
+        self.create_function(
+            &impl_func_name,
+            vec![block],
+            &[self.bool_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn register_libfunc_uint_overflowing_op(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         op_type: Type<'ctx>,
+        operation: OverflowOp,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let impl_func_name = format!("{id}_impl");
+        let block = self.new_block(&[op_type, op_type]);
+        let lhs = block.argument(0)?.into();
+        let rhs = block.argument(1)?.into();
+        let op = match operation {
+            OverflowOp::Add => self.op_add_with_overflow(&block, lhs, rhs),
+            OverflowOp::Sub => self.op_llvm_sub_with_overflow(&block, lhs, rhs),
+        };
+        self.op_return(&block, &[op.result(0)?.into(), op.result(1)?.into()]);
+
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
-                    PositionalArg { loc: 2, ty: SierraType::Simple(op_type) },
-                ],
-                return_types: vec![
-                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
-                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
+                // Call the add/sub with overflow operation and use the overflow result as the selector
+                selector: BranchSelector::Call {
+                    name: impl_func_name.clone(),
+                    args: vec![
+                        PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                        PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                    ],
+                    return_type: self.bool_type(),
+                    return_pos: 1,
+                },
+                // Then use the arithmetic result as the branch data
+                branch_processing: vec![
+                    BranchProcessing::SelectorResult(vec![(
+                        PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                        1, // skip range check
+                    )]),
+                    BranchProcessing::SelectorResult(vec![(
+                        PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
+                        1,
+                    )]),
                 ],
             },
         );
+
+        self.create_function(
+            &impl_func_name,
+            vec![block],
+            &[op_type, self.bool_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
-    pub fn register_libfunc_uint_try_from_felt252(
+    pub fn register_libfunc_narrow_uint(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
-        op_type: Type<'ctx>,
+        from_type: Type<'ctx>,
+        to_type: Type<'ctx>,
+        uses_range_check: bool,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        // The selector returns whether or not the given felt is small enough to fit into the target type
+        // We use >= so that false (0) is returned for the success branch, which is the first,
+        // and true (1) is returned for the failure branch, which is the second
+        // TODO move this into the helpers section
+        let selector_name = format!("{from_type}_out_of_range_{to_type}");
+        let block = self.new_block(&[self.felt_type()]);
+        let arg = block.argument(0)?.into();
+        let limit_op =
+            self.op_const(&block, &2_i32.pow(to_type.get_width().unwrap()).to_string(), from_type);
+        let limit = limit_op.result(0)?.into();
+        let cmp_op = self.op_cmp(&block, CmpOp::UnsignedGreaterThanEqual, arg, limit);
+        self.op_return(&block, &[cmp_op.result(0)?.into()]);
+        self.create_function(
+            &selector_name,
+            vec![block],
+            &[self.bool_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        // Branch processing for the success branch truncates to the given type
+        let trunc_func_name = format!("{from_type}_trunc_to_{to_type}");
+        let block = self.new_block(&[from_type]);
+        let arg = block.argument(0)?.into();
+        let trunc_op = self.op_trunc(&block, arg, to_type);
+        self.op_return(&block, &[trunc_op.result(0)?.into()]);
+        self.create_function(
+            &trunc_func_name,
+            vec![block],
+            &[to_type],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        // If the libfunc takes range_check, we need to skip it
+        let loc = if uses_range_check { 1 } else { 0 };
+
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) }],
-                return_types: vec![
-                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(op_type) }],
-                    vec![],
+                selector: BranchSelector::Call {
+                    name: selector_name,
+                    args: vec![PositionalArg { loc, ty: SierraType::Simple(self.felt_type()) }],
+                    return_type: self.bool_type(),
+                    return_pos: 0,
+                },
+                branch_processing: vec![
+                    BranchProcessing::Call {
+                        name: trunc_func_name,
+                        args: vec![PositionalArg { loc, ty: SierraType::Simple(self.felt_type()) }],
+                        return_types: vec![SierraType::Simple(to_type)],
+                    },
+                    BranchProcessing::none(),
                 ],
             },
         );
+
+        Ok(())
     }
 
     pub fn register_libfunc_downcast(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) {
-        let libfunc_id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+    ) -> Result<()> {
+        let from_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type should exist");
+        let to_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[1]))
+            .cloned()
+            .expect("type should exist");
 
-        let from_type = &func_decl.long_id.generic_args[0];
-        let to_type = &func_decl.long_id.generic_args[1];
-
-        let from_type = match from_type {
-            GenericArg::Type(id) => {
-                storage.types.get(&id.id.to_string()).cloned().expect("type should exist")
-            }
-            _ => unreachable!(),
-        };
-        let to_type = match to_type {
-            GenericArg::Type(id) => {
-                storage.types.get(&id.id.to_string()).cloned().expect("type should exist")
-            }
-            _ => unreachable!(),
-        };
-
-        storage.libfuncs.insert(
-            libfunc_id,
-            SierraLibFunc::Branching {
-                args: vec![PositionalArg { loc: 1, ty: from_type }],
-                return_types: vec![vec![PositionalArg { loc: 1, ty: to_type }], vec![]],
-            },
-        );
+        self.register_libfunc_narrow_uint(
+            func_decl,
+            from_type.get_type(),
+            to_type.get_type(),
+            false,
+            storage,
+        )
     }
 
     pub fn register_libfunc_enum_match(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let enum_name = id.strip_prefix("enum_match<").unwrap().strip_suffix('>').unwrap();
 
-        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
-            x
-        } else {
-            unreachable!("enum_match argument should be a type")
-        };
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .expect("type should exist")
+            .clone();
 
-        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+        let (tag_type, variant_types) =
+            if let SierraType::Enum { tag_type, variants_types, .. } = arg_type.clone() {
+                (tag_type, variants_types)
+            } else {
+                panic!("enum_match arg_type should be a enum")
+            };
 
-        if let SierraType::Enum {
-            ty: _,
-            tag_type: _,
-            storage_bytes_len: _,
-            storage_type: _,
-            variants_types,
-        } = arg_type.clone()
-        {
-            storage.libfuncs.insert(
-                id,
-                SierraLibFunc::Branching {
-                    args: vec![PositionalArg { loc: 0, ty: arg_type }],
-                    return_types: variants_types
-                        .into_iter()
-                        .map(|x| vec![PositionalArg { loc: 0, ty: x }])
-                        .collect_vec(),
-                },
-            );
-        } else {
-            panic!("enum_match arg_type should be a enum")
+        let target_function = self.create_enum_get_tag(&arg_type, storage)?;
+
+        let mut branch_processing = vec![];
+        for (idx, variant_type) in variant_types.into_iter().enumerate() {
+            let name =
+                self.create_enum_get_data_as_variant_type(enum_name, &arg_type, idx, storage)?;
+
+            branch_processing.push(BranchProcessing::Call {
+                name,
+                args: vec![PositionalArg { loc: 0, ty: arg_type.clone() }],
+                return_types: vec![variant_type],
+            });
         }
+        let branch_processing = branch_processing;
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Branching {
+                selector: BranchSelector::Call {
+                    name: target_function,
+                    args: vec![PositionalArg { loc: 0, ty: arg_type.clone() }],
+                    return_type: tag_type,
+                    return_pos: 0,
+                },
+                branch_processing,
+            },
+        );
+
+        Ok(())
     }
 
     pub fn register_libfunc_array_get(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
-        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
-            x
-        } else {
-            unreachable!("array_get argument should be a type")
-        };
+        let element_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type should exist");
 
-        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+        let array_type = SierraType::create_array_type(self, element_type.clone());
 
-        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
+        // Selector returns 0 if the value is in range, or 1 if it isn't
+        let selector_func_name = format!("{id}_selector");
+        // TODO replace u32_type once SierraType is a trait
+        let block = self.new_block(&[array_type.get_type(), self.u32_type()]);
+        let array = block.argument(0)?.into();
+        let idx = block.argument(1)?.into();
+        let len_op = self.call_array_len_impl(&block, array, &array_type, storage)?;
+        let len = len_op.result(0)?.into();
+        let cmp_op = self.op_cmp(&block, CmpOp::UnsignedGreaterThanEqual, idx, len);
+        let cmp = cmp_op.result(0)?.into();
+        self.op_return(&block, &[cmp]);
+
+        self.create_function(
+            &selector_func_name,
+            vec![block],
+            &[self.bool_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        let get_impl_func_name = self.create_array_get_unchecked(&array_type, storage)?;
 
         // 2 branches:
         // - falthrough with return args: 0 = rangecheck, 1 = the value at index
@@ -996,52 +1251,73 @@ impl<'ctx> Compiler<'ctx> {
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 1, ty: sierra_type.clone() }, // array
-                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
-                ],
-                return_types: vec![
-                    vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
-                    vec![],                                       // panic branch
+                selector: BranchSelector::Call {
+                    name: selector_func_name,
+                    args: vec![
+                        // range check is loc 0
+                        PositionalArg { loc: 1, ty: array_type.clone() }, // array
+                        PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
+                    ],
+                    return_type: self.bool_type(),
+                    return_pos: 0,
+                },
+                branch_processing: vec![
+                    BranchProcessing::Call {
+                        name: get_impl_func_name,
+                        args: vec![
+                            // range check is loc 0
+                            PositionalArg { loc: 1, ty: array_type.clone() }, // array
+                            PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // index
+                        ],
+                        return_types: vec![element_type],
+                    },
+                    BranchProcessing::none(),
                 ],
             },
         );
+
+        Ok(())
     }
 
     pub fn register_libfunc_array_pop_front(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
-        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
-            x
-        } else {
-            unreachable!("array_pop_front argument should be a type")
-        };
+        let element_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type should exist");
 
-        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+        let array_type = SierraType::create_array_type(self, element_type.clone());
 
-        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
+        let selector_func_name = self.create_array_is_empty(&array_type, storage)?;
+        let pop_impl_func_name = self.create_array_pop_unchecked(&array_type, storage)?;
 
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 0, ty: sierra_type.clone() }, // array
-                ],
-                return_types: vec![
-                    // fallthrough (pop returned something): array, popped value
-                    vec![
-                        PositionalArg { loc: 0, ty: sierra_type.clone() },
-                        PositionalArg { loc: 1, ty: arg_type },
-                    ],
-                    // jump (pop returned none): array
-                    vec![PositionalArg { loc: 0, ty: sierra_type }],
+                selector: BranchSelector::Call {
+                    name: selector_func_name.to_owned(),
+                    args: vec![PositionalArg { loc: 0, ty: array_type.clone() }],
+                    return_type: self.bool_type(),
+                    return_pos: 0,
+                },
+                branch_processing: vec![
+                    BranchProcessing::Call {
+                        name: pop_impl_func_name,
+                        args: vec![PositionalArg { loc: 0, ty: array_type.clone() }],
+                        return_types: vec![element_type.clone()],
+                    },
+                    BranchProcessing::none(),
                 ],
             },
         );
+
+        Ok(())
     }
 
     pub fn create_libfunc_uint_to_felt252(
@@ -2120,7 +2396,7 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) {
+    ) -> Result<()> {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
         let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
@@ -2132,19 +2408,29 @@ impl<'ctx> Compiler<'ctx> {
         let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
         let nullable_type = SierraType::create_nullable_type(self, arg_type.clone());
 
+        let selector_name = self.create_nullable_is_null(&nullable_type, storage)?;
+        let processing_name = self.create_nullable_unwrap_unsafe(&nullable_type, storage)?;
+
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![
-                    PositionalArg { loc: 0, ty: nullable_type }, // array
-                ],
-                return_types: vec![
-                    // fallthrough: null, nothing
-                    vec![],
-                    // jump: value
-                    vec![PositionalArg { loc: 0, ty: arg_type }],
+                selector: BranchSelector::Call {
+                    name: selector_name,
+                    args: vec![PositionalArg { loc: 0, ty: nullable_type.clone() }],
+                    return_type: self.bool_type(),
+                    return_pos: 0,
+                },
+                branch_processing: vec![
+                    BranchProcessing::Call {
+                        name: processing_name,
+                        args: vec![PositionalArg { loc: 0, ty: nullable_type }],
+                        return_types: vec![arg_type],
+                    },
+                    BranchProcessing::none(),
                 ],
             },
         );
+
+        Ok(())
     }
 }

@@ -8,7 +8,7 @@ use crate::{
 };
 
 impl<'ctx> Compiler<'ctx> {
-    fn create_enum_get_tag(
+    pub fn create_enum_get_tag(
         &'ctx self,
         enum_type: &SierraType,
         storage: &mut Storage<'ctx>,
@@ -53,7 +53,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(func_name)
     }
 
-    fn create_enum_get_data_as_variant_type(
+    pub fn create_enum_get_data_as_variant_type(
         &'ctx self,
         enum_name: &str,
         enum_type: &SierraType,

@@ -33,6 +33,20 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    pub fn op_add_with_overflow<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("arith.addui_extended", Location::unknown(&self.context))
+                .add_operands(&[lhs, rhs])
+                .add_results(&[lhs.r#type(), self.bool_type()])
+                .build(),
+        )
+    }
+
     /// Only the MLIR op, doesn't do modulo.
     pub fn op_sub<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(arith::subi(
@@ -41,6 +55,23 @@ impl<'ctx> Compiler<'ctx> {
             lhs.r#type(),
             Location::unknown(&self.context),
         ))
+    }
+
+    pub fn op_llvm_sub_with_overflow<'a>(
+        &self,
+        block: &'a Block,
+        lhs: Value,
+        rhs: Value,
+    ) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new(
+                "llvm.intr.usub.with.overflow",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[lhs, rhs])
+            .add_results(&[lhs.r#type(), self.bool_type()])
+            .build(),
+        )
     }
 
     /// Only the MLIR op.

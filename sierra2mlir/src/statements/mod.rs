@@ -8,9 +8,9 @@ use cairo_lang_sierra::program::{
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
-use regex::Regex;
 
-use crate::compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp};
+use crate::compiler::{fn_attributes::FnAttributes};
+use crate::libfuncs::lib_func_def::SierraLibFunc;
 use crate::sierra_type::SierraType;
 use crate::{
     compiler::{Compiler, Storage},
@@ -119,162 +119,43 @@ impl<'ctx> Compiler<'ctx> {
                     GenStatement::Invocation(invocation) => {
                         let name = invocation.libfunc_id.debug_name.as_ref().unwrap().as_str();
                         let id = invocation.libfunc_id.debug_name.as_ref().unwrap().to_string();
-                        let name_without_generics = name.split('<').next().unwrap();
                         let mut jump_processed = false;
-                        match name_without_generics {
-                            "jump" => {
-                                self.inline_jump(invocation, block, &mut variables, &blocks)?;
-                                jump_processed = true;
-                            }
-                            name_without_generics
-                                if is_int_is_zero_libfunc(name_without_generics) =>
-                            {
-                                self.inline_int_is_zero(
-                                    name_without_generics,
+
+                        let libfunc = storage.libfuncs.get(&id);
+                        if let Some(SierraLibFunc::Branching { .. }) = libfunc {
+                            self.inline_branching_libfunc(
+                                &id,
+                                statement_idx,
+                                &region,
+                                block,
+                                &blocks,
+                                invocation,
+                                &variables,
+                                storage,
+                            )?;
+                            jump_processed = true;
+                        } else {
+                            let name_without_generics = name.split('<').next().unwrap();
+                            match name_without_generics {
+                                "jump" => {
+                                    self.inline_jump(invocation, block, &mut variables, &blocks)?;
+                                    jump_processed = true;
+                                }
+                                "function_call" => self.process_function_call(
+                                    &id,
                                     invocation,
                                     block,
                                     &mut variables,
-                                    &blocks,
-                                    statement_idx,
-                                )?;
-
-                                jump_processed = true;
-                            }
-                            // is_eq,lt,le
-                            name_without_generics if is_int_cmp_libfunc(name_without_generics) => {
-                                let cmpop = if name_without_generics.ends_with("eq") {
-                                    CmpOp::Equal
-                                } else if name_without_generics.ends_with("lt") {
-                                    CmpOp::UnsignedLessThan
-                                } else if name_without_generics.ends_with("le") {
-                                    CmpOp::UnsignedLessThanEqual
-                                } else {
-                                    panic!("unknown cmp op")
-                                };
-
-                                self.inline_int_cmpop(
-                                    name_without_generics,
-                                    invocation,
-                                    block,
-                                    &variables,
-                                    &blocks,
-                                    statement_idx,
                                     storage,
-                                    cmpop,
-                                )?;
-
-                                jump_processed = true;
-                            }
-                            name_without_generics
-                                if is_uint_overflow_libfunc(name_without_generics) =>
-                            {
-                                self.inline_int_overflowing_op(
-                                    name_without_generics,
-                                    invocation,
-                                    block,
-                                    &variables,
-                                    &blocks,
-                                    statement_idx,
-                                    storage,
-                                    name_without_generics.ends_with("add"),
-                                )?;
-
-                                jump_processed = true;
-                            }
-                            name_without_generics
-                                if is_uint_try_from_libfunc(name_without_generics) =>
-                            {
-                                self.inline_try_from_felt252(
+                                )?,
+                                _ => self.process_general_libfunc(
                                     &id,
                                     invocation,
-                                    &region,
                                     block,
-                                    &variables,
-                                    &blocks,
-                                    statement_idx,
+                                    &mut variables,
                                     storage,
-                                )?;
-
-                                jump_processed = true;
+                                )?,
                             }
-                            "enum_match" => {
-                                self.inline_enum_match(
-                                    &id,
-                                    statement_idx,
-                                    &region,
-                                    block,
-                                    &blocks,
-                                    invocation,
-                                    &variables,
-                                    storage,
-                                )?;
-                                jump_processed = true;
-                            }
-                            "array_get" => {
-                                self.inline_array_get(
-                                    &id,
-                                    statement_idx,
-                                    &region,
-                                    block,
-                                    &blocks,
-                                    invocation,
-                                    &variables,
-                                    storage,
-                                )?;
-                                jump_processed = true;
-                            }
-                            "array_pop_front" => {
-                                self.inline_array_pop_front(
-                                    &id,
-                                    statement_idx,
-                                    &region,
-                                    block,
-                                    &blocks,
-                                    invocation,
-                                    &variables,
-                                    storage,
-                                )?;
-                                jump_processed = true;
-                            }
-                            "match_nullable" => {
-                                self.inline_match_nullable(
-                                    &id,
-                                    statement_idx,
-                                    block,
-                                    &blocks,
-                                    invocation,
-                                    &variables,
-                                    storage,
-                                )?;
-                                jump_processed = true;
-                            }
-                            "downcast" => {
-                                self.inline_downcast(
-                                    &id,
-                                    invocation,
-                                    &region,
-                                    block,
-                                    &variables,
-                                    &blocks,
-                                    statement_idx,
-                                    storage,
-                                )?;
-                                jump_processed = true;
-                            }
-                            "function_call" => self.process_function_call(
-                                &id,
-                                invocation,
-                                block,
-                                &mut variables,
-                                storage,
-                            )?,
-                            _ => self.process_general_libfunc(
-                                &id,
-                                invocation,
-                                block,
-                                &mut variables,
-                                storage,
-                            )?,
                         }
 
                         if statement_idx == block_info.end - 1 && !jump_processed {
@@ -491,30 +372,6 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect::<BTreeMap<_, _>>()
     }
-}
-
-fn is_int_is_zero_libfunc(name_without_generics: &str) -> bool {
-    name_without_generics == "u8_is_zero"
-        || name_without_generics == "u16_is_zero"
-        || name_without_generics == "u32_is_zero"
-        || name_without_generics == "u64_is_zero"
-        || name_without_generics == "u128_is_zero"
-        || name_without_generics == "felt252_is_zero"
-}
-
-fn is_int_cmp_libfunc(name_without_generics: &str) -> bool {
-    let is_cmp: Regex = Regex::new(r#"u\d{1,3}_(eq|le|lt)"#).unwrap();
-    is_cmp.is_match(name_without_generics)
-}
-
-fn is_uint_overflow_libfunc(name_without_generics: &str) -> bool {
-    let is_reg: Regex = Regex::new(r#"u\d{1,3}_overflowing_(add|sub)"#).unwrap();
-    is_reg.is_match(name_without_generics)
-}
-
-fn is_uint_try_from_libfunc(name_without_generics: &str) -> bool {
-    let is_reg: Regex = Regex::new(r#"u(8|16|32|64|128)_try_from_felt252"#).unwrap();
-    is_reg.is_match(name_without_generics)
 }
 
 fn calculate_block_ranges_per_function(
