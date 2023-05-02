@@ -3,7 +3,7 @@
 First clone the repository:
 
 ```bash
-git clone git@github.com:lambdaclass/cairo_sierra_2_MLIR.git
+git clone git@github.com:lambdaclass/cairo_sierra2mlir.git
 ```
 
 ## Get the dependencies

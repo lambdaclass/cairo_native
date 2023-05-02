@@ -32,6 +32,7 @@ I love jazz. Of all the jazz styles I love, jazz fusion is the one I enjoy most,
 Something especially interesting is happening at the intersection of programming language theory, compiler implementation, and applied cryptography.
 
 But the thing with jazz fusion is that it's harder to get into unless you're familiar with the elements being combined. Let me show you a few songs, and how we're mixing it up. 
+If you're familiar with one of these topics, bear with us, I promise it's worth it in the end.
 
 Put on your seatbelts. 3, 2, 1... 
 
@@ -80,7 +81,9 @@ After twenty years, expanding hardware targets, and changing problem spaces, LLV
 
 ## What (is MLIR?)
 
+<div width=10%>
 ![](./assets/mlir/mlir-identity-03.jpg)
+</div>
 
 Out of this came [MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation), a project started by Chris Lattner et al with the aim to build a common infrastructure to support all these different subsystems, and to learn from the mistakes made and lessons learned in the development of LLVM. 
 
@@ -156,49 +159,41 @@ All these advantages are direct results of MLIR's abstraction level.
 
 Let's change the tune again. 
 
-A similar story has been playing out in the area of cryptography applied to blockchains. 
-New techniques have been discovered, older ones have matured, Zero Knowledge Proof systems are the future. 
-The more established blockchains have walked the path of offloading as much hashing as possible to GPUs and later ASICs (fating us mere mortals to scrabbling for the crumbs or resigned to playing emacs tetris on my Raspberry Pi)
+In the land of blockchains, cryptocurrencies, and distributed finance, several developments have converged:
 
-..., codegen infrastructure has also become relevant. 
+First, the more established blockchains have paralleled the story in the machine learning world, offloading as much hashing as possible to GPUs and later ASICs (fating us mere mortals to scrabbling for the crumbs or resigned to playing emacs tetris on my Raspberry Pi). Newer chains and L2s are expected to follow the same path.
 
-But it is this last area, ZKP, which I believe brings fresh winds of change. 
+Second, as their applications have become more mainstream (albeit with ups and downs), two concerns have taken center stage: scalability, and privacy. 
+Blockchains are not known for their efficiency so effort has gone into trying to have the best of both worlds; in part by moving away from Proof of Work, moving work to L2s, and also by turning back to guarantees provided by cryptographic techniques. As new techniques have been discovered and older ones have matured, Zero Knowledge Proof systems have emerged as the predominant area from which solutions to these two problems can be built.
 
-wtype systems, virtual machines, and intermediate representations are some of the tools that have been brought to bear in the struggle to produce software products that transport guarantees to execution layers. 
+But as is well known, even though there is a good amount of gatekeeping, cryptography is not something one can pick up over the weekend and "roll one's own", especially in developing areas such as ZKP. It's not _just_ that their proper use is difficult, or the fact that many components arestill in alpha, but because  translating computation in a programming language to a form that can be input to these cryptographic primitives takes a lot of work and some ingenuity. Most ZKP protocols involve arithmetization, which is the process of representing computation in a numerical format that can be used by the proving system, usually by taking the instructions in the computation and building an expression graph of operations on bits called an arithmetic circuit, and then generating an _execution trace_, which very briefly is a matrix of field elements representing the evolution of the computation over time. This execution trace is fed to the prover. 
 
-Virtual machines have been designed to provide computational guarantees about the programs they run. 
-miden, starkvm, among others
+To encapsulate these processes virtual machines have been designed and implemented to generate these numerical execution traces and provide the computational guarantees, such as [Miden](https://github.com/0xPolygonMiden/miden-vm) and [cairo-rs](https://github.com/lambdaclass/cairo-rs/pulls). Once you have a virtual machine, you need a compiler and an intermediate representation.
 
-Type systems help in producing code that has properties the tools can reason 
-about, such as termination or bounded resource consumption of transaction fees. 
+You also can't accept just any program since you need to know that it's execution is provable, unless you're willing to accept the possibility of nonterminating programs, invalid transactions which consume excessive gas, the production of invalid or incomplete traces, and having the prover just quit in the middle. Type theory and intermediate representations within compilers  have become one of the strongest tools we have for producing code that has properties we can mechanically reason about and check.
 
-> Parallel with intro beat story
-> initial wave of repurposing video graphics hardware, then app specific HW
-> ELABORATE
+So in short, the need to run on more diverse hardware, to incorporate programming language technology, to enable the easy use of difficult cryptographic primitives, to transport guarantees from developer tooling to execution layers, 
+have all come together to bring about a small renaissance of language implementation in the crypto world. 
 
-la motivacion en el contexto general de crypto, estaba viendo el post que sacaste vos el otro dia. o sea la pregunta es: 
-fuera de cairo/starknet, que es lo que paso que llevo que todos esten desarrollando infraestructura de compiladores/lenguajes.
-resumen de mi argumento seria: zkp busca proveer garantias, las herramientas mediante las cuales se pueden aplicar las garantias son 1) VMs 2) sistemas de tipos ,
-ejemplo es la compilacion de codigo a circuitos, aritmetizacion
-10:58
-despues lo hago en el contexto de cairo, presento brevemente sierra y porque existe, eso ya lo tengo
-y despues un walkthrough breve sin tanto codigo de lo que tenemos en sierra2mlir
+### Cairo 
 
-lo que paso es que están en un cumple
-por que crypto está intentando reinventar todo
-de manera muy termo
-hablemos en un rato
+[Cairo](https://github.com/starkware-libs/cairo) is a "language for creating provable programs for general computation", through the use of STARK-based validity proofs.
+If you're not coming from a cryptography background, ZKP and STARKS are too deep a rabbithole for one article spanning so many topics, but it suffices to say that STARKs enable blockchain scaling by efficiently proving the integrity of computations.
+
+   > STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations. It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
+   > - [www.starknet.io](https://www.starknet.io/en/posts/engineering/starks-starkex-and-starknet)
+
+As Cairo matures improvements have been added, such as a linear type system implementing an ownership system similar to Rust, and an intermediate representation providing guarantees. Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated. 
+
+The Cairo compiler eventually compiles Cairo code down to a "Cairo assembly", which is what the virtual machines runs to compute results and generate traces. However as mentioned before, not all representations are adequate for all code properties, so Cairo introduced Sierra (**S**afe **I**nt**E**rmediate **R**ep**R**esent**A**tion).
 
 ### Why use MLIR in the context of Cairo?
 
->  STARK-based validity proofs to ensure an Ethereum-secure, fast and seamless user experience. They support a range of data availability modes.
-> A Permissionless Decentralized Validity-Rollup (often referred to as ZK-Rollup).
-Any developer can deploy any dApp, using smart contracts, and achieve unlimited scale.
-    STARKs enable blockchain scaling by efficiently proving the integrity of computations
-    StarkEx is an application-specific scaling engine
-    StarkNet is a permissionless, smart contract Layer 2 network
+Cairo is also being used to build StarkNet, a permissionless Ethereum layer 2 network on which provable smart contracts can be deployed.
+Nodes on the network receive transactions and must verify they are valid before going about the business of generating the proof.
+The contract code must be run with the transaction inputs to generate the state change, the proof, and verify 
 
-   STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations. It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
+Another motivation is developer experience and tooling quality. Before being able to deploy said contracts, the code must be written and tested, and being able to run Cairo code faster improves turnaround time in the development loop. 
 
 - Enable faster checking of Cairo contract TX
 - Faster Gas computation
@@ -272,7 +267,7 @@ cairo_lang_sierra::ProgramParser::new()
             .unwrap(),
 ```
 
-- [src](https://github.com/lambdaclass/cairo_sierra_2_MLIR/blob/main/sierra2mlir/benches/execution.rs)
+- [src](https://github.com/lambdaclass/cairo_sierra2mlir/blob/main/sierra2mlir/benches/execution.rs)
 
 ```rust
 pub fn criterion_benchmark(c: &mut Criterion) {
