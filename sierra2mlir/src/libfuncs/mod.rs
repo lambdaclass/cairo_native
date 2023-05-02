@@ -43,6 +43,7 @@ impl<'ctx> Compiler<'ctx> {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
                 "branch_align"
+                | "get_builtin_costs"
                 | "revoke_ap_tracking"
                 | "disable_ap_tracking"
                 | "drop"
@@ -98,7 +99,7 @@ impl<'ctx> Compiler<'ctx> {
                 "match_nullable" => {
                     self.register_match_nullable(func_decl, storage);
                 }
-                "withdraw_gas" => {
+                "withdraw_gas" | "withdraw_gas_all" => {
                     self.register_withdraw_gas(func_decl, storage);
                 }
                 "store_temp" | "rename" | "unbox" | "into_box" => {

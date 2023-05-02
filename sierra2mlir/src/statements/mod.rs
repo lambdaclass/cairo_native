@@ -249,7 +249,7 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
-                            "withdraw_gas" => {
+                            "withdraw_gas" | "withdraw_gas_all" => {
                                 self.inline_withdraw_gas(
                                     statement_idx,
                                     block,

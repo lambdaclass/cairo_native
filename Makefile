@@ -34,10 +34,10 @@ COMPARISON_TEST_TARGETS := $(patsubst %.cairo,%.sierra,$(COMPARISON_TEST_SOURCES
 	cairo-compile --replace-ids $< $@
 
 %.mlir: %.sierra build
-	./target/release/cli compile -o $@ $<
+	./target/release/cli compile --available-gas 1000000 -o $@ $<
 
 %.opt.mlir: %.sierra build
-	./target/release/cli compile --optimize -o $@ $<
+	./target/release/cli compile  --available-gas 1000000 --optimize -o $@ $<
 
 %.ll: %.mlir
 	$(LLVM_PREFIX)/bin/mlir-translate --mlir-to-llvmir -o $@ $<
