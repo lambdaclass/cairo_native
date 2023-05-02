@@ -383,7 +383,7 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         if let Some(gas) = &self.gas {
-            // reduce the gas cost of this user function call
+            // spend the required gas for this user function call
             let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
             for (_cost_type, cost_value) in costs.iter() {
                 let value = self.op_u128_const(&entry_block, &cost_value.to_string());

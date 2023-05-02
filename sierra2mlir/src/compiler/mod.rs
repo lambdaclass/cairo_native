@@ -71,11 +71,14 @@ impl<'ctx> Compiler<'ctx> {
     ) -> color_eyre::Result<Self> {
         let sierra_program_registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
-        // Create the compiler gas structure if gas was provided, similar to cairo casm runner.
+        // Create the compiler gas structure if gas was providedr.
+        // This mostly copies the code from the sierra to casm calc_metadata function.
+        // source: https://github.com/starkware-libs/cairo/blob/e5303cf5a38c926a35a3b3c62cc6e0128032678b/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L41
         let gas: Option<CompilerGas> = if let Some(available_gas) = available_gas {
             let function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>> =
                 Default::default();
 
+            // Calculates gas precost information for a given program - the gas costs of non-step tokens.
             let pre_function_set_costs = function_set_costs
                 .iter()
                 .map(|(func, costs)| {
@@ -89,10 +92,12 @@ impl<'ctx> Compiler<'ctx> {
                 .collect();
             let pre_gas_info = calc_gas_precost_info(program, pre_function_set_costs)?;
 
+            // Calculate the ap changes, needed to calculate the post cost info.
             let ap_change_info = calc_ap_changes(program, |idx, token_type| {
                 pre_gas_info.variable_values[(idx, token_type)] as usize
             })?;
 
+            // Calculates gas postcost information for a given program - the gas costs of step token.
             let post_function_set_costs = function_set_costs
                 .iter()
                 .map(|(func, costs)| {
