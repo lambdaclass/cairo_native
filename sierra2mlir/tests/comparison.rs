@@ -63,8 +63,8 @@ use test_case::test_case;
 #[test_case("felt_ops/negation", Some(100000))]
 #[test_case("felt_ops/sub", None)]
 #[test_case("felt_ops/sub", Some(100000))]
-#[test_case("fib_counter", None)] // can't use gas until gas::withdraw_gas is used/implemented due to recursion.
-#[test_case("fib_local", None)] // can't use gas until gas::withdraw_gas is used/implemented due to recursion.
+#[test_case("fib_counter", Some(1000000))]
+#[test_case("fib_local", Some(1000000))]
 #[test_case("nullable/test_nullable", None)]
 #[test_case("nullable/test_nullable", Some(100000))]
 #[test_case("pedersen", None)]
