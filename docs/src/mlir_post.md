@@ -3,28 +3,27 @@
 <!-- toc -->
 
 structure:
-
-- INTRO: the lead up to MLIR:
-	- LLVM background
-	- Then machine learning algos with HW acceleleration
-	- Compiler infra proliferation, duplication
-	- LLVM unsuitability
-- WHAT
-	- Enter MLIR
-	- So what is MLIR?
-- WHY
-	- Advantages over LLVM
-		- Running on GPU
-	- Meanwhile in cryptoland
-	- Cairo
-	-  Why (use MLIR in the context of Cairo)?
-- HOW
-	- sierra2mlir compilation process
-	- how to run emitted code
-	- example: felt add
-	- example: conditional
-- BUT
-- CONCLUSION
+	- INTRO: the lead up to MLIR:
+		- LLVM background
+		- Then machine learning algos with HW acceleleration
+		- Compiler infra proliferation, duplication
+		- LLVM unsuitability
+	- WHAT
+		- Enter MLIR
+		- So what is MLIR?
+	- WHY
+		- Advantages over LLVM
+			- Running on GPU
+		- Meanwhile in cryptoland
+		- Cairo
+		-  Why (use MLIR in the context of Cairo)?
+	- HOW
+		- sierra2mlir compilation process
+		- how to run emitted code
+		- example: felt add
+		- example: conditional
+	- BUT
+	- CONCLUSION
 
 ---
 I love jazz. Of all the jazz styles I love, jazz fusion is the one I enjoy most, because I find any fusion of different things more stimulating.
@@ -39,7 +38,7 @@ Put on your seatbelts. 3, 2, 1...
 
 ## Intro beat
 
-### Compilers, LLVM
+### Compilers & LLVM
 
 Some 20-something years ago at the University of Illinois a group of compiler researchers had need of a more flexible infrastructure. What they developed came to be known as LLVM and has since become the foremost compiler tooling project. It powers many of the analysis and code generation components of the compilers for Clang, Swift, Rust, and many more languages.
 
@@ -81,7 +80,9 @@ After twenty years, expanding hardware targets, and changing problem spaces, LLV
 ## What (is MLIR?)
 
 <div width=10%>
+
 ![](./assets/mlir/mlir-identity-03.jpg)
+
 </div>
 
 Out of this came [MLIR](https://mlir.llvm.org/) (Multi-Level Intermediate Representation), a project started by Chris Lattner et al with the aim to build a common infrastructure to support all these different subsystems, and to learn from the mistakes made and lessons learned in the development of LLVM. 
@@ -182,11 +183,11 @@ If you're not coming from a cryptography background, ZKP and STARKS are too deep
    > STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations. It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
    > - [www.starknet.io](https://www.starknet.io/en/posts/engineering/starks-starkex-and-starknet)
 
-As Cairo matures improvements have been added, such as a linear type system implementing an ownership system similar to Rust, and an intermediate representation providing guarantees. Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated, i. e. all correct programs are provable. 
+As Cairo matures improvements have been added, such as a linear type system implementing a ownership similarly to Rust, and an intermediate representation providing guarantees. Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated, i. e. all correct programs are provable. 
 
 The Cairo compiler eventually compiles Cairo code down to a "Cairo assembly", which is what the virtual machines runs to compute results and generate traces. However as mentioned before, not all representations are adequate for all tasks, so Cairo introduced Sierra (**S**afe **I**nt**E**rmediate **R**ep**R**esent**A**tion).
 
-Sierra's goal is to be correct by construction, by restricting 
+Sierra's goal is to be correct by construction, 
 
 ### Why use MLIR in the context of Cairo?
 
@@ -266,52 +267,6 @@ cairo_lang_sierra::ProgramParser::new()
             .unwrap(),
 ```
 
-- [src](https://github.com/lambdaclass/cairo_sierra2mlir/blob/main/sierra2mlir/benches/execution.rs)
-
-```rust
-pub fn criterion_benchmark(c: &mut Criterion) {
-    let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
-    let engine = sierra2mlir::execute(&program, false, 1).unwrap();
-
-    unsafe {
-        engine.invoke_packed("fib::fib::main", &mut []).unwrap();
-    };
-
-    c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
-        b.iter(|| {
-            unsafe {
-                engine.invoke_packed("fib::fib::main", &mut []).ok();
-            };
-        });
-    });
-
-    // Requires sierra files to be generated previously.
-    let mut compile_group = c.benchmark_group("compile");
-
-    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-
-    for entry in fs::read_dir(format!("{base_dir}/../examples")).unwrap() {
-        let entry = entry.unwrap();
-        let path = fs::canonicalize(entry.path()).unwrap();
-
-        if let Some(ext) = path.extension() {
-            if ext.eq_ignore_ascii_case("sierra") {
-                compile_group.bench_function(
-                    &format!("examples/{}", path.file_stem().unwrap().to_string_lossy()),
-                    move |x| {
-                        let sierra_code = fs::read_to_string(&path).unwrap();
-                        let program = ProgramParser::new().parse(&sierra_code).unwrap();
-                        x.iter(|| {
-                            sierra2mlir::compile(&program, false, false, false, 1).unwrap();
-                        });
-                    },
-                );
-            }
-        }
-    }
-}
-```
-
 #### Felt Add
 
 Let's take a look at an example short enough to inspect its transformation process. 
@@ -347,8 +302,6 @@ return([7]);
 
 simple::simple::something@0([0]: felt252) -> (Tuple<felt252, felt252>);
 ```
-
-The `sierra2mlir` pass will produce a MLIR module 
 
 ```mlir
 module {
@@ -396,7 +349,7 @@ module {
 
 #### Conditionals
 
-```
+```cairo
 fn mul_if_not_zero(a: felt252) -> felt252 {
     match a {
         0 => 0,
@@ -405,7 +358,7 @@ fn mul_if_not_zero(a: felt252) -> felt252 {
 }
 ```
 
-```
+```sierra
 type felt252 = felt252;
 type NonZero<felt252> = NonZero<felt252>;
 
@@ -439,7 +392,53 @@ return([7]);
 felt_is_zero::felt_is_zero::mul_if_not_zero@0([0]: felt252) -> (felt252);
 ```
 
+- execute
 
+- [src](https://github.com/lambdaclass/cairo_sierra2mlir/blob/main/sierra2mlir/benches/execution.rs)
+
+```rust
+pub fn criterion_benchmark(c: &mut Criterion) {
+    let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
+    let engine = sierra2mlir::execute(&program, false, 1).unwrap();
+
+    unsafe {
+        engine.invoke_packed("fib::fib::main", &mut []).unwrap();
+    };
+
+    c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
+        b.iter(|| {
+            unsafe {
+                engine.invoke_packed("fib::fib::main", &mut []).ok();
+            };
+        });
+    });
+
+    // Requires sierra files to be generated previously.
+    let mut compile_group = c.benchmark_group("compile");
+
+    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    for entry in fs::read_dir(format!("{base_dir}/../examples")).unwrap() {
+        let entry = entry.unwrap();
+        let path = fs::canonicalize(entry.path()).unwrap();
+
+        if let Some(ext) = path.extension() {
+            if ext.eq_ignore_ascii_case("sierra") {
+                compile_group.bench_function(
+                    &format!("examples/{}", path.file_stem().unwrap().to_string_lossy()),
+                    move |x| {
+                        let sierra_code = fs::read_to_string(&path).unwrap();
+                        let program = ProgramParser::new().parse(&sierra_code).unwrap();
+                        x.iter(|| {
+                            sierra2mlir::compile(&program, false, false, false, 1).unwrap();
+                        });
+                    },
+                );
+            }
+        }
+    }
+}
+```
 
 ## But?
 
@@ -453,9 +452,11 @@ Third, like any powerful tool that allows one to operate on a high level of abst
 
 ## Conclusions
 
-> TODO
+We would like to salute and thank the team and community behind LLVM and MLIR, and Cairo. 
+Foundational technologies are rare, difficult to develop, and require great insight and vision to come to term.
+These stones feel as the base on which great things will rest. 
 
-We would like to salute and thank the team and community behind LLVM and MLIR. Foundational technologies are rare, difficult to develop, and require great insight and vision to come to term, and MLIR is definitely one of them.	
+![An evergreen meme](./assets/mlir/yodawg.jpg "An evergreen meme")
 
 ## References and Resources
 
@@ -464,15 +465,6 @@ We would like to salute and thank the team and community behind LLVM and MLIR. F
 - MLIR Tutorial [Video](https://www.youtube.com/watch?v=Y4SvqTtOIDk) and [Slides](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
 - [Yizhou Shan's notes on MLIR](http://lastweek.io/notes/MLIR/)
 - [Lei Zhang's "Compilers and IRs: LLVM IR, SPIR-V, and MLIR"](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/)
-
-![An evergreen meme](./assets/mlir/cb-yodawg.jpg "An evergreen meme")
-
----
-Notas y material no parte del text:
-
-Ref: The other side of the coin
-
----
-Ref: opengenus
-
-	- [src](https://iq.opengenus.org/mlir-compiler-infrastructure/)
+- [Starkware glossary: STARKs, StarkEx, and StarkNet](https://medium.com/starkware/starks-starkex-and-starknet-9a426680745a)
+- [Starkware: Cairo 1.0](https://medium.com/starkware/cairo-1-0-aa96eefb19a0)
+- [Starkware: Cairo 1.0 is here](https://medium.com/starkware/cairo-1-0-is-here-7e1ac8377038)
