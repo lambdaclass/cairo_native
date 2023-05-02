@@ -26,7 +26,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
             storage.libfuncs.get(id).unwrap_or_else(|| panic!("Unhandled libfunc {id}"));
 
         // TODO: Find a better way to avoid skipping necessary functions.
-        if id != "print" && libfunc_def.naively_skippable() {
+        if (id != "print" && id != "branch_align") && libfunc_def.naively_skippable() {
             return Ok(());
         }
 

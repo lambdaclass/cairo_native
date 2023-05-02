@@ -42,8 +42,7 @@ impl<'ctx> Compiler<'ctx> {
             match name {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
-                "branch_align"
-                | "revoke_ap_tracking"
+                "revoke_ap_tracking"
                 | "disable_ap_tracking"
                 | "drop"
                 | "jump"
@@ -51,6 +50,13 @@ impl<'ctx> Compiler<'ctx> {
                 | "finalize_locals" => self.register_nop(func_decl, storage),
                 "store_local" => self.register_store_local(func_decl, storage)?,
                 "function_call" => continue, // Skip function call because it works differently than all the others
+                "branch_align" => {
+                    if self.gas.is_some() {
+                        self.create_libfunc_print(func_decl, parent_block, storage)?;
+                    } else {
+                        self.register_nop(func_decl, storage)
+                    }
+                }
                 "felt252_const" => {
                     self.create_libfunc_felt_const(func_decl, self.felt_type(), storage)?;
                 }
@@ -97,6 +103,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "match_nullable" => {
                     self.register_match_nullable(func_decl, storage);
+                }
+                "withdraw_gas" => {
+                    self.register_withdraw_gas(func_decl, storage);
                 }
                 "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
@@ -418,6 +427,11 @@ impl<'ctx> Compiler<'ctx> {
     fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(id, SierraLibFunc::create_function_all_args(vec![], vec![]));
+    }
+
+    fn register_branch_align(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(vec![]));
     }
 
     pub fn create_libfunc_felt_const(
@@ -2419,6 +2433,27 @@ impl<'ctx> Compiler<'ctx> {
                     vec![],
                     // jump: value
                     vec![PositionalArg { loc: 0, ty: arg_type }],
+                ],
+            },
+        );
+    }
+
+    pub fn register_withdraw_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![],
+                return_types: vec![
+                    // fallthrough: success
+                    vec![],
+                    // jump: failure
+                    vec![],
                 ],
             },
         );

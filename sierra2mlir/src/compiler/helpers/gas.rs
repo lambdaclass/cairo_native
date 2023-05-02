@@ -66,6 +66,8 @@ impl<'ctx> Compiler<'ctx> {
     /// Returns the resulting cmp operation comparing current gas to the given value.
     ///
     /// `value <= current_gas`
+    ///
+    /// Value should be u128.
     pub fn call_has_enough_gas<'block>(
         &'ctx self,
         block: &'block Block,

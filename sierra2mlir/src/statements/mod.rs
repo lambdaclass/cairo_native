@@ -248,6 +248,16 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "withdraw_gas" => {
+                                self.inline_withdraw_gas(
+                                    statement_idx,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                )?;
+                                jump_processed = true;
+                            }
                             "downcast" => {
                                 self.inline_downcast(
                                     &id,
