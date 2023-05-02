@@ -50,6 +50,7 @@ use test_case::test_case;
 #[test_case("fib_local")]
 #[test_case("nullable/test_nullable")]
 #[test_case("pedersen")]
+#[test_case("poseidon")]
 #[test_case("returns/enums")]
 #[test_case("returns/simple")]
 #[test_case("returns/tuple")]

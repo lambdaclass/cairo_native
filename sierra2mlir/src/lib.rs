@@ -13,7 +13,6 @@ use tracing::debug;
 use self::utility::run_llvm_config;
 use crate::compiler::Compiler;
 use cairo_lang_sierra::program::Program;
-use cfg_match::cfg_match;
 
 pub mod compiler;
 mod libfuncs;
@@ -115,13 +114,4 @@ pub fn execute(
     );
 
     Ok(engine)
-}
-
-pub const fn shared_library_extension() -> &'static str {
-    cfg_match! {
-        target_os = "linux" => "so",
-        target_os = "macos" => "dylib",
-        target_os = "windows" => "dll",
-        _ => compile_error!("Unsupported OS."),
-    }
 }
