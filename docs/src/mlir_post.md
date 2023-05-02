@@ -16,8 +16,7 @@ structure:
 	- Advantages over LLVM
 		- Running on GPU
 	- Meanwhile in cryptoland
-		- Goals
-		- HW accelerated crypto, GPU, ASIC future
+	- Cairo
 	-  Why (use MLIR in the context of Cairo)?
 - HOW
 	- sierra2mlir compilation process
@@ -175,17 +174,19 @@ You also can't accept just any program since you need to know that it's executio
 So in short, the need to run on more diverse hardware, to incorporate programming language technology, to enable the easy use of difficult cryptographic primitives, to transport guarantees from developer tooling to execution layers, 
 have all come together to bring about a small renaissance of language implementation in the crypto world. 
 
-### Cairo 
+### Cairo & Sierra
 
 [Cairo](https://github.com/starkware-libs/cairo) is a "language for creating provable programs for general computation", through the use of STARK-based validity proofs.
-If you're not coming from a cryptography background, ZKP and STARKS are too deep a rabbithole for one article spanning so many topics, but it suffices to say that STARKs enable blockchain scaling by efficiently proving the integrity of computations.
+If you're not coming from a cryptography background, ZKP and STARKS are too deep a rabbithole for one article spanning so many topics, it suffices to say that STARKs enable blockchain scaling by efficiently proving the integrity of computations.
 
    > STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations. It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
    > - [www.starknet.io](https://www.starknet.io/en/posts/engineering/starks-starkex-and-starknet)
 
-As Cairo matures improvements have been added, such as a linear type system implementing an ownership system similar to Rust, and an intermediate representation providing guarantees. Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated. 
+As Cairo matures improvements have been added, such as a linear type system implementing an ownership system similar to Rust, and an intermediate representation providing guarantees. Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated, i. e. all correct programs are provable. 
 
-The Cairo compiler eventually compiles Cairo code down to a "Cairo assembly", which is what the virtual machines runs to compute results and generate traces. However as mentioned before, not all representations are adequate for all code properties, so Cairo introduced Sierra (**S**afe **I**nt**E**rmediate **R**ep**R**esent**A**tion).
+The Cairo compiler eventually compiles Cairo code down to a "Cairo assembly", which is what the virtual machines runs to compute results and generate traces. However as mentioned before, not all representations are adequate for all tasks, so Cairo introduced Sierra (**S**afe **I**nt**E**rmediate **R**ep**R**esent**A**tion).
+
+Sierra's goal is to be correct by construction, by restricting 
 
 ### Why use MLIR in the context of Cairo?
 
@@ -199,8 +200,6 @@ Another motivation is developer experience and tooling quality. Before being abl
 - Faster Gas computation
 - To enable better L2 sequencers
 - To enable better developer tooling
-
-#### Cairo & Sierra
 
 <!-- ### What optimizations does it have or enable? -->
 
@@ -313,17 +312,20 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 }
 ```
 
-
-
 #### Felt Add
 
-```
+Let's take a look at an example short enough to inspect its transformation process. 
+This simple function takes a Felt (a 252-bit Field Element) and returns a struct with two values:
+
+```cairo
 fn something(a: felt252) -> (felt252, felt252) {
     (a + 2, a - 2)
 }
 ```
 
-```
+The cairo compiler outputs the following sierra:
+
+```sierra
 type felt252 = felt252;
 type Tuple<felt252, felt252> = Struct<ut@Tuple, felt252, felt252>;
 
@@ -346,7 +348,9 @@ return([7]);
 simple::simple::something@0([0]: felt252) -> (Tuple<felt252, felt252>);
 ```
 
-```
+The `sierra2mlir` pass will produce a MLIR module 
+
+```mlir
 module {
   func.func @felt252_add(%arg0: i256, %arg1: i256) -> i256 attributes {llvm.dso_local, llvm.linkage = #llvm.linkage<internal>, passthrough = ["norecurse", "alwaysinline", "nounwind"]} {
     %0 = arith.addi %arg0, %arg1 : i256
