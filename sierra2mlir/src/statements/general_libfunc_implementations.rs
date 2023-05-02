@@ -26,12 +26,12 @@ impl<'block, 'ctx> Compiler<'ctx> {
             storage.libfuncs.get(id).unwrap_or_else(|| panic!("Unhandled libfunc {id}"));
 
         // TODO: Find a better way to avoid skipping necessary functions.
-        if (id != "print" && id != "branch_align") && libfunc_def.naively_skippable() {
+        if id != "print" && libfunc_def.naively_skippable() {
             return Ok(());
         }
 
         match libfunc_def {
-            SierraLibFunc::Function { args, return_types } => self
+            SierraLibFunc::Function { args, return_types, .. } => self
                 .process_libfunc_as_function_call(
                     id,
                     args,

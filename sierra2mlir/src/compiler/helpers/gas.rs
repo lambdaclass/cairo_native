@@ -41,7 +41,7 @@ impl<'ctx> Compiler<'ctx> {
         let (addr_op, current_value_op) = self.call_get_gas_counter(block)?;
         let addr = addr_op.result(0)?.into();
         let current_value = current_value_op.result(0)?.into();
-        let new_val_op = self.op_sub(block, current_value, value);
+        let new_val_op = self.op_sub_sat(block, current_value, value);
         let new_val = new_val_op.result(0)?.into();
         self.op_llvm_store(block, new_val, addr)?;
         Ok(())

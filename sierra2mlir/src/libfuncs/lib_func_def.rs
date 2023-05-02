@@ -16,7 +16,6 @@ pub enum SierraLibFunc<'ctx> {
     Branching { args: Vec<PositionalArg<'ctx>>, return_types: Vec<Vec<PositionalArg<'ctx>>> },
     Constant { ty: SierraType<'ctx>, value: String },
     Function { args: Vec<PositionalArg<'ctx>>, return_types: Vec<PositionalArg<'ctx>> },
-
     // Cases such as store_temp and dup that can be implemented purely at a dataflow level with no processing
     InlineDataflow(Vec<PositionalArg<'ctx>>),
 }

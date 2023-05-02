@@ -42,7 +42,8 @@ impl<'ctx> Compiler<'ctx> {
             match name {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
-                "revoke_ap_tracking"
+                "branch_align"
+                | "revoke_ap_tracking"
                 | "disable_ap_tracking"
                 | "drop"
                 | "jump"
@@ -50,13 +51,6 @@ impl<'ctx> Compiler<'ctx> {
                 | "finalize_locals" => self.register_nop(func_decl, storage),
                 "store_local" => self.register_store_local(func_decl, storage)?,
                 "function_call" => continue, // Skip function call because it works differently than all the others
-                "branch_align" => {
-                    if self.gas.is_some() {
-                        self.create_libfunc_print(func_decl, parent_block, storage)?;
-                    } else {
-                        self.register_nop(func_decl, storage)
-                    }
-                }
                 "felt252_const" => {
                     self.create_libfunc_felt_const(func_decl, self.felt_type(), storage)?;
                 }
@@ -427,11 +421,6 @@ impl<'ctx> Compiler<'ctx> {
     fn register_nop(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(id, SierraLibFunc::create_function_all_args(vec![], vec![]));
-    }
-
-    fn register_branch_align(&self, func_decl: &LibfuncDeclaration, storage: &mut Storage<'ctx>) {
-        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
-        storage.libfuncs.insert(id, SierraLibFunc::InlineDataflow(vec![]));
     }
 
     pub fn create_libfunc_felt_const(

@@ -20,6 +20,7 @@ use crate::{
 mod function_call;
 mod general_libfunc_implementations;
 mod inline_jumps;
+mod inline_libfuncs;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
@@ -270,6 +271,9 @@ impl<'ctx> Compiler<'ctx> {
                                     storage,
                                 )?;
                                 jump_processed = true;
+                            }
+                            "branch_align" => {
+                                self.inline_branch_align(statement_idx, block)?;
                             }
                             "function_call" => self.process_function_call(
                                 &id,

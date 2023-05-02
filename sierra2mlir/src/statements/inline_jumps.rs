@@ -24,7 +24,7 @@ use crate::{
 };
 
 /*
-   Here are the libfuncs implemented inline,
+   Here are the control flow libfuncs implemented inline,
    meaning that they are implemented in place where they are called.
 
    Mostly control flow related libfuncs.
@@ -863,8 +863,6 @@ impl<'ctx> Compiler<'ctx> {
         let success_block = target_blocks[1];
         let failure_block = target_blocks[0];
 
-        // todo: reduce branch align gas costs.
-        // dbg!(&gas.gas_info.variable_values);
         // get the requested amount of gas.
         let requested_gas_count: i64 = gas
             .gas_info
@@ -873,7 +871,6 @@ impl<'ctx> Compiler<'ctx> {
             .copied()
             .unwrap();
 
-        dbg!(&requested_gas_count);
         // check if there is enough.
         let requested_gas_op =
             self.op_const(block, &requested_gas_count.to_string(), self.u128_type());

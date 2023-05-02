@@ -177,8 +177,10 @@ impl<'ctx> Compiler<'ctx> {
             let current_gas_value = current_gas_op.result(0)?.into();
             let lower = self.op_trunc(&success_block, current_gas_value, self.u64_type());
             let shift_amount = self.op_u128_const(&success_block, "64");
-            let upper_shifted = self.op_shru(&success_block, current_gas_value, shift_amount.result(0)?.into());
-            let upper = self.op_trunc(&success_block, upper_shifted.result(0)?.into(), self.u64_type());
+            let upper_shifted =
+                self.op_shru(&success_block, current_gas_value, shift_amount.result(0)?.into());
+            let upper =
+                self.op_trunc(&success_block, upper_shifted.result(0)?.into(), self.u64_type());
             self.call_dprintf(
                 &success_block,
                 "Remaining gas: %lX%016lX\n",

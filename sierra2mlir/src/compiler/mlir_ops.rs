@@ -43,6 +43,21 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    pub fn op_sub_sat<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.usub.sat\"",
+                )
+                .unwrap()])
+                .add_operands(&[lhs, rhs])
+                .add_results(&[lhs.r#type()])
+                .build(),
+        )
+    }
+
     /// Only the MLIR op.
     pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(arith::muli(
