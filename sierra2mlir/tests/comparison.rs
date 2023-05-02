@@ -160,8 +160,8 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                 );
             }
         },
-        Err(_) => {
-            todo!("Comparison tests where the cairo runner fails");
+        Err(e) => {
+            todo!("Comparison tests where the cairo runner fails:\n{e}");
         }
     }
     Ok(())
@@ -221,7 +221,7 @@ fn compile_to_mlir_with_consistency_check(
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
 fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result<RunResult> {
-    let runner = SierraCasmRunner::new(program, None, Default::default())
+    let runner = SierraCasmRunner::new(program, Some(Default::default()), Default::default())
         .with_context(|| "Failed setting up runner.")?;
 
     let func = runner.find_function("::main")?;
