@@ -386,7 +386,7 @@ fn get_all_types_to_print(
                 }
             }
             // Specifically omit these types
-            "Bitwise" | "Pedersen" | "RangeCheck" => {}
+            "Bitwise" | "Pedersen" | "Poseidon" | "RangeCheck" => {}
             _ => todo!("Felt representation for {}", type_category),
         }
     }

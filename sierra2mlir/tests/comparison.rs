@@ -69,6 +69,8 @@ use test_case::test_case;
 #[test_case("nullable/test_nullable", Some(100000))]
 #[test_case("pedersen", None)]
 #[test_case("pedersen", Some(50000))]
+#[test_case("poseidon", None)]
+#[test_case("poseidon", Some(50000))]
 #[test_case("returns/enums", None)]
 #[test_case("returns/enums", Some(100000))]
 #[test_case("returns/simple", None)]
