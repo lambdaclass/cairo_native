@@ -1,24 +1,32 @@
 use cairo_lang_sierra::ProgramParser;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::{env, fs};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
-    let engine = sierra2mlir::execute(&program, false, 1, Some(100_000_000)).unwrap();
+    //let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
+    //let engine = sierra2mlir::execute(&program, false, 1, Some(800_000_000)).unwrap();
 
+    /* TODO: re-enable when segfault is fixed, it happens upon calling the invoke_packed,
+        either due to missining pointers for return values or something else.
     unsafe {
-        engine.invoke_packed("fib::fib::main", &mut []).unwrap();
+        engine
+            .invoke_packed("fib::fib::main", &mut [])
+            .unwrap();
     };
 
     c.bench_with_input(BenchmarkId::new("MLIR", 1), &(engine), |b, engine| {
         b.iter(|| {
             unsafe {
-                engine.invoke_packed("fib::fib::main", &mut []).ok();
+                let mut return_value = ReturnValue::default();
+                let return_ptr = std::ptr::addr_of_mut!(return_value);
+                engine.invoke_packed("fib::fib::main", &mut [return_ptr as *mut _ as *mut ()]).ok();
             };
         });
     });
+    */
 
     // Requires sierra files to be generated previously.
+
     let mut compile_group = c.benchmark_group("compile");
 
     let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();

@@ -137,6 +137,7 @@ fn main() -> color_eyre::Result<()> {
             let engine = sierra2mlir::execute(&program, main_print, print_target, available_gas)?;
 
             unsafe {
+                // note: this segfaults if the function returns something.
                 engine.invoke_packed(&function, &mut [])?;
             };
         }

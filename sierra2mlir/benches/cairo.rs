@@ -14,7 +14,7 @@ fn benchmark_cairo(c: &mut Criterion) {
         BenchmarkId::new("Cairo", 1),
         &(runner, func, starknet_state),
         |b, (runner, func, starknet_state)| {
-            b.iter(|| runner.run_function(func, &[], Some(100_000_000), starknet_state.clone()))
+            b.iter(|| runner.run_function(func, &[], Some(800_000_000), starknet_state.clone()))
         },
     );
 }
