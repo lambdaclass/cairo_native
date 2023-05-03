@@ -268,6 +268,16 @@ impl<'ctx> Compiler<'ctx> {
                                 &mut variables,
                                 storage,
                             )?,
+                            "ec_point_from_x_nz" => self.inline_ec_point_from_x_nz(
+                                &id,
+                                invocation,
+                                &region,
+                                block,
+                                &variables,
+                                &blocks,
+                                statement_idx,
+                                storage,
+                            )?,
                             _ => self.process_general_libfunc(
                                 &id,
                                 invocation,

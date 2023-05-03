@@ -8,7 +8,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
     dialect::cf,
-    ir::{operation, Block, BlockRef, Location, Region, Value, ValueLike},
+    ir::{operation, Block, BlockRef, Location, NamedAttribute, Region, Value, ValueLike},
 };
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
@@ -829,5 +829,33 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    pub fn inline_ec_point_from_x_nz(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        region: &Region,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
+        let arg = &libfunc.get_args()[0];
+
+        let arg = variables
+            .get(&invocation.args[arg.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        // TODO: Call aux lib function.
+        let op0 = operation::Builder::new("func.call", Location::unknown(&self.context))
+            .add_attributes(&[NamedAttribute::new_parsed(&self.context, "sym_name", "\"\"")])
+            .add_operands(&[todo!(), todo!(), todo!()])
+            .build();
+
+        todo!()
     }
 }

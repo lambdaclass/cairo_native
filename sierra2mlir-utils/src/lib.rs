@@ -92,3 +92,18 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_point_zero(x: *mut u8, y: *mut u8, 
     y.copy_from_slice(&ec_point.y.to_bytes_be());
     infinite.copy_from_slice(&(ec_point.infinity as u8).to_be_bytes());
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_util_ec_point_from_x_nz(
+    x: *mut [u8; 32],
+    y: *mut [u8; 32],
+    infinite: *mut u8,
+) {
+    let x_val = FieldElement::from_byte_slice_be(&*x).unwrap();
+
+    let ec_point = AffinePoint::from_x(x_val);
+
+    x.write(ec_point.x.to_bytes_be());
+    y.write(ec_point.y.to_bytes_be());
+    infinite.write(ec_point.infinity as u8);
+}

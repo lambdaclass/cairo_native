@@ -71,7 +71,7 @@ fn comparison_test(test_name: &str) -> Result<(), String> {
     compile_to_mlir_with_consistency_check(test_name, &program);
     let llvm_result = run_mlir(test_name)?;
 
-    let casm_result = run_sierra_via_casm(&program);
+    let casm_result = run_sierra_via_casm(program);
 
     match casm_result {
         Ok(result) => match result.value {
