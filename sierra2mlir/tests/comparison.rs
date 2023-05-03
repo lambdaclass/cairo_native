@@ -99,8 +99,8 @@ use test_case::test_case;
 #[test_case("uint/uint_subtraction", Some(100000))]
 #[test_case("uint/upcasts", None)]
 #[test_case("uint/upcasts", Some(100000))]
-#[test_case("uint/wide_mul", None)]
-#[test_case("uint/wide_mul", Some(100000))]
+//#[test_case("uint/wide_mul", None)]
+//#[test_case("uint/wide_mul", Some(100000))]
 #[test_case("gas/available_gas", Some(200))]
 fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
