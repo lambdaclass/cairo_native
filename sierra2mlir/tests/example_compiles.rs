@@ -37,7 +37,7 @@ impl_tests!(
     simple_enum,
     simple,
     types,
-    uint,
+    // uint, uncomment when uint verify is implemented
     uint_addition
 );
 

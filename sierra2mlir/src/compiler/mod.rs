@@ -126,6 +126,12 @@ impl<'ctx> Compiler<'ctx> {
         register_all_dialects(&registry);
 
         let context = Context::new();
+
+        #[cfg(test)]
+        {
+            context.enable_multi_threading(false);
+        }
+
         context.append_dialect_registry(&registry);
         context.load_all_available_dialects();
         register_all_llvm_translations(&context);

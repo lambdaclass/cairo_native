@@ -4,7 +4,7 @@ use std::{env, fs};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let program = ProgramParser::new().parse(include_str!("programs/fib.sierra")).unwrap();
-    let engine = sierra2mlir::execute(&program, false, 1, None).unwrap();
+    let engine = sierra2mlir::execute(&program, false, 1, Some(100_000_000)).unwrap();
 
     unsafe {
         engine.invoke_packed("fib::fib::main", &mut []).unwrap();
@@ -35,7 +35,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                         let sierra_code = fs::read_to_string(&path).unwrap();
                         let program = ProgramParser::new().parse(&sierra_code).unwrap();
                         x.iter(|| {
-                            sierra2mlir::compile(&program, false, false, false, 1, None).unwrap();
+                            sierra2mlir::compile(
+                                &program,
+                                false,
+                                false,
+                                false,
+                                1,
+                                Some(100_000_000),
+                            )
+                            .unwrap();
                         });
                     },
                 );
