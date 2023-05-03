@@ -13,7 +13,6 @@ use tracing::debug;
 use self::utility::run_llvm_config;
 use crate::compiler::Compiler;
 use cairo_lang_sierra::program::Program;
-use cfg_match::cfg_match;
 
 pub mod compiler;
 mod libfuncs;
@@ -30,8 +29,9 @@ pub fn compile(
     // TODO: Make this an enum with either: stdout, stderr, a path to a file, or a raw fd (pipes?).
     main_print: bool,
     print_fd: i32,
+    available_gas: Option<usize>,
 ) -> Result<String, color_eyre::Report> {
-    let mut compiler = Compiler::new(program, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd, available_gas)?;
     compiler.compile()?;
 
     debug!("mlir before pass:\n{}", compiler.module.as_operation());
@@ -75,8 +75,9 @@ pub fn execute(
     program: &Program,
     main_print: bool,
     print_fd: i32,
+    available_gas: Option<usize>,
 ) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(program, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd, available_gas)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);
@@ -115,13 +116,4 @@ pub fn execute(
     );
 
     Ok(engine)
-}
-
-pub const fn shared_library_extension() -> &'static str {
-    cfg_match! {
-        target_os = "linux" => "so",
-        target_os = "macos" => "dylib",
-        target_os = "windows" => "dll",
-        _ => compile_error!("Unsupported OS."),
-    }
 }

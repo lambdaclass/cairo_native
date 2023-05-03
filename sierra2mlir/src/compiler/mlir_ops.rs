@@ -43,6 +43,21 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    pub fn op_sub_sat<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.usub.sat\"",
+                )
+                .unwrap()])
+                .add_operands(&[lhs, rhs])
+                .add_results(&[lhs.r#type()])
+                .build(),
+        )
+    }
+
     /// Only the MLIR op.
     pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(arith::muli(
@@ -580,6 +595,48 @@ impl<'ctx> Compiler<'ctx> {
                 .add_results(&[self.llvm_ptr_type()])
                 .build(),
         )
+    }
+
+    pub fn op_llvm_global<'a>(
+        &self,
+        block: &'a Block,
+        name: &str,
+        global_type: Type,
+        initial_value: &str,
+    ) -> Result<OperationRef<'a>> {
+        let region = Region::new();
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.global", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        //("alignment", &align.to_string()),
+                        ("sym_name", &format!("\"{name}\"")),
+                        ("value", &format!("{initial_value} : {}", global_type)),
+                        ("global_type", &global_type.to_string()),
+                        ("linkage", "#llvm.linkage<\"internal\">"),
+                    ],
+                )?)
+                .add_regions(vec![region])
+                .build(),
+        ))
+    }
+
+    /// Creates a pointer pointing to a global or a function
+    pub fn op_llvm_addressof<'a>(
+        &self,
+        block: &'a Block,
+        symbol: &str,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.addressof", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[("global_name", &format!("@\"{symbol}\""))],
+                )?)
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        ))
     }
 
     pub fn op_llvm_store<'a>(

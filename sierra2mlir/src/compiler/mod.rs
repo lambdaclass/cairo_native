@@ -1,6 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
-use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::{
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+    },
+    ids::FunctionId,
+    program::Program,
+    program_registry::ProgramRegistry,
+};
+use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes};
+use cairo_lang_sierra_gas::gas_info::GasInfo;
+use cairo_lang_sierra_gas::{calc_gas_postcost_info, calc_gas_precost_info};
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use melior_next::{
     dialect,
     ir::{operation, Block, Location, Module, NamedAttribute, OperationRef, Region, Type},
@@ -21,8 +33,19 @@ pub mod helpers;
 pub mod mlir_ops;
 pub mod types;
 
+#[derive(Debug)]
+pub struct CompilerGas {
+    pub ap_change_info: ApChangeInfo,
+    /// Gas information for validating Sierra code and taking the appropriate amount of gas.
+    pub gas_info: GasInfo,
+    /// Initial available gas.
+    pub available_gas: usize,
+}
+
 pub struct Compiler<'ctx> {
     pub program: &'ctx Program,
+    pub registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub gas: Option<CompilerGas>,
     pub context: Context,
     pub module: Module<'ctx>,
     pub main_print: bool,
@@ -44,7 +67,61 @@ impl<'ctx> Compiler<'ctx> {
         program: &'ctx Program,
         main_print: bool,
         print_fd: i32,
+        available_gas: Option<usize>,
     ) -> color_eyre::Result<Self> {
+        let sierra_program_registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
+
+        // Create the compiler gas structure if gas was providedr.
+        // This mostly copies the code from the sierra to casm calc_metadata function.
+        // source: https://github.com/starkware-libs/cairo/blob/e5303cf5a38c926a35a3b3c62cc6e0128032678b/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L41
+        let gas: Option<CompilerGas> = if let Some(available_gas) = available_gas {
+            let function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>> =
+                Default::default();
+
+            // Calculates gas precost information for a given program - the gas costs of non-step tokens.
+            let pre_function_set_costs = function_set_costs
+                .iter()
+                .map(|(func, costs)| {
+                    (
+                        func.clone(),
+                        CostTokenType::iter_precost()
+                            .filter_map(|token| costs.get(token).map(|v| (*token, *v)))
+                            .collect(),
+                    )
+                })
+                .collect();
+            let pre_gas_info = calc_gas_precost_info(program, pre_function_set_costs)?;
+
+            // Calculate the ap changes, needed to calculate the post cost info.
+            let ap_change_info = calc_ap_changes(program, |idx, token_type| {
+                pre_gas_info.variable_values[(idx, token_type)] as usize
+            })?;
+
+            // Calculates gas postcost information for a given program - the gas costs of step token.
+            let post_function_set_costs = function_set_costs
+                .iter()
+                .map(|(func, costs)| {
+                    (
+                        func.clone(),
+                        std::iter::once(&CostTokenType::Const)
+                            .filter_map(|token| costs.get(token).map(|v| (*token, *v)))
+                            .collect(),
+                    )
+                })
+                .collect();
+            let post_gas_info =
+                calc_gas_postcost_info(program, post_function_set_costs, &pre_gas_info, |idx| {
+                    ap_change_info.variable_values.get(&idx).copied().unwrap_or_default()
+                })?;
+            Some(CompilerGas {
+                ap_change_info,
+                gas_info: pre_gas_info.combine(post_gas_info),
+                available_gas,
+            })
+        } else {
+            None
+        };
+
         let registry = dialect::Registry::new();
         register_all_dialects(&registry);
 
@@ -72,11 +149,22 @@ impl<'ctx> Compiler<'ctx> {
 
         let module = Module::from_operation(module_op).unwrap();
 
-        Ok(Self { program, context, module, main_print, print_fd })
+        Ok(Self {
+            program,
+            registry: sierra_program_registry,
+            gas,
+            context,
+            module,
+            main_print,
+            print_fd,
+        })
     }
 
     pub fn compile(&'ctx self) -> color_eyre::Result<OperationRef<'ctx>> {
         let mut storage = Storage::default();
+        if self.gas.is_some() {
+            self.create_gas_global()?;
+        }
         self.process_types(&mut storage)?;
         self.process_libfuncs(&mut storage)?;
         self.process_functions(&mut storage)?;

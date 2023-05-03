@@ -13,7 +13,7 @@ macro_rules! impl_tests {
                     load_program(Path::new(concat!(std::env!("CARGO_MANIFEST_DIR"), "/../examples/", stringify!($name), ".cairo")))
                 };
 
-                sierra2mlir::compile(&program, false, false, false, 1).expect("Error compiling sierra program");
+                sierra2mlir::compile(&program, false, false, false, 1, None).expect("Error compiling sierra program");
             }
         )*
     };

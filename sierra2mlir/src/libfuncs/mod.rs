@@ -41,6 +41,7 @@ impl<'ctx> Compiler<'ctx> {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
                 "branch_align"
+                | "get_builtin_costs"
                 | "revoke_ap_tracking"
                 | "disable_ap_tracking"
                 | "drop"
@@ -95,6 +96,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "match_nullable" => {
                     self.register_match_nullable(func_decl, storage);
+                }
+                "withdraw_gas" | "withdraw_gas_all" => {
+                    self.register_withdraw_gas(func_decl, storage);
                 }
                 "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
@@ -329,6 +333,12 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "pedersen" => {
                     self.create_libfunc_pedersen(func_decl, storage)?;
+                }
+                "get_available_gas" => {
+                    self.create_libfunc_get_available_gas(func_decl, storage)?;
+                }
+                "hades_permutation" => {
+                    self.create_libfunc_hades_permutation(func_decl, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -2018,6 +2028,83 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_libfunc_hades_permutation(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let parent_block = self.module.body();
+        mlir_asm! { parent_block =>
+            func.func @hades_permutation(%0 : i256, %1 : i256, %2 : i256) -> (i256, i256, i256) {
+                // Allocate temporary buffers.
+                %3 = memref.alloca() : memref<32xi8>
+                %4 = memref.alloca() : memref<32xi8>
+                %5 = memref.alloca() : memref<32xi8>
+
+                // Swap endianness (LE -> BE).
+                // TODO: Find a way to check the target's endianness.
+                %6 = llvm.call_intrinsic "llvm.bswap.i256"(%0) : (i256) -> i256
+                %7 = llvm.call_intrinsic "llvm.bswap.i256"(%1) : (i256) -> i256
+                %8 = llvm.call_intrinsic "llvm.bswap.i256"(%2) : (i256) -> i256
+
+                // Store the operands into the temporary buffers.
+                %9 = index.constant 0
+                %10 = memref.view %3[%9][] : memref<32xi8> to memref<i256>
+                %11 = memref.view %4[%9][] : memref<32xi8> to memref<i256>
+                %12 = memref.view %5[%9][] : memref<32xi8> to memref<i256>
+                memref.store %6, %10[] : memref<i256>
+                memref.store %7, %11[] : memref<i256>
+                memref.store %8, %12[] : memref<i256>
+
+                // Call the auxiliary library's pedersen function.
+                %13 = memref.extract_aligned_pointer_as_index %3 : memref<32xi8> -> index
+                %14 = memref.extract_aligned_pointer_as_index %4 : memref<32xi8> -> index
+                %15 = memref.extract_aligned_pointer_as_index %5 : memref<32xi8> -> index
+                %16 = index.castu %13 : index to i64
+                %17 = index.castu %14 : index to i64
+                %18 = index.castu %15 : index to i64
+                %19 = llvm.inttoptr %16 : i64 to !llvm.ptr
+                %20 = llvm.inttoptr %17 : i64 to !llvm.ptr
+                %21 = llvm.inttoptr %18 : i64 to !llvm.ptr
+                func.call @sierra2mlir_util_hades_permutation(%19, %20, %21) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
+
+                // Load the results from the temporary buffer.
+                %22 = memref.load %10[] : memref<i256>
+                %23 = memref.load %11[] : memref<i256>
+                %24 = memref.load %12[] : memref<i256>
+
+                // Swap endianness (BE -> LE).
+                // TODO: Find a way to check the target's endianness.
+                %25 = llvm.call_intrinsic "llvm.bswap.i256"(%22) : (i256) -> i256
+                %26 = llvm.call_intrinsic "llvm.bswap.i256"(%23) : (i256) -> i256
+                %27 = llvm.call_intrinsic "llvm.bswap.i256"(%24) : (i256) -> i256
+
+                return %25, %26, %27 : i256, i256, i256
+            }
+
+            func.func private @sierra2mlir_util_hades_permutation(!llvm.ptr, !llvm.ptr, !llvm.ptr)
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::Function {
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 3, ty: SierraType::Simple(self.felt_type()) },
+                ],
+                return_types: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 3, ty: SierraType::Simple(self.felt_type()) },
+                ],
+            },
+        );
+
+        Ok(())
+    }
+
     pub fn create_libfunc_null(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -2146,5 +2233,60 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
+    }
+
+    pub fn register_withdraw_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![],
+                return_types: vec![
+                    // fallthrough: success
+                    vec![],
+                    // jump: failure
+                    vec![],
+                ],
+            },
+        );
+    }
+
+    pub fn create_libfunc_get_available_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let block = Block::new(&[]);
+
+        let (_, gas_value_op) = self.call_get_gas_counter(&block)?;
+
+        self.op_return(&block, &[gas_value_op.result(0)?.into()]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![],
+                return_types: vec![PositionalArg {
+                    loc: 1,
+                    ty: SierraType::Simple(self.u128_type()),
+                }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.u128_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        Ok(())
     }
 }

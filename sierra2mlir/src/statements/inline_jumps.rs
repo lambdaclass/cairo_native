@@ -3,7 +3,10 @@ use std::{
     ops::{Deref, Shl},
 };
 
-use cairo_lang_sierra::program::{GenBranchTarget, Invocation};
+use cairo_lang_sierra::{
+    extensions::gas::CostTokenType,
+    program::{GenBranchTarget, Invocation, StatementIdx},
+};
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
@@ -21,7 +24,7 @@ use crate::{
 };
 
 /*
-   Here are the libfuncs implemented inline,
+   Here are the control flow libfuncs implemented inline,
    meaning that they are implemented in place where they are called.
 
    Mostly control flow related libfuncs.
@@ -826,6 +829,83 @@ impl<'ctx> Compiler<'ctx> {
             &fallthrough_block.block,
             &args_to_notnull,
             &args_to_fallthrough,
+        );
+
+        Ok(())
+    }
+
+    pub fn inline_withdraw_gas(
+        &'ctx self,
+        statement_idx: usize,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+    ) -> Result<()> {
+        let gas = self.gas.as_ref().expect("gas should exist on a gas related libfunc");
+
+        // fallthrough success
+        // jump on failure
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match &branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let success_block = target_blocks[1];
+        let failure_block = target_blocks[0];
+
+        // get the requested amount of gas.
+        let requested_gas_count: i64 = gas
+            .gas_info
+            .variable_values
+            .get(&(StatementIdx(statement_idx), CostTokenType::Const))
+            .copied()
+            .unwrap();
+
+        // check if there is enough.
+        let requested_gas_op =
+            self.op_const(block, &requested_gas_count.to_string(), self.u128_type());
+        let requested_gas_value = requested_gas_op.result(0)?.into();
+        let has_enough_op = self.call_has_enough_gas(block, requested_gas_value)?;
+
+        // jump condition
+        let is_success = has_enough_op.result(0)?.into();
+
+        // collect args to the none block
+        let args_to_success_block = success_block
+            .variables_at_start
+            .keys()
+            .map(|var_idx| *variables.get(var_idx).unwrap())
+            .collect_vec();
+
+        // collect args to the none block
+        let args_to_failure_block = failure_block
+            .variables_at_start
+            .keys()
+            .map(|var_idx| *variables.get(var_idx).unwrap())
+            .collect_vec();
+
+        let args_to_success_block =
+            args_to_success_block.iter().map(Variable::get_value).collect_vec();
+        let args_to_failure_block =
+            args_to_failure_block.iter().map(Variable::get_value).collect_vec();
+
+        self.op_cond_br(
+            block,
+            is_success,
+            &failure_block.block,
+            &success_block.block,
+            &args_to_failure_block,
+            &args_to_success_block,
         );
 
         Ok(())
