@@ -271,6 +271,7 @@ Here is a high-level overview:
 
 ```mermaid
 stateDiagram-v2
+    direction LR
     state "Load sierra program" as sierra
     state "Initialize compiler" as init
     state "Initialize execution engine" as engine
