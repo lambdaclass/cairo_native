@@ -1,6 +1,5 @@
 use std::{
     env,
-    ops::Deref,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -253,7 +252,7 @@ impl<'ctx> Compiler<'ctx> {
         let blockrefs = variant_blocks.iter().map(|x| &x.0).collect_vec();
         let case_values = (0..variants_types.len()).map(|x| x.to_string()).collect_vec();
 
-        let blockrefs_with_ops = blockrefs.iter().map(|x| (x.deref(), [].as_slice())).collect_vec();
+        let blockrefs_with_ops = blockrefs.iter().map(|x| (*x, [].as_slice())).collect_vec();
         entry_block.append_operation(cf::switch(
             &self.context,
             &case_values,
