@@ -8,7 +8,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::{
     dialect::cf,
-    ir::{operation, Block, BlockRef, Location, NamedAttribute, Region, Value, ValueLike},
+    ir::{operation, Block, BlockRef, Location, NamedAttribute, Region, Type, Value, ValueLike},
 };
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
@@ -845,17 +845,192 @@ impl<'ctx> Compiler<'ctx> {
         let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
         let arg = &libfunc.get_args()[0];
 
+        let branch_block = &blocks[&match invocation.branches[1].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        }]
+            .block;
+        let cont_block = region.append_block(Block::new(&[]));
+
         let arg = variables
             .get(&invocation.args[arg.loc].id)
             .expect("Variable should be registered before use")
             .get_value();
 
-        // TODO: Call aux lib function.
-        let op0 = operation::Builder::new("func.call", Location::unknown(&self.context))
-            .add_attributes(&[NamedAttribute::new_parsed(&self.context, "sym_name", "\"\"")])
-            .add_operands(&[todo!(), todo!(), todo!()])
-            .build();
+        let op = self.op_felt_const(block, "0");
+        let op = self.op_cmp(block, CmpOp::Equal, arg, op.result(0)?.into());
+        self.op_cond_br(block, op.result(0)?.into(), branch_block, &cont_block, &[], &[]);
 
-        todo!()
+        let op0 = cont_block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+        let op1 = cont_block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+        let op2 = cont_block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_results(&[Type::parse(&self.context, "memref<i8>").unwrap()])
+                .build(),
+        );
+
+        let op3 = cont_block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op0.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+        let op4 = cont_block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op1.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+        let op5 = cont_block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op2.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+
+        let op6 = cont_block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op3.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+        let op7 = cont_block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op4.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+        let op8 = cont_block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op5.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+
+        cont_block.append_operation(
+            operation::Builder::new("func.call", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "callee",
+                    "\"sierra2mlir_util_ec_point_from_x_nz\"",
+                )?])
+                .add_operands(&[
+                    op6.result(0)?.into(),
+                    op7.result(0)?.into(),
+                    op8.result(0)?.into(),
+                ])
+                .build(),
+        );
+
+        let op10 = cont_block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op0.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op11 = cont_block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op1.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+
+        let op12 = cont_block.append_operation(
+            operation::Builder::new("memref.load", Location::unknown(&self.context))
+                .add_operands(&[op10.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op13 = cont_block.append_operation(
+            operation::Builder::new("memref.load", Location::unknown(&self.context))
+                .add_operands(&[op11.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op14 = cont_block.append_operation(
+            operation::Builder::new("memref.load", Location::unknown(&self.context))
+                .add_operands(&[op2.result(0)?.into()])
+                .add_results(&[self.u8_type()])
+                .build(),
+        );
+
+        let op15 = cont_block.append_operation(
+            operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
+                .add_results(&[
+                    Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
+                ])
+                .build(),
+        );
+        let op16 = cont_block.append_operation(
+            operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "position", "0").unwrap()
+                ])
+                .add_operands(&[op15.result(0)?.into(), op12.result(0)?.into()])
+                .add_results(&[
+                    Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
+                ])
+                .build(),
+        );
+        let op17 = cont_block.append_operation(
+            operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "position", "1").unwrap()
+                ])
+                .add_operands(&[op16.result(0)?.into(), op13.result(0)?.into()])
+                .add_results(&[
+                    Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
+                ])
+                .build(),
+        );
+        let op18 = cont_block.append_operation(
+            operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "position", "2").unwrap()
+                ])
+                .add_operands(&[op17.result(0)?.into(), op14.result(0)?.into()])
+                .add_results(&[
+                    Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
+                ])
+                .build(),
+        );
+
+        let next_block_idx = match invocation.branches[0].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        };
+        let next_block = &blocks[&next_block_idx].block;
+        let next_block_args = blocks[&next_block_idx]
+            .variables_at_start
+            .keys()
+            .map(|id| {
+                if *id == invocation.branches[0].results[1].id {
+                    op18.result(0).unwrap().into()
+                } else {
+                    variables.get(id).unwrap().get_value()
+                }
+            })
+            .collect::<Vec<_>>();
+
+        self.op_br(&cont_block, next_block, &next_block_args);
+
+        Ok(())
     }
 }

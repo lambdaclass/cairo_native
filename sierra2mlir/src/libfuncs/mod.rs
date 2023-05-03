@@ -411,7 +411,7 @@ impl<'ctx> Compiler<'ctx> {
                     self.create_libfunc_ec_point_unwrap(func_decl, parent_block, storage)?;
                 }
                 "ec_point_from_x_nz" => {
-                    self.register_libfunc_ec_point_from_x_nz(func_decl, storage)?;
+                    self.register_libfunc_ec_point_from_x_nz(func_decl, storage);
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -2603,17 +2603,14 @@ impl<'ctx> Compiler<'ctx> {
         &'ctx self,
         func_decl: &LibfuncDeclaration,
         storage: &mut Storage<'ctx>,
-    ) -> result<()> {
+    ) {
         let id = func_decl.id.debug_name.as_deref().unwrap().to_string();
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![PositionalArg { loc: 1, ty: self.felt_type() }],
+                args: vec![PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) }],
                 return_types: vec![
-                    vec![PositionalArg {
-                        loc: Location::unknown(&self.context),
-                        ty: self.ec_point_type(),
-                    }],
+                    vec![PositionalArg { loc: 1, ty: SierraType::Simple(self.ec_point_type()) }],
                     vec![],
                 ],
             },
