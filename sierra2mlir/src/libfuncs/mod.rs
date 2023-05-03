@@ -43,6 +43,7 @@ impl<'ctx> Compiler<'ctx> {
                 // no-ops
                 // NOTE jump stops being a nop if return types are stored
                 "branch_align"
+                | "get_builtin_costs"
                 | "revoke_ap_tracking"
                 | "disable_ap_tracking"
                 | "drop"
@@ -97,6 +98,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "match_nullable" => {
                     self.register_match_nullable(func_decl, storage);
+                }
+                "withdraw_gas" | "withdraw_gas_all" => {
+                    self.register_withdraw_gas(func_decl, storage);
                 }
                 "store_temp" | "rename" | "unbox" | "into_box" => {
                     self.register_identity_function(func_decl, storage)?;
@@ -400,6 +404,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "pedersen" => {
                     self.create_libfunc_pedersen(func_decl, parent_block, storage)?;
+                }
+                "get_available_gas" => {
+                    self.create_libfunc_get_available_gas(func_decl, parent_block, storage)?;
                 }
                 "hades_permutation" => {
                     self.create_libfunc_hades_permutation(func_decl, parent_block, storage)?;
@@ -2499,5 +2506,65 @@ impl<'ctx> Compiler<'ctx> {
                 ],
             },
         );
+    }
+
+    pub fn register_withdraw_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![],
+                return_types: vec![
+                    // fallthrough: success
+                    vec![],
+                    // jump: failure
+                    vec![],
+                ],
+            },
+        );
+    }
+
+    pub fn create_libfunc_get_available_gas(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        parent_block: BlockRef<'ctx>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let region = Region::new();
+
+        let block = Block::new(&[]);
+
+        let (_, gas_value_op) = self.call_get_gas_counter(&block)?;
+
+        self.op_return(&block, &[gas_value_op.result(0)?.into()]);
+
+        let function_type = create_fn_signature(&[], &[self.u128_type()]);
+
+        region.append_block(block);
+
+        let func =
+            self.op_func(&id, &function_type, vec![region], FnAttributes::libfunc(false, true))?;
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Function {
+                args: vec![],
+                return_types: vec![PositionalArg {
+                    loc: 1,
+                    ty: SierraType::Simple(self.u128_type()),
+                }],
+            },
+        );
+
+        parent_block.append_operation(func);
+
+        Ok(())
     }
 }

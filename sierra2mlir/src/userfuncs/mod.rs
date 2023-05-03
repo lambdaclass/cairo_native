@@ -171,6 +171,26 @@ impl<'ctx> Compiler<'ctx> {
 
         self.call_dprintf(&success_block, "Success\n", &[], storage)?;
 
+        // If gas was enabled, print the remaining gas.
+        /*
+        if self.gas.is_some() {
+            let (_, current_gas_op) = self.call_get_gas_counter(&success_block)?;
+            let current_gas_value = current_gas_op.result(0)?.into();
+            let lower = self.op_trunc(&success_block, current_gas_value, self.u64_type());
+            let shift_amount = self.op_u128_const(&success_block, "64");
+            let upper_shifted =
+                self.op_shru(&success_block, current_gas_value, shift_amount.result(0)?.into());
+            let upper =
+                self.op_trunc(&success_block, upper_shifted.result(0)?.into(), self.u64_type());
+            self.call_dprintf(
+                &success_block,
+                "Remaining gas: %lX%016lX\n",
+                &[upper.result(0)?.into(), lower.result(0)?.into()],
+                storage,
+            )?;
+        }
+        */
+
         // Finally, print the result if it was, or the error message if not
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
             let type_name = type_decl.id.debug_name.as_ref().unwrap().as_str();

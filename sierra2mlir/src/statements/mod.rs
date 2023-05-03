@@ -20,6 +20,7 @@ use crate::{
 mod function_call;
 mod general_libfunc_implementations;
 mod inline_jumps;
+mod inline_libfuncs;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
@@ -248,6 +249,16 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "withdraw_gas" | "withdraw_gas_all" => {
+                                self.inline_withdraw_gas(
+                                    statement_idx,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                )?;
+                                jump_processed = true;
+                            }
                             "downcast" => {
                                 self.inline_downcast(
                                     &id,
@@ -260,6 +271,9 @@ impl<'ctx> Compiler<'ctx> {
                                     storage,
                                 )?;
                                 jump_processed = true;
+                            }
+                            "branch_align" => {
+                                self.inline_branch_align(statement_idx, block)?;
                             }
                             "function_call" => self.process_function_call(
                                 &id,
@@ -381,6 +395,16 @@ impl<'ctx> Compiler<'ctx> {
                 .map(|t| (t.ty.get_type(), Location::unknown(&self.context)))
                 .collect_vec(),
         );
+
+        if let Some(gas) = &self.gas {
+            // spend the required gas for this user function call
+            let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
+            for (_cost_type, cost_value) in costs.iter() {
+                let value = self.op_u128_const(&entry_block, &cost_value.to_string());
+                self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
+            }
+        }
+
         let block_info = &blocks.get(&func_start).unwrap();
 
         let mut args_to_pass = vec![];
