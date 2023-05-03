@@ -1,5 +1,9 @@
 # MLIR
 
+
+Making a Cairo 
+not reinventing the wheel
+
 <!-- toc -->
 
 ---
@@ -175,20 +179,43 @@ Type theory and intermediate representations within compilers  have become one o
 
 So in short, the need to run on more diverse hardware, to incorporate programming language technology, to enable the easy use of difficult cryptographic primitives, to transport guarantees from developer tooling to execution layers, have all come together to bring about a small renaissance of language implementation in the crypto world.
 
+### Cairo & Sierra
 
+[Cairo](https://github.com/starkware-libs/cairo) is a "language for creating provable programs for general computation", through the use of STARK-based validity proofs.
+If you're not coming from a cryptography background, ZKP and STARKS are too deep a rabbithole for one article spanning so many topics, it suffices to say that STARKs enable blockchain scaling by efficiently proving the integrity of computations.
 
+   > STARKs (Scalable, Transparent ARgument of Knowledge) are a proof system that enables the proving and verification of computations.
+   > It allows processing a big computation, generating a proof for the computation’s correctness, and then verifying the proof in very few steps.
+   > - [www.starknet.io](https://www.starknet.io/en/posts/engineering/starks-starkex-and-starknet)
 
+As Cairo matures improvements have been added, such as a linear type system implementing a ownership similarly to Rust, and an intermediate representation providing guarantees.
+Programming in Cairo is a bit different than your average von Neumann machine-based language: programs written in it run under a nondeterministic, immutable, contiguous memory model to ensure that all relevant memory has proper values, and that relevant values are not destroyed before the proof is generated, i. e. all correct programs are provable.
 
+The Cairo compiler eventually compiles Cairo code down to a "Cairo assembly", which is what the virtual machines runs to compute results and generate traces.
+However as mentioned before, not all representations are adequate for all tasks, so Cairo introduced Sierra (**S**afe **I**nt**E**rmediate **R**ep**R**esent**A**tion).
 
+Sierra's goal is to guarantee that the generated code is always provable, and it achieves this by several means. 
 
+As mentioned, the memory model is immutable and contiguous and guarantees that memory will not be written to twice, and thus dereferences cannot fail.
+The linear type system ensures that values are used exactly once, 
 
+There are no loops and recursion is used instead; coupled with a gas meter for operations, this ensures termination. 
 
-CAIRO SIERRA
+Assertions and panics are converted to conditional branches. 
 
+### Why use MLIR in the context of Cairo?
 
+Cairo is also being used to build StarkNet, a permissionless Ethereum layer 2 network on which provable smart contracts can be deployed.
+Nodes on the network receive transactions and must verify they are valid before going about the business of generating the proof.
+The contract code must be run with the transaction inputs to generate the state change, the proof, and verify
 
+Another motivation is developer experience and tooling quality.
+Before being able to deploy said contracts, the code must be written and tested, and being able to run Cairo code faster improves turnaround time in the development loop.
 
-
+- Enable faster checking of Cairo contract TX
+- Faster Gas computation
+- To enable better L2 sequencers
+- To enable better developer tooling
 
 ### Sierra Structure
 
@@ -268,6 +295,8 @@ cairo_lang_sierra::ProgramParser::new()
 
 Once we have the Sierra representation in memory, we can start the translation process. 
 Here is a high-level overview:
+
+<!-- ![](./assets/mlir/compilation-process.png) -->
 
 ```mermaid
 stateDiagram-v2
