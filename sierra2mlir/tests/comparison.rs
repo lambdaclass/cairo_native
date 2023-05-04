@@ -292,6 +292,8 @@ fn run_mlir_file_via_llvm(
 
     let ld_env = library_preload_env_var();
     let lli_cmd = Command::new(lli_path)
+        .arg("-O3")
+        .arg("--polly")
         .arg(output_file)
         .env(ld_env, env!("S2M_UTILS_PATH"))
         .stdout(Stdio::piped())
