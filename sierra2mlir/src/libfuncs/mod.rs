@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{Block, Location, Type, Value, ValueLike};
+use melior_next::ir::{operation, Block, Location, Type, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
@@ -339,6 +339,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "hades_permutation" => {
                     self.create_libfunc_hades_permutation(func_decl, storage)?;
+                }
+                "unwrap_non_zero" => {
+                    self.create_libfunc_unwrap_non_zero(func_decl, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -2286,6 +2289,50 @@ impl<'ctx> Compiler<'ctx> {
             &[self.u128_type()],
             FnAttributes::libfunc(false, true),
         )?;
+
+        Ok(())
+    }
+
+    pub fn create_libfunc_unwrap_non_zero(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let nz_ty = &storage.types[&match &func_decl.long_id.generic_args[0] {
+            GenericArg::Type(x) => x.id.to_string(),
+            _ => unreachable!(),
+        }];
+
+        let ty = match nz_ty {
+            SierraType::Simple(x) => x,
+            _ => unreachable!(),
+        };
+
+        self.create_function(
+            &format!("unwrap_non_zero<{}>", func_decl.long_id.generic_args[0].to_string()),
+            vec![{
+                let block = Block::new(&[(nz_ty.get_type(), Location::unknown(&self.context))]);
+
+                block.append_operation(
+                    operation::Builder::new("func.return", Location::unknown(&self.context))
+                        .add_operands(&[block.argument(0)?.into()])
+                        .build(),
+                );
+
+                block
+            }],
+            &[*ty],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::Function {
+                args: vec![PositionalArg { loc: 0, ty: nz_ty.clone() }],
+                return_types: vec![PositionalArg { loc: 0, ty: SierraType::Simple(*ty) }],
+            },
+        );
 
         Ok(())
     }
