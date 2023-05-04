@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use std::ops::Bound::Included;
 
+use cairo_lang_sierra::extensions::gas::CostTokenType;
 use cairo_lang_sierra::program::{
     GenBranchTarget, GenFunction, GenStatement, Program, StatementIdx,
 };
@@ -9,6 +10,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 use regex::Regex;
+use tracing::debug;
 
 use crate::compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp};
 use crate::sierra_type::SierraType;
@@ -77,6 +79,7 @@ impl<'ctx> Compiler<'ctx> {
 
         // Process the blocks for each function
         for (func_start, (func, block_flows)) in block_ranges_per_function {
+            debug!(function = ?func.id.debug_name.as_ref().unwrap().as_str(), "processing statements");
             self.process_statements_for_function(func, func_start, block_flows, storage)?;
         }
 
@@ -398,11 +401,22 @@ impl<'ctx> Compiler<'ctx> {
 
         if let Some(gas) = &self.gas {
             // spend the required gas for this user function call
+
             let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
-            for (_cost_type, cost_value) in costs.iter() {
-                let value = self.op_u128_const(&entry_block, &cost_value.to_string());
-                self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
-            }
+            let computed_cost: usize = costs
+                .iter()
+                .map(|(token_type, cost)| {
+                    let token_cost = match token_type {
+                        CostTokenType::Const => 1,
+                        _ => 10_000, // dummy builtin cost, like in cairo casm runner for now.
+                    };
+                    token_cost * (*cost as usize)
+                })
+                .sum();
+            debug!(computed_cost, user_func_name, "user function gas spenditure");
+
+            let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
+            self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
         }
 
         let block_info = &blocks.get(&func_start).unwrap();
