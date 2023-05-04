@@ -2309,7 +2309,7 @@ impl<'ctx> Compiler<'ctx> {
         };
 
         self.create_function(
-            &format!("unwrap_non_zero<{}>", func_decl.long_id.generic_args[0].to_string()),
+            &format!("unwrap_non_zero<{}>", func_decl.long_id.generic_args[0]),
             vec![{
                 let block = Block::new(&[(nz_ty.get_type(), Location::unknown(&self.context))]);
 
