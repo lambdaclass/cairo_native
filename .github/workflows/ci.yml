@@ -16,7 +16,7 @@ jobs:
       MLIR_SYS_160_PREFIX: /usr/lib/llvm-16/
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
