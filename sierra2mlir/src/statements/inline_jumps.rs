@@ -840,16 +840,18 @@ impl<'ctx> Compiler<'ctx> {
         variables: &HashMap<u64, Variable>,
         blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
         statement_idx: usize,
-        storage: &Storage,
+        storage: &mut Storage<'ctx>,
     ) -> Result<()> {
+        self.create_utils(storage)?;
+
         let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
         let arg = &libfunc.get_args()[0];
 
-        let branch_block = &blocks[&match invocation.branches[1].target {
+        let branch_block_idx = match invocation.branches[1].target {
             GenBranchTarget::Fallthrough => statement_idx + 1,
             GenBranchTarget::Statement(x) => x.0,
-        }]
-            .block;
+        };
+        let branch_block = &blocks[&branch_block_idx].block;
         let cont_block = region.append_block(Block::new(&[]));
 
         let arg = variables
@@ -859,20 +861,49 @@ impl<'ctx> Compiler<'ctx> {
 
         let op = self.op_felt_const(block, "0");
         let op = self.op_cmp(block, CmpOp::Equal, arg, op.result(0)?.into());
-        self.op_cond_br(block, op.result(0)?.into(), branch_block, &cont_block, &[], &[]);
+        self.op_cond_br(
+            block,
+            op.result(0)?.into(),
+            branch_block,
+            &cont_block,
+            &blocks[&branch_block_idx]
+                .variables_at_start
+                .keys()
+                .map(|x| variables[x].get_value())
+                .collect::<Vec<_>>(),
+            &[],
+        );
 
         let op0 = cont_block.append_operation(
             operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
                 .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
                 .build(),
         );
         let op1 = cont_block.append_operation(
             operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
                 .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
                 .build(),
         );
         let op2 = cont_block.append_operation(
             operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
                 .add_results(&[Type::parse(&self.context, "memref<i8>").unwrap()])
                 .build(),
         );
@@ -924,31 +955,56 @@ impl<'ctx> Compiler<'ctx> {
                 .build(),
         );
 
+        let ptr0 = cont_block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op6.result(0)?.into()])
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        );
+        let ptr1 = cont_block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op7.result(0)?.into()])
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        );
+        let ptr2 = cont_block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op8.result(0)?.into()])
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        );
+
         cont_block.append_operation(
             operation::Builder::new("func.call", Location::unknown(&self.context))
                 .add_attributes(&[NamedAttribute::new_parsed(
                     &self.context,
                     "callee",
-                    "\"sierra2mlir_util_ec_point_from_x_nz\"",
+                    "@sierra2mlir_util_ec_point_from_x_nz",
                 )?])
                 .add_operands(&[
-                    op6.result(0)?.into(),
-                    op7.result(0)?.into(),
-                    op8.result(0)?.into(),
+                    ptr0.result(0)?.into(),
+                    ptr1.result(0)?.into(),
+                    ptr2.result(0)?.into(),
                 ])
                 .build(),
         );
 
+        let k0 = cont_block.append_operation(
+            operation::Builder::new("index.constant", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", "0 : index")?])
+                .add_results(&[Type::index(&self.context)])
+                .build(),
+        );
         let op10 = cont_block.append_operation(
             operation::Builder::new("memref.view", Location::unknown(&self.context))
-                .add_operands(&[op0.result(0)?.into()])
-                .add_results(&[self.felt_type()])
+                .add_operands(&[op0.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
                 .build(),
         );
         let op11 = cont_block.append_operation(
             operation::Builder::new("memref.view", Location::unknown(&self.context))
-                .add_operands(&[op1.result(0)?.into()])
-                .add_results(&[self.felt_type()])
+                .add_operands(&[op1.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
                 .build(),
         );
 
@@ -970,6 +1026,12 @@ impl<'ctx> Compiler<'ctx> {
                 .add_results(&[self.u8_type()])
                 .build(),
         );
+        let t0 = cont_block.append_operation(
+            operation::Builder::new("arith.trunci", Location::unknown(&self.context))
+                .add_operands(&[op14.result(0)?.into()])
+                .add_results(&[self.bool_type()])
+                .build(),
+        );
 
         let op15 = cont_block.append_operation(
             operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
@@ -980,9 +1042,12 @@ impl<'ctx> Compiler<'ctx> {
         );
         let op16 = cont_block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
-                .add_attributes(&[
-                    NamedAttribute::new_parsed(&self.context, "position", "0").unwrap()
-                ])
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "position",
+                    "array<i64: 0>",
+                )
+                .unwrap()])
                 .add_operands(&[op15.result(0)?.into(), op12.result(0)?.into()])
                 .add_results(&[
                     Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
@@ -991,9 +1056,12 @@ impl<'ctx> Compiler<'ctx> {
         );
         let op17 = cont_block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
-                .add_attributes(&[
-                    NamedAttribute::new_parsed(&self.context, "position", "1").unwrap()
-                ])
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "position",
+                    "array<i64: 1>",
+                )
+                .unwrap()])
                 .add_operands(&[op16.result(0)?.into(), op13.result(0)?.into()])
                 .add_results(&[
                     Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
@@ -1002,10 +1070,13 @@ impl<'ctx> Compiler<'ctx> {
         );
         let op18 = cont_block.append_operation(
             operation::Builder::new("llvm.insertvalue", Location::unknown(&self.context))
-                .add_attributes(&[
-                    NamedAttribute::new_parsed(&self.context, "position", "2").unwrap()
-                ])
-                .add_operands(&[op17.result(0)?.into(), op14.result(0)?.into()])
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "position",
+                    "array<i64: 2>",
+                )
+                .unwrap()])
+                .add_operands(&[op17.result(0)?.into(), t0.result(0)?.into()])
                 .add_results(&[
                     Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
                 ])

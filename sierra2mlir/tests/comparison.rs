@@ -19,6 +19,7 @@ use num_traits::Num;
 use sierra2mlir::compile;
 use sierra2mlir::types::DEFAULT_PRIME;
 use test_case::test_case;
+use tracing_test::traced_test;
 
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
 // Such tests must be an argumentless main function consisting of calls to the function in question
@@ -66,6 +67,7 @@ use test_case::test_case;
 #[test_case("uint/uint_subtraction")]
 #[test_case("uint/upcasts")]
 #[test_case("uint/wide_mul")]
+#[traced_test]
 fn comparison_test(test_name: &str) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
     compile_to_mlir_with_consistency_check(test_name, &program);

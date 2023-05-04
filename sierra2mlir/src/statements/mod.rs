@@ -268,16 +268,19 @@ impl<'ctx> Compiler<'ctx> {
                                 &mut variables,
                                 storage,
                             )?,
-                            "ec_point_from_x_nz" => self.inline_ec_point_from_x_nz(
-                                &id,
-                                invocation,
-                                &region,
-                                block,
-                                &variables,
-                                &blocks,
-                                statement_idx,
-                                storage,
-                            )?,
+                            "ec_point_from_x_nz" => {
+                                self.inline_ec_point_from_x_nz(
+                                    &id,
+                                    invocation,
+                                    &region,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             _ => self.process_general_libfunc(
                                 &id,
                                 invocation,
