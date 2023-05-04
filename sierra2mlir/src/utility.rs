@@ -469,7 +469,7 @@ impl<'ctx> Compiler<'ctx> {
 
     /// Utility method to create a print_felt call.
     pub fn call_print_felt(&'ctx self, block: BlockRef<'ctx>, value: Value) -> Result<()> {
-        self.op_func_call(&block, "print_felt", &[value], &[])?;
+        self.op_func_call(&block, "print_felt252", &[value], &[])?;
         Ok(())
     }
 }

@@ -33,9 +33,10 @@ pub fn compile(
 ) -> Result<String, color_eyre::Report> {
     let mut compiler = Compiler::new(program, main_print, print_fd, available_gas)?;
     compiler.compile()?;
-    assert!(compiler.module.as_operation().verify());
 
     debug!("mlir before pass:\n{}", compiler.module.as_operation());
+    assert!(compiler.module.as_operation().verify());
+
     let pass_manager = pass::Manager::new(&compiler.context);
     register_all_passes();
 
