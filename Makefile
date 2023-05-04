@@ -87,6 +87,7 @@ clean-tests:
 	-rm -rf sierra2mlir/tests/comparison/**/*.sierra
 	-rm -rf sierra2mlir/tests/comparison/out/*.ll
 	-rm -rf sierra2mlir/tests/comparison/out/*.mlir
+	-rm -rf sierra2mlir/tests/comparison/out/*.out
 
 clean: clean-examples clean-tests
 
