@@ -62,7 +62,8 @@ impl<'ctx> SierraType<'ctx> {
     pub fn get_width(&self) -> u32 {
         match self {
             SierraType::Simple(ty) => {
-                ty.get_width().expect("Type size should be calculable for Simple SierraTypes")
+                ty.get_width()//.expect("Type size should be calculable for Simple SierraTypes")
+                .unwrap_or(513)
             }
             SierraType::Struct { ty: _, field_types } => {
                 let mut width = 0;

@@ -50,6 +50,8 @@ use tracing_test::traced_test;
 #[test_case("bool/to_felt252", Some(100000))]
 #[test_case("bool/xor", None)]
 #[test_case("bool/xor", Some(100000))]
+#[test_case("ec/ec_neg", None)]
+#[test_case("ec/ec_neg", Some(100000))]
 #[test_case("ec/ec_point_zero", None)]
 #[test_case("ec/ec_point_zero", Some(100000))]
 #[test_case("ec/ec_point_unwrap", None)]
