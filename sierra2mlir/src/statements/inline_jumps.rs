@@ -988,6 +988,35 @@ impl<'ctx> Compiler<'ctx> {
                 .build(),
         );
 
+        let k0 = cont_block.append_operation(
+            operation::Builder::new("index.constant", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", "0 : index")?])
+                .add_results(&[Type::index(&self.context)])
+                .build(),
+        );
+        let op10 = cont_block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op0.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
+                .build(),
+        );
+        let u0 = cont_block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )?])
+                .add_operands(&[arg])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        cont_block.append_operation(
+            operation::Builder::new("memref.store", Location::unknown(&self.context))
+                .add_operands(&[u0.result(0)?.into(), op10.result(0)?.into()])
+                .build(),
+        );
+
         let op3 = cont_block.append_operation(
             operation::Builder::new(
                 "memref.extract_aligned_pointer_as_index",
@@ -1069,18 +1098,6 @@ impl<'ctx> Compiler<'ctx> {
                 .build(),
         );
 
-        let k0 = cont_block.append_operation(
-            operation::Builder::new("index.constant", Location::unknown(&self.context))
-                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", "0 : index")?])
-                .add_results(&[Type::index(&self.context)])
-                .build(),
-        );
-        let op10 = cont_block.append_operation(
-            operation::Builder::new("memref.view", Location::unknown(&self.context))
-                .add_operands(&[op0.result(0)?.into(), k0.result(0)?.into()])
-                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
-                .build(),
-        );
         let op11 = cont_block.append_operation(
             operation::Builder::new("memref.view", Location::unknown(&self.context))
                 .add_operands(&[op1.result(0)?.into(), k0.result(0)?.into()])
@@ -1113,6 +1130,29 @@ impl<'ctx> Compiler<'ctx> {
                 .build(),
         );
 
+        let v0 = cont_block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )?])
+                .add_operands(&[op12.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let v1 = cont_block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )?])
+                .add_operands(&[op13.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+
         let op15 = cont_block.append_operation(
             operation::Builder::new("llvm.mlir.undef", Location::unknown(&self.context))
                 .add_results(&[
@@ -1128,7 +1168,7 @@ impl<'ctx> Compiler<'ctx> {
                     "array<i64: 0>",
                 )
                 .unwrap()])
-                .add_operands(&[op15.result(0)?.into(), op12.result(0)?.into()])
+                .add_operands(&[op15.result(0)?.into(), v0.result(0)?.into()])
                 .add_results(&[
                     Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
                 ])
@@ -1142,7 +1182,7 @@ impl<'ctx> Compiler<'ctx> {
                     "array<i64: 1>",
                 )
                 .unwrap()])
-                .add_operands(&[op16.result(0)?.into(), op13.result(0)?.into()])
+                .add_operands(&[op16.result(0)?.into(), v1.result(0)?.into()])
                 .add_results(&[
                     Type::parse(&self.context, "!llvm.struct<packed (i256, i256, i1)>").unwrap()
                 ])
