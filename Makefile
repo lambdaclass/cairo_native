@@ -45,17 +45,17 @@ COMPARISON_TEST_TARGETS := $(patsubst %.cairo,%.sierra,$(COMPARISON_TEST_SOURCES
 %.ll: %.mlir
 	$(LLVM_PREFIX)/bin/mlir-translate --mlir-to-llvmir -o $@ $<
 
-build: $(BENCH_TARGETS)
+build:
 	cargo build --release
 
-check: $(BENCH_TARGETS)
+check:
 	cargo fmt --all -- --check
 	cargo clippy --all-targets -- -D warnings
 
-test: $(BENCH_TARGETS)
+test:
 	cargo test --all-targets
 
-coverage: $(BENCH_TARGETS)
+coverage:
 	cargo llvm-cov --profile "ci-coverage" --all-features --workspace --lcov --output-path lcov.info
 
 book:
