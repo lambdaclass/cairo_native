@@ -29,7 +29,8 @@ use test_case::test_case;
 #[test_case("array/index_invalid", Some(10000))]
 #[test_case("array/pop_front_invalid", None)]
 #[test_case("array/pop_front_invalid", Some(10000))]
-// #[test_case("array/pop_front_valid")]
+#[test_case("array/pop_front_valid", None)]
+#[test_case("array/pop_front_valid", Some(100000))]
 #[test_case("bitwise/and", None)]
 #[test_case("bitwise/and", Some(100000))]
 #[test_case("bitwise/or", None)]
@@ -54,7 +55,8 @@ use test_case::test_case;
 #[test_case("enums/single_value", Some(100000))]
 #[test_case("felt_ops/add", None)]
 #[test_case("felt_ops/add", Some(100000))]
-// #[test_case("felt_ops/div")] - div blocked on panic and array
+#[test_case("felt_ops/div", None)]
+#[test_case("felt_ops/div", Some(100000))]
 #[test_case("felt_ops/felt_is_zero", None)]
 #[test_case("felt_ops/felt_is_zero", Some(100000))]
 #[test_case("felt_ops/mul", None)]
@@ -97,6 +99,8 @@ use test_case::test_case;
 #[test_case("uint/uint_addition", Some(100000))]
 #[test_case("uint/uint_subtraction", None)]
 #[test_case("uint/uint_subtraction", Some(100000))]
+#[test_case("uint/uint_try_from_felt", None)]
+#[test_case("uint/uint_try_from_felt", Some(100000))]
 #[test_case("uint/upcasts", None)]
 #[test_case("uint/upcasts", Some(100000))]
 //#[test_case("uint/wide_mul", None)]
@@ -288,6 +292,8 @@ fn run_mlir_file_via_llvm(
 
     let ld_env = library_preload_env_var();
     let lli_cmd = Command::new(lli_path)
+        .arg("-O3")
+        .arg("--polly")
         .arg(output_file)
         .env(ld_env, env!("S2M_UTILS_PATH"))
         .stdout(Stdio::piped())

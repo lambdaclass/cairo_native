@@ -134,10 +134,22 @@ fn main() -> color_eyre::Result<()> {
                 panic!("Entry point {function} doesn't exist.");
             }
 
+            #[derive(Debug, Default)]
+            #[repr(C, packed)]
+            struct ReturnValue {
+                pub tag: i16,
+                pub data: [i8; 16],
+            }
+
             let engine = sierra2mlir::execute(&program, main_print, print_target, available_gas)?;
 
+            // This is a hack so that functions that return something (i.e panic), don't segfault.
+            let mut return_buffer = [0_i8; 4092];
+            let mut return_buffer_ptr = std::ptr::addr_of_mut!(return_buffer);
+            let return_buffer_ptr_ptr = std::ptr::addr_of_mut!(return_buffer_ptr);
             unsafe {
-                engine.invoke_packed(&function, &mut [])?;
+                engine
+                    .invoke_packed(&function, &mut [return_buffer_ptr_ptr as *mut _ as *mut ()])?;
             };
         }
     }
