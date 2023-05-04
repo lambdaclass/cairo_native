@@ -401,7 +401,6 @@ impl<'ctx> Compiler<'ctx> {
 
         if let Some(gas) = &self.gas {
             // spend the required gas for this user function call
-
             let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
             let computed_cost: usize = costs
                 .iter()
@@ -413,10 +412,15 @@ impl<'ctx> Compiler<'ctx> {
                     token_cost * (*cost as usize)
                 })
                 .sum();
-            debug!(computed_cost, user_func_name, "user function gas spenditure");
 
-            let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
-            self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
+            // only spend gas for non-corelib (debug?) functions.
+            let core_funcs_gasless = Regex::new(r#"core::(debug)"#).unwrap();
+            let skip = core_funcs_gasless.is_match(user_func_name);
+            if true {
+                let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
+                self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
+            }
+            debug!(computed_cost, skip, user_func_name, "user function gas spenditure");
         }
 
         let block_info = &blocks.get(&func_start).unwrap();
