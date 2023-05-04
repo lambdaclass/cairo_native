@@ -5,3 +5,8 @@ members = [
     "sierra2mlir-utils",
     "cli"
 ]
+
+[profile.ci-coverage]
+inherits = "dev"
+opt-level = 3
+debug = true

@@ -29,8 +29,9 @@ pub fn compile(
     // TODO: Make this an enum with either: stdout, stderr, a path to a file, or a raw fd (pipes?).
     main_print: bool,
     print_fd: i32,
+    available_gas: Option<usize>,
 ) -> Result<String, color_eyre::Report> {
-    let mut compiler = Compiler::new(program, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd, available_gas)?;
     compiler.compile()?;
     assert!(compiler.module.as_operation().verify());
 
@@ -75,8 +76,9 @@ pub fn execute(
     program: &Program,
     main_print: bool,
     print_fd: i32,
+    available_gas: Option<usize>,
 ) -> Result<ExecutionEngine, color_eyre::Report> {
-    let mut compiler = Compiler::new(program, main_print, print_fd)?;
+    let mut compiler = Compiler::new(program, main_print, print_fd, available_gas)?;
     compiler.compile()?;
 
     let pass_manager = pass::Manager::new(&compiler.context);

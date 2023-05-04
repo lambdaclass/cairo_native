@@ -31,7 +31,7 @@ impl<'block, 'ctx> Compiler<'ctx> {
         }
 
         match libfunc_def {
-            SierraLibFunc::Function { args, return_types } => self
+            SierraLibFunc::Function { args, return_types, .. } => self
                 .process_libfunc_as_function_call(
                     id,
                     args,

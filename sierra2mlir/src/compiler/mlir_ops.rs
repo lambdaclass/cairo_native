@@ -43,6 +43,21 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    pub fn op_sub_sat<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
+        block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.usub.sat\"",
+                )
+                .unwrap()])
+                .add_operands(&[lhs, rhs])
+                .add_results(&[lhs.r#type()])
+                .build(),
+        )
+    }
+
     /// Only the MLIR op.
     pub fn op_mul<'a>(&self, block: &'a Block, lhs: Value, rhs: Value) -> OperationRef<'a> {
         block.append_operation(arith::muli(
@@ -441,47 +456,6 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
-    /// Compute the multiplicative inverse of a felt.
-    ///
-    /// > Source: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
-    /// TODO replace with extended euclidean algorithm
-    pub fn op_felt_inverse<'a>(
-        &self,
-        region: &'a Region,
-        block: &'a Block,
-        value: Value,
-    ) -> Result<OperationRef<'a>> {
-        let const_p = self.prime_constant(block);
-        let const_two = self.op_felt_const(block, "2");
-        let p_minus_2 = self.op_sub(block, const_p.result(0)?.into(), const_two.result(0)?.into());
-
-        self.op_felt_pow(region, block, value, p_minus_2.result(0)?.into())
-    }
-
-    /// Perform a felt divison (not euclidean, but modular).
-    ///
-    /// In other words, find x in `a / b = x` such that `x * b = a` in modulo prime.
-    pub fn op_felt_div<'a>(
-        &self,
-        region: &'a Region,
-        block: &'a Block,
-        dividend: Value,
-        divisor: Value,
-    ) -> Result<OperationRef<'a>> {
-        // Find the multiplicative inverse of the divisor.
-        let divisor_inverse = self.op_felt_inverse(region, block, divisor)?;
-
-        // Multiply by the dividend to find the quotient.
-        let lhs = self.op_zext(block, dividend, self.double_felt_type());
-        let rhs = self.op_zext(block, divisor_inverse.result(0)?.into(), self.double_felt_type());
-
-        let op_mul = self.op_mul(block, lhs.result(0)?.into(), rhs.result(0)?.into());
-        let op_mod = self.op_felt_modulo(block, op_mul.result(0)?.into())?;
-        let op_trunc = self.op_trunc(block, op_mod.result(0)?.into(), self.felt_type());
-
-        Ok(op_trunc)
-    }
-
     /// Example function_type: "(i64, i64) -> i64"
     pub fn op_func<'a>(
         &'a self,
@@ -621,6 +595,48 @@ impl<'ctx> Compiler<'ctx> {
                 .add_results(&[self.llvm_ptr_type()])
                 .build(),
         )
+    }
+
+    pub fn op_llvm_global<'a>(
+        &self,
+        block: &'a Block,
+        name: &str,
+        global_type: Type,
+        initial_value: &str,
+    ) -> Result<OperationRef<'a>> {
+        let region = Region::new();
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.global", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[
+                        //("alignment", &align.to_string()),
+                        ("sym_name", &format!("\"{name}\"")),
+                        ("value", &format!("{initial_value} : {}", global_type)),
+                        ("global_type", &global_type.to_string()),
+                        ("linkage", "#llvm.linkage<\"internal\">"),
+                    ],
+                )?)
+                .add_regions(vec![region])
+                .build(),
+        ))
+    }
+
+    /// Creates a pointer pointing to a global or a function
+    pub fn op_llvm_addressof<'a>(
+        &self,
+        block: &'a Block,
+        symbol: &str,
+    ) -> Result<OperationRef<'a>> {
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.mlir.addressof", Location::unknown(&self.context))
+                .add_attributes(&NamedAttribute::new_parsed_vec(
+                    &self.context,
+                    &[("global_name", &format!("@\"{symbol}\""))],
+                )?)
+                .add_results(&[self.llvm_ptr_type()])
+                .build(),
+        ))
     }
 
     pub fn op_llvm_store<'a>(

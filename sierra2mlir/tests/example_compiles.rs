@@ -13,7 +13,7 @@ macro_rules! impl_tests {
                     load_program(Path::new(concat!(std::env!("CARGO_MANIFEST_DIR"), "/../examples/", stringify!($name), ".cairo")))
                 };
 
-                sierra2mlir::compile(&program, false, false, false, 1).expect("Error compiling sierra program");
+                sierra2mlir::compile(&program, false, false, false, 1, Some(500000)).expect("Error compiling sierra program");
             }
         )*
     };
@@ -26,17 +26,18 @@ impl_tests!(
     destructure,
     enum_match,
     example_array,
-    //felt_div,
+    felt_div,
     felt_is_zero,
     fib_simple,
     fib,
     index_array,
+    pedersen,
     print,
     print_test,
     simple_enum,
     simple,
     types,
-    uint,
+    // uint, uncomment when uint verify is implemented
     uint_addition
 );
 

@@ -5,6 +5,7 @@
 #![allow(unused)]
 
 use cairo_lang_compiler::{project::ProjectConfig, CompilerConfig};
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_lang_sierra::program::Program;
 use clap::{Parser, Subcommand};
 use sierra2mlir::compiler::Compiler;
@@ -58,6 +59,10 @@ enum Commands {
         ///   2: stderr
         #[arg(short, long, default_value_t = 1)]
         print_target: i32,
+
+        /// The available gas
+        #[arg(short, long)]
+        available_gas: Option<usize>,
     },
     /// Compile and run a program. The entry point must be a function without arguments.
     Run {
@@ -80,6 +85,10 @@ enum Commands {
         ///   2: stderr
         #[arg(short, long, default_value_t = 1)]
         print_target: i32,
+
+        /// The available gas
+        #[arg(short, long)]
+        available_gas: Option<usize>,
     },
 }
 
@@ -89,10 +98,25 @@ fn main() -> color_eyre::Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Compile { input, optimize, output, debug, main_print, print_target } => {
+        Commands::Compile {
+            input,
+            optimize,
+            output,
+            debug,
+            main_print,
+            print_target,
+            available_gas,
+        } => {
             let program = load_program(&input);
-            let mlir_output =
-                sierra2mlir::compile(&program, optimize, debug, main_print, print_target)?;
+
+            let mlir_output = sierra2mlir::compile(
+                &program,
+                optimize,
+                debug,
+                main_print,
+                print_target,
+                available_gas,
+            )?;
 
             if let Some(output) = output {
                 fs::write(output, mlir_output);
@@ -100,16 +124,32 @@ fn main() -> color_eyre::Result<()> {
                 println!("{mlir_output}");
             }
         }
-        Commands::Run { function, input, main_print, print_target } => {
+        Commands::Run { function, input, main_print, print_target, available_gas } => {
             let program = load_program(&input);
-            if !program.funcs.iter().any(|x| x.id.debug_name.as_deref() == Some(&function)) {
+            if !program.funcs.iter().any(|x| {
+                x.id.debug_name.as_deref() == Some(&function)
+                    || (main_print
+                        && x.id.debug_name.as_ref().is_some_and(|x| x.as_str().ends_with("::main")))
+            }) {
                 panic!("Entry point {function} doesn't exist.");
             }
 
-            let engine = sierra2mlir::execute(&program, main_print, print_target)?;
+            #[derive(Debug, Default)]
+            #[repr(C, packed)]
+            struct ReturnValue {
+                pub tag: i16,
+                pub data: [i8; 16],
+            }
 
+            let engine = sierra2mlir::execute(&program, main_print, print_target, available_gas)?;
+
+            // This is a hack so that functions that return something (i.e panic), don't segfault.
+            let mut return_buffer = [0_i8; 4092];
+            let mut return_buffer_ptr = std::ptr::addr_of_mut!(return_buffer);
+            let return_buffer_ptr_ptr = std::ptr::addr_of_mut!(return_buffer_ptr);
             unsafe {
-                engine.invoke_packed(&function, &mut [])?;
+                engine
+                    .invoke_packed(&function, &mut [return_buffer_ptr_ptr as *mut _ as *mut ()])?;
             };
         }
     }

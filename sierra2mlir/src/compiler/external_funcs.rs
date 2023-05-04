@@ -193,7 +193,7 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_llvm_store(block, fmt_data.result(0)?.into(), addr)?;
 
-        let target_fd = self.op_u32_const(block, "1");
+        let target_fd = self.op_u32_const(block, &self.print_fd.to_string());
 
         let mut args = vec![target_fd.result(0)?.into(), addr];
         args.extend(values);

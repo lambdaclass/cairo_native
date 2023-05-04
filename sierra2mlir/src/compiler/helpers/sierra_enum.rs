@@ -1,11 +1,10 @@
 use color_eyre::Result;
-use melior_next::ir::{Block, OperationRef, Region, Value};
+use melior_next::ir::{Block, OperationRef, Value};
 
 use crate::compiler::fn_attributes::FnAttributes;
 use crate::{
     compiler::{Compiler, Storage},
     sierra_type::SierraType,
-    utility::create_fn_signature,
 };
 
 impl<'ctx> Compiler<'ctx> {
@@ -33,11 +32,8 @@ impl<'ctx> Compiler<'ctx> {
             return Ok(func_name);
         }
 
-        let region = Region::new();
+        let block = self.new_block(&[enum_type.get_type()]);
 
-        let block = region.append_block(Block::new(&[enum_type.get_type_location(&self.context)]));
-
-        let enum_mlir_type = enum_type.get_type();
         let enum_value = block.argument(0)?.into();
 
         let enum_tag_op = self.op_llvm_extractvalue(&block, 0, enum_value, tag_type)?;
@@ -45,18 +41,14 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_return(&block, &[enum_tag]);
 
-        let function_type = create_fn_signature(&[enum_mlir_type], &[tag_type]);
-
-        let func = self.op_func(
-            &func_name,
-            &function_type,
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
-
         storage.helperfuncs.insert(func_name.clone());
 
-        self.module.body().append_operation(func);
+        self.create_function(
+            &func_name,
+            vec![block],
+            &[tag_type],
+            FnAttributes::libfunc(false, true),
+        )?;
 
         Ok(func_name)
     }
@@ -79,11 +71,8 @@ impl<'ctx> Compiler<'ctx> {
             return Ok(func_name);
         }
 
-        let region = Region::new();
+        let block = self.new_block(&[enum_type.get_type()]);
 
-        let block = region.append_block(Block::new(&[enum_type.get_type_location(&self.context)]));
-
-        let enum_mlir_type = enum_type.get_type();
         let enum_value = block.argument(0)?.into();
 
         let enum_data_op = self.op_llvm_extractvalue(&block, 1, enum_value, storage_type)?;
@@ -99,18 +88,14 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_return(&block, &[cast_data]);
 
-        let function_type = create_fn_signature(&[enum_mlir_type], &[variant_type]);
-
-        let func = self.op_func(
-            &func_name,
-            &function_type,
-            vec![region],
-            FnAttributes::libfunc(false, true),
-        )?;
-
         storage.helperfuncs.insert(func_name.clone());
 
-        self.module.body().append_operation(func);
+        self.create_function(
+            &func_name,
+            vec![block],
+            &[variant_type],
+            FnAttributes::libfunc(false, true),
+        )?;
 
         Ok(func_name)
     }
@@ -137,7 +122,7 @@ impl<'ctx> Compiler<'ctx> {
             panic!("call_enum_get_tag should have been passed an enum type, but instead was passed {:?}", enum_type)
         };
         let func_name = self.create_enum_get_tag(enum_type, storage)?;
-        self.op_llvm_call(block, &func_name, &[enum_value], &[tag_type])
+        self.op_func_call(block, &func_name, &[enum_value], &[tag_type])
     }
 
     pub fn call_enum_get_data_as_variant_type<'block>(
@@ -163,6 +148,6 @@ impl<'ctx> Compiler<'ctx> {
         };
         let func_name =
             self.create_enum_get_data_as_variant_type(enum_name, enum_type, variant, storage)?;
-        self.op_llvm_call(block, &func_name, &[enum_value], &[variant_type])
+        self.op_func_call(block, &func_name, &[enum_value], &[variant_type])
     }
 }
