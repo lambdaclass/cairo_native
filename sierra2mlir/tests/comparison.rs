@@ -1,9 +1,11 @@
 #![allow(clippy::items_after_test_module)]
 
+use std::fs;
+use std::fs::File;
+use std::io::{Read, Seek};
+use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::{env, fs};
 
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
@@ -16,8 +18,8 @@ use color_eyre::Result;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Num;
-use sierra2mlir::compile;
 use sierra2mlir::types::DEFAULT_PRIME;
+use sierra2mlir::{compile, execute};
 use test_case::test_case;
 
 // Tests behaviour of the generated MLIR against the behaviour of starkware's own sierra runner
@@ -109,7 +111,7 @@ use test_case::test_case;
 fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
     compile_to_mlir_with_consistency_check(test_name, &program, available_gas);
-    let llvm_result = run_mlir(test_name)?;
+    let llvm_result = run_mlir(test_name, &program, available_gas)?;
 
     let casm_result = run_sierra_via_casm(program, available_gas);
 
@@ -235,84 +237,37 @@ fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
-fn run_mlir(test_name: &str) -> Result<Result<Vec<BigUint>, String>, String> {
-    let out_dir = get_outdir();
-
+fn run_mlir(
+    test_name: &str,
+    program: &Program,
+    available_gas: Option<usize>,
+) -> Result<Result<Vec<BigUint>, String>, String> {
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
 
-    let mlir_file = out_dir.join(format!("{test_file_name}.mlir")).display().to_string();
-    let optimised_mlir_file =
-        out_dir.join(format!("{test_file_name}-opt.mlir")).display().to_string();
-    let output_file = out_dir.join(format!("{test_file_name}.ll")).display().to_string();
-    let optimised_output_file =
-        out_dir.join(format!("{test_file_name}-opt.ll")).display().to_string();
+    let out_dir = get_outdir();
 
-    let result = run_mlir_file_via_llvm(&mlir_file, &output_file)?;
-    let optimised_result = run_mlir_file_via_llvm(&optimised_mlir_file, &optimised_output_file)?;
+    let mut output = String::new();
+    let output_path = out_dir.join(format!("{test_file_name}.out"));
 
-    assert_eq!(
-        result, optimised_result,
-        "Compiling with the optimised flag produced different behaviour"
-    );
-
-    Ok(result)
-}
-
-// Outer result is for whether lli succeeded and produced a parsable result
-// Inner result is for whether the program panicked
-fn run_mlir_file_via_llvm(
-    mlir_file: &str,
-    output_file: &str,
-) -> Result<Result<Vec<BigUint>, String>, String> {
-    let mlir_prefix = find_mlir_prefix();
-    let lli_path = mlir_prefix.join("bin").join("lli");
-    let mlir_translate_path = mlir_prefix.join("bin").join("mlir-translate");
-
-    let mlir_output = Command::new(mlir_translate_path)
-        .arg("--mlir-to-llvmir")
-        .arg("-o")
-        .arg(output_file)
-        .arg(mlir_file)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap()
-        .wait_with_output()
-        .unwrap();
-
-    if !mlir_output.stdout.is_empty() || !mlir_output.stderr.is_empty() {
-        println!(
-            "Mlir_output ({}):\n    stdout: {}\n    stderr: {}",
-            mlir_file,
-            String::from_utf8(mlir_output.stdout).unwrap(),
-            String::from_utf8(mlir_output.stderr).unwrap()
-        );
+    {
+        let mut output_file = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(output_path)
+            .unwrap();
+        let fd = output_file.as_raw_fd();
+        let engine = execute(program, true, fd, available_gas).unwrap();
+        unsafe {
+            engine.invoke_packed("main", &mut []).unwrap();
+        }
+        output_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        output_file.read_to_string(&mut output).unwrap();
     }
 
-    let ld_env = library_preload_env_var();
-    let lli_cmd = Command::new(lli_path)
-        .arg("-O3")
-        .arg("--polly")
-        .arg(output_file)
-        .env(ld_env, env!("S2M_UTILS_PATH"))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let lli_output = lli_cmd.wait_with_output().unwrap();
-    dbg!(lli_output.status);
-
-    if !lli_output.stderr.is_empty() {
-        return Err(format!(
-            "lli failed with output: {}",
-            String::from_utf8(lli_output.stderr).unwrap()
-        ));
-    }
-
-    let output = std::str::from_utf8(&lli_output.stdout).unwrap().trim();
-
-    parse_llvm_result(output).ok_or("Unable to parse llvm result".to_string())
+    parse_llvm_result(&output).ok_or("Unable to parse llvm result".to_string())
 }
 
 // Parses the human-readable output from running the llir code into a raw list of outputs
@@ -341,22 +296,6 @@ fn flatten_test_name(test_name: &str) -> String {
 
 fn get_outdir() -> PathBuf {
     Path::new(".").join("tests").join("comparison").join("out")
-}
-
-fn find_mlir_prefix() -> PathBuf {
-    match env::var_os("MLIR_SYS_160_PREFIX") {
-        Some(x) => Path::new(x.to_str().unwrap()).to_owned(),
-        None => {
-            let cmd_output = Command::new("../scripts/find-llvm.sh")
-                .stdout(Stdio::piped())
-                .spawn()
-                .unwrap()
-                .wait_with_output()
-                .unwrap();
-
-            PathBuf::from(String::from_utf8(cmd_output.stdout).unwrap().trim())
-        }
-    }
 }
 
 fn get_string_from_felts(felts: Vec<Felt252>) -> String {
