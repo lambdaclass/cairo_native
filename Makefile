@@ -56,7 +56,7 @@ test: $(BENCH_TARGETS)
 	cargo test --all-targets
 
 coverage: $(BENCH_TARGETS)
-	cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --profile "ci-coverage" --all-features --workspace --lcov --output-path lcov.info
 
 book:
 	mdbook serve docs
