@@ -17,7 +17,7 @@ use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes}
 use cairo_lang_sierra_gas::calc_gas_postcost_info;
 use cairo_lang_sierra_gas::{compute_precost_info, gas_info::GasInfo};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use color_eyre::eyre::{bail, eyre};
+use color_eyre::eyre::bail;
 use melior_next::{
     dialect,
     ir::{operation, Block, Location, Module, NamedAttribute, OperationRef, Region, Type},
