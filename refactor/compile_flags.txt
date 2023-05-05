@@ -1,0 +1,3 @@
+-std=c++17
+-I/usr/lib/llvm-16/include/
+-Itarget/cxxbridge/

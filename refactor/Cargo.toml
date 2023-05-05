@@ -1,0 +1,12 @@
+[package]
+name = "sierra2mlir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cairo-lang-sierra = "1.0.0-alpha.7"
+cxx = "1.0.94"
+num-bigint = "0.4.3"
+
+[build-dependencies]
+cxx-build = "1.0.94"
