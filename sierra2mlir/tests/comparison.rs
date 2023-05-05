@@ -115,6 +115,8 @@ use tracing_test::traced_test;
 #[test_case("uint/upcasts", Some(100000))]
 //#[test_case("uint/wide_mul", None)]
 //#[test_case("uint/wide_mul", Some(100000))]
+#[test_case("unwrap_non_zero", None)]
+#[test_case("unwrap_non_zero", Some(100000))]
 #[traced_test]
 fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
