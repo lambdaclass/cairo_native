@@ -108,6 +108,8 @@ use test_case::test_case;
 //#[test_case("uint/wide_mul", None)]
 //#[test_case("uint/wide_mul", Some(100000))]
 #[test_case("gas/available_gas", Some(200))]
+#[test_case("unwrap_non_zero", None)]
+#[test_case("unwrap_non_zero", Some(100000))]
 fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), String> {
     let program = compile_sierra_program(test_name);
     compile_to_mlir_with_consistency_check(test_name, &program, available_gas);
