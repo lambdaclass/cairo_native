@@ -177,7 +177,7 @@ impl<'ctx> Compiler<'ctx> {
 
         // If gas was enabled, print the remaining gas.
 
-        /*
+
         if self.gas.is_some() {
             let (_, current_gas_op) = self.call_get_gas_counter(&success_block)?;
             let current_gas_value = current_gas_op.result(0)?.into();
@@ -194,7 +194,6 @@ impl<'ctx> Compiler<'ctx> {
                 storage,
             )?;
         }
-        */
 
         // Finally, print the result if it was, or the error message if not
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
