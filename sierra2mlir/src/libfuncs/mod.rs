@@ -2472,49 +2472,6 @@ impl<'ctx> Compiler<'ctx> {
                 %6 = arith.select %5, %1, %3 : i256
                 %7 = llvm.insertvalue %6, %0[1] : !llvm.struct<packed (i256, i256, i1)>
                 func.return %7 : !llvm.struct<packed (i256, i256, i1)>
-
-                // %1 = llvm.extractvalue %0[0] : !llvm.struct<packed (i256, i256, i1)>
-                // %2 = llvm.extractvalue %0[1] : !llvm.struct<packed (i256, i256, i1)>
-                // %3 = llvm.extractvalue %0[2] : !llvm.struct<packed (i256, i256, i1)>
-
-                // %4 = llvm.call_intrinsic "llvm.bswap.i256"(%1) : (i256) -> i256
-                // %5 = llvm.call_intrinsic "llvm.bswap.i256"(%2) : (i256) -> i256
-                // %6 = arith.extui %3 : i1 to i8
-
-                // %7 = memref.alloca() : memref<32xi8>
-                // %8 = memref.alloca() : memref<32xi8>
-                // %9 = memref.alloca() : memref<i8>
-
-                // %10 = index.constant 0
-                // %11 = memref.view %7[%10][] : memref<32xi8> to memref<i256>
-                // %12 = memref.view %8[%10][] : memref<32xi8> to memref<i256>
-                // memref.store %4, %11[] : memref<i256>
-                // memref.store %5, %12[] : memref<i256>
-                // memref.store %6, %9[] : memref<i8>
-
-                // %13 = memref.extract_aligned_pointer_as_index %7 : memref<32xi8> -> index
-                // %14 = memref.extract_aligned_pointer_as_index %8 : memref<32xi8> -> index
-                // %15 = memref.extract_aligned_pointer_as_index %9 : memref<i8> -> index
-                // %16 = index.castu %13 : index to i64
-                // %17 = index.castu %14 : index to i64
-                // %18 = index.castu %15 : index to i64
-                // %19 = llvm.inttoptr %16 : i64 to !llvm.ptr
-                // %20 = llvm.inttoptr %17 : i64 to !llvm.ptr
-                // %21 = llvm.inttoptr %18 : i64 to !llvm.ptr
-                // func.call @sierra2mlir_util_ec_neg(%19, %20, %21) : (!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
-
-                // %22 = memref.load %11[] : memref<i256>
-                // %23 = memref.load %12[] : memref<i256>
-                // %24 = memref.load %9[] : memref<i8>
-
-                // %25 = llvm.call_intrinsic "llvm.bswap.i256"(%22) : (i256) -> i256
-                // %26 = llvm.call_intrinsic "llvm.bswap.i256"(%23) : (i256) -> i256
-                // %27 = arith.trunci %24 : i8 to i1
-
-                // %28 = llvm.insertvalue %25, %0[0] : !llvm.struct<packed (i256, i256, i1)>
-                // %29 = llvm.insertvalue %26, %0[1] : !llvm.struct<packed (i256, i256, i1)>
-                // %30 = llvm.insertvalue %27, %0[2] : !llvm.struct<packed (i256, i256, i1)>
-                // func.return %30 : !llvm.struct<packed (i256, i256, i1)>
             }
 
             func.func private @sierra2mlir_util_ec_neg(!llvm.ptr, !llvm.ptr, !llvm.ptr)
@@ -2525,7 +2482,7 @@ impl<'ctx> Compiler<'ctx> {
             id.to_string(),
             SierraLibFunc::create_function_all_args(
                 vec![SierraType::Simple(self.ec_point_type())],
-                vec![SierraType::Simple(self.felt_type()), SierraType::Simple(self.felt_type())],
+                vec![SierraType::Simple(self.ec_point_type())],
             ),
         );
 

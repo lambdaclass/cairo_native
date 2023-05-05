@@ -52,6 +52,11 @@ impl<'ctx> Compiler<'ctx> {
 
     /// creates the implementation for the print felt method: "print_felt(value: i256) -> ()"
     pub fn create_print_felt(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
+        if storage.helperfuncs.contains("print_felt252") {
+            return Ok(());
+        }
+        storage.helperfuncs.insert("print_felt252".to_string());
+
         let arg_types = [self.felt_type()];
         let block = self.new_block(&arg_types);
 
