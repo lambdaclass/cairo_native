@@ -1,6 +1,7 @@
 use cairo_lang_sierra::{extensions::gas::CostTokenType, program::StatementIdx};
 use color_eyre::Result;
 use melior_next::ir::Block;
+use tracing::debug;
 
 use crate::compiler::Compiler;
 
@@ -26,6 +27,7 @@ impl<'ctx> Compiler<'ctx> {
                 .unwrap();
 
             if requested_gas_count != 0 {
+                debug!(requested_gas_count, "added branch_align gas spenditure");
                 let requested_gas_op =
                     self.op_const(block, &requested_gas_count.to_string(), self.u128_type());
                 let gas_value = requested_gas_op.result(0)?.into();
