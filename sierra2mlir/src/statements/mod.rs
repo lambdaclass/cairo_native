@@ -413,14 +413,9 @@ impl<'ctx> Compiler<'ctx> {
                 })
                 .sum();
 
-            // only spend gas for non-corelib (debug?) functions.
-            let core_funcs_gasless = Regex::new(r#"core::(debug)"#).unwrap();
-            let skip = core_funcs_gasless.is_match(user_func_name);
-            if true {
-                let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
-                self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
-            }
-            debug!(computed_cost, skip, user_func_name, "user function gas spenditure");
+            let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
+            self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
+            debug!(computed_cost, user_func_name, "user function gas");
         }
 
         let block_info = &blocks.get(&func_start).unwrap();
