@@ -124,12 +124,19 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                 println!("llvm result: {:?}\n", llvm_result);
                 println!("Casm result: {:?}\n", casm_values);
                 // Since the casm runner succeeded, we expect that llvm program didn't panic
-                let llvm_result = llvm_result.unwrap();
+                let (llvm_result, _llvm_remaining_gas) = llvm_result.unwrap();
                 assert_eq!(
                     casm_values.len(),
                     llvm_result.len(),
                     "Casm values and llvm values are of different lengths"
                 );
+                if available_gas.is_some() {
+                    // TODO: uncomment when casm gas counter works.
+                    //let casm_gas =
+                    //    result.gas_counter.expect("casm gas counter should exist").to_biguint();
+                    //let llvm_gas = llvm_remaining_gas.expect("mlir gas counter should exist");
+                    //assert_eq!(casm_gas, llvm_gas, "remaning gas mismatch");
+                }
                 let prime = DEFAULT_PRIME.parse::<BigUint>().unwrap();
                 for i in 0..casm_values.len() {
                     assert!(
@@ -169,7 +176,7 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
             }
         },
         Err(e) => {
-            todo!("Comparison tests where the cairo runner fails:\n{e}");
+            todo!("Comparison tests where the cairo runner fails: {e}");
         }
     }
     Ok(())
@@ -229,8 +236,11 @@ fn compile_to_mlir_with_consistency_check(
 // Invokes starkware's runner that compiles sierra to casm and runs it
 // This provides us with the intended results to compare against
 fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result<RunResult> {
-    let runner = SierraCasmRunner::new(program, Some(Default::default()), Default::default())
-        .with_context(|| "Failed setting up runner.")?;
+    let runner = SierraCasmRunner::new(
+        program,
+        available_gas.and_then(|_| Default::default()),
+        Default::default(),
+    )?;
 
     let func = runner.find_function("::main")?;
     runner
@@ -239,11 +249,12 @@ fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result
 }
 
 // Runs the test file via reading the mlir file, compiling it to llir, then invoking lli to run it
+#[allow(clippy::type_complexity)]
 fn run_mlir(
     test_name: &str,
     program: &Program,
     available_gas: Option<usize>,
-) -> Result<Result<Vec<BigUint>, String>, String> {
+) -> Result<Result<(Vec<BigUint>, Option<BigUint>), String>, String> {
     // Allows folders of comparison tests without write producing a file not found
     let test_file_name = flatten_test_name(test_name);
 
@@ -269,22 +280,37 @@ fn run_mlir(
         output_file.read_to_string(&mut output).unwrap();
     }
 
-    parse_llvm_result(&output).ok_or("Unable to parse llvm result".to_string())
+    parse_llvm_result(&output, available_gas.is_some())
+        .ok_or("Unable to parse llvm result".to_string())
 }
 
 // Parses the human-readable output from running the llir code into a raw list of outputs
 // Option is for whether it was parsable
 // Result is for whether the run succeeded or failed
-fn parse_llvm_result(res: &str) -> Option<Result<Vec<BigUint>, String>> {
+#[allow(clippy::type_complexity)]
+fn parse_llvm_result(
+    res: &str,
+    has_gas: bool,
+) -> Option<Result<(Vec<BigUint>, Option<BigUint>), String>> {
     println!("Parsing llvm result: '{}', length: {}", res, res.chars().count());
     let lines = res.split('\n').collect_vec();
     if !lines.is_empty() && lines[0] == "Success" {
-        Some(Ok(lines
-            .iter()
-            .skip(1)
-            .filter(|s| !s.is_empty())
-            .map(|x| BigUint::from_str_radix(x, 16).unwrap())
-            .collect()))
+        let mut base = 1;
+        let gas = if has_gas {
+            base += 1;
+            Some(BigUint::from_str_radix(&lines[1]["Remaining gas: ".len()..], 16).unwrap())
+        } else {
+            None
+        };
+        Some(Ok((
+            lines
+                .iter()
+                .skip(base)
+                .filter(|s| !s.is_empty())
+                .map(|x| BigUint::from_str_radix(x, 16).unwrap())
+                .collect(),
+            gas,
+        )))
     } else if !lines.is_empty() && lines[0] == "Program panicked" {
         Some(Err(lines[1..].join("\n")))
     } else {
