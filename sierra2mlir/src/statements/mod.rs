@@ -282,6 +282,19 @@ impl<'ctx> Compiler<'ctx> {
                                 &mut variables,
                                 storage,
                             )?,
+                            "ec_point_try_new_nz" => {
+                                self.inline_ec_point_try_new_nz(
+                                    &id,
+                                    invocation,
+                                    &region,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "ec_point_from_x_nz" => {
                                 self.inline_ec_point_from_x_nz(
                                     &id,

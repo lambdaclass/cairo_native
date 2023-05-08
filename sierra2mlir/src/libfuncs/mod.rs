@@ -346,6 +346,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_point_zero" => {
                     self.create_libfunc_ec_point_zero(func_decl, storage)?;
                 }
+                "ec_point_try_new_nz" => {
+                    self.register_libfunc_ec_point_try_new_nz(func_decl, storage);
+                }
                 "ec_point_unwrap" => {
                     self.create_libfunc_ec_point_unwrap(func_decl, storage)?;
                 }
@@ -2409,6 +2412,27 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    pub fn register_libfunc_ec_point_try_new_nz(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_deref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: SierraType::Simple(self.felt_type()) },
+                    PositionalArg { loc: 1, ty: SierraType::Simple(self.felt_type()) },
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_point_type()) }],
+                    vec![],
+                ],
+            },
+        );
     }
 
     pub fn create_libfunc_ec_point_unwrap(
