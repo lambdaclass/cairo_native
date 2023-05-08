@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use std::ops::Bound::Included;
 
-use cairo_lang_sierra::extensions::gas::CostTokenType;
 use cairo_lang_sierra::program::{
     GenBranchTarget, GenFunction, GenStatement, Program, StatementIdx,
 };
@@ -22,7 +21,6 @@ use crate::{
 mod function_call;
 mod general_libfunc_implementations;
 mod inline_jumps;
-mod inline_libfuncs;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
@@ -275,9 +273,6 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
-                            "branch_align" => {
-                                self.inline_branch_align(statement_idx, block)?;
-                            }
                             "function_call" => self.process_function_call(
                                 &id,
                                 invocation,
@@ -398,25 +393,6 @@ impl<'ctx> Compiler<'ctx> {
                 .map(|t| (t.ty.get_type(), Location::unknown(&self.context)))
                 .collect_vec(),
         );
-
-        if let Some(gas) = &self.gas {
-            // spend the required gas for this user function call
-            let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
-            let computed_cost: usize = costs
-                .iter()
-                .map(|(token_type, cost)| {
-                    let token_cost = match token_type {
-                        CostTokenType::Const => 1,
-                        _ => 10_000, // dummy builtin cost, like in cairo casm runner for now.
-                    };
-                    token_cost * (*cost as usize)
-                })
-                .sum();
-
-            let value = self.op_u128_const(&entry_block, &computed_cost.to_string());
-            self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
-            debug!(computed_cost, user_func_name, "user function gas");
-        }
 
         let block_info = &blocks.get(&func_start).unwrap();
 

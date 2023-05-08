@@ -9,14 +9,10 @@ use cairo_lang_sierra::{
         },
         NamedLibfunc,
     },
-    ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes};
-use cairo_lang_sierra_gas::calc_gas_postcost_info;
-use cairo_lang_sierra_gas::{compute_precost_info, gas_info::GasInfo};
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use cairo_lang_sierra_to_casm::metadata::{calc_metadata, Metadata};
 use color_eyre::eyre::bail;
 use melior_next::{
     dialect,
@@ -24,6 +20,7 @@ use melior_next::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
+use tracing::debug;
 
 use crate::{
     libfuncs::lib_func_def::SierraLibFunc, sierra_type::SierraType,
@@ -38,11 +35,8 @@ pub mod helpers;
 pub mod mlir_ops;
 pub mod types;
 
-#[derive(Debug)]
 pub struct CompilerGas {
-    pub ap_change_info: ApChangeInfo,
-    /// Gas information for validating Sierra code and taking the appropriate amount of gas.
-    pub gas_info: GasInfo,
+    pub metadata: Metadata,
     /// Initial available gas.
     pub available_gas: usize,
 }
@@ -91,47 +85,24 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         // Create the compiler gas structure if gas was provided.
-        // This mostly copies the code from the sierra to casm calc_metadata function.
         // source: https://github.com/starkware-libs/cairo/blob/v1.0.0-rc0/crates/cairo-lang-sierra-to-casm/src/metadata.rs
         let gas: Option<CompilerGas> = if let Some(mut available_gas) = available_gas {
-            let function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>> =
-                Default::default();
+            let metadata = calc_metadata(program, Default::default())?;
 
-            let pre_gas_info = compute_precost_info(program)?;
+            debug!("available gas before entry point = {}", available_gas);
 
-            // Calculate the ap changes, needed to calculate the post cost info.
-            let ap_change_info = calc_ap_changes(program, |idx, token_type| {
-                pre_gas_info.variable_values[(idx, token_type)] as usize
-            })?;
-
-            // Calculates gas postcost information for a given program - the gas costs of step token.
-            let post_function_set_costs = function_set_costs
-                .iter()
-                .map(|(func, costs)| {
-                    (
-                        func.clone(),
-                        std::iter::once(&CostTokenType::Const)
-                            .filter_map(|token| costs.get(token).map(|v| (*token, *v)))
-                            .collect(),
-                    )
-                })
-                .collect();
-            let post_gas_info =
-                calc_gas_postcost_info(program, post_function_set_costs, &pre_gas_info, |idx| {
-                    ap_change_info.variable_values.get(&idx).copied().unwrap_or_default()
-                })?;
-
-            let gas_info = pre_gas_info.combine(post_gas_info);
-
-            // casm runner reduces the gas cost of the entry point
-            // (todo: figure out more about why this is done)
-            for (func_id, costs_map) in gas_info.function_costs.iter() {
+            /*
+               spend the constant known needed gas
+               here we assume main is the entry point, but in the future
+               if the entry point is different, we need to use that function id to calculate the gas.
+            */
+            for (func_id, costs_map) in metadata.gas_info.function_costs.iter() {
                 if func_id.debug_name.as_ref().unwrap().as_str().ends_with("::main") {
                     let cost: usize = costs_map
                         .iter()
                         .map(|(token_type, cost)| {
                             let val_usize: usize = (*cost).try_into().unwrap();
-                            // 10_000 is a dummy builtin cost
+                            // 10_000 is a dummy value for cost types that are not constant (same as in the casm runner)
                             let token_cost =
                                 if *token_type == CostTokenType::Const { 1 } else { 10_000 };
                             val_usize * token_cost
@@ -146,7 +117,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
             }
 
-            Some(CompilerGas { ap_change_info, gas_info, available_gas })
+            debug!("available gas after entry point spenditure = {}", available_gas);
+
+            Some(CompilerGas { metadata, available_gas })
         } else {
             None
         };
