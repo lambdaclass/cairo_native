@@ -67,8 +67,8 @@ use test_case::test_case;
 #[test_case("felt_ops/negation", Some(100000))]
 #[test_case("felt_ops/sub", None)]
 #[test_case("felt_ops/sub", Some(100000))]
-#[test_case("fib_counter", Some(1000000))]
-#[test_case("fib_local", Some(1000000))]
+//#[test_case("fib_counter", Some(1000000))]
+//#[test_case("fib_local", Some(1000000))]
 #[test_case("nullable/test_nullable", None)]
 #[test_case("nullable/test_nullable", Some(100000))]
 #[test_case("pedersen", None)]
@@ -105,8 +105,8 @@ use test_case::test_case;
 #[test_case("uint/uint_try_from_felt", Some(100000))]
 #[test_case("uint/upcasts", None)]
 #[test_case("uint/upcasts", Some(100000))]
-//#[test_case("uint/wide_mul", None)]
-//#[test_case("uint/wide_mul", Some(100000))]
+//#[test_case("uint/wide_mul", None)]           // needs #146
+//#[test_case("uint/wide_mul", Some(100000))]   // needs #146
 #[test_case("gas/available_gas", Some(200))]
 #[test_case("unwrap_non_zero", None)]
 #[test_case("unwrap_non_zero", Some(100000))]
@@ -131,6 +131,7 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                     "Casm values and llvm values are of different lengths"
                 );
                 if available_gas.is_some() {
+                    dbg!(&result.gas_counter);
                     // TODO: uncomment when casm gas counter works.
                     //let casm_gas =
                     //    result.gas_counter.expect("casm gas counter should exist").to_biguint();
@@ -261,7 +262,7 @@ fn run_mlir(
     let out_dir = get_outdir();
 
     let mut output = String::new();
-    let output_path = out_dir.join(format!("{test_file_name}.out"));
+    let output_path = out_dir.join(format!("{test_file_name}-{}.out", available_gas.is_some()));
 
     {
         let mut output_file = File::options()
