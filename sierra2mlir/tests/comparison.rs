@@ -130,9 +130,17 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                     llvm_result.len(),
                     "Casm values and llvm values are of different lengths"
                 );
-                if available_gas.is_some() {
-                    dbg!(&result.gas_counter);
-                    // TODO: uncomment when casm gas counter works.
+                // gas_counter from cairo-runner won't be available if the program doesn't use the gas builtin
+                // even if it spends constant time gas.
+                // it needs to have the gas builtin present in the program, which appears with libfuncs such as withdraw_gas
+
+                if result.gas_counter.is_some() {
+                    assert!(
+                        available_gas.is_some(),
+                        "if cairo-runner returned a gas counter, mlir should too"
+                    )
+                }
+                if available_gas.is_some() && result.gas_counter.is_some() {
                     let casm_gas =
                         result.gas_counter.expect("casm gas counter should exist").to_biguint();
                     let llvm_gas = llvm_remaining_gas.expect("mlir gas counter should exist");
