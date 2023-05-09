@@ -33,9 +33,8 @@ pub enum BoolBinaryOp {
 impl<'ctx> Compiler<'ctx> {
     pub fn process_libfuncs(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         for func_decl in &self.program.libfunc_declarations {
-            let id = func_decl.id.id;
             let name = func_decl.long_id.generic_id.0.as_str();
-            debug!(name, id, "processing libfunc decl");
+            debug!(name, "processing libfunc decl");
 
             match name {
                 // no-ops
@@ -349,8 +348,6 @@ impl<'ctx> Compiler<'ctx> {
                 ),
             }
         }
-
-        debug!(types = ?storage.types, "processed");
         Ok(())
     }
 

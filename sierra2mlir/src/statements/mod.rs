@@ -9,6 +9,7 @@ use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::{block::Argument, Block, Location, OperationRef, Region, Value};
 use regex::Regex;
+use tracing::debug;
 
 use crate::compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp};
 use crate::sierra_type::SierraType;
@@ -20,7 +21,6 @@ use crate::{
 mod function_call;
 mod general_libfunc_implementations;
 mod inline_jumps;
-mod inline_libfuncs;
 
 #[derive(Debug)]
 pub struct BlockInfo<'ctx> {
@@ -77,6 +77,7 @@ impl<'ctx> Compiler<'ctx> {
 
         // Process the blocks for each function
         for (func_start, (func, block_flows)) in block_ranges_per_function {
+            debug!(function = ?func.id.debug_name.as_ref().unwrap().as_str(), "processing statements");
             self.process_statements_for_function(func, func_start, block_flows, storage)?;
         }
 
@@ -272,9 +273,6 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
-                            "branch_align" => {
-                                self.inline_branch_align(statement_idx, block)?;
-                            }
                             "function_call" => self.process_function_call(
                                 &id,
                                 invocation,
@@ -395,15 +393,6 @@ impl<'ctx> Compiler<'ctx> {
                 .map(|t| (t.ty.get_type(), Location::unknown(&self.context)))
                 .collect_vec(),
         );
-
-        if let Some(gas) = &self.gas {
-            // spend the required gas for this user function call
-            let costs = gas.gas_info.function_costs.get(&func.id).unwrap();
-            for (_cost_type, cost_value) in costs.iter() {
-                let value = self.op_u128_const(&entry_block, &cost_value.to_string());
-                self.call_decrease_gas_counter(&entry_block, value.result(0)?.into())?;
-            }
-        }
 
         let block_info = &blocks.get(&func_start).unwrap();
 

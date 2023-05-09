@@ -15,6 +15,7 @@ use melior_next::{
 };
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
+use tracing::debug;
 
 use crate::compiler::mlir_ops::CmpOp;
 use crate::{
@@ -860,13 +861,15 @@ impl<'ctx> Compiler<'ctx> {
             })
             .collect_vec();
 
-        let success_block = target_blocks[1];
-        let failure_block = target_blocks[0];
+        let success_block = target_blocks[0];
+        let failure_block = target_blocks[1];
 
         // get the requested amount of gas.
         let requested_gas_count: i64 = gas
+            .metadata
             .gas_info
             .variable_values
+            // TODO: check in the future how non-const type tokens are handled here.
             .get(&(StatementIdx(statement_idx), CostTokenType::Const))
             .copied()
             .unwrap();
@@ -875,19 +878,21 @@ impl<'ctx> Compiler<'ctx> {
         let requested_gas_op =
             self.op_const(block, &requested_gas_count.to_string(), self.u128_type());
         let requested_gas_value = requested_gas_op.result(0)?.into();
+        debug!("withdraw_gas requested amount={}", requested_gas_count);
         let has_enough_op = self.call_has_enough_gas(block, requested_gas_value)?;
+        self.call_decrease_gas_counter(&success_block.block, requested_gas_value)?;
 
         // jump condition
         let is_success = has_enough_op.result(0)?.into();
 
-        // collect args to the none block
+        // collect args to the success block
         let args_to_success_block = success_block
             .variables_at_start
             .keys()
             .map(|var_idx| *variables.get(var_idx).unwrap())
             .collect_vec();
 
-        // collect args to the none block
+        // collect args to the failure block
         let args_to_failure_block = failure_block
             .variables_at_start
             .keys()
@@ -902,10 +907,10 @@ impl<'ctx> Compiler<'ctx> {
         self.op_cond_br(
             block,
             is_success,
-            &failure_block.block,
             &success_block.block,
-            &args_to_failure_block,
+            &failure_block.block,
             &args_to_success_block,
+            &args_to_failure_block,
         );
 
         Ok(())

@@ -2,6 +2,7 @@ use cairo_lang_sierra::program::{GenFunction, GenericArg, Program, StatementIdx,
 use color_eyre::Result;
 use itertools::Itertools;
 use melior_next::ir::Value;
+use tracing::debug;
 
 use crate::{
     compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
@@ -29,6 +30,7 @@ impl<'ctx> Compiler<'ctx> {
             let func_name = func.id.debug_name.as_ref().unwrap().as_str();
 
             if self.main_print && should_create_wrapper(func_name) {
+                debug!(func_name, "created wrapper");
                 self.create_felt_representation_wrapper(func_name, func, storage)?;
             }
         }
@@ -42,6 +44,7 @@ impl<'ctx> Compiler<'ctx> {
         func: &GenFunction<StatementIdx>,
         storage: &mut Storage<'ctx>,
     ) -> Result<()> {
+        debug!(wrapped_func_name, "creating felt representation wrapper");
         let userfunc_def = storage.userfuncs.get(wrapped_func_name).unwrap().clone();
 
         let arg_types = userfunc_def.args.iter().map(|arg| arg.ty.get_type()).collect_vec();
@@ -173,7 +176,7 @@ impl<'ctx> Compiler<'ctx> {
         self.call_dprintf(&success_block, "Success\n", &[], storage)?;
 
         // If gas was enabled, print the remaining gas.
-        /*
+
         if self.gas.is_some() {
             let (_, current_gas_op) = self.call_get_gas_counter(&success_block)?;
             let current_gas_value = current_gas_op.result(0)?.into();
@@ -190,7 +193,6 @@ impl<'ctx> Compiler<'ctx> {
                 storage,
             )?;
         }
-        */
 
         // Finally, print the result if it was, or the error message if not
         for (position, (_, type_decl)) in ret_type_declarations.iter().enumerate() {
