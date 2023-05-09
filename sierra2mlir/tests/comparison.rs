@@ -67,8 +67,8 @@ use test_case::test_case;
 #[test_case("felt_ops/negation", Some(100000))]
 #[test_case("felt_ops/sub", None)]
 #[test_case("felt_ops/sub", Some(100000))]
-//#[test_case("fib_counter", Some(1000000))]
-//#[test_case("fib_local", Some(1000000))]
+#[test_case("fib_counter", Some(1000000))]
+#[test_case("fib_local", Some(1000000))]
 #[test_case("nullable/test_nullable", None)]
 #[test_case("nullable/test_nullable", Some(100000))]
 #[test_case("pedersen", None)]
@@ -124,7 +124,7 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                 println!("llvm result: {:?}\n", llvm_result);
                 println!("Casm result: {:?}\n", casm_values);
                 // Since the casm runner succeeded, we expect that llvm program didn't panic
-                let (llvm_result, _llvm_remaining_gas) = llvm_result.unwrap();
+                let (llvm_result, llvm_remaining_gas) = llvm_result.unwrap();
                 assert_eq!(
                     casm_values.len(),
                     llvm_result.len(),
@@ -133,10 +133,10 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                 if available_gas.is_some() {
                     dbg!(&result.gas_counter);
                     // TODO: uncomment when casm gas counter works.
-                    //let casm_gas =
-                    //    result.gas_counter.expect("casm gas counter should exist").to_biguint();
-                    //let llvm_gas = llvm_remaining_gas.expect("mlir gas counter should exist");
-                    //assert_eq!(casm_gas, llvm_gas, "remaning gas mismatch");
+                    let casm_gas =
+                        result.gas_counter.expect("casm gas counter should exist").to_biguint();
+                    let llvm_gas = llvm_remaining_gas.expect("mlir gas counter should exist");
+                    assert_eq!(casm_gas, llvm_gas, "remaning gas mismatch");
                 }
                 let prime = DEFAULT_PRIME.parse::<BigUint>().unwrap();
                 for i in 0..casm_values.len() {
@@ -239,7 +239,7 @@ fn compile_to_mlir_with_consistency_check(
 fn run_sierra_via_casm(program: Program, available_gas: Option<usize>) -> Result<RunResult> {
     let runner = SierraCasmRunner::new(
         program,
-        available_gas.and_then(|_| Default::default()),
+        available_gas.map(|_| Default::default()),
         Default::default(),
     )?;
 
