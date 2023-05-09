@@ -358,6 +358,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_neg" => {
                     self.create_libfunc_ec_neg(func_decl, storage)?;
                 }
+                "ec_point_is_zero" => {
+                    self.register_libfunc_ec_point_is_zero(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2511,5 +2514,23 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    pub fn register_libfunc_ec_point_is_zero(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_deref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![],
+                return_types: vec![
+                    vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_point_type()) }],
+                    vec![],
+                ],
+            },
+        );
     }
 }

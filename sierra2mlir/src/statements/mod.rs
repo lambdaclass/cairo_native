@@ -308,6 +308,18 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "ec_point_is_zero" => {
+                                self.inline_ec_point_is_zero(
+                                    &id,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             _ => self.process_general_libfunc(
                                 &id,
                                 invocation,

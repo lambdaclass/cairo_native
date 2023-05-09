@@ -1472,4 +1472,76 @@ impl<'ctx> Compiler<'ctx> {
 
         Ok(())
     }
+
+    pub fn inline_ec_point_is_zero(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
+        let arg = &libfunc.get_args()[0];
+
+        // let branch_block_idx = match invocation.branches[1].target {
+        //     GenBranchTarget::Fallthrough => statement_idx + 1,
+        //     GenBranchTarget::Statement(x) => x.0,
+        // };
+        // let branch_block = &blocks[&branch_block_idx].block;
+
+        let arg = variables
+            .get(&invocation.args[arg.loc].id)
+            .expect("variable should be registered before use")
+            .get_value();
+
+        let op0 = self.op_llvm_extractvalue(block, 0, arg, self.ec_point_type())?;
+        let op1 = self.op_llvm_extractvalue(block, 1, arg, self.ec_point_type())?;
+        let op2 = self.op_llvm_extractvalue(block, 2, arg, self.ec_point_type())?;
+
+        let op3 = self.op_const(block, "0", self.felt_type());
+        let op4 = self.op_const(block, "0", self.bool_type());
+
+        let op5 = self.op_cmp(block, CmpOp::Equal, op0.result(0)?.into(), op3.result(0)?.into());
+        let op6 = self.op_cmp(block, CmpOp::Equal, op1.result(0)?.into(), op3.result(0)?.into());
+        let op7 = self.op_cmp(block, CmpOp::Equal, op2.result(0)?.into(), op4.result(0)?.into());
+
+        let op8 = self.op_or(block, op5.result(0)?.into(), op6.result(0)?.into(), self.bool_type());
+        let op9 = self.op_or(block, op8.result(0)?.into(), op7.result(0)?.into(), self.bool_type());
+
+        let b0_block_idx = match invocation.branches[0].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        };
+        let b1_block_idx = match invocation.branches[1].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        };
+        self.op_cond_br(
+            block,
+            op9.result(0)?.into(),
+            &blocks[&b0_block_idx].block,
+            &blocks[&b1_block_idx].block,
+            &blocks[&b0_block_idx]
+                .variables_at_start
+                .keys()
+                .map(|x| variables[x].get_value())
+                .collect::<Vec<_>>(),
+            &blocks[&b1_block_idx]
+                .variables_at_start
+                .keys()
+                .map(|id| {
+                    if *id == invocation.branches[0].results[1].id {
+                        arg
+                    } else {
+                        variables[id].get_value()
+                    }
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        Ok(())
+    }
 }

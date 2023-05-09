@@ -54,6 +54,8 @@ use tracing_test::traced_test;
 #[test_case("ec/ec_neg", Some(100000))]
 #[test_case("ec/ec_point_from_x_nz", None)]
 #[test_case("ec/ec_point_from_x_nz", Some(100000))]
+#[test_case("ec/ec_point_is_zero", None)]
+#[test_case("ec/ec_point_is_zero", Some(100000))]
 #[test_case("ec/ec_point_try_new_nz", None)]
 #[test_case("ec/ec_point_try_new_nz", Some(100000))]
 #[test_case("ec/ec_point_zero", None)]
