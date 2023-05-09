@@ -84,7 +84,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.</strong> Project Setup</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">3.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">4.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">5.</strong> MLIR</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.</strong> Project Setup</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">3.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">4.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="gas.html"><strong aria-hidden="true">5.</strong> Gas</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">6.</strong> MLIR</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -308,6 +308,14 @@ Sierra has a primitive, yet rich typing system to express all high level code wh
 <li>There are no “panics” / “runtime errors”. Every function is guaranteed to return.</li>
 <li>There are no infinite loops. Moreover, every program “counts” its own steps, and returns when the limit is reached.</li>
 <li>Builtin library functions are always used correctly.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="gas-calculations"><a class="header" href="#gas-calculations">Gas Calculations</a></h1>
+<p>Gas costs are calculated using methods provided by the <code>cairo_lang_sierra_gas</code> crate.</p>
+<p>If the generated sierra program doesn't end up using any libfunc which requires the <code>GasBuiltin</code>, cairo-runner won't return the remaining gas.</p>
+<p>Gas is only spent:</p>
+<ul>
+<li>Upfront (before the program executes) by getting the entry point and using the crate methods to get the needed gas.</li>
+<li>In the withdraw_gas, withdraw_gas_all, redeposit_gas libfuncs, the cost is known and is located on the GasInfo structure.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="multi-level-intermediate-representation"><a class="header" href="#multi-level-intermediate-representation">Multi-Level Intermediate Representation</a></h1>
 <h2 id="useful-notes"><a class="header" href="#useful-notes">Useful notes</a></h2>

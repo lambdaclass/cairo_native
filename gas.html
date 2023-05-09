@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - Denwen Documentation</title>
+        <title>Gas - Denwen Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.</strong> Project Setup</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">3.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">4.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="gas.html"><strong aria-hidden="true">5.</strong> Gas</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">6.</strong> MLIR</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.</strong> Project Setup</a></li><li class="chapter-item expanded "><a href="layout.html"><strong aria-hidden="true">3.</strong> Code Layout</a></li><li class="chapter-item expanded "><a href="sierra.html"><strong aria-hidden="true">4.</strong> Sierra</a></li><li class="chapter-item expanded "><a href="gas.html" class="active"><strong aria-hidden="true">5.</strong> Gas</a></li><li class="chapter-item expanded "><a href="mlir.html"><strong aria-hidden="true">6.</strong> MLIR</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -121,7 +121,7 @@
                         <a href="https://github.com/rust-lang/mdBook" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/lambdaclass/cairo_sierra_2_MLIR/edit/main/docs/src/intro.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/lambdaclass/cairo_sierra_2_MLIR/edit/main/docs/src/gas.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -150,54 +150,24 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
-<p>A compiler to convert Cairo's intermediate representation &quot;Sierra&quot; code to MLIR.</p>
-<h2 id="compilation-process"><a class="header" href="#compilation-process">Compilation process</a></h2>
-<pre class="mermaid">stateDiagram-v2
-    state &quot;Load sierra program&quot; as sierra
-    state &quot;Initialize compiler&quot; as init
-    state &quot;Initialize execution engine&quot; as engine
-    state if_skip_jit &lt;&lt;choice&gt;&gt;
-    state &quot;Load MLIR dialects&quot; as dialects
-    state &quot;Create builtin module&quot; as module
-    state &quot;Create libc wrappers&quot; as libc
-    state &quot;Process Types&quot; as types
-    state &quot;Process Library functions&quot; as libfuncs
-    state &quot;Save non-flow function info&quot; as func_info
-    state &quot;Process functions&quot; as funcs
-    state &quot;Calculate block ranges per function&quot; as blocks
-    state &quot;Process statements&quot; as statements
-    state &quot;Apply MLIR passes&quot; as passes
-    [*] --&gt; Initialize
-    state Initialize {
-        sierra --&gt; init
-        init --&gt; if_skip_jit
-        if_skip_jit --&gt; engine: if JIT
-        if_skip_jit --&gt; dialects: if Compile
-        engine --&gt; dialects
-    }
-    Initialize --&gt; Compile
-    state Compile {
-        module --&gt; libc
-        libc --&gt; types
-        types --&gt; libfuncs
-        types --&gt; func_info
-        func_info --&gt; libfuncs
-        libfuncs --&gt; funcs
-        funcs --&gt; blocks
-        blocks --&gt; statements
-    }
-    Compile --&gt; passes
-    passes --&gt; Output
-    Output --&gt; [*]
-</pre>
+                        <h1 id="gas-calculations"><a class="header" href="#gas-calculations">Gas Calculations</a></h1>
+<p>Gas costs are calculated using methods provided by the <code>cairo_lang_sierra_gas</code> crate.</p>
+<p>If the generated sierra program doesn't end up using any libfunc which requires the <code>GasBuiltin</code>, cairo-runner won't return the remaining gas.</p>
+<p>Gas is only spent:</p>
+<ul>
+<li>Upfront (before the program executes) by getting the entry point and using the crate methods to get the needed gas.</li>
+<li>In the withdraw_gas, withdraw_gas_all, redeposit_gas libfuncs, the cost is known and is located on the GasInfo structure.</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="sierra.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
 
-                            <a rel="next" href="setup.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="mlir.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -207,8 +177,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="sierra.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
 
-                    <a rel="next" href="setup.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="mlir.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
