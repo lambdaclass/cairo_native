@@ -58,6 +58,21 @@ impl<'ctx> SierraType<'ctx> {
         }
     }
 
+    /// creates the sierra U128MulGuaranteeType type.
+    pub fn create_u128_guarantee_type<'c>(compiler: &'c Compiler<'c>) -> SierraType<'c> {
+        let u128_ty = compiler.u128_type();
+        let ty = compiler.llvm_struct_type(&[u128_ty, u128_ty, u128_ty, u128_ty], false);
+        SierraType::Struct {
+            ty,
+            field_types: vec![
+                SierraType::Simple(u128_ty),
+                SierraType::Simple(u128_ty),
+                SierraType::Simple(u128_ty),
+                SierraType::Simple(u128_ty),
+            ],
+        }
+    }
+
     /// Returns the width in bits of the mlir representation of the type
     pub fn get_width(&self) -> u32 {
         match self {
