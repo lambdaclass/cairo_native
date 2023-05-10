@@ -29,6 +29,14 @@ pub enum SierraType<'ctx> {
         len_type: Type<'ctx>, // type of length and capacity: u32
         element_type: Box<Self>,
     },
+    Dictionary {
+        /// (u32, ptr)
+        ///
+        /// (length, data)
+        ty: Type<'ctx>,
+        len_type: Type<'ctx>, // type of length and capacity: u32
+        element_type: Box<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -42,6 +50,17 @@ impl<'ctx> SierraType<'ctx> {
                 &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
                 false,
             ),
+            len_type: compiler.u32_type(),
+            element_type: Box::new(element),
+        }
+    }
+
+    pub fn create_dict_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Dictionary {
+            ty: compiler.llvm_struct_type(&[compiler.u32_type(), compiler.llvm_ptr_type()], false),
             len_type: compiler.u32_type(),
             element_type: Box::new(element),
         }
@@ -99,6 +118,12 @@ impl<'ctx> SierraType<'ctx> {
                 // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
                 len_type.get_width().unwrap() * 2 + 64
             }
+            SierraType::Dictionary { ty: _, len_type, element_type: _ } => {
+                // 64 is the pointer size, assuming here
+                // TODO: find a better way to find the pointer size? it would require getting the context here
+                // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
+                len_type.get_width().unwrap() + 64
+            }
         }
     }
 
@@ -125,6 +150,7 @@ impl<'ctx> SierraType<'ctx> {
                     .unwrap_or(0)
             }
             SierraType::Array { .. } => 2,
+            SierraType::Dictionary { .. } => 2, // TODO: check
         }
     }
 
@@ -141,6 +167,7 @@ impl<'ctx> SierraType<'ctx> {
                 variants_types: _,
             } => *ty,
             Self::Array { ty, .. } => *ty,
+            Self::Dictionary { ty, .. } => *ty,
         }
     }
 
@@ -158,6 +185,7 @@ impl<'ctx> SierraType<'ctx> {
                     variants_types: _,
                 } => *ty,
                 Self::Array { ty, .. } => *ty,
+                Self::Dictionary { ty, .. } => *ty,
             },
             Location::unknown(context),
         )
