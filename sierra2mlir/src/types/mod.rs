@@ -221,6 +221,12 @@ impl<'ctx> Compiler<'ctx> {
                     let ty = self.u128_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
                 }
+                "U128MulGuarantee" => {
+                    // A type that contains 4 u128s (a, b, c, d) and guarantees that `a * b = 2**128 * c + d`.
+                    storage
+                        .types
+                        .insert(id.to_string(), SierraType::create_u128_guarantee_type(self));
+                }
                 _ => {
                     todo!("unhandled type: {}", type_decl.id.debug_name.as_ref().unwrap().as_str())
                 }

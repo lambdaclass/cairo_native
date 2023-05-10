@@ -105,8 +105,8 @@ use test_case::test_case;
 #[test_case("uint/uint_try_from_felt", Some(100000))]
 #[test_case("uint/upcasts", None)]
 #[test_case("uint/upcasts", Some(100000))]
-//#[test_case("uint/wide_mul", None)]           // needs #146
-//#[test_case("uint/wide_mul", Some(100000))]   // needs #146
+#[test_case("uint/wide_mul", None)]
+#[test_case("uint/wide_mul", Some(100000))]
 #[test_case("gas/available_gas", Some(200))]
 #[test_case("unwrap_non_zero", None)]
 #[test_case("unwrap_non_zero", Some(100000))]

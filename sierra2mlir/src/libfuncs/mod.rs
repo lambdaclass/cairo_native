@@ -43,6 +43,7 @@ impl<'ctx> Compiler<'ctx> {
                 | "get_builtin_costs"
                 | "revoke_ap_tracking"
                 | "disable_ap_tracking"
+                | "u128_mul_guarantee_verify" // output is range check, so it's a noop for us.
                 | "drop"
                 | "jump"
                 | "alloc_local"
@@ -181,6 +182,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_wide_mul" => {
                     self.create_libfunc_u128_wide_mul(func_decl, storage)?;
+                }
+                "u128_guarantee_mul" => {
+                    self.create_libfunc_u128_guarantee_mul(func_decl, storage)?;
                 }
                 "u8_safe_divmod" => {
                     self.create_libfunc_uint_safe_divmod(func_decl, self.u8_type(), storage)?;
@@ -1156,6 +1160,89 @@ impl<'ctx> Compiler<'ctx> {
             &id,
             vec![block],
             &[self.u128_type(), self.u128_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    pub fn create_libfunc_u128_guarantee_mul(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let block = self.new_block(&[self.u128_type(), self.u128_type()]);
+
+        let a = block.argument(0)?.into();
+        let b = block.argument(1)?.into();
+
+        let op_zext_lhs = self.op_zext(&block, a, self.u256_type());
+        let op_zext_rhs = self.op_zext(&block, b, self.u256_type());
+
+        let op_mul =
+            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+
+        let op_mul_lo = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
+        let op_mul_hi = {
+            let op_const = self.op_const(&block, "128", self.u256_type());
+            let op_shru =
+                self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
+            self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
+        };
+
+        let u128_guarantee_ty = self.llvm_struct_type(
+            &[self.u128_type(), self.u128_type(), self.u128_type(), self.u128_type()],
+            false,
+        );
+
+        let u128_guarantee_struct_op = self.op_llvm_undef(&block, u128_guarantee_ty);
+        let u128_guarantee_struct = u128_guarantee_struct_op.result(0)?.into();
+
+        let u128_guarantee_struct_insert_op =
+            self.op_llvm_insertvalue(&block, 0, u128_guarantee_struct, a, u128_guarantee_ty)?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+        let u128_guarantee_struct_insert_op =
+            self.op_llvm_insertvalue(&block, 1, u128_guarantee_struct, b, u128_guarantee_ty)?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+
+        let op_mul_hi_val = op_mul_hi.result(0)?.into();
+        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
+            &block,
+            2,
+            u128_guarantee_struct,
+            op_mul_hi_val,
+            u128_guarantee_ty,
+        )?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+
+        let op_mul_lo_val = op_mul_lo.result(0)?.into();
+        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
+            &block,
+            3,
+            u128_guarantee_struct,
+            op_mul_lo_val,
+            u128_guarantee_ty,
+        )?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+
+        self.op_return(&block, &[op_mul_hi_val, op_mul_lo_val, u128_guarantee_struct]);
+
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::create_function_all_args(
+                vec![SierraType::Simple(self.u128_type()), SierraType::Simple(self.u128_type())],
+                vec![
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::Simple(self.u128_type()),
+                    SierraType::create_u128_guarantee_type(self),
+                ],
+            ),
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[self.u128_type(), self.u128_type(), u128_guarantee_ty],
             FnAttributes::libfunc(false, true),
         )
     }
