@@ -31,6 +31,7 @@ pub enum SierraType<'ctx> {
     },
     Dictionary {
         /// (u32, ptr)
+        /// where ptr is an array of (key (always felt), value (T), is_used (bool))
         ///
         /// (length, data)
         ty: Type<'ctx>,
