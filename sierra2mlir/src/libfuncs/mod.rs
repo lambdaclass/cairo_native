@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{operation, Block, Location, Type, Value, ValueLike};
+use melior_next::ir::{operation, Block, Location, Type, TypeLike, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
@@ -354,6 +354,12 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "unwrap_non_zero" => {
                     self.create_libfunc_unwrap_non_zero(func_decl, storage)?;
+                }
+                "felt252_dict_new" => {
+                    self.create_libfunc_felt252_dict_new(func_decl, storage)?;
+                }
+                "felt252_dict_squash" => {
+                    self.create_libfunc_felt252_dict_squash(func_decl, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -2602,5 +2608,114 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    // felt252_dict_new<T>([1]) -> ([3], [4]);
+    pub fn create_libfunc_felt252_dict_new(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let block = self.new_block(&[]);
+
+        let felt_type = self.felt_type();
+        let bool_type = self.bool_type();
+        let sierra_type = SierraType::create_dict_type(self, arg_type.clone());
+
+        // Initially create an undefined struct to insert the values into
+        let dict_value_op = self.op_llvm_undef(&block, sierra_type.get_type());
+        let dict_value: Value = dict_value_op.result(0)?.into();
+
+        // Length/capacity is 8 on creation
+        let dict_len_op = self.op_u32_const(&block, "8");
+        let dict_len = dict_len_op.result(0)?.into();
+
+        // The size in bytes of one element in the dict array
+        // (key (always felt), value (T), is_used (bool))
+        let dict_slot_size_bytes = ((felt_type.get_width().unwrap()
+            + arg_type.get_width()
+            + bool_type.get_width().unwrap())
+            + 7)
+            / 8;
+
+        // length
+        let set_len_op =
+            self.call_dict_set_len_impl(&block, dict_value, dict_len, &sierra_type, storage)?;
+        let dict_value: Value = set_len_op.result(0)?.into();
+
+        // 8 here is the length/capacity
+        let const_dict_size_bytes_op =
+            self.op_const(&block, &(dict_slot_size_bytes * 8).to_string(), self.u64_type());
+        let const_dict_size_bytes = const_dict_size_bytes_op.result(0)?;
+
+        let null_ptr_op = self.op_llvm_nullptr(&block);
+        let null_ptr = null_ptr_op.result(0)?;
+
+        let ptr_op =
+            self.call_realloc(&block, null_ptr.into(), const_dict_size_bytes.into(), storage)?;
+        let ptr_val = ptr_op.result(0)?.into();
+
+        let set_data_ptr_op =
+            self.call_dict_set_data_ptr(&block, dict_value, ptr_val, &sierra_type, storage)?;
+        let dict_value: Value = set_data_ptr_op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![],
+                return_types: vec![PositionalArg { loc: 1, ty: sierra_type.clone() }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    // noop in llvm mlir
+    pub fn create_libfunc_felt252_dict_squash(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let sierra_type = SierraType::create_dict_type(self, arg_type.clone());
+
+        let block = self.new_block(&[sierra_type.get_type()]);
+        let dict_value = block.argument(0)?.into();
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![PositionalArg { loc: 3, ty: sierra_type.clone() }],
+                return_types: vec![PositionalArg { loc: 3, ty: sierra_type.clone() }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 }
