@@ -228,6 +228,6 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<OperationRef<'block>> {
         self.create_hash_i256(storage)?;
-        self.op_llvm_call(block, "sierra2mlir_hash_i256", &[ptr], &[self.llvm_ptr_type()])
+        self.op_llvm_call(block, "sierra2mlir_hash_i256", &[ptr], &[self.u64_type()])
     }
 }
