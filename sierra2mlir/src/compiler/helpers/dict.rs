@@ -96,6 +96,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     /// key is always a felt
+    /// returns pointer to the entry
     #[allow(unused)]
     fn create_dict_get_unchecked(
         &'ctx self,
@@ -103,6 +104,69 @@ impl<'ctx> Compiler<'ctx> {
         storage: &mut Storage<'ctx>,
     ) -> Result<String> {
         todo!();
+
+        let element_type = if let SierraType::Dictionary { element_type, .. } = dict_type {
+            element_type.get_type()
+        } else {
+            panic!("create_dict_get_unchecked should have been passed an Array SierraType, but was instead passed {:?}", dict_type)
+        };
+
+        // (key (always felt), value (T), is_used (bool))
+        let entry_type =
+            self.llvm_struct_type(&[self.felt_type(), element_type, self.bool_type()], false);
+
+        let func_name = format!("dict_get_unchecked<{}>", element_type);
+
+        if storage.helperfuncs.contains(&func_name) {
+            return Ok(func_name);
+        }
+        storage.helperfuncs.insert(func_name.clone());
+
+        let block = self.new_block(&[dict_type.get_type(), self.felt_type()]);
+
+        let dict_value = block.argument(0)?.into();
+        let dict_key = block.argument(1)?.into();
+
+        // get the hash
+        let dict_key_ptr_op = self.op_llvm_alloca(&block, self.felt_type(), 1)?;
+        let dict_key_ptr = dict_key_ptr_op.result(0)?.into();
+        self.op_llvm_store(&block, dict_key, dict_key_ptr)?;
+
+        let dict_len_op = self.call_dict_len_impl(&block, dict_value, &dict_type, storage)?;
+        let dict_len = dict_len_op.result(0)?.into();
+
+        let dict_len_zext_op = self.op_zext(&block, dict_len, self.u64_type());
+        let dict_len = dict_len_zext_op.result(0)?.into();
+
+        let hash_op = self.call_hash_i256(&block, dict_key_ptr, storage)?;
+        // u64
+        let hash: Value = hash_op.result(0)?.into();
+
+        // hash mod len
+        let index_op = self.op_rem(&block, hash, dict_len);
+        let index_value: Value = index_op.result(0)?.into();
+
+        let dict_data_op =
+            self.op_llvm_extractvalue(&block, 1, dict_value, self.llvm_ptr_type())?;
+        let dict_data = dict_data_op.result(0)?.into();
+
+        let dict_entry_ptr_op =
+            self.op_llvm_gep_dynamic(&block, &[index_value], dict_data, entry_type)?;
+        let dict_entry_ptr = dict_entry_ptr_op.result(0)?.into();
+
+        // TODO: check if the key equals, do linear probing if not.
+        // right now it returns the first without checking.
+
+        self.op_return(&block, &[dict_entry_ptr]);
+
+        self.create_function(
+            &func_name,
+            vec![block],
+            &[self.llvm_ptr_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        Ok(func_name)
     }
 
     #[allow(unused)]
@@ -243,5 +307,17 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'block>> {
         let func_name = self.create_dict_set_data_ptr(dict_type, storage)?;
         self.op_func_call(block, &func_name, &[dict, new_ptr], &[dict_type.get_type()])
+    }
+
+    pub fn call_dict_get_entry_ptr<'block>(
+        &'ctx self,
+        block: &'block Block,
+        dict: Value,
+        dict_type: &SierraType,
+        key: Value, // felt
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        let func_name = self.create_dict_get_unchecked(dict_type, storage)?;
+        self.op_func_call(block, &func_name, &[dict, key], &[self.llvm_ptr_type()])
     }
 }

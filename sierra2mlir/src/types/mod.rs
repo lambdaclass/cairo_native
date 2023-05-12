@@ -214,7 +214,16 @@ impl<'ctx> Compiler<'ctx> {
                     storage.types.insert(id.to_string(), ty);
                 }
                 "Felt252DictEntry" => {
-                    storage.types.insert(id.to_string(), SierraType::Simple(self.llvm_ptr_type()));
+                    let inner_type = match &type_decl.long_id.generic_args[0] {
+                        GenericArg::Type(x) => storage
+                            .types
+                            .get(&x.id.to_string())
+                            .cloned()
+                            .expect("Felt252Dict inner type should exist"),
+                        _ => unreachable!("Felt252Dict inner type is always a type"),
+                    };
+                    let ty = SierraType::create_dict_entry_type(self, inner_type);
+                    storage.types.insert(id.to_string(), ty);
                 }
                 "u8" => {
                     let ty = self.u8_type();
