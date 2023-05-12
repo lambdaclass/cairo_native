@@ -2662,6 +2662,13 @@ impl<'ctx> Compiler<'ctx> {
             self.call_realloc(&block, null_ptr.into(), const_dict_size_bytes.into(), storage)?;
         let ptr_val = ptr_op.result(0)?.into();
 
+        // zero all data (mainly to set the unused field bool to zero)
+        let zero_val_op = self.op_u32_const(&block, "0");
+        let zero_val = zero_val_op.result(0)?.into();
+        let ptr_op =
+            self.call_memset(&block, ptr_val, zero_val, const_dict_size_bytes.into(), storage)?;
+        let ptr_val = ptr_op.result(0)?.into();
+
         let set_data_ptr_op =
             self.call_dict_set_data_ptr(&block, dict_value, ptr_val, &sierra_type, storage)?;
         let dict_value: Value = set_data_ptr_op.result(0)?.into();

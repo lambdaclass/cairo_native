@@ -213,6 +213,9 @@ impl<'ctx> Compiler<'ctx> {
                     let ty = SierraType::create_dict_type(self, inner_type);
                     storage.types.insert(id.to_string(), ty);
                 }
+                "Felt252DictEntry" => {
+                    storage.types.insert(id.to_string(), SierraType::Simple(self.llvm_ptr_type()));
+                }
                 "u8" => {
                     let ty = self.u8_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
