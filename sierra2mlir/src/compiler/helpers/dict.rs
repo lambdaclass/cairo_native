@@ -103,8 +103,6 @@ impl<'ctx> Compiler<'ctx> {
         dict_type: &SierraType,
         storage: &mut Storage<'ctx>,
     ) -> Result<String> {
-        todo!();
-
         let element_type = if let SierraType::Dictionary { element_type, .. } = dict_type {
             element_type.get_type()
         } else {
@@ -253,6 +251,83 @@ impl<'ctx> Compiler<'ctx> {
 
         Ok(func_name)
     }
+
+    /// returns the entry possibly null pointer
+    fn create_dict_get_entry_ptr(
+        &'ctx self,
+        dict_type: &SierraType,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<String> {
+        let element_type = if let SierraType::Dictionary { element_type, .. } = dict_type {
+            element_type
+        } else {
+            panic!("create_dict_get_data_ptr should have been passed an Dictionary SierraType, but was instead passed {:?}", dict_type)
+        };
+
+        let func_name = format!("dict_get_entry_ptr<{}>", element_type.get_type());
+
+        if storage.helperfuncs.contains(&func_name) {
+            return Ok(func_name);
+        }
+
+        let block = self.new_block(&[dict_type.get_type()]);
+        let dict_value = block.argument(0)?.into();
+
+        let data_ptr_op = self.op_llvm_extractvalue(&block, 2, dict_value, self.llvm_ptr_type())?;
+        let data_ptr = data_ptr_op.result(0)?.into();
+
+        self.op_return(&block, &[data_ptr]);
+
+        storage.helperfuncs.insert(func_name.clone());
+
+        self.create_function(
+            &func_name,
+            vec![block],
+            &[self.llvm_ptr_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        Ok(func_name)
+    }
+
+    fn create_dict_set_entry_ptr(
+        &'ctx self,
+        dict_type: &SierraType,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<String> {
+        let element_type = if let SierraType::Dictionary { element_type, .. } = dict_type {
+            element_type
+        } else {
+            panic!("create_dict_set_entry_ptr should have been passed an Dictionary SierraType, but was instead passed {:?}", dict_type)
+        };
+
+        let func_name = format!("dict_set_entry_ptr<{}>", element_type.get_type());
+
+        if storage.helperfuncs.contains(&func_name) {
+            return Ok(func_name);
+        }
+
+        let block = self.new_block(&[dict_type.get_type(), self.llvm_ptr_type()]);
+        let dict_value = block.argument(0)?.into();
+        let new_ptr = block.argument(1)?.into();
+
+        let updated_array_op =
+            self.op_llvm_insertvalue(&block, 2, dict_value, new_ptr, dict_type.get_type())?;
+        let updated_dict = updated_array_op.result(0)?.into();
+
+        self.op_return(&block, &[updated_dict]);
+
+        storage.helperfuncs.insert(func_name.clone());
+
+        self.create_function(
+            &func_name,
+            vec![block],
+            &[dict_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )?;
+
+        Ok(func_name)
+    }
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -309,7 +384,8 @@ impl<'ctx> Compiler<'ctx> {
         self.op_func_call(block, &func_name, &[dict, new_ptr], &[dict_type.get_type()])
     }
 
-    pub fn call_dict_get_entry_ptr<'block>(
+    /// returns a pointer to the entry with the key.
+    pub fn call_dict_get_unchecked<'block>(
         &'ctx self,
         block: &'block Block,
         dict: Value,
@@ -319,5 +395,30 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'block>> {
         let func_name = self.create_dict_get_unchecked(dict_type, storage)?;
         self.op_func_call(block, &func_name, &[dict, key], &[self.llvm_ptr_type()])
+    }
+
+    /// returns a possibly null pointer to the currently selected entry in the dict.
+    pub fn call_dict_get_entry_ptr<'block>(
+        &'ctx self,
+        block: &'block Block,
+        dict: Value,
+        dict_type: &SierraType,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        let func_name = self.create_dict_get_entry_ptr(dict_type, storage)?;
+        self.op_func_call(block, &func_name, &[dict], &[self.llvm_ptr_type()])
+    }
+
+    /// sets the possibly null pointer to the currently selected entry in the dict.
+    pub fn call_dict_set_entry_ptr<'block>(
+        &'ctx self,
+        block: &'block Block,
+        dict: Value,
+        new_ptr: Value,
+        dict_type: &SierraType,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        let func_name = self.create_dict_set_entry_ptr(dict_type, storage)?;
+        self.op_func_call(block, &func_name, &[dict, new_ptr], &[dict_type.get_type()])
     }
 }

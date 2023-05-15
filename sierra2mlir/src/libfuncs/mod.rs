@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::panic;
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
@@ -363,6 +364,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "felt252_dict_entry_get" => {
                     self.create_libfunc_felt252_dict_entry_get(func_decl, storage)?;
+                }
+                "felt252_dict_entry_finalize" => {
+                    self.create_libfunc_felt252_dict_entry_finalize(func_decl, storage)?;
                 }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
@@ -2743,7 +2747,6 @@ impl<'ctx> Compiler<'ctx> {
             .expect("type to exist");
 
         let dict_type = SierraType::create_dict_type(self, entry_type.clone());
-        let dict_entry_type = SierraType::create_dict_entry_type(self, entry_type.clone());
         let felt_type = self.felt_type();
         // (key (always felt), value (T), is_used (bool))
         let entry_struct_type = self
@@ -2762,25 +2765,31 @@ impl<'ctx> Compiler<'ctx> {
 
         // todo: finish the get to do probing
         let entry_ptr_op =
-            self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, dict_key, storage)?;
+            self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
         let entry_ptr: Value = entry_ptr_op.result(0)?.into();
         let entry_load = self.op_llvm_load(&block, entry_ptr, entry_struct_type)?;
         let entry_value: Value = entry_load.result(0)?.into();
 
-        // todo: get the value
-        // todo: construct the dict entry
+        // save the entry ptr
+        let set_entry_op =
+            self.call_dict_set_entry_ptr(&block, dict_value, entry_ptr, &dict_type, storage)?;
+        let dict_value = set_entry_op.result(0)?.into();
 
-        self.op_return(&block, &[dict_value]);
+        // get the entry value
+        let value_op = self.op_llvm_extractvalue(&block, 1, entry_value, entry_type.get_type())?;
+        let value = value_op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value, value]);
 
         storage.libfuncs.insert(
             id.clone(),
             SierraLibFunc::Function {
                 args: vec![
-                    PositionalArg { loc: 0, ty: dict_type },
+                    PositionalArg { loc: 0, ty: dict_type.clone() },
                     PositionalArg { loc: 1, ty: SierraType::Simple(felt_type) },
                 ],
                 return_types: vec![
-                    PositionalArg { loc: 0, ty: dict_entry_type.clone() },
+                    PositionalArg { loc: 0, ty: dict_type.clone() },
                     PositionalArg { loc: 1, ty: entry_type.clone() },
                 ],
             },
@@ -2789,7 +2798,72 @@ impl<'ctx> Compiler<'ctx> {
         self.create_function(
             &id,
             vec![block],
-            &[dict_entry_type.get_type(), entry_type.get_type()],
+            &[dict_type.get_type(), entry_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    /// felt252_dict_entry_finalize<T> (dict_with_entry, value) -> dict
+    pub fn create_libfunc_felt252_dict_entry_finalize(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let entry_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let dict_type = SierraType::create_dict_type(self, entry_type.clone());
+        // (key (always felt), value (T), is_used (bool))
+        let entry_struct_type = self
+            .llvm_struct_type(&[self.felt_type(), entry_type.get_type(), self.bool_type()], false);
+
+        let block = self.new_block(&[dict_type.get_type(), entry_type.get_type()]);
+        let dict_value: Value = block.argument(0)?.into();
+        let value: Value = block.argument(1)?.into();
+
+        let entry_ptr_op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
+        let entry_ptr = entry_ptr_op.result(0)?.into();
+
+        let entry_value_ptr_op = self.op_llvm_gep(&block, &[1], entry_ptr, entry_struct_type)?;
+        let entry_value_ptr: Value = entry_value_ptr_op.result(0)?.into();
+        let entry_is_used_ptr_op = self.op_llvm_gep(&block, &[2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr: Value = entry_is_used_ptr_op.result(0)?.into();
+
+        let true_const_op = self.op_const(&block, "1", self.bool_type());
+        self.op_llvm_store(&block, true_const_op.result(0)?.into(), entry_is_used_ptr)?;
+        self.op_llvm_store(&block, value, entry_value_ptr)?;
+
+        let null_ptr_const_op = self.op_llvm_nullptr(&block);
+        let dict_value_op = self.call_dict_set_entry_ptr(
+            &block,
+            dict_value,
+            null_ptr_const_op.result(0)?.into(),
+            &dict_type,
+            storage,
+        )?;
+        let dict_value = dict_value_op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![
+                    PositionalArg { loc: 0, ty: dict_type.clone() },
+                    PositionalArg { loc: 1, ty: entry_type },
+                ],
+                return_types: vec![PositionalArg { loc: 0, ty: dict_type.clone() }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[dict_type.get_type()],
             FnAttributes::libfunc(false, true),
         )
     }

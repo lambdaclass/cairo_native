@@ -201,7 +201,7 @@ impl<'ctx> Compiler<'ctx> {
                         storage.types.insert(id.to_string(), inner_type.clone());
                     }
                 }
-                "Felt252Dict" | "SquashedFelt252Dict" => {
+                "Felt252Dict" | "SquashedFelt252Dict" | "Felt252DictEntry" => {
                     let inner_type = match &type_decl.long_id.generic_args[0] {
                         GenericArg::Type(x) => storage
                             .types
@@ -211,18 +211,6 @@ impl<'ctx> Compiler<'ctx> {
                         _ => unreachable!("Felt252Dict inner type is always a type"),
                     };
                     let ty = SierraType::create_dict_type(self, inner_type);
-                    storage.types.insert(id.to_string(), ty);
-                }
-                "Felt252DictEntry" => {
-                    let inner_type = match &type_decl.long_id.generic_args[0] {
-                        GenericArg::Type(x) => storage
-                            .types
-                            .get(&x.id.to_string())
-                            .cloned()
-                            .expect("Felt252Dict inner type should exist"),
-                        _ => unreachable!("Felt252Dict inner type is always a type"),
-                    };
-                    let ty = SierraType::create_dict_entry_type(self, inner_type);
                     storage.types.insert(id.to_string(), ty);
                 }
                 "u8" => {

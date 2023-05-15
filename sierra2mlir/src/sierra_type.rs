@@ -30,19 +30,12 @@ pub enum SierraType<'ctx> {
         element_type: Box<Self>,
     },
     Dictionary {
-        /// (u32, ptr)
-        /// where ptr is an array of (key (always felt), value (T), is_used (bool))
+        /// (u32, ptr, ptr)
+        /// (length, dict_data, selected_entry_data)
+        /// where dict_data is an array of (key (always felt), value (T), is_used (bool))
+        /// where selected_entry_data is a possible null pointer that references a entry in dict_data
         ///
-        /// (length, data)
-        ty: Type<'ctx>,
-        len_type: Type<'ctx>, // type of length and capacity: u32
-        element_type: Box<Self>,
-    },
-    DictionaryEntry {
-        /// (u32, u32, ptr)
-        /// where ptr is an array of (key (always felt), value (T), is_used (bool))
-        ///
-        /// (length, entry_index, data)
+        /// (length, data, entry?)
         ty: Type<'ctx>,
         len_type: Type<'ctx>, // type of length and capacity: u32
         element_type: Box<Self>,
@@ -70,19 +63,8 @@ impl<'ctx> SierraType<'ctx> {
         element: SierraType<'c>,
     ) -> SierraType<'c> {
         SierraType::Dictionary {
-            ty: compiler.llvm_struct_type(&[compiler.u32_type(), compiler.llvm_ptr_type()], false),
-            len_type: compiler.u32_type(),
-            element_type: Box::new(element),
-        }
-    }
-
-    pub fn create_dict_entry_type<'c>(
-        compiler: &'c Compiler<'c>,
-        element: SierraType<'c>,
-    ) -> SierraType<'c> {
-        SierraType::DictionaryEntry {
             ty: compiler.llvm_struct_type(
-                &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
+                &[compiler.u32_type(), compiler.llvm_ptr_type(), compiler.llvm_ptr_type()],
                 false,
             ),
             len_type: compiler.u32_type(),
@@ -146,13 +128,7 @@ impl<'ctx> SierraType<'ctx> {
                 // 64 is the pointer size, assuming here
                 // TODO: find a better way to find the pointer size? it would require getting the context here
                 // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
-                len_type.get_width().unwrap() + 64
-            }
-            SierraType::DictionaryEntry { ty: _, len_type, element_type: _ } => {
-                // 64 is the pointer size, assuming here
-                // TODO: find a better way to find the pointer size? it would require getting the context here
-                // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
-                len_type.get_width().unwrap() * 2 + 64
+                len_type.get_width().unwrap() + 64 * 2
             }
         }
     }
@@ -181,7 +157,6 @@ impl<'ctx> SierraType<'ctx> {
             }
             SierraType::Array { .. } => 2,
             SierraType::Dictionary { .. } => 2, // TODO: check
-            SierraType::DictionaryEntry { .. } => 2, // TODO: check
         }
     }
 
@@ -199,7 +174,6 @@ impl<'ctx> SierraType<'ctx> {
             } => *ty,
             Self::Array { ty, .. } => *ty,
             Self::Dictionary { ty, .. } => *ty,
-            Self::DictionaryEntry { ty, .. } => *ty,
         }
     }
 
