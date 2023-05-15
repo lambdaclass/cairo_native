@@ -2713,6 +2713,8 @@ impl<'ctx> Compiler<'ctx> {
 
         let sierra_type = SierraType::create_dict_type(self, arg_type.clone());
 
+        // TODO: i think we need to spend gas here.
+
         let block = self.new_block(&[sierra_type.get_type()]);
         let dict_value = block.argument(0)?.into();
         self.op_return(&block, &[dict_value]);
@@ -2779,6 +2781,8 @@ impl<'ctx> Compiler<'ctx> {
         let value_op = self.op_llvm_extractvalue(&block, 1, entry_value, entry_type.get_type())?;
         let value = value_op.result(0)?.into();
 
+        // self.call_dprintf(&block, "get entry value: %d\n", &[value], storage)?;
+
         self.op_return(&block, &[dict_value, value]);
 
         storage.libfuncs.insert(
@@ -2828,9 +2832,10 @@ impl<'ctx> Compiler<'ctx> {
         let entry_ptr_op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
         let entry_ptr = entry_ptr_op.result(0)?.into();
 
-        let entry_value_ptr_op = self.op_llvm_gep(&block, &[1], entry_ptr, entry_struct_type)?;
+        let entry_value_ptr_op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
         let entry_value_ptr: Value = entry_value_ptr_op.result(0)?.into();
-        let entry_is_used_ptr_op = self.op_llvm_gep(&block, &[2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr_op =
+            self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
         let entry_is_used_ptr: Value = entry_is_used_ptr_op.result(0)?.into();
 
         let true_const_op = self.op_const(&block, "1", self.bool_type());

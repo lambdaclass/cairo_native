@@ -130,7 +130,7 @@ impl<'ctx> Compiler<'ctx> {
         let dict_key_ptr = dict_key_ptr_op.result(0)?.into();
         self.op_llvm_store(&block, dict_key, dict_key_ptr)?;
 
-        let dict_len_op = self.call_dict_len_impl(&block, dict_value, &dict_type, storage)?;
+        let dict_len_op = self.call_dict_len_impl(&block, dict_value, dict_type, storage)?;
         let dict_len = dict_len_op.result(0)?.into();
 
         let dict_len_zext_op = self.op_zext(&block, dict_len, self.u64_type());
