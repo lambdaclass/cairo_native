@@ -120,46 +120,46 @@ impl<'ctx> Compiler<'ctx> {
         }
         storage.helperfuncs.insert(func_name.clone());
 
-        let block = self.new_block(&[dict_type.get_type(), self.felt_type()]);
+        let entry_block = self.new_block(&[dict_type.get_type(), self.felt_type()]);
 
-        let dict_value = block.argument(0)?.into();
-        let dict_key = block.argument(1)?.into();
+        let dict_value = entry_block.argument(0)?.into();
+        let dict_key = entry_block.argument(1)?.into();
 
         // get the hash
-        let dict_key_ptr_op = self.op_llvm_alloca(&block, self.felt_type(), 1)?;
+        let dict_key_ptr_op = self.op_llvm_alloca(&entry_block, self.felt_type(), 1)?;
         let dict_key_ptr = dict_key_ptr_op.result(0)?.into();
-        self.op_llvm_store(&block, dict_key, dict_key_ptr)?;
+        self.op_llvm_store(&entry_block, dict_key, dict_key_ptr)?;
 
-        let dict_len_op = self.call_dict_len_impl(&block, dict_value, dict_type, storage)?;
+        let dict_len_op = self.call_dict_len_impl(&entry_block, dict_value, dict_type, storage)?;
         let dict_len = dict_len_op.result(0)?.into();
 
-        let dict_len_zext_op = self.op_zext(&block, dict_len, self.u64_type());
+        let dict_len_zext_op = self.op_zext(&entry_block, dict_len, self.u64_type());
         let dict_len = dict_len_zext_op.result(0)?.into();
 
-        let hash_op = self.call_hash_i256(&block, dict_key_ptr, storage)?;
+        let hash_op = self.call_hash_i256(&entry_block, dict_key_ptr, storage)?;
         // u64
         let hash: Value = hash_op.result(0)?.into();
 
         // hash mod len
-        let index_op = self.op_rem(&block, hash, dict_len);
+        let index_op = self.op_rem(&entry_block, hash, dict_len);
         let index_value: Value = index_op.result(0)?.into();
 
         let dict_data_op =
-            self.op_llvm_extractvalue(&block, 1, dict_value, self.llvm_ptr_type())?;
+            self.op_llvm_extractvalue(&entry_block, 1, dict_value, self.llvm_ptr_type())?;
         let dict_data = dict_data_op.result(0)?.into();
 
         let dict_entry_ptr_op =
-            self.op_llvm_gep_dynamic(&block, &[index_value], dict_data, entry_type)?;
+            self.op_llvm_gep_dynamic(&entry_block, &[index_value], dict_data, entry_type)?;
         let dict_entry_ptr = dict_entry_ptr_op.result(0)?.into();
 
         // TODO: check if the key equals, do linear probing if not.
         // right now it returns the first without checking.
 
-        self.op_return(&block, &[dict_entry_ptr]);
+        self.op_return(&entry_block, &[dict_entry_ptr]);
 
         self.create_function(
             &func_name,
-            vec![block],
+            vec![entry_block],
             &[self.llvm_ptr_type()],
             FnAttributes::libfunc(false, true),
         )?;
