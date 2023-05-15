@@ -361,6 +361,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_point_is_zero" => {
                     self.register_libfunc_ec_point_is_zero(func_decl, storage);
                 }
+                "ec_state_init" => {
+                    self.create_libfunc_ec_state_init(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2531,6 +2534,39 @@ impl<'ctx> Compiler<'ctx> {
                     vec![],
                 ],
             },
+        );
+    }
+
+    pub fn create_libfunc_ec_state_init(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let parent_block = self.module.body();
+        mlir_asm! { parent_block =>
+            func.func @ec_state_init() -> !llvm.struct<packed (i256, i256, i256, i256)> {
+                // FIXME: Their implementation ends up computing the following values every time.
+                //   It's probably not intended, therefore this fixme is placed.
+                %0 = arith.constant 3151312365169595090315724863753927489909436624354740709748557281394568342450 : i256
+                %1 = arith.constant 2835232394579952276045648147338966184268723952674536708929458753792035266179 : i256
+
+                %2 = llvm.mlir.undef : !llvm.struct<packed (i256, i256, i256, i256)>
+                %3 = llvm.insertvalue %0, %2[0] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %4 = llvm.insertvalue %1, %3[1] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %5 = llvm.insertvalue %0, %4[2] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %6 = llvm.insertvalue %1, %5[3] : !llvm.struct<packed (i256, i256, i256, i256)>
+
+                func.return %6 : !llvm.struct<packed (i256, i256, i256, i256)>
+            }
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::create_function_all_args(
+                vec![],
+                vec![SierraType::Simple(self.ec_state_type())],
+            ),
         );
     }
 }
