@@ -124,6 +124,15 @@ impl<'ctx> Compiler<'ctx> {
                         .clone();
                     self.create_print_ec_point(&ec_point_type, type_decl)?;
                 }
+                "EcState" => {
+                    self.create_print_felt(storage)?;
+                    let ec_state_type = storage
+                        .types
+                        .get(&type_decl.id.id.to_string())
+                        .expect("Type should be registered")
+                        .clone();
+                    self.create_print_ec_state(&ec_state_type, type_decl)?;
+                }
                 _ => todo!("Felt representation for {}", type_category),
             }
         }
@@ -396,6 +405,11 @@ fn get_all_types_to_print(
                 }
             }
             "EcPoint" => {
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "EcState" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }

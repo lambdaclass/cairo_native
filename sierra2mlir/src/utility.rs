@@ -472,6 +472,40 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn create_print_ec_state(
+        &'ctx self,
+        ec_state_type: &SierraType,
+        sierra_type_declaration: TypeDeclaration,
+    ) -> Result<()> {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[(
+            ec_state_type.get_type(),
+            Location::unknown(&self.context),
+        )]));
+
+        let arg = block.argument(0)?.into();
+        let px = self.op_llvm_extractvalue(&block, 0, arg, self.felt_type())?;
+        let py = self.op_llvm_extractvalue(&block, 1, arg, self.felt_type())?;
+        let zx = self.op_llvm_extractvalue(&block, 2, arg, self.felt_type())?;
+        let zy = self.op_llvm_extractvalue(&block, 3, arg, self.felt_type())?;
+
+        self.call_print_felt(block, px.result(0)?.into())?;
+        self.call_print_felt(block, py.result(0)?.into())?;
+        self.call_print_felt(block, zx.result(0)?.into())?;
+        self.call_print_felt(block, zy.result(0)?.into())?;
+        self.op_return(&block, &[]);
+
+        let func = self.op_func(
+            &format!("print_{}", &sierra_type_declaration.id.debug_name.unwrap()),
+            &create_fn_signature(&[self.ec_state_type()], &[]),
+            vec![region],
+            FnAttributes::libfunc(false, false),
+        )?;
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
+
     /// Utility method to create a print_felt call.
     pub fn call_print_felt(&'ctx self, block: BlockRef<'ctx>, value: Value) -> Result<()> {
         self.op_func_call(&block, "print_felt252", &[value], &[])?;

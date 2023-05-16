@@ -225,6 +225,10 @@ impl<'ctx> Compiler<'ctx> {
                     let ty = self.ec_point_type();
                     storage.types.insert(id.to_string(), SierraType::Simple(ty));
                 }
+                "EcState" => {
+                    let ty = self.ec_state_type();
+                    storage.types.insert(id.to_string(), SierraType::Simple(ty));
+                }
                 _ => {
                     todo!("unhandled type: {}", type_decl.id.debug_name.as_ref().unwrap().as_str())
                 }

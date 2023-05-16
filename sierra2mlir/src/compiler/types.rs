@@ -65,13 +65,13 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn ec_point_type(&self) -> Type {
-        self.llvm_struct_type(&[self.felt_type(), self.felt_type(), self.bool_type()], false)
+        self.llvm_struct_type(&[self.felt_type(), self.felt_type(), self.bool_type()], true)
     }
 
     pub fn ec_state_type(&self) -> Type {
         self.llvm_struct_type(
             &[self.felt_type(), self.felt_type(), self.felt_type(), self.felt_type()],
-            false,
+            true,
         )
     }
 }
