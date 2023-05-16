@@ -364,6 +364,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_state_init" => {
                     self.create_libfunc_ec_state_init(func_decl, storage);
                 }
+                "ec_state_add" => {
+                    self.create_libfunc_ec_state_add(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2503,8 +2506,6 @@ impl<'ctx> Compiler<'ctx> {
                 %7 = llvm.insertvalue %6, %0[1] : !llvm.struct<packed (i256, i256, i1)>
                 func.return %7 : !llvm.struct<packed (i256, i256, i1)>
             }
-
-            func.func private @sierra2mlir_util_ec_neg(!llvm.ptr, !llvm.ptr, !llvm.ptr)
         }
 
         let id = func_decl.id.debug_name.as_deref().unwrap();
@@ -2565,6 +2566,91 @@ impl<'ctx> Compiler<'ctx> {
             id.to_string(),
             SierraLibFunc::create_function_all_args(
                 vec![],
+                vec![SierraType::Simple(self.ec_state_type())],
+            ),
+        );
+    }
+
+    pub fn create_libfunc_ec_state_add(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let parent_block = self.module.body();
+        mlir_asm! { parent_block =>
+            func.func @ec_state_add(
+                %0 : !llvm.struct<packed (i256, i256, i256, i256)>,
+                %1 : !llvm.struct<packed (i256, i256, i1)>
+            ) -> !llvm.struct<packed (i256, i256, i256, i256)> {
+                %2 = memref.alloca() : memref<32xi8>
+                %3 = memref.alloca() : memref<32xi8>
+                %4 = memref.alloca() : memref<32xi8>
+                %5 = memref.alloca() : memref<32xi8>
+                %6 = memref.alloca() : memref<i8>
+
+                %7  = llvm.extractvalue %0[0] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %8  = llvm.extractvalue %0[1] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %9  = llvm.extractvalue %1[0] : !llvm.struct<packed (i256, i256, i1)>
+                %10 = llvm.extractvalue %1[1] : !llvm.struct<packed (i256, i256, i1)>
+                %11 = llvm.extractvalue %1[2] : !llvm.struct<packed (i256, i256, i1)>
+
+                %12 = llvm.call_intrinsic "llvm.bswap.i256"(%7) : (i256) -> i256
+                %13 = llvm.call_intrinsic "llvm.bswap.i256"(%8) : (i256) -> i256
+                %14 = llvm.call_intrinsic "llvm.bswap.i256"(%9) : (i256) -> i256
+                %15 = llvm.call_intrinsic "llvm.bswap.i256"(%10) : (i256) -> i256
+                %16 = arith.extui %11 : i1 to i8
+
+                %17 = index.constant 0
+                %18 = memref.view %2[%17][] : memref<32xi8> to memref<i256>
+                %19 = memref.view %3[%17][] : memref<32xi8> to memref<i256>
+                %20 = memref.view %4[%17][] : memref<32xi8> to memref<i256>
+                %21 = memref.view %5[%17][] : memref<32xi8> to memref<i256>
+
+                memref.store %12, %18[] : memref<i256>
+                memref.store %13, %19[] : memref<i256>
+                memref.store %14, %20[] : memref<i256>
+                memref.store %15, %21[] : memref<i256>
+                memref.store %16, %6[] : memref<i8>
+
+                %22 = memref.extract_aligned_pointer_as_index %2 : memref<32xi8> -> index
+                %23 = memref.extract_aligned_pointer_as_index %3 : memref<32xi8> -> index
+                %24 = memref.extract_aligned_pointer_as_index %4 : memref<32xi8> -> index
+                %25 = memref.extract_aligned_pointer_as_index %5 : memref<32xi8> -> index
+                %26 = memref.extract_aligned_pointer_as_index %6 : memref<i8> -> index
+                %27 = index.castu %22 : index to i64
+                %28 = index.castu %23 : index to i64
+                %29 = index.castu %24 : index to i64
+                %30 = index.castu %25 : index to i64
+                %31 = index.castu %26 : index to i64
+                %32 = llvm.inttoptr %27 : i64 to !llvm.ptr
+                %33 = llvm.inttoptr %28 : i64 to !llvm.ptr
+                %34 = llvm.inttoptr %29 : i64 to !llvm.ptr
+                %35 = llvm.inttoptr %30 : i64 to !llvm.ptr
+                %36 = llvm.inttoptr %31 : i64 to !llvm.ptr
+
+                func.call @sierra2mlir_util_ec_state_add(%32, %33, %34, %35, %36) : (!llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()
+
+                %37 = memref.load %18[] : memref<i256>
+                %38 = memref.load %19[] : memref<i256>
+                %39 = llvm.call_intrinsic "llvm.bswap.i256"(%37) : (i256) -> i256
+                %40 = llvm.call_intrinsic "llvm.bswap.i256"(%38) : (i256) -> i256
+                %41 = llvm.insertvalue %39, %0[0] : !llvm.struct<packed (i256, i256, i256, i256)>
+                %42 = llvm.insertvalue %40, %41[1] : !llvm.struct<packed (i256, i256, i256, i256)>
+
+                func.return %42 : !llvm.struct<packed (i256, i256, i256, i256)>
+            }
+
+            func.func private @sierra2mlir_util_ec_state_add(!llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr)
+        }
+
+        let id = func_decl.id.debug_name.as_deref().unwrap();
+        storage.libfuncs.insert(
+            id.to_string(),
+            SierraLibFunc::create_function_all_args(
+                vec![
+                    SierraType::Simple(self.ec_state_type()),
+                    SierraType::Simple(self.ec_point_type()),
+                ],
                 vec![SierraType::Simple(self.ec_state_type())],
             ),
         );

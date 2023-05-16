@@ -120,3 +120,27 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_point_try_new_nz(
 
     (ec_point.infinity || (ec_point.y != y_val && ec_point.y != -y_val)) as i32
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_util_ec_state_add(
+    state_x: *mut [u8; 32],
+    state_y: *mut [u8; 32],
+    point_x: *const [u8; 32],
+    point_y: *const [u8; 32],
+    point_infinity: *const i8,
+) {
+    let state = AffinePoint {
+        x: FieldElement::from_bytes_be(&*state_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*state_y).unwrap(),
+        infinity: false,
+    };
+    let point = AffinePoint {
+        x: FieldElement::from_bytes_be(&*point_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*point_y).unwrap(),
+        infinity: *point_infinity != 0,
+    };
+
+    let next_state = &state + &point;
+    state_x.write(next_state.x.to_bytes_be());
+    state_y.write(next_state.y.to_bytes_be());
+}
