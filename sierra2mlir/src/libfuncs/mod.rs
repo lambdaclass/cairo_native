@@ -2641,8 +2641,11 @@ impl<'ctx> Compiler<'ctx> {
         let dict_value: Value = dict_value_op.result(0)?.into();
 
         // Length/capacity is 8 on creation
-        let dict_len_op = self.op_u32_const(&block, "8");
+        let dict_len_op = self.op_u32_const(&block, "0");
         let dict_len = dict_len_op.result(0)?.into();
+
+        let dict_capacity_op = self.op_u32_const(&block, "8");
+        let dict_capacity = dict_capacity_op.result(0)?.into();
 
         // The size in bytes of one element in the dict array
         // (key (always felt), value (T), is_used (bool))
@@ -2657,7 +2660,16 @@ impl<'ctx> Compiler<'ctx> {
             self.call_dict_set_len_impl(&block, dict_value, dict_len, &sierra_type, storage)?;
         let dict_value: Value = set_len_op.result(0)?.into();
 
-        // 8 here is the length/capacity
+        let set_capacity_op = self.call_dict_set_capacity_impl(
+            &block,
+            dict_value,
+            dict_capacity,
+            &sierra_type,
+            storage,
+        )?;
+        let dict_value: Value = set_capacity_op.result(0)?.into();
+
+        // 8 here is the capacity
         let const_dict_size_bytes_op =
             self.op_const(&block, &(dict_slot_size_bytes * 8).to_string(), self.u64_type());
         let const_dict_size_bytes = const_dict_size_bytes_op.result(0)?;
@@ -2841,6 +2853,8 @@ impl<'ctx> Compiler<'ctx> {
         let true_const_op = self.op_const(&block, "1", self.bool_type());
         self.op_llvm_store(&block, true_const_op.result(0)?.into(), entry_is_used_ptr)?;
         self.op_llvm_store(&block, value, entry_value_ptr)?;
+
+        // todo: increase length if used was false
 
         let null_ptr_const_op = self.op_llvm_nullptr(&block);
         let dict_value_op = self.call_dict_set_entry_ptr(
