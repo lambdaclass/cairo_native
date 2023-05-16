@@ -144,3 +144,30 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_state_add(
     state_x.write(next_state.x.to_bytes_be());
     state_y.write(next_state.y.to_bytes_be());
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_util_ec_state_add_mul(
+    state_x: *mut [u8; 32],
+    state_y: *mut [u8; 32],
+    value: *const [u8; 32],
+    point_x: *const [u8; 32],
+    point_y: *const [u8; 32],
+    point_infinity: *const i8,
+) {
+    let state = AffinePoint {
+        x: FieldElement::from_bytes_be(&*state_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*state_y).unwrap(),
+        infinity: false,
+    };
+    let point = AffinePoint {
+        x: FieldElement::from_bytes_be(&*point_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*point_y).unwrap(),
+        infinity: *point_infinity != 0,
+    };
+
+    let value = FieldElement::from_bytes_be(&*value).unwrap();
+
+    let next_state = &state + &(&point * &value.to_bits_le());
+    state_x.write(next_state.x.to_bytes_be());
+    state_y.write(next_state.y.to_bytes_be());
+}
