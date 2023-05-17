@@ -277,8 +277,6 @@ impl<'ctx> Compiler<'ctx> {
         let const_1 = op.result(0)?.into();
         let op = self.op_u32_const(&resize_block, "2");
         let const_2 = op.result(0)?.into();
-        //let op = self.op_const(&resize_block, "1", self.bool_type());
-        //let const_true: Value = op.result(0)?.into();
 
         // calculate the new size
         let op = self.op_mul(&resize_block, dict_capacity, const_2);
@@ -353,7 +351,7 @@ impl<'ctx> Compiler<'ctx> {
             let index = loop_check_block.argument(0)?.into();
             let new_dict_value = loop_check_block.argument(1)?.into();
 
-            self.call_dprintf(&loop_check_block, "check index: %d\n", &[index], storage)?;
+            self.call_dprintf(&loop_check_block, "resizing, index: %d\n", &[index], storage)?;
 
             let op =
                 self.op_cmp(&loop_check_block, CmpOp::UnsignedLessThan, index, old_dict_capacity);
@@ -406,7 +404,12 @@ impl<'ctx> Compiler<'ctx> {
 
             // is used block, we can use previous block values
 
-            self.call_dprintf(&loop_body_is_used_block, "is used block\n", &[index], storage)?;
+            self.call_dprintf(
+                &loop_body_is_used_block,
+                "loop_body_is_used_block idx %d\n",
+                &[index],
+                storage,
+            )?;
 
             // entry key
             let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
@@ -480,6 +483,12 @@ impl<'ctx> Compiler<'ctx> {
             self.op_br(&loop_end_block, &continue_block, &[new_dict_value]);
         }
 
+        // hash result, current index
+        let check_slot_block = self.new_block(&[self.u64_type()]);
+        let final_block = self.new_block(&[self.llvm_ptr_type()]);
+
+        dbg!("reached a");
+
         // continue block
         {
             let dict_value = continue_block.argument(0)?.into();
@@ -492,26 +501,87 @@ impl<'ctx> Compiler<'ctx> {
             let op = self.op_zext(&continue_block, dict_capacity, self.u64_type());
             let dict_capacity = op.result(0)?.into();
 
-            let op = self.call_hash_i256(&continue_block, dict_key_ptr, storage)?;
-            // u64
-            let hash: Value = op.result(0)?.into();
-
-            // hash mod capacity
-            let op = self.op_rem(&continue_block, hash, dict_capacity);
-            let index_value: Value = op.result(0)?.into();
-
             let op =
                 self.op_llvm_extractvalue(&continue_block, 2, dict_value, self.llvm_ptr_type())?;
             let dict_data = op.result(0)?.into();
 
+            let op = self.call_hash_i256(&continue_block, dict_key_ptr, storage)?;
+            // u64
+            let hash: Value = op.result(0)?.into();
+
+            let op = self.op_u64_const(&continue_block, "0");
+            let const_0 = op.result(0)?.into();
+            let op = self.op_u64_const(&continue_block, "1");
+            let const_1: Value = op.result(0)?.into();
+
+            self.op_br(&continue_block, &check_slot_block, &[const_0]);
+
+            let index = check_slot_block.argument(0)?.into();
+            let op = self.op_add(&check_slot_block, hash, index);
+            let current_hash = op.result(0)?.into();
+
+            // hash mod capacity
+            let op = self.op_rem(&check_slot_block, current_hash, dict_capacity);
+            let index_value: Value = op.result(0)?.into();
+
             let op =
-                self.op_llvm_gep_dynamic(&continue_block, &[index_value], dict_data, entry_type)?;
-            let dict_entry_ptr = op.result(0)?.into();
+                self.op_llvm_gep_dynamic(&check_slot_block, &[index_value], dict_data, entry_type)?;
+            let entry_ptr = op.result(0)?.into();
+
+            // entry key
+            let op = self.op_llvm_gep(&check_slot_block, &[0, 0], entry_ptr, entry_type)?;
+            let entry_key_ptr = op.result(0)?.into();
+            let op = self.op_llvm_load(&check_slot_block, entry_key_ptr, self.felt_type())?;
+            let entry_key: Value = op.result(0)?.into();
+            self.call_dprintf(
+                &check_slot_block,
+                "check slot, hash=%llu, index=%llu, (hash+index mod cap)=%llu\n",
+                &[hash, index, index_value],
+                storage,
+            )?;
+
+            // entry is_used
+            let op = self.op_llvm_gep(&check_slot_block, &[0, 2], entry_ptr, entry_type)?;
+            let entry_key_ptr = op.result(0)?.into();
+            let op = self.op_llvm_load(&check_slot_block, entry_key_ptr, self.bool_type())?;
+            let is_used: Value = op.result(0)?.into();
+
+            let op = self.op_const(&check_slot_block, "0", self.bool_type());
+            let const_false: Value = op.result(0)?.into();
+            let op = self.op_cmp(&check_slot_block, CmpOp::Equal, is_used, const_false);
+            let is_not_used = op.result(0)?.into();
+
+            let op = self.op_cmp(&check_slot_block, CmpOp::Equal, dict_key, entry_key);
+            let is_key_equal = op.result(0)?.into();
+
+            let op = self.op_or(&check_slot_block, is_not_used, is_key_equal, self.bool_type());
+            let is_found = op.result(0)?.into();
+            self.call_dprintf(
+                &check_slot_block,
+                "is found: %d (is not used) || %d (key equals) = %d\n",
+                &[is_not_used, is_key_equal, is_found],
+                storage,
+            )?;
+
+            let op = self.op_add(&check_slot_block, index, const_1);
+            let next_index = op.result(0)?.into();
+
+            self.op_cond_br(
+                &check_slot_block,
+                is_found,
+                &final_block,
+                &check_slot_block,
+                &[entry_ptr],
+                &[next_index],
+            );
 
             // TODO: check if the key equals, if not, check if its unused, use it, otherwise keep going until you find key or a free slot (linear probing).
             // right now it returns the first without checking.
 
-            self.op_return(&continue_block, &[dict_value, dict_entry_ptr]);
+            // self.op_return(&continue_block, &[dict_value, dict_entry_ptr]);
+
+            let dict_entry_ptr = final_block.argument(0)?.into();
+            self.op_return(&final_block, &[dict_value, dict_entry_ptr]);
         }
 
         dbg!("reached f");
@@ -525,6 +595,8 @@ impl<'ctx> Compiler<'ctx> {
                 loop_body_block,
                 loop_body_is_used_block,
                 loop_end_block,
+                check_slot_block,
+                final_block,
                 continue_block,
             ],
             &[dict_type.get_type(), self.llvm_ptr_type()],

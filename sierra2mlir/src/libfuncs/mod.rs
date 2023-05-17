@@ -2777,18 +2777,22 @@ impl<'ctx> Compiler<'ctx> {
             "felt size changed, dict needs a update to zext the key type"
         );
 
-        // todo: finish the get to do probing
         let op = self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
         let dict_value: Value = op.result(0)?.into();
         let entry_ptr: Value = op.result(1)?.into();
+
+        // set the entry key
+        let op = self.op_llvm_gep(&block, &[0, 0], entry_ptr, entry_struct_type)?;
+        let entry_key_ptr: Value = op.result(0)?.into();
+        self.op_llvm_store(&block, dict_key, entry_key_ptr)?;
 
         let op = self.op_llvm_load(&block, entry_ptr, entry_struct_type)?;
         let entry_value: Value = op.result(0)?.into();
 
         // save the entry ptr
-        let set_entry_op =
+        let op =
             self.call_dict_set_entry_ptr(&block, dict_value, entry_ptr, &dict_type, storage)?;
-        let dict_value = set_entry_op.result(0)?.into();
+        let dict_value = op.result(0)?.into();
 
         // get the entry value
         let value_op = self.op_llvm_extractvalue(&block, 1, entry_value, entry_type.get_type())?;
@@ -2869,8 +2873,6 @@ impl<'ctx> Compiler<'ctx> {
         let op =
             self.call_dict_set_len_impl(&block, dict_value, new_dict_len, &dict_type, storage)?;
         let dict_value = op.result(0)?.into();
-
-        // todo: increase length if used was false
 
         let null_ptr_const_op = self.op_llvm_nullptr(&block);
         let dict_value_op = self.call_dict_set_entry_ptr(
