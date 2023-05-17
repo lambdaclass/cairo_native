@@ -2778,11 +2778,12 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         // todo: finish the get to do probing
-        let entry_ptr_op =
-            self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
-        let entry_ptr: Value = entry_ptr_op.result(0)?.into();
-        let entry_load = self.op_llvm_load(&block, entry_ptr, entry_struct_type)?;
-        let entry_value: Value = entry_load.result(0)?.into();
+        let op = self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
+        let dict_value: Value = op.result(0)?.into();
+        let entry_ptr: Value = op.result(1)?.into();
+
+        let op = self.op_llvm_load(&block, entry_ptr, entry_struct_type)?;
+        let entry_value: Value = op.result(0)?.into();
 
         // save the entry ptr
         let set_entry_op =
@@ -2793,7 +2794,7 @@ impl<'ctx> Compiler<'ctx> {
         let value_op = self.op_llvm_extractvalue(&block, 1, entry_value, entry_type.get_type())?;
         let value = value_op.result(0)?.into();
 
-        // self.call_dprintf(&block, "get entry value: %d\n", &[value], storage)?;
+        self.call_dprintf(&block, "get entry value: %d\n", &[value], storage)?;
 
         self.op_return(&block, &[dict_value, value]);
 
@@ -2841,18 +2842,33 @@ impl<'ctx> Compiler<'ctx> {
         let dict_value: Value = block.argument(0)?.into();
         let value: Value = block.argument(1)?.into();
 
-        let entry_ptr_op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
-        let entry_ptr = entry_ptr_op.result(0)?.into();
+        let op = self.op_const(&block, "1", self.bool_type());
+        let true_const = op.result(0)?.into();
 
-        let entry_value_ptr_op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
-        let entry_value_ptr: Value = entry_value_ptr_op.result(0)?.into();
-        let entry_is_used_ptr_op =
-            self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
-        let entry_is_used_ptr: Value = entry_is_used_ptr_op.result(0)?.into();
+        let op = self.op_u32_const(&block, "1");
+        let const_1 = op.result(0)?.into();
 
-        let true_const_op = self.op_const(&block, "1", self.bool_type());
-        self.op_llvm_store(&block, true_const_op.result(0)?.into(), entry_is_used_ptr)?;
+        self.call_dprintf(&block, "finalize entry value: %d\n", &[value], storage)?;
+
+        let op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
+        let entry_ptr = op.result(0)?.into();
+
+        let op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
+        let entry_value_ptr: Value = op.result(0)?.into();
+        let op = self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr: Value = op.result(0)?.into();
+
+        self.op_llvm_store(&block, true_const, entry_is_used_ptr)?;
         self.op_llvm_store(&block, value, entry_value_ptr)?;
+
+        let op = self.call_dict_len_impl(&block, dict_value, &dict_type, storage)?;
+        let dict_len = op.result(0)?.into();
+        let op = self.op_add(&block, dict_len, const_1);
+        let new_dict_len = op.result(0)?.into();
+
+        let op =
+            self.call_dict_set_len_impl(&block, dict_value, new_dict_len, &dict_type, storage)?;
+        let dict_value = op.result(0)?.into();
 
         // todo: increase length if used was false
 

@@ -221,6 +221,16 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn call_free<'block>(
+        &'ctx self,
+        block: &'block Block,
+        ptr: Value,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        self.create_free(storage)?;
+        self.op_llvm_call(block, "free", &[ptr], &[])
+    }
+
     /// value needs to be u64 and is the size in bytes.
     pub fn call_realloc<'block>(
         &'ctx self,

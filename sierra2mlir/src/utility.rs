@@ -45,6 +45,8 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         let func = self.op_func(name, &function_signature, vec![region], attributes)?;
+        //dbg!(&name);
+        //func.dump();
         self.module.body().append_operation(func);
 
         Ok(())
