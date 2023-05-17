@@ -278,6 +278,8 @@ impl<'ctx> Compiler<'ctx> {
         */
 
         // useful constants
+        let op = self.op_u32_const(&resize_block, "1");
+        let const_1 = op.result(0)?.into();
         let op = self.op_u32_const(&resize_block, "2");
         let const_2 = op.result(0)?.into();
         let op = self.op_const(&resize_block, "1", self.bool_type());
@@ -376,28 +378,24 @@ impl<'ctx> Compiler<'ctx> {
         {
             // TODO: get slot, check if used, rehash, copy data
             let index = loop_body_block.argument(0)?.into();
-            let new_dict_value = loop_body_block.argument(1)?.into();
+            let new_dict_value: Value = loop_body_block.argument(1)?.into();
+
+            let op = self.op_add(&loop_body_block, index, const_1);
+            let new_index = op.result(0)?.into();
+
             let op =
-                self.call_dict_get_data_ptr(&loop_body_block, new_dict_value, dict_type, storage)?;
-            let data_ptr = op.result(0)?.into();
-            let op = self.op_llvm_gep_dynamic(&loop_body_block, &[index], data_ptr, entry_type)?;
+                self.call_dict_get_data_ptr(&loop_body_block, old_dict_value, dict_type, storage)?;
+            let old_data_ptr = op.result(0)?.into();
+
+            let op =
+                self.op_llvm_gep_dynamic(&loop_body_block, &[index], old_data_ptr, entry_type)?;
             let entry_ptr = op.result(0)?.into();
 
-            // entry key
-            let op = self.op_llvm_gep(&loop_body_block, &[0, 0], entry_ptr, entry_type)?;
-            let entry_key_ptr = op.result(0)?.into();
-            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, self.felt_type())?;
-            let entry_key: Value = op.result(0)?.into();
-
-            // entry value
-            let op = self.op_llvm_gep(&loop_body_block, &[0, 1], entry_ptr, entry_type)?;
-            let entry_value_ptr: Value = op.result(0)?.into();
-            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, element_type)?;
-
+            // first only load is_used and check if we need to copy it over
             // is used
             let op = self.op_llvm_gep(&loop_body_block, &[0, 2], entry_ptr, entry_type)?;
-            let entry_is_used_ptr: Value = op.result(0)?.into();
-            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, self.bool_type())?;
+            let is_used_ptr: Value = op.result(0)?.into();
+            let op = self.op_llvm_load(&loop_body_block, is_used_ptr, self.bool_type())?;
             let is_used: Value = op.result(0)?.into();
 
             self.op_cond_br(
@@ -406,12 +404,48 @@ impl<'ctx> Compiler<'ctx> {
                 &loop_body_is_used_block,
                 &loop_check_block,
                 &[],
-                &[todo!()],
+                &[new_index, new_dict_value],
             );
 
-            // is used block
+            // is used block, we can use previous block values
 
-            self.op_br(&loop_body_is_used_block, &loop_check_block, &[todo!()]);
+            // entry key
+            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
+            let entry_key_ptr = op.result(0)?.into();
+            let op =
+                self.op_llvm_load(&loop_body_is_used_block, entry_key_ptr, self.felt_type())?;
+            let entry_key: Value = op.result(0)?.into();
+
+            // entry value
+            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], entry_ptr, entry_type)?;
+            let entry_value_ptr: Value = op.result(0)?.into();
+            let op = self.op_llvm_load(&loop_body_is_used_block, entry_value_ptr, element_type)?;
+            let entry_value: Value = op.result(0)?.into();
+
+            // get the entry ptr on the new dict
+            let op = self.call_dict_get_unchecked(
+                &loop_body_is_used_block,
+                new_dict_value,
+                dict_type,
+                entry_key,
+                storage,
+            )?;
+            let new_dict_value = op.result(0)?.into();
+            let entry_ptr = op.result(1)?.into();
+
+            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
+            let entry_key_ptr: Value = op.result(0)?.into();
+            self.op_llvm_store(&loop_body_is_used_block, entry_key, entry_key_ptr)?;
+
+            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], entry_ptr, entry_type)?;
+            let entry_value_ptr: Value = op.result(0)?.into();
+            self.op_llvm_store(&loop_body_is_used_block, entry_value, entry_value_ptr)?;
+
+            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 2], entry_ptr, entry_type)?;
+            let is_used_ptr: Value = op.result(0)?.into();
+            self.op_llvm_store(&loop_body_is_used_block, is_used, is_used_ptr)?;
+
+            self.op_br(&loop_body_is_used_block, &loop_check_block, &[new_index, new_dict_value]);
         }
 
         // todo: free old ptr
@@ -444,7 +478,7 @@ impl<'ctx> Compiler<'ctx> {
             self.op_llvm_gep_dynamic(&entry_block, &[index_value], dict_data, entry_type)?;
         let dict_entry_ptr = dict_entry_ptr_op.result(0)?.into();
 
-        // TODO: check if the key equals, do linear probing if not.
+        // TODO: check if the key equals, if not, check if its unused, use it, otherwise keep going until you find key or a free slot (linear probing).
         // right now it returns the first without checking.
 
         // todo: return the dict too
@@ -462,7 +496,14 @@ impl<'ctx> Compiler<'ctx> {
                 continue_block,
             ],
             &[self.llvm_ptr_type()],
-            FnAttributes::libfunc(false, true),
+            FnAttributes {
+                inline: false, // too big
+                local: true,
+                public: false,
+                norecurse: false, // we recurse
+                nounwind: true,
+                emit_c_interface: false,
+            },
         )?;
 
         Ok(func_name)
