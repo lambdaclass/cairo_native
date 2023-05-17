@@ -93,6 +93,14 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_point_zero(x: *mut u8, y: *mut u8, 
     infinite.copy_from_slice(&(ec_point.infinity as u8).to_be_bytes());
 }
 
+/// Compute `ec_point_from_x_nz()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_ec_point_from_x_nz(
     x: *mut [u8; 32],
@@ -108,6 +116,14 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_point_from_x_nz(
     infinite.write(ec_point.infinity as u8);
 }
 
+/// Compute `ec_point_try_new_nz()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_ec_point_try_new_nz(
     x: *const [u8; 32],
@@ -121,6 +137,14 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_point_try_new_nz(
     (ec_point.infinity || (ec_point.y != y_val && ec_point.y != -y_val)) as i32
 }
 
+/// Compute `ec_state_add()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_ec_state_add(
     state_x: *mut [u8; 32],
@@ -145,6 +169,14 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_state_add(
     state_y.write(next_state.y.to_bytes_be());
 }
 
+/// Compute `ec_state_add_mul()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_ec_state_add_mul(
     state_x: *mut [u8; 32],
@@ -172,6 +204,14 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_state_add_mul(
     state_y.write(next_state.y.to_bytes_be());
 }
 
+/// Compute `ec_state_try_finalize_nz()`.
+///
+/// Its return values are stored in big endian.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn sierra2mlir_util_ec_state_try_finalize_nz(
     state_x: *mut [u8; 32],
