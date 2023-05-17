@@ -320,6 +320,18 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "ec_state_try_finalize_nz" => {
+                                self.inline_ec_state_try_finalize_nz(
+                                    &id,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             _ => self.process_general_libfunc(
                                 &id,
                                 invocation,

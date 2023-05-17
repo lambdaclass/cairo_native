@@ -116,33 +116,87 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn create_utils(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
-        if storage.helperfuncs.contains("sierra2mlir_util_ec_point_from_x_nz") {
-            return Ok(());
+        if !storage.helperfuncs.contains("sierra2mlir_util_ec_point_try_new_nz") {
+            storage.helperfuncs.insert("sierra2mlir_util_ec_point_try_new_nz".to_string());
+
+            let region = Region::new();
+            let func = operation::Builder::new("func.func", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "sym_name",
+                        "\"sierra2mlir_util_ec_point_try_new_nz\"",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "function_type",
+                        "(!llvm.ptr, !llvm.ptr) -> i32",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(&self.context, "sym_visibility", "\"private\"")
+                        .unwrap(),
+                ])
+                .add_regions(vec![region])
+                .build();
+
+            self.module.body().append_operation(func);
         }
 
-        storage.helperfuncs.insert("sierra2mlir_util_ec_point_from_x_nz".to_string());
+        if !storage.helperfuncs.contains("sierra2mlir_util_ec_point_from_x_nz") {
+            storage.helperfuncs.insert("sierra2mlir_util_ec_point_from_x_nz".to_string());
 
-        let region = Region::new();
-        let func = operation::Builder::new("func.func", Location::unknown(&self.context))
-            .add_attributes(&[
-                NamedAttribute::new_parsed(
-                    &self.context,
-                    "sym_name",
-                    "\"sierra2mlir_util_ec_point_from_x_nz\"",
-                )
-                .unwrap(),
-                NamedAttribute::new_parsed(
-                    &self.context,
-                    "function_type",
-                    "(!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()",
-                )
-                .unwrap(),
-                NamedAttribute::new_parsed(&self.context, "sym_visibility", "\"private\"").unwrap(),
-            ])
-            .add_regions(vec![region])
-            .build();
+            let region = Region::new();
+            let func = operation::Builder::new("func.func", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "sym_name",
+                        "\"sierra2mlir_util_ec_point_from_x_nz\"",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "function_type",
+                        "(!llvm.ptr, !llvm.ptr, !llvm.ptr) -> ()",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(&self.context, "sym_visibility", "\"private\"")
+                        .unwrap(),
+                ])
+                .add_regions(vec![region])
+                .build();
 
-        self.module.body().append_operation(func);
+            self.module.body().append_operation(func);
+        }
+
+        if !storage.helperfuncs.contains("sierra2mlir_util_ec_state_try_finalize_nz") {
+            storage.helperfuncs.insert("sierra2mlir_util_ec_state_try_finalize_nz".to_string());
+
+            let region = Region::new();
+            let func = operation::Builder::new("func.func", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "sym_name",
+                        "\"sierra2mlir_util_ec_state_try_finalize_nz\"",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(
+                        &self.context,
+                        "function_type",
+                        "(!llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr) -> i32",
+                    )
+                    .unwrap(),
+                    NamedAttribute::new_parsed(&self.context, "sym_visibility", "\"private\"")
+                        .unwrap(),
+                ])
+                .add_regions(vec![region])
+                .build();
+
+            self.module.body().append_operation(func);
+        }
+
         Ok(())
     }
 }

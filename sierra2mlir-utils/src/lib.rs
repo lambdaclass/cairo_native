@@ -171,3 +171,47 @@ pub unsafe extern "C" fn sierra2mlir_util_ec_state_add_mul(
     state_x.write(next_state.x.to_bytes_be());
     state_y.write(next_state.y.to_bytes_be());
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_util_ec_state_try_finalize_nz(
+    state_x: *mut [u8; 32],
+    state_y: *mut [u8; 32],
+    point_x: *const [u8; 32],
+    point_y: *const [u8; 32],
+) -> i32 {
+    let state = AffinePoint {
+        x: FieldElement::from_bytes_be(&*state_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*state_y).unwrap(),
+        infinity: false,
+    };
+    let point = AffinePoint {
+        x: FieldElement::from_bytes_be(&*point_x).unwrap(),
+        y: FieldElement::from_bytes_be(&*point_y).unwrap(),
+        infinity: false,
+    };
+
+    if state.x == point.x {
+        assert_eq!(state.y, point.y);
+        return 1;
+    }
+
+    let numerator = state.y + point.y;
+    let denominator = state.x - point.x;
+
+    let slope = numerator.floor_div(denominator);
+    // let slope = numerator * denominator.invert().unwrap();
+    let slope2 = slope * slope;
+
+    let sum_x = state.x + point.x;
+    let res_x = slope2 - sum_x;
+
+    let x_diff = state.x - res_x;
+    let slope_times_x_change = slope * x_diff;
+    let res_y = slope_times_x_change - state.y;
+
+    println!("{}", res_x);
+    println!("{}", res_y);
+    state_x.write(res_x.to_bytes_be());
+    state_y.write(res_y.to_bytes_be());
+    0
+}

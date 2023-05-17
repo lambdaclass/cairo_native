@@ -969,7 +969,9 @@ impl<'ctx> Compiler<'ctx> {
 
         let op2 = block.append_operation(
             operation::Builder::new("index.constant", Location::unknown(&self.context))
-                .add_attributes(&[NamedAttribute::new_parsed(&self.context, "value", "0").unwrap()])
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "value", "0 : index").unwrap()
+                ])
                 .add_results(&[Type::index(&self.context)])
                 .build(),
         );
@@ -1539,6 +1541,381 @@ impl<'ctx> Compiler<'ctx> {
                         variables[id].get_value()
                     }
                 })
+                .collect::<Vec<_>>(),
+        );
+
+        Ok(())
+    }
+
+    pub fn inline_ec_state_try_finalize_nz(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        self.create_utils(storage)?;
+
+        let libfunc = storage.libfuncs.get(id).expect("should find libfunc");
+        let arg = &libfunc.get_args()[0];
+
+        let next_success = &blocks[&match invocation.branches[0].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        }];
+        let next_failure = &blocks[&match invocation.branches[1].target {
+            GenBranchTarget::Fallthrough => statement_idx + 1,
+            GenBranchTarget::Statement(x) => x.0,
+        }];
+
+        let arg = variables
+            .get(&invocation.args[arg.loc].id)
+            .expect("variable should be registered before use")
+            .get_value();
+
+        let op0 = self.op_llvm_extractvalue(block, 0, arg, self.felt_type())?;
+        let op1 = self.op_llvm_extractvalue(block, 1, arg, self.felt_type())?;
+        let op2 = self.op_llvm_extractvalue(block, 2, arg, self.felt_type())?;
+        let op3 = self.op_llvm_extractvalue(block, 3, arg, self.felt_type())?;
+
+        let op4 = block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+        let op5 = block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+        let op6 = block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+        let op7 = block.append_operation(
+            operation::Builder::new("memref.alloca", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "operand_segment_sizes",
+                    "array<i32: 0, 0>",
+                )
+                .unwrap()])
+                .add_results(&[Type::parse(&self.context, "memref<32xi8>").unwrap()])
+                .build(),
+        );
+
+        let op8 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[op0.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op9 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[op1.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op10 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[op2.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let op11 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[op3.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+
+        let k0 = block.append_operation(
+            operation::Builder::new("index.constant", Location::unknown(&self.context))
+                .add_attributes(&[
+                    NamedAttribute::new_parsed(&self.context, "value", "0 : index").unwrap()
+                ])
+                .add_results(&[Type::index(&self.context)])
+                .build(),
+        );
+        let op12 = block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op4.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
+                .build(),
+        );
+        let op13 = block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op5.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
+                .build(),
+        );
+        let op14 = block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op6.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
+                .build(),
+        );
+        let op15 = block.append_operation(
+            operation::Builder::new("memref.view", Location::unknown(&self.context))
+                .add_operands(&[op7.result(0)?.into(), k0.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "memref<i256>").unwrap()])
+                .build(),
+        );
+
+        block.append_operation(
+            operation::Builder::new("memref.store", Location::unknown(&self.context))
+                .add_operands(&[op8.result(0)?.into(), op12.result(0)?.into()])
+                .build(),
+        );
+        block.append_operation(
+            operation::Builder::new("memref.store", Location::unknown(&self.context))
+                .add_operands(&[op9.result(0)?.into(), op13.result(0)?.into()])
+                .build(),
+        );
+        block.append_operation(
+            operation::Builder::new("memref.store", Location::unknown(&self.context))
+                .add_operands(&[op10.result(0)?.into(), op14.result(0)?.into()])
+                .build(),
+        );
+        block.append_operation(
+            operation::Builder::new("memref.store", Location::unknown(&self.context))
+                .add_operands(&[op11.result(0)?.into(), op15.result(0)?.into()])
+                .build(),
+        );
+
+        let op16 = block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op4.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+        let op17 = block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op5.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+        let op18 = block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op6.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+        let op19 = block.append_operation(
+            operation::Builder::new(
+                "memref.extract_aligned_pointer_as_index",
+                Location::unknown(&self.context),
+            )
+            .add_operands(&[op7.result(0)?.into()])
+            .add_results(&[Type::index(&self.context)])
+            .build(),
+        );
+
+        let op20 = block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op16.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+        let op21 = block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op17.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+        let op22 = block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op18.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+        let op23 = block.append_operation(
+            operation::Builder::new("index.castu", Location::unknown(&self.context))
+                .add_operands(&[op19.result(0)?.into()])
+                .add_results(&[Type::integer(&self.context, 64)])
+                .build(),
+        );
+
+        let op24 = block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op20.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .build(),
+        );
+        let op25 = block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op21.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .build(),
+        );
+        let op26 = block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op22.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .build(),
+        );
+        let op27 = block.append_operation(
+            operation::Builder::new("llvm.inttoptr", Location::unknown(&self.context))
+                .add_operands(&[op23.result(0)?.into()])
+                .add_results(&[Type::parse(&self.context, "!llvm.ptr").unwrap()])
+                .build(),
+        );
+
+        let op28 = block.append_operation(
+            operation::Builder::new("func.call", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "callee",
+                    "@sierra2mlir_util_ec_state_try_finalize_nz",
+                )?])
+                .add_operands(&[
+                    op24.result(0)?.into(),
+                    op25.result(0)?.into(),
+                    op26.result(0)?.into(),
+                    op27.result(0)?.into(),
+                ])
+                .add_results(&[self.i32_type()])
+                .build(),
+        );
+
+        let t0 = block.append_operation(
+            operation::Builder::new("memref.load", Location::unknown(&self.context))
+                .add_operands(&[op12.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let t1 = block.append_operation(
+            operation::Builder::new("memref.load", Location::unknown(&self.context))
+                .add_operands(&[op13.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let t2 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[t0.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+        let t3 = block.append_operation(
+            operation::Builder::new("llvm.call_intrinsic", Location::unknown(&self.context))
+                .add_attributes(&[NamedAttribute::new_parsed(
+                    &self.context,
+                    "intrin",
+                    "\"llvm.bswap.i256\"",
+                )
+                .unwrap()])
+                .add_operands(&[t1.result(0)?.into()])
+                .add_results(&[self.felt_type()])
+                .build(),
+        );
+
+        let op29 = self.op_const(block, "0", self.bool_type());
+        let op30 = self.op_llvm_undef(block, self.ec_point_type());
+        let op31 = self.op_llvm_insertvalue(
+            block,
+            0,
+            op30.result(0)?.into(),
+            t2.result(0)?.into(),
+            self.ec_point_type(),
+        )?;
+        let op32 = self.op_llvm_insertvalue(
+            block,
+            1,
+            op31.result(0)?.into(),
+            t3.result(0)?.into(),
+            self.ec_point_type(),
+        )?;
+        let op33 = self.op_llvm_insertvalue(
+            block,
+            2,
+            op32.result(0)?.into(),
+            op29.result(0)?.into(),
+            self.ec_point_type(),
+        )?;
+
+        let op34 = self.op_u32_const(block, "0");
+        let op35 = self.op_cmp(block, CmpOp::Equal, op28.result(0)?.into(), op34.result(0)?.into());
+        self.op_cond_br(
+            block,
+            op35.result(0)?.into(),
+            &next_success.block,
+            &next_failure.block,
+            &next_success
+                .variables_at_start
+                .keys()
+                .map(|id| {
+                    if *id == invocation.branches[0].results[0].id {
+                        op33.result(0).unwrap().into()
+                    } else {
+                        variables[id].get_value()
+                    }
+                })
+                .collect::<Vec<_>>(),
+            &next_failure
+                .variables_at_start
+                .keys()
+                .map(|x| variables[x].get_value())
                 .collect::<Vec<_>>(),
         );
 

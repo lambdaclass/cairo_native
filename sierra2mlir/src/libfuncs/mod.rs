@@ -367,6 +367,9 @@ impl<'ctx> Compiler<'ctx> {
                 "ec_state_add" => {
                     self.create_libfunc_ec_state_add(func_decl, storage);
                 }
+                "ec_state_try_finalize_nz" => {
+                    self.register_libfunc_ec_state_try_finalize_nz(func_decl, storage);
+                }
                 "ec_state_add_mul" => {
                     self.create_libfunc_ec_state_add_mul(func_decl, storage);
                 }
@@ -2532,7 +2535,7 @@ impl<'ctx> Compiler<'ctx> {
         storage.libfuncs.insert(
             id,
             SierraLibFunc::Branching {
-                args: vec![],
+                args: vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_point_type()) }],
                 return_types: vec![
                     vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_point_type()) }],
                     vec![],
@@ -2752,6 +2755,24 @@ impl<'ctx> Compiler<'ctx> {
                     loc: 1,
                     ty: SierraType::Simple(self.ec_state_type()),
                 }],
+            },
+        );
+    }
+
+    pub fn register_libfunc_ec_state_try_finalize_nz(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_deref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_state_type()) }],
+                return_types: vec![
+                    vec![PositionalArg { loc: 0, ty: SierraType::Simple(self.ec_point_type()) }],
+                    vec![],
+                ],
             },
         );
     }
