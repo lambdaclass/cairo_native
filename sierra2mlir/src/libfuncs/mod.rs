@@ -2852,7 +2852,7 @@ impl<'ctx> Compiler<'ctx> {
         let op = self.op_u32_const(&block, "1");
         let const_1 = op.result(0)?.into();
 
-        self.call_dprintf(&block, "finalize entry value: %d\n", &[value], storage)?;
+        self.call_dprintf(&block, "set entry value: %d\n", &[value], storage)?;
 
         let op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
         let entry_ptr = op.result(0)?.into();
