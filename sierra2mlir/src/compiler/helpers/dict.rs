@@ -1,3 +1,5 @@
+use std::todo;
+
 use color_eyre::Result;
 use melior_next::ir::{Block, OperationRef, TypeLike, Value};
 
@@ -217,27 +219,29 @@ impl<'ctx> Compiler<'ctx> {
         if storage.helperfuncs.contains(&func_name) {
             return Ok(func_name);
         }
-        storage.helperfuncs.insert(func_name.clone());
+        storage.helperfuncs.insert(func_name);
 
         let entry_block = self.new_block(&[dict_type.get_type(), self.felt_type()]);
 
         let dict_value = entry_block.argument(0)?.into();
         let dict_key = entry_block.argument(1)?.into();
 
+        // const 0
+        let op = self.op_u32_const(&entry_block, "0");
+        let const_0 = op.result(0)?.into();
+
         // get the current length
-        let len_op = self.call_dict_len_impl(&entry_block, dict_value, dict_type, storage)?;
-        let dict_len: Value = len_op.result(0)?.into();
+        let op = self.call_dict_len_impl(&entry_block, dict_value, dict_type, storage)?;
+        let dict_len: Value = op.result(0)?.into();
 
         // get the capacity
-        let dict_capacity_op =
-            self.call_dict_capacity_impl(&entry_block, dict_value, dict_type, storage)?;
-        let dict_capacity = dict_capacity_op.result(0)?.into();
+        let op = self.call_dict_capacity_impl(&entry_block, dict_value, dict_type, storage)?;
+        let dict_capacity = op.result(0)?.into();
 
         // check if we need to resize, done here since get in sierra always finds a slot, whether it existed
         // before or not
-        let has_enough_cap_op =
-            self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, dict_len, dict_capacity);
-        let has_enough: Value = has_enough_cap_op.result(0)?.into();
+        let op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, dict_len, dict_capacity);
+        let has_enough: Value = op.result(0)?.into();
 
         let resize_block = self.new_block(&[]);
         let continue_block = self.new_block(&[dict_type.get_type()]);
@@ -251,38 +255,167 @@ impl<'ctx> Compiler<'ctx> {
             &[],
         );
 
+        /*
+           loop previous hashmap
+           hash key, insert, recursive?
+        */
+
         // resize block
 
+        /*
+           [resize block]
+           - calculate new size
+           - create new dict struct
+           [rehash loop check block]
+           - check current index is less than previous dict capacity
+               [rehash loop body block]
+               - get slot at index
+               - check if slot is used
+                   - calculate new hash based on slot key
+                   - copy data to new dict
+           [rehash loop end block]
+           - free old dict
+        */
+
+        // useful constants
+        let op = self.op_u32_const(&resize_block, "2");
+        let const_2 = op.result(0)?.into();
+        let op = self.op_const(&resize_block, "1", self.bool_type());
+        let const_true: Value = op.result(0)?.into();
+
         // calculate the new size
-        let const_2_op = self.op_u32_const(&resize_block, "2");
-        let new_size_op = self.op_mul(&resize_block, dict_capacity, const_2_op.result(0)?.into());
-        let new_capacity: Value = new_size_op.result(0)?.into();
+        let op = self.op_mul(&resize_block, dict_capacity, const_2);
+        let new_capacity: Value = op.result(0)?.into();
 
-        let null_ptr_op = self.op_llvm_nullptr(&resize_block);
+        let op = self.op_llvm_nullptr(&resize_block);
+        let null_ptr = op.result(0)?.into();
 
+        // calculate the new dict size
         let dict_slot_size_bytes = ((self.felt_type().get_width().unwrap()
             + element_type.get_width().unwrap()
             + self.bool_type().get_width().unwrap())
             + 7)
             / 8;
 
-        let slot_size_bytes_op =
-            self.op_u32_const(&resize_block, &dict_slot_size_bytes.to_string());
-        let slot_size_bytes = slot_size_bytes_op.result(0)?.into();
+        let op = self.op_u32_const(&resize_block, &dict_slot_size_bytes.to_string());
+        let slot_size_bytes = op.result(0)?.into();
 
-        let alloc_size_op = self.op_mul(&resize_block, slot_size_bytes, new_capacity);
-        let alloc_size = alloc_size_op.result(0)?.into();
-        let alloc_size_op = self.op_zext(&resize_block, alloc_size, self.u64_type());
-        let alloc_size = alloc_size_op.result(0)?.into();
+        let op = self.op_mul(&resize_block, slot_size_bytes, new_capacity);
+        let alloc_size = op.result(0)?.into();
+        let op = self.op_zext(&resize_block, alloc_size, self.u64_type());
+        let alloc_size = op.result(0)?.into();
 
-        let alloc_ptr_op =
-            self.call_realloc(&resize_block, null_ptr_op.result(0)?.into(), alloc_size, storage)?;
+        // allocate the new dict data
+        let op = self.call_realloc(&resize_block, null_ptr, alloc_size, storage)?;
+        let alloc_ptr = op.result(0)?.into();
+        let op = self.call_memset(&resize_block, alloc_ptr, const_0, alloc_size, storage)?;
+        let alloc_ptr = op.result(0)?.into();
 
-        // TODO: rehash here
+        let old_dict_value = dict_value;
+        let op = self.op_llvm_undef(&resize_block, dict_type.get_type());
+        let new_dict_value = op.result(0)?.into();
+
+        // setup the new dict struct
+        let op = self.call_dict_set_capacity_impl(
+            &resize_block,
+            new_dict_value,
+            new_capacity,
+            dict_type,
+            storage,
+        )?;
+        let new_dict_value = op.result(0)?.into();
+        let op = self.call_dict_set_len_impl(
+            &resize_block,
+            new_dict_value,
+            const_0,
+            dict_type,
+            storage,
+        )?;
+        let new_dict_value = op.result(0)?.into();
+        let op = self.call_dict_set_data_ptr(
+            &resize_block,
+            new_dict_value,
+            alloc_ptr,
+            dict_type,
+            storage,
+        )?;
+        let new_dict_value = op.result(0)?.into();
+
+        // better names
+        let old_dict_capacity = dict_capacity;
+
+        // index, new_dict
+        let loop_check_block = self.new_block(&[self.u32_type(), dict_type.get_type()]);
+        let loop_body_block = self.new_block(&[self.u32_type(), dict_type.get_type()]);
+        let loop_end_block = self.new_block(&[dict_type.get_type()]);
+
+        self.op_br(&resize_block, &loop_check_block, &[const_0, new_dict_value]);
+
+        // loop check block
+        {
+            let index = loop_check_block.argument(0)?.into();
+            let new_dict_value = loop_check_block.argument(1)?.into();
+
+            let op =
+                self.op_cmp(&loop_check_block, CmpOp::UnsignedLessThan, index, old_dict_capacity);
+            let is_less = op.result(0)?.into();
+
+            self.op_cond_br(
+                &loop_check_block,
+                is_less,
+                &loop_body_block,
+                &loop_end_block,
+                &[index, new_dict_value],
+                &[new_dict_value],
+            );
+        }
+
+        let loop_body_is_used_block = self.new_block(&[]);
+
+        // body block
+        {
+            // TODO: get slot, check if used, rehash, copy data
+            let index = loop_body_block.argument(0)?.into();
+            let new_dict_value = loop_body_block.argument(1)?.into();
+            let op =
+                self.call_dict_get_data_ptr(&loop_body_block, new_dict_value, dict_type, storage)?;
+            let data_ptr = op.result(0)?.into();
+            let op = self.op_llvm_gep_dynamic(&loop_body_block, &[index], data_ptr, entry_type)?;
+            let entry_ptr = op.result(0)?.into();
+
+            // entry key
+            let op = self.op_llvm_gep(&loop_body_block, &[0, 0], entry_ptr, entry_type)?;
+            let entry_key_ptr = op.result(0)?.into();
+            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, self.felt_type())?;
+            let entry_key: Value = op.result(0)?.into();
+
+            // entry value
+            let op = self.op_llvm_gep(&loop_body_block, &[0, 1], entry_ptr, entry_type)?;
+            let entry_value_ptr: Value = op.result(0)?.into();
+            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, element_type)?;
+
+            // is used
+            let op = self.op_llvm_gep(&loop_body_block, &[0, 2], entry_ptr, entry_type)?;
+            let entry_is_used_ptr: Value = op.result(0)?.into();
+            let op = self.op_llvm_load(&loop_body_block, entry_key_ptr, self.bool_type())?;
+            let is_used: Value = op.result(0)?.into();
+
+            self.op_cond_br(
+                &loop_body_block,
+                is_used,
+                &loop_body_is_used_block,
+                &loop_check_block,
+                &[],
+                &[todo!()],
+            );
+
+            // is used block
+
+            self.op_br(&loop_body_is_used_block, &loop_check_block, &[todo!()]);
+        }
 
         // todo: free old ptr
-
-        self.op_br(&resize_block, &continue_block, &[todo!()]);
+        self.op_br(&loop_end_block, &continue_block, &[new_dict_value]);
 
         // continue block
         let dict_value = continue_block.argument(0)?.into();
@@ -319,47 +452,15 @@ impl<'ctx> Compiler<'ctx> {
 
         self.create_function(
             &func_name,
-            vec![entry_block, resize_block, continue_block],
-            &[self.llvm_ptr_type()],
-            FnAttributes::libfunc(false, true),
-        )?;
-
-        Ok(func_name)
-    }
-
-    fn create_dict_resize(
-        &'ctx self,
-        dict_type: &SierraType,
-        storage: &mut Storage<'ctx>,
-    ) -> Result<String> {
-        let element_type = if let SierraType::Dictionary { element_type, .. } = dict_type {
-            element_type.get_type()
-        } else {
-            panic!("create_dict_resize should have been passed an Array SierraType, but was instead passed {:?}", dict_type)
-        };
-
-        // (key (always felt), value (T), is_used (bool))
-        let entry_type =
-            self.llvm_struct_type(&[self.felt_type(), element_type, self.bool_type()], false);
-
-        let func_name = format!("dict_get_resize<{}>", element_type);
-
-        if storage.helperfuncs.contains(&func_name) {
-            return Ok(func_name);
-        }
-        storage.helperfuncs.insert(func_name.clone());
-
-        let entry_block = self.new_block(&[dict_type.get_type()]);
-
-        let dict_value = entry_block.argument(0)?.into();
-
-        todo!();
-
-        self.op_return(&entry_block, &[dict_value]);
-
-        self.create_function(
-            &func_name,
-            vec![entry_block],
+            vec![
+                entry_block,
+                resize_block,
+                loop_check_block,
+                loop_body_block,
+                loop_body_is_used_block,
+                loop_end_block,
+                continue_block,
+            ],
             &[self.llvm_ptr_type()],
             FnAttributes::libfunc(false, true),
         )?;
