@@ -2780,6 +2780,7 @@ impl<'ctx> Compiler<'ctx> {
         let op = self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
         let dict_value: Value = op.result(0)?.into();
         let entry_ptr: Value = op.result(1)?.into();
+        self.call_dprintf(&block, "get entry ptr: %p\n", &[entry_ptr], storage)?;
 
         // set the entry key
         let op = self.op_llvm_gep(&block, &[0, 0], entry_ptr, entry_struct_type)?;

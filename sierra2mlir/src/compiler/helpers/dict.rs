@@ -393,11 +393,11 @@ impl<'ctx> Compiler<'ctx> {
 
             let op =
                 self.op_llvm_gep_dynamic(&loop_body_block, &[index], old_data_ptr, entry_type)?;
-            let entry_ptr = op.result(0)?.into();
+            let old_entry_ptr = op.result(0)?.into();
 
             // first only load is_used and check if we need to copy it over
             // is used
-            let op = self.op_llvm_gep(&loop_body_block, &[0, 2], entry_ptr, entry_type)?;
+            let op = self.op_llvm_gep(&loop_body_block, &[0, 2], old_entry_ptr, entry_type)?;
             let is_used_ptr: Value = op.result(0)?.into();
             let op = self.op_llvm_load(&loop_body_block, is_used_ptr, self.bool_type())?;
             let is_used: Value = op.result(0)?.into();
@@ -414,14 +414,16 @@ impl<'ctx> Compiler<'ctx> {
             // is used block, we can use previous block values
 
             // entry key
-            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
+            let op =
+                self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], old_entry_ptr, entry_type)?;
             let entry_key_ptr = op.result(0)?.into();
             let op =
                 self.op_llvm_load(&loop_body_is_used_block, entry_key_ptr, self.felt_type())?;
             let entry_key: Value = op.result(0)?.into();
 
             // entry value
-            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], entry_ptr, entry_type)?;
+            let op =
+                self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], old_entry_ptr, entry_type)?;
             let entry_value_ptr: Value = op.result(0)?.into();
             let op = self.op_llvm_load(&loop_body_is_used_block, entry_value_ptr, element_type)?;
             let entry_value: Value = op.result(0)?.into();
@@ -436,17 +438,20 @@ impl<'ctx> Compiler<'ctx> {
             )?;
 
             let new_dict_value = op.result(0)?.into();
-            let entry_ptr = op.result(1)?.into();
+            let new_entry_ptr = op.result(1)?.into();
 
-            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
+            let op =
+                self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], new_entry_ptr, entry_type)?;
             let entry_key_ptr: Value = op.result(0)?.into();
             self.op_llvm_store(&loop_body_is_used_block, entry_key, entry_key_ptr)?;
 
-            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], entry_ptr, entry_type)?;
+            let op =
+                self.op_llvm_gep(&loop_body_is_used_block, &[0, 1], new_entry_ptr, entry_type)?;
             let entry_value_ptr: Value = op.result(0)?.into();
             self.op_llvm_store(&loop_body_is_used_block, entry_value, entry_value_ptr)?;
 
-            let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 2], entry_ptr, entry_type)?;
+            let op =
+                self.op_llvm_gep(&loop_body_is_used_block, &[0, 2], new_entry_ptr, entry_type)?;
             let is_used_ptr: Value = op.result(0)?.into();
             self.op_llvm_store(&loop_body_is_used_block, is_used, is_used_ptr)?;
 
@@ -482,6 +487,9 @@ impl<'ctx> Compiler<'ctx> {
             let dict_key_ptr = op.result(0)?.into();
             self.op_llvm_store(&continue_block, dict_key, dict_key_ptr)?;
 
+            let op =
+                self.call_dict_capacity_impl(&continue_block, dict_value, dict_type, storage)?;
+            let dict_capacity = op.result(0)?.into();
             let op = self.op_zext(&continue_block, dict_capacity, self.u64_type());
             let dict_capacity = op.result(0)?.into();
 
@@ -492,6 +500,7 @@ impl<'ctx> Compiler<'ctx> {
             let op = self.call_hash_i256(&continue_block, dict_key_ptr, storage)?;
             // u64
             let hash: Value = op.result(0)?.into();
+            self.call_dprintf(&continue_block, "hash: %llu\n", &[hash], storage)?;
 
             let op = self.op_u64_const(&continue_block, "0");
             let const_0 = op.result(0)?.into();
@@ -507,6 +516,12 @@ impl<'ctx> Compiler<'ctx> {
             // hash mod capacity
             let op = self.op_rem(&check_slot_block, current_hash, dict_capacity);
             let index_value: Value = op.result(0)?.into();
+            self.call_dprintf(
+                &check_slot_block,
+                "hash index_value: %llu\n",
+                &[index_value],
+                storage,
+            )?;
 
             let op =
                 self.op_llvm_gep_dynamic(&check_slot_block, &[index_value], dict_data, entry_type)?;
