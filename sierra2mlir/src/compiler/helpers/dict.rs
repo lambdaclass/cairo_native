@@ -413,13 +413,6 @@ impl<'ctx> Compiler<'ctx> {
 
             // is used block, we can use previous block values
 
-            self.call_dprintf(
-                &loop_body_is_used_block,
-                "loop_body_is_used_block idx %d\n",
-                &[index],
-                storage,
-            )?;
-
             // entry key
             let op = self.op_llvm_gep(&loop_body_is_used_block, &[0, 0], entry_ptr, entry_type)?;
             let entry_key_ptr = op.result(0)?.into();
@@ -524,13 +517,6 @@ impl<'ctx> Compiler<'ctx> {
             let entry_key_ptr = op.result(0)?.into();
             let op = self.op_llvm_load(&check_slot_block, entry_key_ptr, self.felt_type())?;
             let entry_key: Value = op.result(0)?.into();
-            /*
-            self.call_dprintf(
-                &check_slot_block,
-                "check slot, index=%llu, (hash+index mod cap)=%llu\n",
-                &[index, index_value],
-                storage,
-            )?; */
 
             // entry is_used
             let op = self.op_llvm_gep(&check_slot_block, &[0, 2], entry_ptr, entry_type)?;
@@ -548,13 +534,6 @@ impl<'ctx> Compiler<'ctx> {
 
             let op = self.op_or(&check_slot_block, is_not_used, is_key_equal, self.bool_type());
             let is_found = op.result(0)?.into();
-            /*
-            self.call_dprintf(
-                &check_slot_block,
-                "is found: %d (is not used) || %d (key equals) = %d\n",
-                &[is_not_used, is_key_equal, is_found],
-                storage,
-            )?; */
 
             let op = self.op_add(&check_slot_block, index, const_1);
             let next_index = op.result(0)?.into();

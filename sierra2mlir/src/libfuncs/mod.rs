@@ -2786,6 +2786,12 @@ impl<'ctx> Compiler<'ctx> {
         let entry_key_ptr: Value = op.result(0)?.into();
         self.op_llvm_store(&block, dict_key, entry_key_ptr)?;
 
+        let op = self.op_const(&block, "1", self.bool_type());
+        let const_true = op.result(0)?.into();
+        let op = self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr: Value = op.result(0)?.into();
+        self.op_llvm_store(&block, const_true, entry_is_used_ptr)?;
+
         // element value
         let op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
         let entry_element_ptr: Value = op.result(0)?.into();
