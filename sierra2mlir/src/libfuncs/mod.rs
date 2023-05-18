@@ -2786,8 +2786,9 @@ impl<'ctx> Compiler<'ctx> {
         let entry_key_ptr: Value = op.result(0)?.into();
         self.op_llvm_store(&block, dict_key, entry_key_ptr)?;
 
-        let op = self.op_llvm_load(&block, entry_ptr, entry_struct_type)?;
-        let entry_value: Value = op.result(0)?.into();
+        // element value
+        let op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
+        let entry_element_ptr: Value = op.result(0)?.into();
 
         // save the entry ptr
         let op =
@@ -2795,12 +2796,12 @@ impl<'ctx> Compiler<'ctx> {
         let dict_value = op.result(0)?.into();
 
         // get the entry value
-        let value_op = self.op_llvm_extractvalue(&block, 1, entry_value, entry_type.get_type())?;
-        let value = value_op.result(0)?.into();
+        let op = self.op_llvm_load(&block, entry_element_ptr, entry_type.get_type())?;
+        let entry_value: Value = op.result(0)?.into();
 
-        self.call_dprintf(&block, "get entry value: %d\n", &[value], storage)?;
+        self.call_dprintf(&block, "get entry value: %d\n", &[entry_value], storage)?;
 
-        self.op_return(&block, &[dict_value, value]);
+        self.op_return(&block, &[dict_value, entry_value]);
 
         storage.libfuncs.insert(
             id.clone(),
@@ -2849,9 +2850,6 @@ impl<'ctx> Compiler<'ctx> {
         let op = self.op_const(&block, "1", self.bool_type());
         let true_const = op.result(0)?.into();
 
-        let op = self.op_u32_const(&block, "1");
-        let const_1 = op.result(0)?.into();
-
         self.call_dprintf(&block, "set entry value: %d\n", &[value], storage)?;
 
         let op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
@@ -2864,15 +2862,6 @@ impl<'ctx> Compiler<'ctx> {
 
         self.op_llvm_store(&block, true_const, entry_is_used_ptr)?;
         self.op_llvm_store(&block, value, entry_value_ptr)?;
-
-        let op = self.call_dict_len_impl(&block, dict_value, &dict_type, storage)?;
-        let dict_len = op.result(0)?.into();
-        let op = self.op_add(&block, dict_len, const_1);
-        let new_dict_len = op.result(0)?.into();
-
-        let op =
-            self.call_dict_set_len_impl(&block, dict_value, new_dict_len, &dict_type, storage)?;
-        let dict_value = op.result(0)?.into();
 
         let null_ptr_const_op = self.op_llvm_nullptr(&block);
         let dict_value_op = self.call_dict_set_entry_ptr(
