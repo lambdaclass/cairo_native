@@ -51,7 +51,7 @@ use test_case::test_case;
 #[test_case("bool/to_felt252", Some(100000))]
 #[test_case("bool/xor", None)]
 #[test_case("bool/xor", Some(100000))]
-#[test_case("dict/insert_get", Some(100_000))]
+#[test_case("dict/insert_get", Some(200_000))]
 #[test_case("enums/enum_init", None)]
 #[test_case("enums/enum_init", Some(100000))]
 #[test_case("enums/enum_match", None)]
