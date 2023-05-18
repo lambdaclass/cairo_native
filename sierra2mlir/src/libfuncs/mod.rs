@@ -2780,7 +2780,6 @@ impl<'ctx> Compiler<'ctx> {
         let op = self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
         let dict_value: Value = op.result(0)?.into();
         let entry_ptr: Value = op.result(1)?.into();
-        self.call_dprintf(&block, "get entry ptr: %p\n", &[entry_ptr], storage)?;
 
         // set the entry key
         let op = self.op_llvm_gep(&block, &[0, 0], entry_ptr, entry_struct_type)?;
@@ -2805,8 +2804,6 @@ impl<'ctx> Compiler<'ctx> {
         // get the entry value
         let op = self.op_llvm_load(&block, entry_element_ptr, entry_type.get_type())?;
         let entry_value: Value = op.result(0)?.into();
-
-        self.call_dprintf(&block, "get entry value: %d\n", &[entry_value], storage)?;
 
         self.op_return(&block, &[dict_value, entry_value]);
 
@@ -2856,8 +2853,6 @@ impl<'ctx> Compiler<'ctx> {
 
         let op = self.op_const(&block, "1", self.bool_type());
         let true_const = op.result(0)?.into();
-
-        self.call_dprintf(&block, "set entry value: %d\n", &[value], storage)?;
 
         let op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
         let entry_ptr = op.result(0)?.into();

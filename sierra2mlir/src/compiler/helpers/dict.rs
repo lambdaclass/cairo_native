@@ -238,12 +238,6 @@ impl<'ctx> Compiler<'ctx> {
 
         // check if we need to resize, done here since get in sierra always finds a slot, whether it existed
         // before or not
-        self.call_dprintf(
-            &entry_block,
-            "has_enough cap: %d / %d\n",
-            &[dict_len, dict_capacity],
-            storage,
-        )?;
         let op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, dict_len, dict_capacity);
         let has_enough: Value = op.result(0)?.into();
 
@@ -354,13 +348,6 @@ impl<'ctx> Compiler<'ctx> {
         {
             let index = loop_check_block.argument(0)?.into();
             let new_dict_value = loop_check_block.argument(1)?.into();
-
-            self.call_dprintf(
-                &loop_check_block,
-                "resizing, index: %d / %d -> (%d / %d)\n",
-                &[index, old_dict_capacity, index, new_capacity],
-                storage,
-            )?;
 
             let op =
                 self.op_cmp(&loop_check_block, CmpOp::UnsignedLessThan, index, old_dict_capacity);
@@ -500,7 +487,6 @@ impl<'ctx> Compiler<'ctx> {
             let op = self.call_hash_i256(&continue_block, dict_key_ptr, storage)?;
             // u64
             let hash: Value = op.result(0)?.into();
-            self.call_dprintf(&continue_block, "hash: %llu\n", &[hash], storage)?;
 
             let op = self.op_u64_const(&continue_block, "0");
             let const_0 = op.result(0)?.into();
@@ -516,12 +502,6 @@ impl<'ctx> Compiler<'ctx> {
             // hash mod capacity
             let op = self.op_rem(&check_slot_block, current_hash, dict_capacity);
             let index_value: Value = op.result(0)?.into();
-            self.call_dprintf(
-                &check_slot_block,
-                "hash index_value: %llu\n",
-                &[index_value],
-                storage,
-            )?;
 
             let op =
                 self.op_llvm_gep_dynamic(&check_slot_block, &[index_value], dict_data, entry_type)?;
