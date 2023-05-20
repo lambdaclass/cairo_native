@@ -15,6 +15,7 @@ make book
 - mdbook
 - LLVM 16+ with MLIR
 - Rust
+- [Ninja](https://github.com/ninja-build/ninja)
 
 ## CLI Interface
 
@@ -52,7 +53,7 @@ wget https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-
 
 mkdir ~/mlir
 tar -xf llvm-project-16.0.0.src.tar.xz
-cd llvm-project-16.0.0.src.tar
+cd llvm-project-16.0.0.src
 mkdir build
 cd build
 
