@@ -96,7 +96,7 @@ use test_case::test_case;
 #[test_case("uint/downcasts", None)]
 #[test_case("uint/downcasts", Some(100000))]
 #[test_case("uint/safe_divmod", None)]
-#[test_case("uint/safe_divmod", Some(200000))]
+#[test_case("uint/safe_divmod", Some(500000))]
 #[test_case("uint/uint_addition", None)]
 #[test_case("uint/uint_addition", Some(100000))]
 #[test_case("uint/uint_subtraction", None)]
