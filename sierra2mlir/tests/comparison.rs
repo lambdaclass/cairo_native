@@ -148,7 +148,7 @@ fn comparison_test(test_name: &str, available_gas: Option<usize>) -> Result<(), 
                         result.gas_counter.expect("casm gas counter should exist").to_biguint();
                     let llvm_gas = llvm_remaining_gas.expect("mlir gas counter should exist");
                     // don't compare gas with dict programs since it doesn't match right now.
-                    if (!test_name.starts_with("dict")) {
+                    if !test_name.starts_with("dict") {
                         assert_eq!(casm_gas, llvm_gas, "remaning gas mismatch");
                     }
                 }
