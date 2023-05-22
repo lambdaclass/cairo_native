@@ -41,6 +41,8 @@ use test_case::test_case;
 #[test_case("bitwise/xor", Some(100000))]
 #[test_case("bool/and", None)]
 #[test_case("bool/and", Some(100000))]
+#[test_case("bool/eq", None)]
+#[test_case("bool/eq", Some(100000))]
 #[test_case("bool/not", None)]
 #[test_case("bool/not", Some(100000))]
 #[test_case("bool/or", None)]

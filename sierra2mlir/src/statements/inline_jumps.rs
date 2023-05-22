@@ -114,6 +114,65 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn inline_bool_eq(
+        &'ctx self,
+        id: &str,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+        storage: &Storage,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let pos_arg_1 = &libfunc.get_args()[0];
+        let pos_arg_2 = &libfunc.get_args()[1];
+
+        let arg1 = variables
+            .get(&invocation.args[pos_arg_1.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let arg2 = variables
+            .get(&invocation.args[pos_arg_2.loc].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let op = self.op_llvm_extractvalue(block, 0, arg1, self.u16_type())?;
+        let value1: Value = op.result(0)?.into();
+
+        let op = self.op_llvm_extractvalue(block, 0, arg2, self.u16_type())?;
+        let value2: Value = op.result(0)?.into();
+
+        let eq_op = self.op_cmp(block, CmpOp::Equal, value1, value2);
+        let eq = eq_op.result(0)?;
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| variables.get(id).unwrap().get_value())
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (true_block, true_vars) = &target_blocks[1];
+        let (false_block, false_vars) = &target_blocks[0];
+
+        self.op_cond_br(block, eq.into(), true_block, false_block, true_vars, false_vars);
+
+        Ok(())
+    }
+
     // eq, le, lt
     pub fn inline_int_cmpop(
         &'ctx self,
