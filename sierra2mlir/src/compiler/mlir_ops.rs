@@ -823,6 +823,23 @@ impl<'ctx> Compiler<'ctx> {
         ))
     }
 
+    /// Val must be i8.
+    pub fn op_llvm_memset<'a>(
+        &self,
+        block: &'a Block,
+        dst: Value,
+        mut val: Value,
+        len: Value,
+    ) -> Result<OperationRef<'a>> {
+        let op = self.op_const(block, "0", self.bool_type());
+        let is_volatile = op.result(0)?.into();
+        Ok(block.append_operation(
+            operation::Builder::new("llvm.intr.memset", Location::unknown(&self.context))
+                .add_operands(&[dst, val, len, is_volatile])
+                .build(),
+        ))
+    }
+
     /// Creates a new block
     pub fn new_block(&self, args: &[Type<'ctx>]) -> Block {
         let location = Location::unknown(&self.context);

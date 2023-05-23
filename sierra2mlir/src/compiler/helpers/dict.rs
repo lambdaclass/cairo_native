@@ -301,8 +301,9 @@ impl<'ctx> Compiler<'ctx> {
         // allocate the new dict data
         let op = self.call_realloc(&resize_block, null_ptr, alloc_size, storage)?;
         let alloc_ptr = op.result(0)?.into();
-        let op = self.call_memset(&resize_block, alloc_ptr, const_0, alloc_size, storage)?;
-        let alloc_ptr = op.result(0)?.into();
+        let op = self.op_u8_const(&resize_block, "0");
+        let const_0_u8 = op.result(0)?.into();
+        self.op_llvm_memset(&resize_block, alloc_ptr, const_0_u8, alloc_size)?;
 
         let old_dict_value = dict_value;
         let op = self.op_llvm_undef(&resize_block, dict_type.get_type());

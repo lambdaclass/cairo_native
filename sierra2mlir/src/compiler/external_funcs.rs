@@ -115,31 +115,6 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    fn create_memset(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
-        if storage.helperfuncs.contains("memset") {
-            return Ok(());
-        }
-
-        storage.helperfuncs.insert("memset".to_string());
-
-        let region = Region::new();
-        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
-            .add_attributes(&NamedAttribute::new_parsed_vec(
-                &self.context,
-                &[
-                    ("sym_name", "\"memset\""),
-                    ("function_type", "!llvm.func<ptr (ptr, i32, i64)>"),
-                    ("linkage", "#llvm.linkage<external>"),
-                ],
-            )?)
-            .add_regions(vec![region])
-            .build();
-
-        self.module.body().append_operation(func);
-
-        Ok(())
-    }
-
     fn create_hash_i256(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
         if storage.helperfuncs.contains("hash_i256") {
             return Ok(());
@@ -253,18 +228,6 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'block>> {
         self.create_memmove(storage)?;
         self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
-    }
-
-    pub fn call_memset<'block>(
-        &'ctx self,
-        block: &'block Block,
-        ptr: Value,
-        value: Value,
-        size: Value,
-        storage: &mut Storage<'ctx>,
-    ) -> Result<OperationRef<'block>> {
-        self.create_memset(storage)?;
-        self.op_llvm_call(block, "memset", &[ptr, value, size], &[self.llvm_ptr_type()])
     }
 
     /// ptr needs to be a pointer to a 256 (or 32 x i8)
