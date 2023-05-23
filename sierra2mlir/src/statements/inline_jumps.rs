@@ -114,6 +114,72 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn inline_u256_is_zero(
+        &'ctx self,
+        invocation: &Invocation,
+        block: &Block<'ctx>,
+        variables: &mut HashMap<u64, Variable>,
+        blocks: &BTreeMap<usize, BlockInfo<'ctx>>,
+        statement_idx: usize,
+    ) -> Result<()> {
+        let value = variables
+            .get(&invocation.args[0].id)
+            .expect("Variable should be registered before use")
+            .get_value();
+
+        let hi = self.op_llvm_extractvalue(block, 0, value, self.u128_type())?;
+        let lo = self.op_llvm_extractvalue(block, 1, value, self.u128_type())?;
+
+        let k0 = self.op_const(block, "0", self.u128_type());
+        let hi_is_zero =
+            self.op_cmp(block, CmpOp::Equal, hi.result(0)?.into(), k0.result(0)?.into());
+        let lo_is_zero =
+            self.op_cmp(block, CmpOp::Equal, lo.result(0)?.into(), k0.result(0)?.into());
+        let is_zero = self.op_and(
+            block,
+            hi_is_zero.result(0)?.into(),
+            lo_is_zero.result(0)?.into(),
+            self.bool_type(),
+        );
+
+        variables.insert(
+            invocation.branches[1].results[0].id,
+            *variables.get(&invocation.args[0].id).unwrap(),
+        );
+
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                let operand_values = target_block_info
+                    .variables_at_start
+                    .keys()
+                    .map(|id| variables.get(id).unwrap().get_value())
+                    .collect_vec();
+                (&target_block_info.block, operand_values)
+            })
+            .collect_vec();
+
+        let (zero_block, zero_vars) = &target_blocks[0];
+        let (nonzero_block, nonzero_vars) = &target_blocks[1];
+
+        self.op_cond_br(
+            block,
+            is_zero.result(0)?.into(),
+            zero_block,
+            nonzero_block,
+            zero_vars,
+            nonzero_vars,
+        );
+
+        Ok(())
+    }
+
     pub fn inline_bool_eq(
         &'ctx self,
         id: &str,
@@ -164,7 +230,7 @@ impl<'ctx> Compiler<'ctx> {
                 (&target_block_info.block, operand_values)
             })
             .collect_vec();
-
+      
         let (true_block, true_vars) = &target_blocks[1];
         let (false_block, false_vars) = &target_blocks[0];
 
