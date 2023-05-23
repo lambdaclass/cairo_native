@@ -1219,56 +1219,17 @@ impl<'ctx> Compiler<'ctx> {
         let a = block.argument(0)?.into();
         let b = block.argument(1)?.into();
 
-        let op_zext_lhs = self.op_zext(&block, a, self.u256_type());
-        let op_zext_rhs = self.op_zext(&block, b, self.u256_type());
+        let (op_mul_hi_val, op_mul_lo_val, u128_guarantee_struct) =
+            self.inline_u128_mul_guarantee(&block, a, b)?;
 
-        let op_mul =
-            self.op_mul(&block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
-
-        let op_mul_lo = self.op_trunc(&block, op_mul.result(0)?.into(), self.u128_type());
-        let op_mul_hi = {
-            let op_const = self.op_const(&block, "128", self.u256_type());
-            let op_shru =
-                self.op_shru(&block, op_mul.result(0)?.into(), op_const.result(0)?.into());
-            self.op_trunc(&block, op_shru.result(0)?.into(), self.u128_type())
-        };
-
-        let u128_guarantee_ty = self.llvm_struct_type(
-            &[self.u128_type(), self.u128_type(), self.u128_type(), self.u128_type()],
-            false,
+        self.op_return(
+            &block,
+            &[
+                op_mul_hi_val.result(0)?.into(),
+                op_mul_lo_val.result(0)?.into(),
+                u128_guarantee_struct.result(0)?.into(),
+            ],
         );
-
-        let u128_guarantee_struct_op = self.op_llvm_undef(&block, u128_guarantee_ty);
-        let u128_guarantee_struct = u128_guarantee_struct_op.result(0)?.into();
-
-        let u128_guarantee_struct_insert_op =
-            self.op_llvm_insertvalue(&block, 0, u128_guarantee_struct, a, u128_guarantee_ty)?;
-        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
-        let u128_guarantee_struct_insert_op =
-            self.op_llvm_insertvalue(&block, 1, u128_guarantee_struct, b, u128_guarantee_ty)?;
-        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
-
-        let op_mul_hi_val = op_mul_hi.result(0)?.into();
-        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
-            &block,
-            2,
-            u128_guarantee_struct,
-            op_mul_hi_val,
-            u128_guarantee_ty,
-        )?;
-        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
-
-        let op_mul_lo_val = op_mul_lo.result(0)?.into();
-        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
-            &block,
-            3,
-            u128_guarantee_struct,
-            op_mul_lo_val,
-            u128_guarantee_ty,
-        )?;
-        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
-
-        self.op_return(&block, &[op_mul_hi_val, op_mul_lo_val, u128_guarantee_struct]);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
@@ -1284,6 +1245,10 @@ impl<'ctx> Compiler<'ctx> {
             ),
         );
 
+        let u128_guarantee_ty = self.llvm_struct_type(
+            &[self.u128_type(), self.u128_type(), self.u128_type(), self.u128_type()],
+            false,
+        );
         self.create_function(
             &id,
             vec![block],
@@ -1458,15 +1423,15 @@ impl<'ctx> Compiler<'ctx> {
         let lhs_l1 = self.op_llvm_extractvalue(&block, 1, lhs, self.u128_type())?;
         let lhs_l2 = self.op_llvm_extractvalue(&block, 2, lhs, self.u128_type())?;
         let lhs_l3 = self.op_llvm_extractvalue(&block, 3, lhs, self.u128_type())?;
-        let rhs_lo = self.op_llvm_extractvalue(&block, 0, rhs, self.u128_type())?;
-        let rhs_hi = self.op_llvm_extractvalue(&block, 1, rhs, self.u128_type())?;
+        let rhs_lo_128 = self.op_llvm_extractvalue(&block, 0, rhs, self.u128_type())?;
+        let rhs_hi_128 = self.op_llvm_extractvalue(&block, 1, rhs, self.u128_type())?;
 
         let lhs_l0 = self.op_zext(&block, lhs_l0.result(0)?.into(), self.u512_type());
         let lhs_l1 = self.op_zext(&block, lhs_l1.result(0)?.into(), self.u512_type());
         let lhs_l2 = self.op_zext(&block, lhs_l2.result(0)?.into(), self.u512_type());
         let lhs_l3 = self.op_zext(&block, lhs_l3.result(0)?.into(), self.u512_type());
-        let rhs_lo = self.op_zext(&block, rhs_lo.result(0)?.into(), self.u512_type());
-        let rhs_hi = self.op_zext(&block, rhs_hi.result(0)?.into(), self.u512_type());
+        let rhs_lo = self.op_zext(&block, rhs_lo_128.result(0)?.into(), self.u512_type());
+        let rhs_hi = self.op_zext(&block, rhs_hi_128.result(0)?.into(), self.u512_type());
 
         let shift_128 = self.op_const(&block, "128", self.u512_type());
         let shift_256 = self.op_const(&block, "256", self.u512_type());
@@ -1553,7 +1518,56 @@ impl<'ctx> Compiler<'ctx> {
             u256_ty,
         )?;
 
-        self.op_return(&block, &[div.result(0)?.into(), rem.result(0)?.into()]);
+        let g0 = self
+            .inline_u128_mul_guarantee(
+                &block,
+                div_l0.result(0)?.into(),
+                rhs_lo_128.result(0)?.into(),
+            )?
+            .2;
+        let g1 = self
+            .inline_u128_mul_guarantee(
+                &block,
+                div_l0.result(0)?.into(),
+                rhs_hi_128.result(0)?.into(),
+            )?
+            .2;
+        let g2 = self
+            .inline_u128_mul_guarantee(
+                &block,
+                div_l1.result(0)?.into(),
+                rhs_lo_128.result(0)?.into(),
+            )?
+            .2;
+        let g3 = self
+            .inline_u128_mul_guarantee(
+                &block,
+                div_l1.result(0)?.into(),
+                rhs_hi_128.result(0)?.into(),
+            )?
+            .2;
+        let g4 = self
+            .inline_u128_mul_guarantee(
+                &block,
+                div_l2.result(0)?.into(),
+                rhs_lo_128.result(0)?.into(),
+            )?
+            .2;
+
+        self.op_return(
+            &block,
+            &[
+                div.result(0)?.into(),
+                rem.result(0)?.into(),
+                g0.result(0)?.into(),
+                g1.result(0)?.into(),
+                g2.result(0)?.into(),
+                g3.result(0)?.into(),
+                g4.result(0)?.into(),
+            ],
+        );
+
+        let u128_mul_guarantee_ty = SierraType::create_u128_guarantee_type(self);
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(
@@ -1566,6 +1580,11 @@ impl<'ctx> Compiler<'ctx> {
                 return_types: vec![
                     PositionalArg { loc: 1, ty: SierraType::Simple(u512_ty) },
                     PositionalArg { loc: 2, ty: SierraType::Simple(u256_ty) },
+                    PositionalArg { loc: 3, ty: u128_mul_guarantee_ty.clone() },
+                    PositionalArg { loc: 4, ty: u128_mul_guarantee_ty.clone() },
+                    PositionalArg { loc: 5, ty: u128_mul_guarantee_ty.clone() },
+                    PositionalArg { loc: 6, ty: u128_mul_guarantee_ty.clone() },
+                    PositionalArg { loc: 7, ty: u128_mul_guarantee_ty.clone() },
                 ],
             },
         );
@@ -1573,7 +1592,15 @@ impl<'ctx> Compiler<'ctx> {
         self.create_function(
             &id,
             vec![block],
-            &[u512_ty, u256_ty],
+            &[
+                u512_ty,
+                u256_ty,
+                u128_mul_guarantee_ty.get_type(),
+                u128_mul_guarantee_ty.get_type(),
+                u128_mul_guarantee_ty.get_type(),
+                u128_mul_guarantee_ty.get_type(),
+                u128_mul_guarantee_ty.get_type(),
+            ],
             FnAttributes::libfunc(false, true),
         )
     }

@@ -7,6 +7,7 @@ use tracing::debug;
 use crate::{
     compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
+    sierra_type::SierraType,
     types::is_omitted_builtin_type,
 };
 
@@ -117,6 +118,9 @@ impl<'ctx> Compiler<'ctx> {
                         .expect("Type should be registered")
                         .clone();
                     self.create_print_uint(&uint_type, type_decl, storage)?
+                }
+                "U128MulGuarantee" => {
+                    self.create_print_u128_mul_guarantee(type_decl.clone(), storage)?
                 }
                 _ => todo!("Felt representation for {}", type_category),
             }
@@ -383,6 +387,11 @@ fn get_all_types_to_print(
                     }
                 }
 
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "U128MulGuarantee" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }
