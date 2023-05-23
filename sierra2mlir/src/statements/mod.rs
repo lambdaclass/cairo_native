@@ -142,6 +142,17 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
+                            "u256_is_zero" => {
+                                self.inline_u256_is_zero(
+                                    invocation,
+                                    block,
+                                    &mut variables,
+                                    &blocks,
+                                    statement_idx,
+                                )?;
+
+                                jump_processed = true;
+                            }
                             // is_eq,lt,le
                             name_without_generics if is_int_cmp_libfunc(name_without_generics) => {
                                 let cmpop = if name_without_generics.ends_with("eq") {

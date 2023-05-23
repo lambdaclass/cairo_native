@@ -133,6 +133,9 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_is_zero" => {
                     self.register_libfunc_int_is_zero(func_decl, self.u128_type(), storage);
                 }
+                "u256_is_zero" => {
+                    self.register_libfunc_u256_is_zero(func_decl, storage);
+                }
                 "u8_to_felt252" => {
                     self.create_libfunc_uint_to_felt252(func_decl, self.u8_type(), storage)?;
                 }
@@ -200,6 +203,9 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "u128_safe_divmod" => {
                     self.create_libfunc_uint_safe_divmod(func_decl, self.u128_type(), storage)?;
+                }
+                "u256_safe_divmod" => {
+                    self.create_libfunc_u256_safe_divmod(func_decl, storage)?;
                 }
                 "u8_eq" => {
                     self.register_libfunc_int_eq(func_decl, self.u8_type(), storage);
@@ -818,6 +824,42 @@ impl<'ctx> Compiler<'ctx> {
         );
     }
 
+    pub fn register_libfunc_u256_is_zero(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![PositionalArg {
+                    loc: 0,
+                    ty: SierraType::Struct {
+                        field_types: vec![
+                            SierraType::Simple(self.u128_type()),
+                            SierraType::Simple(self.u128_type()),
+                        ],
+                        ty: self.llvm_struct_type(&[self.u128_type(), self.u128_type()], true),
+                    },
+                }],
+                return_types: vec![
+                    vec![],
+                    vec![PositionalArg {
+                        loc: 0,
+                        ty: SierraType::Struct {
+                            field_types: vec![
+                                SierraType::Simple(self.u128_type()),
+                                SierraType::Simple(self.u128_type()),
+                            ],
+                            ty: self.llvm_struct_type(&[self.u128_type(), self.u128_type()], true),
+                        },
+                    }],
+                ],
+            },
+        );
+    }
+
     pub fn register_libfunc_int_eq(
         &'ctx self,
         func_decl: &LibfuncDeclaration,
@@ -1265,6 +1307,112 @@ impl<'ctx> Compiler<'ctx> {
 
         let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
 
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                // Skip range check
+                args: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
+                ],
+                return_types: vec![
+                    PositionalArg { loc: 1, ty: SierraType::Simple(src_type) },
+                    PositionalArg { loc: 2, ty: SierraType::Simple(src_type) },
+                ],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[src_type, src_type],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    pub fn create_libfunc_u256_safe_divmod(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let src_type = self.llvm_struct_type(&[self.u128_type(), self.u128_type()], true);
+        let block = self.new_block(&[src_type, src_type]);
+
+        let lhs = block.argument(0)?.into();
+        let rhs = block.argument(1)?.into();
+
+        let lhs_lo = self.op_llvm_extractvalue(&block, 0, lhs, self.u128_type())?;
+        let lhs_hi = self.op_llvm_extractvalue(&block, 1, lhs, self.u128_type())?;
+        let rhs_lo = self.op_llvm_extractvalue(&block, 0, rhs, self.u128_type())?;
+        let rhs_hi = self.op_llvm_extractvalue(&block, 1, rhs, self.u128_type())?;
+
+        let lhs_lo = self.op_zext(&block, lhs_lo.result(0)?.into(), self.u256_type());
+        let lhs_hi = self.op_zext(&block, lhs_hi.result(0)?.into(), self.u256_type());
+        let rhs_lo = self.op_zext(&block, rhs_lo.result(0)?.into(), self.u256_type());
+        let rhs_hi = self.op_zext(&block, rhs_hi.result(0)?.into(), self.u256_type());
+
+        let shift_amount = self.op_const(&block, "128", self.u256_type());
+        let lhs_hi = self.op_shl(&block, lhs_hi.result(0)?.into(), shift_amount.result(0)?.into());
+        let rhs_hi = self.op_shl(&block, rhs_hi.result(0)?.into(), shift_amount.result(0)?.into());
+
+        let lhs = self.op_or(
+            &block,
+            lhs_hi.result(0)?.into(),
+            lhs_lo.result(0)?.into(),
+            self.u256_type(),
+        );
+        let rhs = self.op_or(
+            &block,
+            rhs_hi.result(0)?.into(),
+            rhs_lo.result(0)?.into(),
+            self.u256_type(),
+        );
+
+        let op_div = self.op_div(&block, lhs.result(0)?.into(), rhs.result(0)?.into());
+        let op_rem = self.op_rem(&block, lhs.result(0)?.into(), rhs.result(0)?.into());
+
+        let div_hi = self.op_shru(&block, op_div.result(0)?.into(), shift_amount.result(0)?.into());
+        let rem_hi = self.op_shru(&block, op_rem.result(0)?.into(), shift_amount.result(0)?.into());
+
+        let div_lo = self.op_trunc(&block, op_div.result(0)?.into(), self.u128_type());
+        let div_hi = self.op_trunc(&block, div_hi.result(0)?.into(), self.u128_type());
+        let rem_lo = self.op_trunc(&block, op_rem.result(0)?.into(), self.u128_type());
+        let rem_hi = self.op_trunc(&block, rem_hi.result(0)?.into(), self.u128_type());
+
+        let div = self.op_llvm_undef(&block, src_type);
+        let rem = self.op_llvm_undef(&block, src_type);
+        let div = self.op_llvm_insertvalue(
+            &block,
+            0,
+            div.result(0)?.into(),
+            div_lo.result(0)?.into(),
+            src_type,
+        )?;
+        let div = self.op_llvm_insertvalue(
+            &block,
+            1,
+            div.result(0)?.into(),
+            div_hi.result(0)?.into(),
+            src_type,
+        )?;
+        let rem = self.op_llvm_insertvalue(
+            &block,
+            0,
+            rem.result(0)?.into(),
+            rem_lo.result(0)?.into(),
+            src_type,
+        )?;
+        let rem = self.op_llvm_insertvalue(
+            &block,
+            1,
+            rem.result(0)?.into(),
+            rem_hi.result(0)?.into(),
+            src_type,
+        )?;
+
+        self.op_return(&block, &[div.result(0)?.into(), rem.result(0)?.into()]);
+
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
         storage.libfuncs.insert(
             id.clone(),
             SierraLibFunc::Function {
