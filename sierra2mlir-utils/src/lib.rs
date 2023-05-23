@@ -71,11 +71,8 @@ pub unsafe extern "C" fn sierra2mlir_util_hades_permutation(
 
 /// Computes the hash for the given i256 (you should zext a felt252 to 256 before passing it here).
 ///
-/// Endianess doesn't matter as long as it's consistent.
-///
-/// # Panics
-///
-/// This function will panic if either operand is out of range for a felt.
+/// Endianess should be consistent across calls to ensure the same results.
+/// Currently little endian is used.
 ///
 /// # Safety
 ///
