@@ -355,6 +355,9 @@ impl<'ctx> Compiler<'ctx> {
                 "unwrap_non_zero" => {
                     self.create_libfunc_unwrap_non_zero(func_decl, storage)?;
                 }
+                "array_slice" => {
+                    self.register_libfunc_array_slice(func_decl, storage);
+                }
                 _ => todo!(
                     "unhandled libfunc: {:?}",
                     func_decl.id.debug_name.as_ref().unwrap().as_str()
@@ -2602,5 +2605,38 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    pub fn register_libfunc_array_slice(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let arg = if let GenericArg::Type(x) = &func_decl.long_id.generic_args[0] {
+            x
+        } else {
+            unreachable!("array_get argument should be a type")
+        };
+
+        let arg_type = storage.types.get(&arg.id.to_string()).cloned().expect("type should exist");
+
+        let sierra_type = SierraType::create_array_type(self, arg_type.clone());
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 1, ty: sierra_type.clone() }, // array
+                    PositionalArg { loc: 2, ty: SierraType::Simple(self.u32_type()) }, // start
+                    PositionalArg { loc: 3, ty: SierraType::Simple(self.u32_type()) }, // length
+                ],
+                return_types: vec![
+                    vec![PositionalArg { loc: 1, ty: arg_type }], // fallthrough
+                    vec![],                                       // panic branch
+                ],
+            },
+        );
     }
 }
