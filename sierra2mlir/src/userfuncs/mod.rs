@@ -118,6 +118,7 @@ impl<'ctx> Compiler<'ctx> {
                         .clone();
                     self.create_print_uint(&uint_type, type_decl, storage)?
                 }
+                "U128MulGuarantee" => self.create_print_u128_mul_guarantee()?,
                 _ => todo!("Felt representation for {}", type_category),
             }
         }
@@ -288,6 +289,7 @@ fn should_create_wrapper(raw_func_name: &str) -> bool {
 }
 
 // Produces an ordered list of all types and component types
+#[allow(clippy::cognitive_complexity)]
 fn get_all_types_to_print(
     type_declarations: &[TypeDeclaration],
     program: &Program,
@@ -383,6 +385,11 @@ fn get_all_types_to_print(
                     }
                 }
 
+                if !types_to_print.contains(type_decl) {
+                    types_to_print.push(type_decl.clone());
+                }
+            }
+            "U128MulGuarantee" => {
                 if !types_to_print.contains(type_decl) {
                     types_to_print.push(type_decl.clone());
                 }

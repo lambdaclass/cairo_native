@@ -9,7 +9,7 @@ use itertools::Itertools;
 use cairo_lang_sierra::program::{GenericArg, TypeDeclaration};
 use melior_next::{
     dialect::cf,
-    ir::{Block, Location, Region, Type, TypeLike, Value, ValueLike},
+    ir::{Block, Location, OperationRef, Region, Type, TypeLike, Value, ValueLike},
 };
 
 use crate::{
@@ -441,6 +441,86 @@ impl<'ctx> Compiler<'ctx> {
     pub fn call_print_felt(&'ctx self, block: &Block<'ctx>, value: Value) -> Result<()> {
         self.op_func_call(block, "print_felt", &[value], &[])?;
         Ok(())
+    }
+
+    pub fn create_print_u128_mul_guarantee(&'ctx self) -> Result<()> {
+        let block = self.new_block(&[SierraType::create_u128_guarantee_type(self).get_type()]);
+        let value = block.argument(0)?.into();
+
+        let l0 = self.op_llvm_extractvalue(&block, 0, value, self.u128_type())?;
+        let l1 = self.op_llvm_extractvalue(&block, 1, value, self.u128_type())?;
+        let l2 = self.op_llvm_extractvalue(&block, 2, value, self.u128_type())?;
+        let l3 = self.op_llvm_extractvalue(&block, 3, value, self.u128_type())?;
+
+        self.op_func_call(&block, "print_u128", &[l0.result(0)?.into()], &[])?;
+        self.op_func_call(&block, "print_u128", &[l1.result(0)?.into()], &[])?;
+        self.op_func_call(&block, "print_u128", &[l2.result(0)?.into()], &[])?;
+        self.op_func_call(&block, "print_u128", &[l3.result(0)?.into()], &[])?;
+
+        self.op_return(&block, &[]);
+
+        self.create_function(
+            "print_U128MulGuarantee",
+            vec![block],
+            &[],
+            FnAttributes::libfunc(false, false),
+        )
+    }
+
+    pub fn inline_u128_mul_guarantee<'a, 'b: 'a>(
+        &'ctx self,
+        block: &'b Block<'a>,
+        lhs: Value,
+        rhs: Value,
+    ) -> Result<(OperationRef<'a>, OperationRef<'a>, OperationRef<'a>)> {
+        let op_zext_lhs = self.op_zext(block, lhs, self.u256_type());
+        let op_zext_rhs = self.op_zext(block, rhs, self.u256_type());
+
+        let op_mul =
+            self.op_mul(block, op_zext_lhs.result(0)?.into(), op_zext_rhs.result(0)?.into());
+
+        let op_mul_lo = self.op_trunc(block, op_mul.result(0)?.into(), self.u128_type());
+        let op_mul_hi = {
+            let op_const = self.op_const(block, "128", self.u256_type());
+            let op_shru = self.op_shru(block, op_mul.result(0)?.into(), op_const.result(0)?.into());
+            self.op_trunc(block, op_shru.result(0)?.into(), self.u128_type())
+        };
+
+        let u128_guarantee_ty = self.llvm_struct_type(
+            &[self.u128_type(), self.u128_type(), self.u128_type(), self.u128_type()],
+            false,
+        );
+
+        let u128_guarantee_struct_op = self.op_llvm_undef(block, u128_guarantee_ty);
+        let u128_guarantee_struct = u128_guarantee_struct_op.result(0)?.into();
+
+        let u128_guarantee_struct_insert_op =
+            self.op_llvm_insertvalue(block, 0, u128_guarantee_struct, lhs, u128_guarantee_ty)?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+        let u128_guarantee_struct_insert_op =
+            self.op_llvm_insertvalue(block, 1, u128_guarantee_struct, rhs, u128_guarantee_ty)?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+
+        let op_mul_hi_val = op_mul_hi.result(0)?.into();
+        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
+            block,
+            2,
+            u128_guarantee_struct,
+            op_mul_hi_val,
+            u128_guarantee_ty,
+        )?;
+        let u128_guarantee_struct = u128_guarantee_struct_insert_op.result(0)?.into();
+
+        let op_mul_lo_val = op_mul_lo.result(0)?.into();
+        let u128_guarantee_struct_insert_op = self.op_llvm_insertvalue(
+            block,
+            3,
+            u128_guarantee_struct,
+            op_mul_lo_val,
+            u128_guarantee_ty,
+        )?;
+
+        Ok((op_mul_hi, op_mul_lo, u128_guarantee_struct_insert_op))
     }
 }
 
