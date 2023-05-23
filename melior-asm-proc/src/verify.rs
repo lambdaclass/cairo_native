@@ -23,10 +23,7 @@ pub fn verify_mlir(mlir_stream: TokenStream) {
                 .split_once(':')
                 .unwrap();
 
-            LineColumn {
-                line: line.parse().unwrap(),
-                column: column.parse().unwrap(),
-            }
+            LineColumn { line: line.parse().unwrap(), column: column.parse().unwrap() }
         };
         let location_span = find_span_from_stream_and_location(mlir_stream.clone(), location);
 

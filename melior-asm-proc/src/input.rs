@@ -55,9 +55,7 @@ impl Parse for OptFlags {
         Ok(Self {
             opt_kw: input.parse()?,
             paren: parenthesized!(content in input),
-            flags: content
-                .parse_terminated(<LitStr as Parse>::parse, Token![,])
-                .unwrap(),
+            flags: content.parse_terminated(<LitStr as Parse>::parse, Token![,]).unwrap(),
         })
     }
 }
