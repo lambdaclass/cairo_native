@@ -443,11 +443,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn create_print_u128_mul_guarantee(
-        &'ctx self,
-        sierra_type_declaration: TypeDeclaration,
-        storage: &mut Storage<'ctx>,
-    ) -> Result<()> {
+    pub fn create_print_u128_mul_guarantee(&'ctx self) -> Result<()> {
         let block = self.new_block(&[SierraType::create_u128_guarantee_type(self).get_type()]);
         let value = block.argument(0)?.into();
 
