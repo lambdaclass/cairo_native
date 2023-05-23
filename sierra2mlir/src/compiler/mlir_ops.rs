@@ -828,7 +828,7 @@ impl<'ctx> Compiler<'ctx> {
         &self,
         block: &'a Block,
         dst: Value,
-        mut val: Value,
+        val: Value,
         len: Value,
     ) -> Result<OperationRef<'a>> {
         let op = self.op_const(block, "0", self.bool_type());
