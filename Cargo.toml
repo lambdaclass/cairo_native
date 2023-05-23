@@ -1,9 +1,10 @@
 [workspace]
-
 members = [
+    "cli",
+    "melior-asm",
+    "melior-asm-proc",
     "sierra2mlir",
     "sierra2mlir-utils",
-    "cli"
 ]
 
 [profile.ci-coverage]
