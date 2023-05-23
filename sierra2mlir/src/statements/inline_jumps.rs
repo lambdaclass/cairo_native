@@ -230,7 +230,7 @@ impl<'ctx> Compiler<'ctx> {
                 (&target_block_info.block, operand_values)
             })
             .collect_vec();
-      
+
         let (true_block, true_vars) = &target_blocks[1];
         let (false_block, false_vars) = &target_blocks[0];
 
