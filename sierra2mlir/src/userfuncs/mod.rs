@@ -7,7 +7,6 @@ use tracing::debug;
 use crate::{
     compiler::{fn_attributes::FnAttributes, mlir_ops::CmpOp, Compiler, Storage},
     libfuncs::lib_func_def::PositionalArg,
-    sierra_type::SierraType,
     types::is_omitted_builtin_type,
 };
 
