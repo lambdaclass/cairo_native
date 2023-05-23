@@ -204,6 +204,9 @@ impl<'ctx> Compiler<'ctx> {
                 "u128_safe_divmod" => {
                     self.create_libfunc_uint_safe_divmod(func_decl, self.u128_type(), storage)?;
                 }
+                "bool_eq" => {
+                    self.register_libfunc_bool_eq(func_decl, storage);
+                }
                 "u256_safe_divmod" => {
                     self.create_libfunc_u256_safe_divmod(func_decl, storage)?;
                 }
@@ -873,6 +876,38 @@ impl<'ctx> Compiler<'ctx> {
                 args: vec![
                     PositionalArg { loc: 0, ty: SierraType::Simple(op_type) },
                     PositionalArg { loc: 1, ty: SierraType::Simple(op_type) },
+                ],
+                return_types: vec![vec![], vec![]],
+            },
+        );
+    }
+
+    pub fn register_libfunc_bool_eq(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+
+        let bool_variant = SierraType::Struct {
+            ty: self.llvm_struct_type(&[Type::none(&self.context)], false),
+            field_types: vec![],
+        };
+
+        let bool_sierra_type = SierraType::Enum {
+            ty: self.boolean_enum_type(),
+            tag_type: self.u16_type(),
+            storage_bytes_len: 0,
+            storage_type: self.llvm_array_type(self.u8_type(), 0),
+            variants_types: vec![bool_variant.clone(), bool_variant],
+        };
+
+        storage.libfuncs.insert(
+            id,
+            SierraLibFunc::Branching {
+                args: vec![
+                    PositionalArg { loc: 0, ty: bool_sierra_type.clone() },
+                    PositionalArg { loc: 1, ty: bool_sierra_type },
                 ],
                 return_types: vec![vec![], vec![]],
             },
