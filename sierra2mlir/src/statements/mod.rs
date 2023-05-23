@@ -210,6 +210,18 @@ impl<'ctx> Compiler<'ctx> {
 
                                 jump_processed = true;
                             }
+                            "bool_eq" => {
+                                self.inline_bool_eq(
+                                    &id,
+                                    invocation,
+                                    block,
+                                    &variables,
+                                    &blocks,
+                                    statement_idx,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "enum_match" => {
                                 self.inline_enum_match(
                                     &id,
