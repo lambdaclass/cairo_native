@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::panic;
 
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
@@ -2809,16 +2808,10 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id.clone(),
-            SierraLibFunc::Function {
-                args: vec![
-                    PositionalArg { loc: 0, ty: dict_type.clone() },
-                    PositionalArg { loc: 1, ty: SierraType::Simple(felt_type) },
-                ],
-                return_types: vec![
-                    PositionalArg { loc: 0, ty: dict_type.clone() },
-                    PositionalArg { loc: 1, ty: entry_type.clone() },
-                ],
-            },
+            SierraLibFunc::create_function_all_args(
+                vec![dict_type.clone(), SierraType::Simple(felt_type)],
+                vec![dict_type.clone(), entry_type.clone()],
+            ),
         );
 
         self.create_function(
@@ -2879,13 +2872,10 @@ impl<'ctx> Compiler<'ctx> {
 
         storage.libfuncs.insert(
             id.clone(),
-            SierraLibFunc::Function {
-                args: vec![
-                    PositionalArg { loc: 0, ty: dict_type.clone() },
-                    PositionalArg { loc: 1, ty: entry_type },
-                ],
-                return_types: vec![PositionalArg { loc: 0, ty: dict_type.clone() }],
-            },
+            SierraLibFunc::create_function_all_args(
+                vec![dict_type.clone(), entry_type],
+                vec![dict_type.clone()],
+            ),
         );
 
         self.create_function(
