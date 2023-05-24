@@ -27,6 +27,8 @@ use test_case::test_case;
 
 #[test_case("array/append", None)]
 #[test_case("array/append", Some(100000))]
+#[test_case("array/slice", None)]
+#[test_case("array/slice", Some(100000))]
 #[test_case("array/index_invalid", None)]
 #[test_case("array/index_invalid", Some(10000))]
 #[test_case("array/pop_front_invalid", None)]

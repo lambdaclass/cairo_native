@@ -536,6 +536,155 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub fn inline_array_slice(
+        &'ctx self,
+        id: &str,
+        statement_idx: usize,
+        region: &Region,
+        block: &Block,
+        blocks: &BTreeMap<usize, BlockInfo>,
+        invocation: &Invocation,
+        variables: &HashMap<u64, Variable>,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let libfunc = storage.libfuncs.get(id).unwrap();
+        let array_arg = &libfunc.get_args()[0];
+        let index_arg = &libfunc.get_args()[1];
+        let len_arg = &libfunc.get_args()[2];
+
+        let sierra_type = array_arg.ty.clone();
+
+        // fallthrough if ok
+        // jump if panic
+
+        // 0 = ok block, 1 = panic block
+        let target_blocks = invocation
+            .branches
+            .iter()
+            .map(|branch| match branch.target {
+                GenBranchTarget::Fallthrough => statement_idx + 1,
+                GenBranchTarget::Statement(idx) => idx.0,
+            })
+            .map(|idx| {
+                let target_block_info = blocks.get(&idx).unwrap();
+                target_block_info
+            })
+            .collect_vec();
+
+        let target_block_info = target_blocks[0];
+        let panic_block_info = target_blocks[1];
+
+        let array_value = variables
+            .get(&invocation.args[array_arg.loc].id)
+            .expect("variable array should exist")
+            .get_value();
+        let start_value = variables
+            .get(&invocation.args[index_arg.loc].id)
+            .expect("variable index should exist")
+            .get_value();
+
+        let arg_length_value = variables
+            .get(&invocation.args[len_arg.loc].id)
+            .expect("variable index should exist")
+            .get_value();
+
+        let op = self.op_add(block, start_value, arg_length_value);
+        let slice_length = op.result(0)?.into();
+
+        // get the current length
+        let length_op = self.call_array_len_impl(block, array_value, &array_arg.ty, storage)?;
+        let length: Value = length_op.result(0)?.into();
+
+        // check if start + length is out of bounds
+        let in_bounds_op = self.op_cmp(block, CmpOp::UnsignedLessThanEqual, slice_length, length);
+        let in_bounds = in_bounds_op.result(0)?.into();
+
+        // Create a block in which to get the element once we know its index is valid
+        let in_bounds_block = region.append_block(Block::new(&[]));
+
+        // collect args to the panic block
+        let args_to_panic_block = panic_block_info
+            .variables_at_start
+            .keys()
+            .map(|var_idx| variables.get(var_idx).unwrap().get_value())
+            .collect_vec();
+
+        // Jump to the in_bounds_block if the index is valid, or to the panic_block if not
+        self.op_cond_br(
+            block,
+            in_bounds,
+            &in_bounds_block,
+            &panic_block_info.block,
+            &[],
+            &args_to_panic_block,
+        );
+
+        // create another array struct using the same pointers
+        // this is fine since we don't drop them, in the future if we do we need
+        // to revise this (and snapshots).
+
+        let op = self.op_llvm_undef(&in_bounds_block, sierra_type.get_type());
+        let new_array_value: Value = op.result(0)?.into();
+
+        let op = self.call_array_get_unchecked_ptr(
+            &in_bounds_block,
+            array_value,
+            start_value,
+            &sierra_type,
+            storage,
+        )?;
+        let data_ptr = op.result(0)?.into();
+
+        let op = self.call_array_set_data_ptr(
+            &in_bounds_block,
+            new_array_value,
+            data_ptr,
+            &sierra_type,
+            storage,
+        )?;
+        let new_array_value = op.result(0)?.into();
+
+        // length
+        let op = self.call_array_set_len_impl(
+            &in_bounds_block,
+            new_array_value,
+            slice_length,
+            &sierra_type,
+            storage,
+        )?;
+        let new_array_value: Value = op.result(0)?.into();
+
+        let new_array_value_op = self.call_array_set_capacity_impl(
+            &in_bounds_block,
+            new_array_value,
+            slice_length,
+            &sierra_type,
+            storage,
+        )?;
+
+        let target_value_var_id = invocation.branches[0].results[1].id;
+
+        // get the args to the target block (fallthrough here)
+        let args_to_target_block = target_block_info
+            .variables_at_start
+            .keys()
+            .map(|var_idx| {
+                if *var_idx == target_value_var_id {
+                    Variable::Local { op: new_array_value_op, result_idx: 0 }
+                } else {
+                    *variables.get(var_idx).unwrap()
+                }
+            })
+            .collect_vec();
+        let args_to_target_block =
+            args_to_target_block.iter().map(Variable::get_value).collect_vec();
+
+        self.op_br(&in_bounds_block, &target_block_info.block, &args_to_target_block);
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn inline_array_get(
         &'ctx self,
         id: &str,
