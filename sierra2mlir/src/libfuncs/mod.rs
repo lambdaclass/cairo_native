@@ -3053,7 +3053,7 @@ impl<'ctx> Compiler<'ctx> {
             vec![block],
             &[dict_type.get_type()],
             FnAttributes::libfunc(false, true),
-        );
+        )
     }
 
     pub fn register_libfunc_array_slice(
