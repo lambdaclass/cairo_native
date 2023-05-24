@@ -47,6 +47,10 @@ impl<'ctx> Compiler<'ctx> {
         Type::integer(&self.context, 256)
     }
 
+    pub fn u512_type(&self) -> Type {
+        Type::integer(&self.context, 512)
+    }
+
     /// The enum struct type. Needed due to some libfuncs using it.
     ///
     /// The tag value is the boolean value: 0, 1

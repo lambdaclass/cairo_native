@@ -235,6 +235,19 @@ impl<'ctx> Compiler<'ctx> {
                                 )?;
                                 jump_processed = true;
                             }
+                            "array_slice" => {
+                                self.inline_array_slice(
+                                    &id,
+                                    statement_idx,
+                                    &region,
+                                    block,
+                                    &blocks,
+                                    invocation,
+                                    &variables,
+                                    storage,
+                                )?;
+                                jump_processed = true;
+                            }
                             "array_get" => {
                                 self.inline_array_get(
                                     &id,
