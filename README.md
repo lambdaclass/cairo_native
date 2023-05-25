@@ -60,8 +60,8 @@ MLIR_SYS_160_PREFIX=~/mlir
 
 ### MacOS
 ```bash
-brew install llvm
-export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm
+brew install llvm@16
+export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
 ```
 
 ## CLI Interface
