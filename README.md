@@ -94,14 +94,21 @@ make bench
 ## MLIR Resources
 - https://mlir.llvm.org/docs/Tutorials/
 
-## Translate output MLIR to LLVM IR
-```
-mlir-translate --mlir-to-llvmir output.mlir -o output.ll
+## From MLIR to native binary
+```bash
+# to mlir with llvm dialect
+cargo r -- compile program.sierra -m --available-gas 9000000000 -o program.mlir
 
-# Compile with clang
-clang -O3 output.ll -o program
+# translate mlir to llvm-ir
+mlir-translate --mlir-to-llvmir program.mlir -o program.ll
+
+# compile natively
+clang program.ll -Wno-override-module \
+    -L LLVM_DIR/lib -L"./target/release/" \
+    -lsierra2mlir_utils -lmlir_c_runner_utils \
+    -Wl,-rpath LLVM_DIR/lib \
+    -Wl,-rpath ./target/release/ \
+    -o program
+
 ./program
-
-# With JIT
-lli output.ll
 ```
