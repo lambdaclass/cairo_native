@@ -105,13 +105,13 @@ make bench
 cargo r -- compile program.sierra -m --available-gas 9000000000 -o program.mlir
 
 # translate mlir to llvm-ir
-mlir-translate --mlir-to-llvmir program.mlir -o program.ll
+"$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
 
 # compile natively
-clang program.ll -Wno-override-module \
-    -L LLVM_DIR/lib -L"./target/release/" \
+"$MLIR_SYS_160_PREFIX"/bin/clang program.ll -Wno-override-module \
+    -L "$MLIR_SYS_160_PREFIX"/lib -L"./target/release/" \
     -lsierra2mlir_utils -lmlir_c_runner_utils \
-    -Wl,-rpath LLVM_DIR/lib \
+    -Wl,-rpath "$MLIR_SYS_160_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
 
