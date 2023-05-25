@@ -127,7 +127,7 @@ pub fn switch<'c>(
                 .collect_vec()
                 .as_slice(),
         )
-        .add_successors(dests.iter().map(|x| *x).collect_vec().as_slice())
+        .add_successors(dests.iter().copied().collect_vec().as_slice())
         .build()
 }
 
