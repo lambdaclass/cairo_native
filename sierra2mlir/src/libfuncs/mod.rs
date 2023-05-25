@@ -43,6 +43,7 @@ impl<'ctx> Compiler<'ctx> {
                 | "get_builtin_costs"
                 | "revoke_ap_tracking"
                 | "disable_ap_tracking"
+                | "enable_ap_tracking"
                 | "u128_mul_guarantee_verify" // output is range check, so it's a noop for us.
                 | "drop"
                 | "jump"
