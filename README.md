@@ -2,7 +2,7 @@
 [![test](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/cairo_sierra_to_mlir/actions/workflows/ci.yml)
 [![mdbook](https://img.shields.io/badge/mdbook-link-blue)](https://lambdaclass.github.io/cairo_sierra_2_MLIR/)
 
-A compiler to convert Cairo's intermediate representation "Sierra" code to MLIR.
+A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
 
 ## Documentation
 
@@ -16,22 +16,6 @@ make book
 - LLVM 16+ with MLIR
 - Rust
 
-## CLI Interface
-
-```
-Usage: cli --input <INPUT> <COMMAND>
-
-Commands:
-  compile  Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
-  run      Compile and run a program. The entry point must be a function without arguments
-  help     Print this message or the help of the given subcommand(s)
-
-Options:
-  -i, --input <INPUT>  The input sierra file
-  -h, --help           Print help (see more with '--help')
-  -V, --version        Print version
-```
-
 ## Setup
 
 Install mdbook and other documentation dependencies:
@@ -41,9 +25,10 @@ cargo install mdbook mdbook-toc mdbook-mermaid
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
+### Linux
+
 If you've compiled LLVM manually, or installed it in a non-standard path, then please set the
 environment variable `MLIR_SYS_160_PREFIX` accordingly.
-
 
 To build LLVM manually, follow this steps:
 
@@ -73,9 +58,30 @@ Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the mlir d
 MLIR_SYS_160_PREFIX=~/mlir
 ```
 
-## Benchmarking
-
+### MacOS
 ```bash
+brew install llvm
+export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm
+```
+
+## CLI Interface
+```
+Usage: cli --input <INPUT> <COMMAND>
+
+Commands:
+  compile  Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
+  run      Compile and run a program. The entry point must be a function without arguments
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -i, --input <INPUT>  The input sierra file
+  -h, --help           Print help (see more with '--help')
+  -V, --version        Print version
+```
+
+## Benchmarking
+```bash
+make bench
 cargo bench
 ```
 
@@ -83,7 +89,6 @@ cargo bench
 - https://mlir.llvm.org/docs/Tutorials/
 
 ## Translate output MLIR to LLVM IR
-
 ```
 mlir-translate --mlir-to-llvmir output.mlir -o output.ll
 

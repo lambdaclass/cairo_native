@@ -1,6 +1,5 @@
 .PHONY: book build coverage check clean clean-all compile-mlir compile-mlir-opt sierra test
 
-
 #
 # Environment detection.
 #
@@ -9,7 +8,6 @@ LLVM_PREFIX := $(shell scripts/find-llvm.sh)
 ifeq ($(LLVM_PREFIX),)
   $(error Could not find a suitable LLVM 16 toolchain)
 endif
-
 
 #
 # Source sets.
@@ -29,6 +27,7 @@ LLVM_OPT_TARGETS := $(patsubst %.cairo,%.opt.ll,$(CAIRO_SOURCES))
 
 COMPARISON_TEST_SOURCES := $(wildcard sierra2mlir/tests/comparison/**/*.cairo)
 COMPARISON_TEST_TARGETS := $(patsubst %.cairo,%.sierra,$(COMPARISON_TEST_SOURCES))
+
 #
 # Build rules.
 #
@@ -61,14 +60,13 @@ coverage:
 book:
 	mdbook serve docs
 
-
-# Compile the cairo sources using `cairo-compile` (must be available on $PATH).
+# Compile the cairo sources using `cairo-compile` (must be available on $PATH).
 sierra: $(CAIRO_TARGETS) $(BENCH_TARGETS)
 
-# Compile the sierra programs to MLIR using this project.
+# Compile the sierra programs to MLIR using this project.
 compile-mlir: $(MLIR_TARGETS)
 
-# Compile the sierra programs to MLIR using this project.
+# Compile the sierra programs to MLIR using this project.
 compile-mlir-opt: $(MLIR_OPT_TARGETS)
 
 # Compile the MLIR to llvm ir using mlir-translate
@@ -77,6 +75,9 @@ compile-ll: $(LLVM_TARGETS)
 # Compile the optimised MLIR to llvm ir using mlir-translate
 compile-ll-opt: $(LLVM_OPT_TARGETS)
 
+bench:
+	$(shell scripts/comparison.sh)
+	cargo bench
 
 clean-examples:
 	-rm -rf examples/*.ll examples/*.mlir examples/*.sierra
