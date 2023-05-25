@@ -20,7 +20,7 @@ fn fib(a: felt252, b: felt252, n: felt252) -> felt252 {
     }
 }
 
+#[test]
 fn main() -> felt252 {
-    let y: felt252 = fib(1, 1, 15000);
-    y
+    fib(1, 1, 15000)
 }

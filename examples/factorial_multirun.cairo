@@ -27,9 +27,9 @@ fn factorial(n: felt252) -> felt252 {
 }
 
 #[test]
-fn main() {
+fn main() -> felt252 {
     // Make sure that factorial(10) == 3628800
     let y: felt252 = factorial(10);
     assert(3628800 == y, 'failed test');
-    factorial(10000).print();
+    factorial(10000)
 }
