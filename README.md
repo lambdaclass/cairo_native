@@ -81,7 +81,7 @@ Options:
 
 ## Benchmarking
 
-You need to setup some envinronment variables:
+You need to setup some environment variables:
 ```bash
 $S2M_BENCH_CAIRO_RUNNER=/path/to/cairo-run
 $MLIR_SYS_160_PREFIX=/path/to/llvm16
@@ -89,7 +89,6 @@ $MLIR_SYS_160_PREFIX=/path/to/llvm16
 
 ```bash
 make bench
-cargo bench
 ```
 
 ## MLIR Resources
