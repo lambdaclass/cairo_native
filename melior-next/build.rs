@@ -22,11 +22,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rustc-link-search={}", llvm_config("--libdir")?);
 
-    #[cfg(feature = "cuda")]
-    {
-        //println!("cargo:rustc-link-search=/opt/cuda/lib64");
-        println!("cargo:rustc-link-lib=cuda");
-    }
+    //#[cfg(feature = "cuda")]
+    //{
+    //    //println!("cargo:rustc-link-search=/opt/cuda/lib64");
+    //    println!("cargo:rustc-link-lib=cuda");
+    //}
 
     for name in fs::read_dir(llvm_config("--libdir")?)?
         .map(|entry| {

@@ -10,7 +10,7 @@ keywords = ["mlir", "llvm", "ir", "llvm-ir", "bindings"]
 
 # if MLIR was compiled with MLIR_ENABLE_CUDA_RUNNER, it requires linking cuda, enable this then.
 # experimental support, libcuda.so must be in a common lib path such as /usr/lib
-cuda = []
+#cuda = []
 
 [dependencies]
 itertools = "0.10.5"
