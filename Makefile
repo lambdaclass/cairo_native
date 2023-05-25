@@ -1,4 +1,4 @@
-.PHONY: book build coverage check clean clean-all compile-mlir compile-mlir-opt sierra test
+.PHONY: book build coverage check clean clean-all compile-mlir compile-mlir-opt sierra test bench
 
 #
 # Environment detection.
@@ -75,10 +75,11 @@ compile-ll: $(LLVM_TARGETS)
 # Compile the optimised MLIR to llvm ir using mlir-translate
 compile-ll-opt: $(LLVM_OPT_TARGETS)
 
+bench-ci:
+	cargo bench
+
 bench:
-ifeq ($(S2M_BENCH_CAIRO_RUNNER),)
-  $(error Could not find cairo-run for benchmarks)
-endif
+	test -n "$(S2M_BENCH_CAIRO_RUNNER)" # S2M_BENCH_CAIRO_RUNNER needs to exist
 	./scripts/comparison.sh
 	cargo bench
 
