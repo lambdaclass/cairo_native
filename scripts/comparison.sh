@@ -1,35 +1,53 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-for i in $(ls -1 examples/*.sierra); do 
-	echo "--------------------"
-	echo file: $i;
-	echo "    cairo-run"
-	time /Users/igaray/src/starkware/cairo/target/release/cairo-run --available-gas 9000000000 examples/$(basename $i sierra)cairo
-	echo "    sierra2mlir"
-	filename=$(basename -- "$i")
+# config vars
+cairo_run=$S2M_BENCH_CAIRO_RUNNER
+sierra2mlir_cli=./target/release/cli
+llvm_dir=$MLIR_SYS_160_PREFIX
+bench_results=./bench-results
+
+RED="\e[31m"
+GREEN="\e[32m"
+ENDCOLOR="\e[0m"
+
+mkdir -p $bench_results
+
+# bench programs
+for sierra_program in ./sierra2mlir/benches/programs/*.sierra; do
+	echo '--------------------'
+	echo -e "${RED}BENCHMARKING FILE${ENDCOLOR}: ${GREEN}$sierra_program${ENDCOLOR}"
+	echo '>>>>>>>>>>>>>>>>>>>>'
+	program="$(basename "$sierra_program" sierra)"
+	filename=$(basename -- "$sierra_program")
 	filename="${filename%.*}"
-	NAME=$filename
-	time ./target/debug/cli run --available-gas 9000000000 $i --function $NAME::$NAME::main
+	$sierra2mlir_cli compile "$sierra_program" -m --available-gas 9000000000 -o $bench_results/"$filename".mlir
+	"$llvm_dir"/bin/mlir-translate --mlir-to-llvmir $bench_results/"$filename".mlir -o $bench_results/"$filename".ll
+	"$llvm_dir"/bin/clang $bench_results/"$filename".ll -Wno-override-module -L"$llvm_dir"/lib -L"./target/release/" \
+		-lsierra2mlir_utils -lmlir_c_runner_utils -Wl,-rpath "$llvm_dir"/lib \
+		-Wl,-rpath "./target/release/" -o $bench_results/"$filename".bin
+	hyperfine -N -i --warmup 3 \
+			"$cairo_run --available-gas 9000000000 sierra2mlir/benches/programs/${program}cairo" \
+			"$sierra2mlir_cli run --available-gas 9000000000 $sierra_program -m -f main" \
+			"$bench_results/$filename".bin
+	echo '<<<<<<<<<<<<<<<<<<<'
 done
 
-PATH=/Users/igaray/src/starkware/cairo/target/release/:$PATH cairo-compile --replace-ids examples/fibonacci.cairo examples/fibonacci.sierra
-RUST_LOG=debug ./target/release/cli compile --optimize examples/fibonacci.sierra --main-print --available-gas 900000000 --output fibonacci.mlir
-/opt/homebrew/opt/llvm/bin/mlir-translate  --mlir-to-llvmir fibonacci.mlir -o fibonacci.ll
-$MLIR_SYS_160_PREFIX/bin/clang -O3 fibonacci.ll -v -o fibonacci
-time ./fibonacci
-time /Users/igaray/src/starkware/cairo/target/release/cairo-run --available-gas 9000000000 examples/fibonacci.cairo
-
-PATH=/Users/igaray/src/starkware/cairo/target/release/:$PATH cairo-compile --replace-ids examples/factorial_multirun.cairo examples/factorial_multirun.sierra
-RUST_LOG=debug ./target/release/cli compile --optimize examples/factorial_multirun.sierra --main-print --available-gas 900000000 --output factorial_multirun.mlir
-/opt/homebrew/opt/llvm/bin/mlir-translate  --mlir-to-llvmir factorial_multirun.mlir -o factorial_multirun.ll
-$MLIR_SYS_160_PREFIX/bin/clang -O3 factorial_multirun.ll -v -L/opt/homebrew/opt/llvm/lib/ -lmlir_c_runner_utils -o factorial_multirun
-time ./factorial_multirun
-time /Users/igaray/src/starkware/cairo/target/release/cairo-run --available-gas 9000000000 examples/factorial_multirun.cairo
-
-PATH=/Users/igaray/src/starkware/cairo/target/release/:$PATH cairo-compile --replace-ids examples/fibonacci_1000_multirun.cairo examples/fibonacci_1000_multirun.sierra
-RUST_LOG=debug ./target/release/cli compile --optimize examples/fibonacci_1000_multirun.sierra --main-print --available-gas 900000000 --output fibonacci_1000_multirun.mlir
-/opt/homebrew/opt/llvm/bin/mlir-translate  --mlir-to-llvmir fibonacci_1000_multirun.mlir -o fibonacci_1000_multirun.ll
-$MLIR_SYS_160_PREFIX/bin/clang -O3 fibonacci_1000_multirun.ll -v -L/opt/homebrew/opt/llvm/lib/ -lmlir_c_runner_utils -o fibonacci_1000_multirun
-time ./fibonacci_1000_multirun
-time /Users/igaray/src/starkware/cairo/target/release/cairo-run --available-gas 9000000000 examples/fibonacci_1000_multirun.cairo
-
+# example programs
+for sierra_program in ./examples/*.sierra; do
+	echo '--------------------'
+	echo -e "${RED}BENCHMARKING FILE${ENDCOLOR}: ${GREEN}$sierra_program${ENDCOLOR}"
+	echo '>>>>>>>>>>>>>>>>>>>>'
+	program="$(basename "$sierra_program" sierra)"
+	filename=$(basename -- "$sierra_program")
+	filename="${filename%.*}"
+	$sierra2mlir_cli compile "$sierra_program" -m --available-gas 9000000000 -o $bench_results/"$filename".mlir
+	"$llvm_dir"/bin/mlir-translate --mlir-to-llvmir $bench_results/"$filename".mlir -o $bench_results/"$filename".ll
+	"$llvm_dir"/bin/clang $bench_results/"$filename".ll -Wno-override-module -L"$llvm_dir"/lib -L"./target/release/" \
+		-lsierra2mlir_utils -lmlir_c_runner_utils -Wl,-rpath "$llvm_dir"/lib \
+		-Wl,-rpath "./target/release/" -o $bench_results/"$filename".bin
+	hyperfine -N -i --warmup 3 \
+			"$cairo_run --available-gas 9000000000 examples/${program}cairo" \
+			"$sierra2mlir_cli run --available-gas 9000000000 $sierra_program -m -f main" \
+			"$bench_results/$filename".bin
+	echo '<<<<<<<<<<<<<<<<<<<'
+done

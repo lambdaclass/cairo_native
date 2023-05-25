@@ -76,7 +76,10 @@ compile-ll: $(LLVM_TARGETS)
 compile-ll-opt: $(LLVM_OPT_TARGETS)
 
 bench:
-	$(shell scripts/comparison.sh)
+ifeq ($(S2M_BENCH_CAIRO_RUNNER),)
+  $(error Could not find cairo-run for benchmarks)
+endif
+	./scripts/comparison.sh
 	cargo bench
 
 clean-examples:
@@ -90,7 +93,10 @@ clean-tests:
 	-rm -rf sierra2mlir/tests/comparison/out/*.mlir
 	-rm -rf sierra2mlir/tests/comparison/out/*.out
 
-clean: clean-examples clean-tests
+clean-bench:
+	-rm -rf bench-results/
+
+clean: clean-examples clean-tests clean-bench
 
 clean-all: clean
 	-cargo clean

@@ -168,7 +168,11 @@ fn load_program(input: &Path) -> Program {
         )
         .unwrap(),
         Some("sierra") => cairo_lang_sierra::ProgramParser::new()
-            .parse(fs::read_to_string(input).unwrap().as_str())
+            .parse(
+                fs::read_to_string(input)
+                    .unwrap_or_else(|_| panic!("couldn't find: {}", input.display()))
+                    .as_str(),
+            )
             .unwrap(),
         _ => todo!("unknown file extension"),
     }
