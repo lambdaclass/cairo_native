@@ -26,3 +26,6 @@ corelib/
 
 # coverage files
 lcov.info
+
+# bench results
+bench-results/
