@@ -81,6 +81,11 @@ Options:
 
 ## Benchmarking
 
+### Requirements
+- [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
+- [cairo >=1.0](https://github.com/starkware-libs/cairo)
+- LLVM 16
+
 You need to setup some environment variables:
 ```bash
 $S2M_BENCH_CAIRO_RUNNER=/path/to/cairo-run
