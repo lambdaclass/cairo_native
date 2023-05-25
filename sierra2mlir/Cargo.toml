@@ -25,7 +25,7 @@ cfg-match = "0.2.1"
 color-eyre = "0.6.2"
 itertools = "0.10.5"
 melior-asm = { path = "../melior-asm" }
-melior-next = { git = "https://github.com/edg-l/melior-next", rev = "3e3e6b7c3e89b52a0d1e20950cdc89516f343bf9" }
+melior-next = { path = "../melior-next" }
 num-bigint = "0.4.3"
 num-traits = "0.2.15"
 regex = "1.7.3"

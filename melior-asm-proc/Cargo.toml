@@ -11,7 +11,7 @@ quote = "1.0.26"
 syn = "2.0.15"
 
 [dependencies.melior-next]
-git = "https://github.com/edg-l/melior-next"
+path = "../melior-next"
 
 [dependencies.proc-macro2]
 features = ["span-locations"]
