@@ -7,11 +7,11 @@ authors = [
 ]
 
 [[bench]]
-name = "execution"
+name = "cairo"
 harness = false
 
 [[bench]]
-name = "cairo"
+name = "sierra2mlir"
 harness = false
 
 [dependencies]
