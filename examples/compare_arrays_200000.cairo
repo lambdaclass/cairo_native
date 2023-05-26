@@ -64,8 +64,8 @@ fn fill_array(
 fn main() {
     let array_length = 200000;
 
-    let mut array_a = ArrayTrait::<felt252>::new();
-    let mut array_b = ArrayTrait::<felt252>::new();
+    let mut array_a = Default::default();
+    let mut array_b = Default::default();
 
     fill_array(ref array_a, 7, 3, array_length, 0);
     fill_array(ref array_b, 7, 3, array_length, 0);

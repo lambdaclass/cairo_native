@@ -2,7 +2,7 @@ use array::Array;
 use array::ArrayTrait;
 
 fn main() -> u8 {
-    let mut data: Array<u8> = ArrayTrait::new();
+    let mut data: Array<u8> = Default::default();
     data.append(4_u8);
     data.append(5_u8);
     data.append(4_u8);

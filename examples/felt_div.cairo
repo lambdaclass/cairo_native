@@ -13,7 +13,7 @@ fn main() {
 
 fn felt_to_nonzero(value: felt252) -> NonZero<felt252> {
     match felt252_is_zero(value) {
-        IsZeroResult::Zero(()) => panic(ArrayTrait::new()),
+        IsZeroResult::Zero(()) => panic(Default::default()),
         IsZeroResult::NonZero(x) => x,
     }
 }
