@@ -3,6 +3,7 @@ members = [
     "cli",
     "melior-asm",
     "melior-asm-proc",
+    "melior-next",
     "sierra2mlir",
     "sierra2mlir-utils",
 ]

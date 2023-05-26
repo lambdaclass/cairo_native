@@ -7,4 +7,4 @@ edition = "2021"
 path = "../melior-asm-proc"
 
 [dependencies.melior-next]
-git = "https://github.com/edg-l/melior-next"
+path = "../melior-next"
