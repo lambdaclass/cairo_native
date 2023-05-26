@@ -235,10 +235,14 @@ impl<'ctx> Compiler<'ctx> {
         // get the capacity
         let op = self.call_dict_capacity_impl(&entry_block, dict_value, dict_type, storage)?;
         let dict_capacity = op.result(0)?.into();
+        let op = self.op_u32_const(&entry_block, "1");
+        let const_1_u32 = op.result(0)?.into();
+        let op = self.op_sub(&entry_block, dict_capacity, const_1_u32);
+        let dict_capacity_min_1 = op.result(0)?.into();
 
         // check if we need to resize, done here since get in sierra always finds a slot, whether it existed
         // before or not
-        let op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, dict_len, dict_capacity);
+        let op = self.op_cmp(&entry_block, CmpOp::UnsignedLessThan, dict_len, dict_capacity_min_1);
         let has_enough: Value = op.result(0)?.into();
 
         let resize_block = self.new_block(&[]);
