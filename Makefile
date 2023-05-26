@@ -78,8 +78,7 @@ compile-ll-opt: $(LLVM_OPT_TARGETS)
 bench-ci:
 	cargo bench
 
-bench:
-	@test -n "$(S2M_BENCH_CAIRO_RUNNER)" # S2M_BENCH_CAIRO_RUNNER needs to exist
+bench: build
 	./scripts/comparison.sh
 	cargo bench
 
