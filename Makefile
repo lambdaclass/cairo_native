@@ -76,12 +76,11 @@ compile-ll: $(LLVM_TARGETS)
 compile-ll-opt: $(LLVM_OPT_TARGETS)
 
 bench-ci:
-	cargo bench
+	cargo criterion
 
-bench:
-	@test -n "$(S2M_BENCH_CAIRO_RUNNER)" # S2M_BENCH_CAIRO_RUNNER needs to exist
+bench: build
 	./scripts/comparison.sh
-	cargo bench
+	cargo criterion
 
 clean-examples:
 	-rm -rf examples/*.ll examples/*.mlir examples/*.sierra
