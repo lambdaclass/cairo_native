@@ -76,11 +76,11 @@ compile-ll: $(LLVM_TARGETS)
 compile-ll-opt: $(LLVM_OPT_TARGETS)
 
 bench-ci:
-	cargo bench
+	cargo criterion
 
 bench: build
 	./scripts/comparison.sh
-	cargo bench
+	cargo criterion
 
 clean-examples:
 	-rm -rf examples/*.ll examples/*.mlir examples/*.sierra
