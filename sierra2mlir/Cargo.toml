@@ -15,12 +15,12 @@ name = "sierra2mlir"
 harness = false
 
 [dependencies]
-cairo-lang-compiler = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
-cairo-lang-sierra = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
-cairo-lang-sierra-gas = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
-cairo-lang-sierra-to-casm = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
-cairo-lang-sierra-ap-change = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
-cairo-lang-utils = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
+cairo-lang-compiler = "1.1.0"
+cairo-lang-sierra = "1.1.0"
+cairo-lang-sierra-gas = "1.1.0"
+cairo-lang-sierra-to-casm = "1.1.0"
+cairo-lang-sierra-ap-change = "1.1.0"
+cairo-lang-utils = "1.1.0"
 cfg-match = "0.2.1"
 color-eyre = "0.6.2"
 itertools = "0.10.5"
@@ -33,7 +33,7 @@ tracing = "0.1.37"
 
 [dev-dependencies]
 cairo-felt = "0.3.0-rc1"
-cairo-lang-runner = { git = "https://github.com/starkware-libs/cairo", tag = "v1.1.0-rc0" }
+cairo-lang-runner = "1.1.0"
 cairo-vm = "0.3.0-rc1"
 criterion = "0.5.0"
 test-case = "3.0.0"
