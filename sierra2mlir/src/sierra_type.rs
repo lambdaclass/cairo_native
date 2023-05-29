@@ -29,6 +29,17 @@ pub enum SierraType<'ctx> {
         len_type: Type<'ctx>, // type of length and capacity: u32
         element_type: Box<Self>,
     },
+    Dictionary {
+        /// (u32, u32, ptr, ptr)
+        /// (length, capacity, dict_data, selected_entry_data)
+        /// where dict_data is an array of (key (always felt), value (T), is_used (bool))
+        /// where selected_entry_data is a possible null pointer that references a entry in dict_data
+        ///
+        /// (length, capacity, data, entry?)
+        ty: Type<'ctx>,
+        len_type: Type<'ctx>, // type of length and capacity: u32
+        element_type: Box<Self>,
+    },
 }
 
 impl<'ctx> SierraType<'ctx> {
@@ -40,6 +51,25 @@ impl<'ctx> SierraType<'ctx> {
         SierraType::Array {
             ty: compiler.llvm_struct_type(
                 &[compiler.u32_type(), compiler.u32_type(), compiler.llvm_ptr_type()],
+                false,
+            ),
+            len_type: compiler.u32_type(),
+            element_type: Box::new(element),
+        }
+    }
+
+    pub fn create_dict_type<'c>(
+        compiler: &'c Compiler<'c>,
+        element: SierraType<'c>,
+    ) -> SierraType<'c> {
+        SierraType::Dictionary {
+            ty: compiler.llvm_struct_type(
+                &[
+                    compiler.u32_type(),
+                    compiler.u32_type(),
+                    compiler.llvm_ptr_type(),
+                    compiler.llvm_ptr_type(),
+                ],
                 false,
             ),
             len_type: compiler.u32_type(),
@@ -99,6 +129,12 @@ impl<'ctx> SierraType<'ctx> {
                 // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
                 len_type.get_width().unwrap() * 2 + 64
             }
+            SierraType::Dictionary { ty: _, len_type, element_type: _ } => {
+                // 64 is the pointer size, assuming here
+                // TODO: find a better way to find the pointer size? it would require getting the context here
+                // NOTE: This should at least be safe, since overestimating type sizes is generally okay, it just means extra space may be allocated
+                len_type.get_width().unwrap() * 2 + 64 * 2
+            }
         }
     }
 
@@ -125,6 +161,7 @@ impl<'ctx> SierraType<'ctx> {
                     .unwrap_or(0)
             }
             SierraType::Array { .. } => 2,
+            SierraType::Dictionary { .. } => 2, // TODO: check
         }
     }
 
@@ -141,26 +178,13 @@ impl<'ctx> SierraType<'ctx> {
                 variants_types: _,
             } => *ty,
             Self::Array { ty, .. } => *ty,
+            Self::Dictionary { ty, .. } => *ty,
         }
     }
 
     /// Returns the mlir representation of the type, paired with an unknown Location. Used for block arguments
     pub fn get_type_location(&self, context: &'ctx Context) -> (Type<'ctx>, Location<'ctx>) {
-        (
-            match self {
-                Self::Simple(ty) => *ty,
-                Self::Struct { ty, field_types: _ } => *ty,
-                Self::Enum {
-                    ty,
-                    tag_type: _,
-                    storage_bytes_len: _,
-                    storage_type: _,
-                    variants_types: _,
-                } => *ty,
-                Self::Array { ty, .. } => *ty,
-            },
-            Location::unknown(context),
-        )
+        (self.get_type(), Location::unknown(context))
     }
 
     /// Returns a vec of field types if this is a struct type.

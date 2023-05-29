@@ -1,3 +1,4 @@
+use ahash::RandomState;
 use core::slice;
 use starknet_crypto::FieldElement;
 
@@ -66,4 +67,20 @@ pub unsafe extern "C" fn sierra2mlir_util_hades_permutation(
     op0.copy_from_slice(&state[0].to_bytes_be());
     op1.copy_from_slice(&state[1].to_bytes_be());
     op2.copy_from_slice(&state[2].to_bytes_be());
+}
+
+/// Computes the hash for the given i256 (you should zext a felt252 to 256 before passing it here).
+///
+/// Endianess should be consistent across calls to ensure the same results.
+/// Currently little endian is used.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn sierra2mlir_hash_i256(data: *mut u8) -> u64 {
+    let data = slice::from_raw_parts_mut(data, 32);
+    let hash_builder = RandomState::with_seed(0xbeef);
+    hash_builder.hash_one(data)
 }

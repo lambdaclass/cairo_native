@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use cairo_lang_sierra::program::{GenericArg, LibfuncDeclaration};
 use color_eyre::Result;
 use itertools::Itertools;
-use melior_next::ir::{operation, Block, Location, Type, Value, ValueLike};
+use melior_next::ir::{operation, Block, Location, Type, TypeLike, Value, ValueLike};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use tracing::debug;
@@ -358,6 +358,18 @@ impl<'ctx> Compiler<'ctx> {
                 }
                 "unwrap_non_zero" => {
                     self.create_libfunc_unwrap_non_zero(func_decl, storage)?;
+                }
+                "felt252_dict_new" => {
+                    self.create_libfunc_felt252_dict_new(func_decl, storage)?;
+                }
+                "felt252_dict_squash" => {
+                    self.create_libfunc_felt252_dict_squash(func_decl, storage)?;
+                }
+                "felt252_dict_entry_get" => {
+                    self.create_libfunc_felt252_dict_entry_get(func_decl, storage)?;
+                }
+                "felt252_dict_entry_finalize" => {
+                    self.create_libfunc_felt252_dict_entry_finalize(func_decl, storage)?;
                 }
                 "array_slice" => {
                     self.register_libfunc_array_slice(func_decl, storage);
@@ -2775,6 +2787,274 @@ impl<'ctx> Compiler<'ctx> {
         );
 
         Ok(())
+    }
+
+    // felt252_dict_new<T>([1]) -> ([3], [4]);
+    pub fn create_libfunc_felt252_dict_new(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let block = self.new_block(&[]);
+
+        let felt_type = self.felt_type();
+        let bool_type = self.bool_type();
+        let sierra_type = SierraType::create_dict_type(self, arg_type.clone());
+
+        // Initially create an undefined struct to insert the values into
+        let dict_value_op = self.op_llvm_undef(&block, sierra_type.get_type());
+        let dict_value: Value = dict_value_op.result(0)?.into();
+
+        // Length/capacity is 8 on creation
+        let dict_len_op = self.op_u32_const(&block, "0");
+        let dict_len = dict_len_op.result(0)?.into();
+
+        let dict_capacity_op = self.op_u32_const(&block, "8");
+        let dict_capacity = dict_capacity_op.result(0)?.into();
+
+        // The size in bytes of one element in the dict array
+        // (key (always felt), value (T), is_used (bool))
+        let dict_slot_size_bytes = ((felt_type.get_width().unwrap()
+            + arg_type.get_width()
+            + bool_type.get_width().unwrap())
+            + 7)
+            / 8;
+
+        // length
+        let set_len_op =
+            self.call_dict_set_len_impl(&block, dict_value, dict_len, &sierra_type, storage)?;
+        let dict_value: Value = set_len_op.result(0)?.into();
+
+        let set_capacity_op = self.call_dict_set_capacity_impl(
+            &block,
+            dict_value,
+            dict_capacity,
+            &sierra_type,
+            storage,
+        )?;
+        let dict_value: Value = set_capacity_op.result(0)?.into();
+
+        // 8 here is the capacity
+        let const_dict_size_bytes_op =
+            self.op_const(&block, &(dict_slot_size_bytes * 8).to_string(), self.u64_type());
+        let const_dict_size_bytes = const_dict_size_bytes_op.result(0)?;
+
+        let null_ptr_op = self.op_llvm_nullptr(&block);
+        let null_ptr = null_ptr_op.result(0)?;
+
+        let ptr_op =
+            self.call_realloc(&block, null_ptr.into(), const_dict_size_bytes.into(), storage)?;
+        let ptr_val = ptr_op.result(0)?.into();
+
+        // zero all data (mainly to set the unused field bool to zero)
+        let zero_val_op = self.op_u8_const(&block, "0");
+        let zero_val = zero_val_op.result(0)?.into();
+        self.op_llvm_memset(&block, ptr_val, zero_val, const_dict_size_bytes.into())?;
+
+        let set_data_ptr_op =
+            self.call_dict_set_data_ptr(&block, dict_value, ptr_val, &sierra_type, storage)?;
+        let dict_value: Value = set_data_ptr_op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![],
+                return_types: vec![PositionalArg { loc: 1, ty: sierra_type.clone() }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    // noop in llvm mlir
+    pub fn create_libfunc_felt252_dict_squash(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let arg_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let sierra_type = SierraType::create_dict_type(self, arg_type.clone());
+
+        // TODO: i think we need to spend gas here.
+
+        let block = self.new_block(&[sierra_type.get_type()]);
+        let dict_value = block.argument(0)?.into();
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::Function {
+                args: vec![PositionalArg { loc: 3, ty: sierra_type.clone() }],
+                return_types: vec![PositionalArg { loc: 3, ty: sierra_type.clone() }],
+            },
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[sierra_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    /// felt252_dict_entry_get<t>(dict, key) -> (dict_entry, value)
+    pub fn create_libfunc_felt252_dict_entry_get(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let entry_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let dict_type = SierraType::create_dict_type(self, entry_type.clone());
+        let felt_type = self.felt_type();
+        // (key (always felt), value (T), is_used (bool))
+        let entry_struct_type = self
+            .llvm_struct_type(&[self.felt_type(), entry_type.get_type(), self.bool_type()], false);
+
+        let block = self.new_block(&[dict_type.get_type(), felt_type]);
+        let dict_value: Value = block.argument(0)?.into();
+        let dict_key: Value = block.argument(1)?.into();
+
+        // future proof safeguard in case we change felt size.
+        assert_eq!(
+            dict_key.r#type().get_width().unwrap(),
+            256,
+            "felt size changed, dict needs a update to zext the key type"
+        );
+
+        let op = self.call_dict_get_unchecked(&block, dict_value, &dict_type, dict_key, storage)?;
+        let dict_value: Value = op.result(0)?.into();
+        let entry_ptr: Value = op.result(1)?.into();
+
+        // set the entry key
+        let op = self.op_llvm_gep(&block, &[0, 0], entry_ptr, entry_struct_type)?;
+        let entry_key_ptr: Value = op.result(0)?.into();
+        self.op_llvm_store(&block, dict_key, entry_key_ptr)?;
+
+        let op = self.op_const(&block, "1", self.bool_type());
+        let const_true = op.result(0)?.into();
+        let op = self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr: Value = op.result(0)?.into();
+        self.op_llvm_store(&block, const_true, entry_is_used_ptr)?;
+
+        // element value
+        let op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
+        let entry_element_ptr: Value = op.result(0)?.into();
+
+        // save the entry ptr
+        let op =
+            self.call_dict_set_entry_ptr(&block, dict_value, entry_ptr, &dict_type, storage)?;
+        let dict_value = op.result(0)?.into();
+
+        // get the entry value
+        let op = self.op_llvm_load(&block, entry_element_ptr, entry_type.get_type())?;
+        let entry_value: Value = op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value, entry_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::create_function_all_args(
+                vec![dict_type.clone(), SierraType::Simple(felt_type)],
+                vec![dict_type.clone(), entry_type.clone()],
+            ),
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[dict_type.get_type(), entry_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
+    }
+
+    /// felt252_dict_entry_finalize<T> (dict_with_entry, value) -> dict
+    pub fn create_libfunc_felt252_dict_entry_finalize(
+        &'ctx self,
+        func_decl: &LibfuncDeclaration,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<()> {
+        let id = func_decl.id.debug_name.as_ref().unwrap().to_string();
+        let entry_type = storage
+            .types
+            .get(&get_type_id(&func_decl.long_id.generic_args[0]))
+            .cloned()
+            .expect("type to exist");
+
+        let dict_type = SierraType::create_dict_type(self, entry_type.clone());
+        // (key (always felt), value (T), is_used (bool))
+        let entry_struct_type = self
+            .llvm_struct_type(&[self.felt_type(), entry_type.get_type(), self.bool_type()], false);
+
+        let block = self.new_block(&[dict_type.get_type(), entry_type.get_type()]);
+        let dict_value: Value = block.argument(0)?.into();
+        let value: Value = block.argument(1)?.into();
+
+        let op = self.op_const(&block, "1", self.bool_type());
+        let true_const = op.result(0)?.into();
+
+        let op = self.call_dict_get_entry_ptr(&block, dict_value, &dict_type, storage)?;
+        let entry_ptr = op.result(0)?.into();
+
+        let op = self.op_llvm_gep(&block, &[0, 1], entry_ptr, entry_struct_type)?;
+        let entry_value_ptr: Value = op.result(0)?.into();
+        let op = self.op_llvm_gep(&block, &[0, 2], entry_ptr, entry_struct_type)?;
+        let entry_is_used_ptr: Value = op.result(0)?.into();
+
+        self.op_llvm_store(&block, true_const, entry_is_used_ptr)?;
+        self.op_llvm_store(&block, value, entry_value_ptr)?;
+
+        let null_ptr_const_op = self.op_llvm_nullptr(&block);
+        let dict_value_op = self.call_dict_set_entry_ptr(
+            &block,
+            dict_value,
+            null_ptr_const_op.result(0)?.into(),
+            &dict_type,
+            storage,
+        )?;
+        let dict_value = dict_value_op.result(0)?.into();
+
+        self.op_return(&block, &[dict_value]);
+
+        storage.libfuncs.insert(
+            id.clone(),
+            SierraLibFunc::create_function_all_args(
+                vec![dict_type.clone(), entry_type],
+                vec![dict_type.clone()],
+            ),
+        );
+
+        self.create_function(
+            &id,
+            vec![block],
+            &[dict_type.get_type()],
+            FnAttributes::libfunc(false, true),
+        )
     }
 
     pub fn register_libfunc_array_slice(

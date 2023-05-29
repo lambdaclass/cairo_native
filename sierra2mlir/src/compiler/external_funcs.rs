@@ -114,6 +114,31 @@ impl<'ctx> Compiler<'ctx> {
 
         Ok(())
     }
+
+    fn create_hash_i256(&'ctx self, storage: &mut Storage<'ctx>) -> Result<()> {
+        if storage.helperfuncs.contains("hash_i256") {
+            return Ok(());
+        }
+
+        storage.helperfuncs.insert("hash_i256".to_string());
+
+        let region = Region::new();
+        let func = operation::Builder::new("llvm.func", Location::unknown(&self.context))
+            .add_attributes(&NamedAttribute::new_parsed_vec(
+                &self.context,
+                &[
+                    ("sym_name", "\"sierra2mlir_hash_i256\""),
+                    ("function_type", "!llvm.func<i64 (ptr)>"),
+                    ("linkage", "#llvm.linkage<external>"),
+                ],
+            )?)
+            .add_regions(vec![region])
+            .build();
+
+        self.module.body().append_operation(func);
+
+        Ok(())
+    }
 }
 
 // Function use
@@ -171,6 +196,16 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
+    pub fn call_free<'block>(
+        &'ctx self,
+        block: &'block Block,
+        ptr: Value,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        self.create_free(storage)?;
+        self.op_llvm_call(block, "free", &[ptr], &[])
+    }
+
     /// value needs to be u64 and is the size in bytes.
     pub fn call_realloc<'block>(
         &'ctx self,
@@ -193,5 +228,16 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<OperationRef<'block>> {
         self.create_memmove(storage)?;
         self.op_llvm_call(block, "memmove", &[dst, src, size], &[self.llvm_ptr_type()])
+    }
+
+    /// ptr needs to be a pointer to a 256 (or 32 x i8)
+    pub fn call_hash_i256<'block>(
+        &'ctx self,
+        block: &'block Block,
+        ptr: Value,
+        storage: &mut Storage<'ctx>,
+    ) -> Result<OperationRef<'block>> {
+        self.create_hash_i256(storage)?;
+        self.op_llvm_call(block, "sierra2mlir_hash_i256", &[ptr], &[self.u64_type()])
     }
 }
