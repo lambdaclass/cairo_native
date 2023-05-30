@@ -38,10 +38,12 @@ jobs:
           tool: hyperfine@1.16
       - name: Fetch corelibs.
         run: ./scripts/fetch-corelibs.sh
+      - name: Fetch and build cairo.
+        run: git clone --depth 1 --branch v1.0.0-alpha.6 https://github.com/starkware-libs/cairo.git starkware-cairo && cd starkware-cairo && cargo build --release
       - name: Build project
         run: make build
       - name: Run benchmarks
-        run: ./scripts/bench-hyperfine.sh
+        run: PATH="starkware-cairo/target/release/:$PATH" && ./scripts/bench-hyperfine.sh
 
       - run: find target/bench-outputs/*.cairo -exec cat {} + >> bench-hyperfine.md
       - uses: peter-evans/find-comment@v2
