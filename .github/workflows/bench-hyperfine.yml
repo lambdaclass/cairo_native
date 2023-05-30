@@ -36,6 +36,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: hyperfine@1.16
+      - name: Fetch corelibs.
+        run: ./scripts/fetch-corelibs.sh
       - name: Build project
         run: make build
       - name: Run benchmarks
