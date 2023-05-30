@@ -1,4 +1,4 @@
-name: Hyperfine benchmark
+name: Bench
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   bench-hyperfine:
-    name: Run benchmarks
+    name: Hyperfine
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
