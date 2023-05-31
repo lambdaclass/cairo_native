@@ -39,11 +39,11 @@ jobs:
       - name: Fetch corelibs.
         run: ./scripts/fetch-corelibs.sh
       - name: Fetch and build cairo.
-        run: git clone --depth 1 --branch v1.0.0-alpha.6 https://github.com/starkware-libs/cairo.git starkware-cairo && cd starkware-cairo && cargo build --release
+        run: wget https://github.com/starkware-libs/cairo/releases/download/v1.1.0/release-x86_64-unknown-linux-musl.tar.gz && tar xvf release-x86_64-unknown-linux-musl.tar.gz
       - name: Build project
         run: make build
       - name: Run benchmarks
-        run: PATH="starkware-cairo/target/release/:$PATH" && ./scripts/bench-hyperfine.sh
+        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh
 
       - run: find target/bench-outputs/*.cairo -exec cat {} + >> bench-hyperfine.md
       - uses: peter-evans/find-comment@v2
