@@ -75,7 +75,7 @@ count=1
 for program in "${CAIRO_SRCS[@]}"
 do
     echo "[$count/${#CAIRO_SRCS[@]}] Benchmarking program at $program."
-    run_bench "sierra2mlir/benches/programs/fib.cairo"
+    run_bench "$program"
 
     count=$((count + 1))
 done
