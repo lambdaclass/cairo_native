@@ -45,7 +45,7 @@ jobs:
       - name: Run benchmarks
         run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh
 
-      - run: .github/scripts/merge-hyperfine.sh
+      - run: bash .github/scripts/merge-hyperfine.sh
       - uses: peter-evans/find-comment@v2
         id: fc
         with:
