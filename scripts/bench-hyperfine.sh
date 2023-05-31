@@ -53,6 +53,10 @@ run_bench() {
 
     "$MLIR_DIR/bin/clang" \
         "$OUTPUT_DIR/$base_name.ll" \
+        -L "$MLIR_DIR/lib" \
+        -L "target/release" \
+        -lmlir_c_runner_utils \
+        -lsierra2mlir_utils \
         -o "$OUTPUT_DIR/$base_name" \
         >> /dev/stderr
 
