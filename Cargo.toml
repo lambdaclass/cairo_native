@@ -8,6 +8,8 @@ members = [
     "sierra2mlir-utils",
 ]
 
+resolver = "2"
+
 [profile.ci-coverage]
 inherits = "dev"
 opt-level = 3
