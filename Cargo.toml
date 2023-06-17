@@ -4,3 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+cairo-lang-compiler = "2.0.0-rc0"
+cairo-lang-diagnostics = "2.0.0-rc0"
+cairo-lang-defs = "2.0.0-rc0"
+cairo-lang-filesystem = "2.0.0-rc0"
+cairo-lang-lowering = "2.0.0-rc0"
+cairo-lang-sierra = "2.0.0-rc0"
+cairo-lang-sierra-generator = "2.0.0-rc0"
+id-arena = "2.2.1"
+itertools = "0.10.5"
+melior = "0.9.4"
+tracing = "0.1.37"
+
+[build-dependencies]
+cc = "1.0.79"
