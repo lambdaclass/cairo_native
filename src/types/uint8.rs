@@ -1,9 +1,16 @@
-use super::{TypeBuilder, TypeBuilderContext};
-use cairo_lang_sierra::extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType};
-use melior::ir::{r#type::IntegerType, Type};
+use super::TypeBuilder;
+use cairo_lang_sierra::{
+    extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
+    program_registry::ProgramRegistry,
+};
+use melior::{
+    ir::{r#type::IntegerType, Type},
+    Context,
+};
 
 pub fn build<'ctx, TType, TLibfunc>(
-    context: TypeBuilderContext<'ctx, '_, TType, TLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     _info: &InfoOnlyConcreteType,
 ) -> Result<Type<'ctx>, std::convert::Infallible>
 where
@@ -11,5 +18,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder,
 {
-    Ok(IntegerType::new(context.context(), 8).into())
+    Ok(IntegerType::new(context, 8).into())
 }

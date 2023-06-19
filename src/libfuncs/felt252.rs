@@ -38,7 +38,7 @@ where
         .registry()
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(*context)
+        .build(context.context(), context.registry())
         .unwrap();
 
     let op0 = context.entry().append_operation(arith::constant(

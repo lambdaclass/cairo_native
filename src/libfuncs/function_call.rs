@@ -26,7 +26,7 @@ where
                 .registry()
                 .get_type(&x.ty)
                 .unwrap()
-                .build(*context)
+                .build(context.context(), context.registry())
                 .unwrap()
         })
         .collect::<Vec<_>>();

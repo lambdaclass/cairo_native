@@ -1,10 +1,14 @@
-use super::{TypeBuilder, TypeBuilderContext};
-use cairo_lang_sierra::extensions::{structure::StructConcreteType, GenericLibfunc, GenericType};
-use melior::ir::Type;
+use super::TypeBuilder;
+use cairo_lang_sierra::{
+    extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
+    program_registry::ProgramRegistry,
+};
+use melior::{ir::Type, Context};
 use std::{borrow::Cow, iter::once};
 
 pub fn build<'ctx, TType, TLibfunc>(
-    context: TypeBuilderContext<'ctx, '_, TType, TLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     info: &StructConcreteType,
 ) -> Result<Type<'ctx>, std::convert::Infallible>
 where
@@ -18,11 +22,10 @@ where
                 .iter()
                 .map(|x| {
                     Cow::Owned(
-                        context
-                            .registry
+                        registry
                             .get_type(x)
                             .unwrap()
-                            .build(context)
+                            .build(context, registry)
                             .unwrap()
                             .to_string(),
                     )
@@ -32,5 +35,5 @@ where
         .chain(once(Cow::Borrowed(")>")))
         .collect::<String>();
 
-    Ok(Type::parse(context.context(), &type_asm).unwrap())
+    Ok(Type::parse(context, &type_asm).unwrap())
 }
