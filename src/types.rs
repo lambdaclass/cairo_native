@@ -138,9 +138,9 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => todo!(),
             Self::Uint128MulGuarantee(_) => todo!(),
             Self::Uint16(_) => todo!(),
-            Self::Uint32(_) => todo!(),
+            Self::Uint32(info) => self::uint32::build(context, info),
             Self::Uint64(_) => todo!(),
-            Self::Uint8(_) => todo!(),
+            Self::Uint8(info) => self::uint8::build(context, info),
             Self::Uninitialized(_) => todo!(),
         }
     }
