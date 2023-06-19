@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 
 function find_llvm_config() {
     # Find LLVM by the prefix environment variable.
