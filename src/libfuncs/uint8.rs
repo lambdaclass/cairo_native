@@ -1,16 +1,24 @@
-use super::{LibfuncBuilder, LibfuncBuilderContext};
+use super::{LibfuncBuilder, LibfuncHelper};
 use crate::types::TypeBuilder;
-use cairo_lang_sierra::extensions::{
-    int::unsigned::{Uint8Concrete, Uint8Traits, UintConcrete, UintConstConcreteLibfunc},
-    GenericLibfunc, GenericType,
+use cairo_lang_sierra::{
+    extensions::{
+        int::unsigned::{Uint8Concrete, Uint8Traits, UintConcrete, UintConstConcreteLibfunc},
+        GenericLibfunc, GenericType,
+    },
+    program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::arith::{self},
-    ir::Attribute,
+    ir::{Attribute, Block, Location},
+    Context,
 };
 
-pub fn build<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     selector: &Uint8Concrete,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -20,7 +28,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     match selector {
-        UintConcrete::Const(info) => build_const(context, info),
+        UintConcrete::Const(info) => build_const(context, registry, entry, location, helper, info),
         UintConcrete::Operation(_) => todo!(),
         UintConcrete::SquareRoot(_) => todo!(),
         UintConcrete::Equal(_) => todo!(),
@@ -32,8 +40,12 @@ where
     }
 }
 
-pub fn build_const<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     info: &UintConstConcreteLibfunc<Uint8Traits>,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -43,21 +55,18 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let value = info.c;
-    let value_ty = context
-        .registry()
+    let value_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context.context(), context.registry())
+        .build(context, registry)
         .unwrap();
 
-    let op0 = context.entry().append_operation(arith::constant(
-        context.context(),
-        Attribute::parse(context.context(), &format!("{value} : {value_ty}")).unwrap(),
-        context.location(),
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        location,
     ));
-    context
-        .entry()
-        .append_operation(context.br(0, &[op0.result(0).unwrap().into()]));
+    entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
 
     Ok(())
 }

@@ -10,7 +10,7 @@ use melior::{
 
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     _info: &InfoOnlyConcreteType,
 ) -> Result<Type<'ctx>, std::convert::Infallible>
 where

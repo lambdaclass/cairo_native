@@ -1,11 +1,20 @@
-use super::{LibfuncBuilder, LibfuncBuilderContext};
+use super::{LibfuncBuilder, LibfuncHelper};
 use crate::types::TypeBuilder;
-use cairo_lang_sierra::extensions::{
-    lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType,
+use cairo_lang_sierra::{
+    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    program_registry::ProgramRegistry,
+};
+use melior::{
+    ir::{Block, Location},
+    Context,
 };
 
-pub fn build<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -14,7 +23,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    context.entry().append_operation(context.br(0, &[]));
+    entry.append_operation(helper.br(0, &[], location));
 
     Ok(())
 }
