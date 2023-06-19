@@ -34,6 +34,9 @@ pub(crate) mod ffi;
 pub mod libfuncs;
 pub mod types;
 
+type BlockStorage<'c, 'a> =
+    HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>;
+
 pub fn compile<'c, TType, TLibfunc>(
     context: &'c Context,
     program: &Program,
@@ -136,71 +139,6 @@ where
             match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
                     let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
-
-                    // let result_variables = Rc::new(
-                    //     invocation
-                    //         .branches
-                    //         .iter()
-                    //         .map(|x| vec![Cell::new(None); x.results.len()])
-                    //         .collect::<Vec<_>>(),
-                    // );
-                    // let build_ctx = LibfuncBuilderContext::new(
-                    //     context,
-                    //     registry,
-                    //     module,
-                    //     block,
-                    //     Location::unknown(context),
-                    //     invocation
-                    //         .branches
-                    //         .iter()
-                    //         .map(|branch| {
-                    //             let target_idx = statement_idx.next(&branch.target);
-                    //             let (landing_block, block) = &blocks[&target_idx];
-
-                    //             match landing_block {
-                    //                 Some((landing_block, state_vars)) => {
-                    //                     let target_vars = state_vars
-                    //                         .iter()
-                    //                         .map(|var_id| {
-                    //                             match branch
-                    //                                 .results
-                    //                                 .iter()
-                    //                                 .find_position(|id| *id == var_id)
-                    //                             {
-                    //                                 Some((i, _)) => BranchArg::Returned(i),
-                    //                                 None => BranchArg::External(state[var_id]),
-                    //                             }
-                    //                         })
-                    //                         .collect::<Vec<_>>();
-
-                    //                     (landing_block.deref(), target_vars)
-                    //                 }
-                    //                 None => {
-                    //                     let target_vars = match &statements[target_idx.0] {
-                    //                         Statement::Invocation(x) => &x.args,
-                    //                         Statement::Return(x) => x,
-                    //                     }
-                    //                     .iter()
-                    //                     .map(|var_id| {
-                    //                         match branch
-                    //                             .results
-                    //                             .iter()
-                    //                             .enumerate()
-                    //                             .find_map(|(i, id)| (id == var_id).then_some(i))
-                    //                         {
-                    //                             Some(i) => BranchArg::Returned(i),
-                    //                             None => BranchArg::External(state[var_id]),
-                    //                         }
-                    //                     })
-                    //                     .collect::<Vec<_>>();
-
-                    //                     (block.deref(), target_vars)
-                    //                 }
-                    //             }
-                    //         })
-                    //         .collect(),
-                    //     Rc::clone(&result_variables),
-                    // );
 
                     let helper = LibfuncHelper {
                         _module: module,
@@ -334,13 +272,7 @@ fn generate_function_structure<'c, 'a, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     function: &Function,
     statements: &[Statement],
-) -> Result<
-    (
-        BlockRef<'c, 'a>,
-        HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>,
-    ),
-    Box<dyn std::error::Error>,
->
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Box<dyn std::error::Error>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
