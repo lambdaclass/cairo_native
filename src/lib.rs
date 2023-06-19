@@ -1,4 +1,3 @@
-#![feature(hash_drain_filter)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 
@@ -23,7 +22,7 @@ use melior::{
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{hash_map::Entry, BTreeMap, HashMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
     rc::Rc,
 };
@@ -215,18 +214,26 @@ where
 
             let libfunc_block = region.append_block(block);
             let landing_block = (predecessors[&statement_idx].1 > 1).then(|| {
-                region.insert_block_before(
-                    libfunc_block,
-                    Block::new(
-                        &predecessors[&statement_idx]
-                            .0
-                            .iter()
-                            .map(|(var_id, ty)| (var_id.id, *ty))
-                            .collect::<BTreeMap<_, _>>()
-                            .into_values()
-                            .map(|ty| (ty, Location::unknown(context)))
-                            .collect::<Vec<_>>(),
+                (
+                    region.insert_block_before(
+                        libfunc_block,
+                        Block::new(
+                            &predecessors[&statement_idx]
+                                .0
+                                .iter()
+                                .map(|(var_id, ty)| (var_id.id, *ty))
+                                .collect::<BTreeMap<_, _>>()
+                                .into_values()
+                                .map(|ty| (ty, Location::unknown(context)))
+                                .collect::<Vec<_>>(),
+                        ),
                     ),
+                    predecessors[&statement_idx]
+                        .0
+                        .clone()
+                        .into_iter()
+                        .sorted_by_key(|(k, _)| k.id)
+                        .collect::<Vec<_>>(),
                 )
             });
 
@@ -257,10 +264,16 @@ where
     ));
 
     let mut queue = vec![(function.entry_point, initial_state)];
+    let mut visited = HashSet::new();
     while let Some((statement_idx, mut state)) = queue.pop() {
+        if visited.contains(&statement_idx) {
+            continue;
+        }
+        visited.insert(statement_idx);
+
         let (landing_block, block) = &blocks[&statement_idx];
 
-        if let Some(landing_block) = landing_block {
+        if let Some((landing_block, _)) = landing_block {
             state = edit_state::put_results::<Value>(
                 HashMap::new(),
                 state
@@ -270,6 +283,21 @@ where
                     .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
             )
             .unwrap();
+
+            landing_block.append_operation(cf::br(
+                block,
+                &edit_state::take_args(
+                    state.clone(),
+                    match &statements[statement_idx.0] {
+                        Statement::Invocation(x) => &x.args,
+                        Statement::Return(x) => x,
+                    }
+                    .iter(),
+                )
+                .unwrap()
+                .1,
+                Location::unknown(context),
+            ));
         }
 
         match &statements[statement_idx.0] {
@@ -297,7 +325,24 @@ where
                             let (landing_block, block) = &blocks[&target_idx];
 
                             match landing_block {
-                                Some(_) => todo!(),
+                                Some((landing_block, state_vars)) => {
+                                    let target_vars = state_vars
+                                        .iter()
+                                        .map(|(var_id, _)| {
+                                            match branch
+                                                .results
+                                                .iter()
+                                                .enumerate()
+                                                .find_map(|(i, id)| (id == var_id).then_some(i))
+                                            {
+                                                Some(i) => BranchArg::Returned(i),
+                                                None => BranchArg::External(state[var_id]),
+                                            }
+                                        })
+                                        .collect::<Vec<_>>();
+
+                                    (landing_block.deref(), target_vars)
+                                }
                                 None => {
                                     let target_vars = match &statements[target_idx.0] {
                                         Statement::Invocation(x) => &x.args,
@@ -366,10 +411,6 @@ where
         TypeAttribute::new(FunctionType::new(context, &param_types, &ret_types).into()),
         region,
         &[
-            // (
-            //     Identifier::new(context, "sym_name"),
-            //     StringAttribute::new(context, &function_name).into(),
-            // ),
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),

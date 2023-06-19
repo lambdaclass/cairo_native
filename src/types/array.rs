@@ -1,6 +1,9 @@
 use super::{TypeBuilder, TypeBuilderContext};
 use cairo_lang_sierra::extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType};
-use melior::ir::{r#type::MemRefType, Type};
+use melior::{
+    dialect::llvm,
+    ir::{r#type::IntegerType, Type},
+};
 
 pub fn build<'ctx, TType, TLibfunc>(
     context: TypeBuilderContext<'ctx, '_, TType, TLibfunc>,
@@ -17,11 +20,14 @@ where
         .unwrap()
         .build(context)
         .unwrap();
-    let array_ty = MemRefType::new(item_ty, &[i64::MIN as _], None, None);
 
-    Ok(Type::parse(
+    Ok(llvm::r#type::r#struct(
         context.context(),
-        &format!("!llvm.struct<({array_ty}, ui32)>"),
-    )
-    .unwrap())
+        &[
+            item_ty,
+            IntegerType::new(context.context, 32).into(),
+            IntegerType::new(context.context, 32).into(),
+        ],
+        false,
+    ))
 }

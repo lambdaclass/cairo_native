@@ -131,8 +131,60 @@ where
         cf::br(successor, &destination_operands, self.location())
     }
 
-    pub fn cond_br() {
-        todo!()
+    // TODO: Allow one block to be libfunc-internal.
+    pub fn cond_br(
+        &self,
+        condition: Value<'ctx, 'this>,
+        branches: (usize, usize),
+        results: &[Value<'ctx, 'this>],
+    ) -> Operation<'ctx> {
+        let (block_true, args_true) = {
+            let (successor, operands) = &self.branches[branches.0];
+
+            for (dst, src) in self.results[branches.0].iter().zip(results) {
+                dst.replace(Some(*src));
+            }
+
+            let destination_operands = operands
+                .iter()
+                .copied()
+                .map(|op| match op {
+                    BranchArg::External(x) => x,
+                    BranchArg::Returned(i) => results[i],
+                })
+                .collect::<Vec<_>>();
+
+            (*successor, destination_operands)
+        };
+
+        let (block_false, args_false) = {
+            let (successor, operands) = &self.branches[branches.1];
+
+            for (dst, src) in self.results[branches.1].iter().zip(results) {
+                dst.replace(Some(*src));
+            }
+
+            let destination_operands = operands
+                .iter()
+                .copied()
+                .map(|op| match op {
+                    BranchArg::External(x) => x,
+                    BranchArg::Returned(i) => results[i],
+                })
+                .collect::<Vec<_>>();
+
+            (*successor, destination_operands)
+        };
+
+        cf::cond_br(
+            self.context(),
+            condition,
+            block_true,
+            block_false,
+            &args_true,
+            &args_false,
+            self.location(),
+        )
     }
 }
 
@@ -171,9 +223,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     {
         match self {
             Self::ApTracking(_) => todo!(),
-            Self::Array(selector) => self::array::build(context, selector),
+            Self::Array(_) => todo!(),
             Self::Bitwise(_) => todo!(),
-            Self::BranchAlign(_) => todo!(),
+            Self::BranchAlign(info) => self::branch_align::build(context, info),
             Self::Bool(_) => todo!(),
             Self::Box(_) => todo!(),
             Self::Cast(_) => todo!(),
@@ -183,9 +235,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252(selector) => self::felt252::build(context, selector),
             Self::FunctionCall(info) => self::function_call::build(context, info),
             Self::Gas(_) => todo!(),
-            Self::Uint8(_) => todo!(),
+            Self::Uint8(selector) => self::uint8::build(context, selector),
             Self::Uint16(_) => todo!(),
-            Self::Uint32(_) => todo!(),
+            Self::Uint32(selector) => self::uint32::build(context, selector),
             Self::Uint64(_) => todo!(),
             Self::Uint128(_) => todo!(),
             Self::Uint256(_) => todo!(),
@@ -193,7 +245,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Mem(selector) => self::mem::build(context, selector),
             Self::Nullable(_) => todo!(),
             Self::UnwrapNonZero(_) => todo!(),
-            Self::UnconditionalJump(_) => todo!(),
+            Self::UnconditionalJump(info) => self::unconditional_jump::build(context, info),
             Self::Enum(_) => todo!(),
             Self::Struct(selector) => self::r#struct::build(context, selector),
             Self::Felt252Dict(_) => todo!(),
@@ -201,7 +253,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
             Self::StarkNet(_) => todo!(),
-            Self::Debug(selector) => self::debug::build(context, selector),
+            Self::Debug(_) => todo!(),
             Self::SnapshotTake(_) => todo!(),
         }
     }
