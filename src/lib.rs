@@ -9,7 +9,7 @@ use crate::{
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
-    ids::ConcreteTypeId,
+    ids::{ConcreteTypeId, VarId},
     program::{Function, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
@@ -20,7 +20,7 @@ use melior::{
     ir::{
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Identifier, Location, Module, Region, Type, Value,
+        Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -71,6 +71,216 @@ fn compile_func<TType, TLibfunc>(
     function: &Function,
     statements: &[Statement],
 ) -> Result<(), Box<dyn std::error::Error>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    let region = Region::new();
+    let (entry_block, blocks) =
+        generate_function_structure(context, &region, registry, function, statements).unwrap();
+
+    let initial_state = edit_state::put_results(
+        HashMap::<_, Value>::new(),
+        function
+            .params
+            .iter()
+            .enumerate()
+            .map(|(idx, param)| (&param.id, entry_block.argument(idx).unwrap().into())),
+    )
+    .unwrap();
+
+    entry_block.append_operation(cf::br(
+        &blocks[&function.entry_point].1,
+        &match &statements[function.entry_point.0] {
+            Statement::Invocation(x) => &x.args,
+            Statement::Return(x) => x,
+        }
+        .iter()
+        .map(|x| initial_state[x])
+        .collect::<Vec<_>>(),
+        Location::unknown(context),
+    ));
+
+    foreach_statement_in_function(
+        statements,
+        function.entry_point,
+        initial_state,
+        |statement_idx, mut state| {
+            let (landing_block, block) = &blocks[&statement_idx];
+
+            if let Some((landing_block, _)) = landing_block {
+                state = edit_state::put_results(
+                    HashMap::default(),
+                    state
+                        .keys()
+                        .sorted_by_key(|x| x.id)
+                        .enumerate()
+                        .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
+                )
+                .unwrap();
+
+                landing_block.append_operation(cf::br(
+                    block,
+                    &edit_state::take_args(
+                        state.clone(),
+                        match &statements[statement_idx.0] {
+                            Statement::Invocation(x) => &x.args,
+                            Statement::Return(x) => x,
+                        }
+                        .iter(),
+                    )
+                    .unwrap()
+                    .1,
+                    Location::unknown(context),
+                ));
+            }
+
+            match &statements[statement_idx.0] {
+                Statement::Invocation(invocation) => {
+                    let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
+
+                    let result_variables = Rc::new(
+                        invocation
+                            .branches
+                            .iter()
+                            .map(|x| vec![Cell::new(None); x.results.len()])
+                            .collect::<Vec<_>>(),
+                    );
+                    let build_ctx = LibfuncBuilderContext::new(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        Location::unknown(context),
+                        invocation
+                            .branches
+                            .iter()
+                            .map(|branch| {
+                                let target_idx = statement_idx.next(&branch.target);
+                                let (landing_block, block) = &blocks[&target_idx];
+
+                                match landing_block {
+                                    Some((landing_block, state_vars)) => {
+                                        let target_vars = state_vars
+                                            .iter()
+                                            .map(|var_id| {
+                                                match branch
+                                                    .results
+                                                    .iter()
+                                                    .find_position(|id| *id == var_id)
+                                                {
+                                                    Some((i, _)) => BranchArg::Returned(i),
+                                                    None => BranchArg::External(state[var_id]),
+                                                }
+                                            })
+                                            .collect::<Vec<_>>();
+
+                                        (landing_block.deref(), target_vars)
+                                    }
+                                    None => {
+                                        let target_vars = match &statements[target_idx.0] {
+                                            Statement::Invocation(x) => &x.args,
+                                            Statement::Return(x) => x,
+                                        }
+                                        .iter()
+                                        .map(|var_id| {
+                                            match branch
+                                                .results
+                                                .iter()
+                                                .enumerate()
+                                                .find_map(|(i, id)| (id == var_id).then_some(i))
+                                            {
+                                                Some(i) => BranchArg::Returned(i),
+                                                None => BranchArg::External(state[var_id]),
+                                            }
+                                        })
+                                        .collect::<Vec<_>>();
+
+                                        (block.deref(), target_vars)
+                                    }
+                                }
+                            })
+                            .collect(),
+                        Rc::clone(&result_variables),
+                    );
+
+                    registry
+                        .get_libfunc(&invocation.libfunc_id)
+                        .unwrap()
+                        .build(build_ctx)
+                        .unwrap();
+                    assert!(block.terminator().is_some());
+
+                    invocation
+                        .branches
+                        .iter()
+                        .zip(result_variables.iter())
+                        .map(|(branch_info, result_values)| {
+                            assert_eq!(
+                                branch_info.results.len(),
+                                result_values.len(),
+                                "Mismatched number of returned values from branch."
+                            );
+                            edit_state::put_results(
+                                state.clone(),
+                                branch_info
+                                    .results
+                                    .iter()
+                                    .zip(result_values.iter().map(|x| x.get().unwrap())),
+                            )
+                            .unwrap()
+                        })
+                        .collect()
+                }
+                Statement::Return(var_ids) => {
+                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+                    block.append_operation(func::r#return(&values, Location::unknown(context)));
+
+                    Vec::new()
+                }
+            }
+        },
+    );
+
+    module.body().append_operation(func::func(
+        context,
+        StringAttribute::new(context, &generate_function_name(function)),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &extract_types(context, &function.signature.param_types, registry)
+                    .collect::<Vec<_>>(),
+                &extract_types(context, &function.signature.ret_types, registry)
+                    .collect::<Vec<_>>(),
+            )
+            .into(),
+        ),
+        region,
+        &[(
+            Identifier::new(context, "sym_visibility"),
+            StringAttribute::new(context, "public").into(),
+        )],
+        Location::unknown(context),
+    ));
+
+    Ok(())
+}
+
+fn generate_function_structure<'c, 'a, TType, TLibfunc>(
+    context: &'c Context,
+    region: &'a Region<'c>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    function: &Function,
+    statements: &[Statement],
+) -> Result<
+    (
+        BlockRef<'c, 'a>,
+        HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>,
+    ),
+    Box<dyn std::error::Error>,
+>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
@@ -165,7 +375,6 @@ where
         },
     );
 
-    let region = Region::new();
     let entry_block = region.append_block(Block::new(
         &extract_types(context, &function.signature.param_types, registry)
             .map(|ty| (ty, Location::unknown(context)))
@@ -206,198 +415,21 @@ where
         })
         .collect::<HashMap<_, _>>();
 
-    let initial_state = edit_state::put_results(
-        HashMap::<_, Value>::new(),
-        function
-            .params
-            .iter()
-            .enumerate()
-            .map(|(idx, param)| (&param.id, entry_block.argument(idx).unwrap().into())),
-    )
-    .unwrap();
-
-    entry_block.append_operation(cf::br(
-        &blocks[&function.entry_point].1,
-        &match &statements[function.entry_point.0] {
-            Statement::Invocation(x) => &x.args,
-            Statement::Return(x) => x,
-        }
-        .iter()
-        .map(|x| initial_state[x])
-        .collect::<Vec<_>>(),
-        Location::unknown(context),
-    ));
-
-    foreach_statement_in_function(
-        statements,
-        function.entry_point,
-        initial_state,
-        |statement_idx, mut state| {
-            let (landing_block, block) = &blocks[&statement_idx];
-
-            if let Some((landing_block, _)) = landing_block {
-                state = edit_state::put_results(
-                    HashMap::default(),
-                    state
-                        .keys()
-                        .sorted_by_key(|x| x.id)
-                        .enumerate()
-                        .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
+    Ok((
+        entry_block,
+        blocks
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k,
+                    (
+                        v.0.map(|x| (x.0, x.1.into_iter().map(|x| x.0).collect::<Vec<_>>())),
+                        v.1,
+                    ),
                 )
-                .unwrap();
-
-                landing_block.append_operation(cf::br(
-                    block,
-                    &edit_state::take_args(
-                        state.clone(),
-                        match &statements[statement_idx.0] {
-                            Statement::Invocation(x) => &x.args,
-                            Statement::Return(x) => x,
-                        }
-                        .iter(),
-                    )
-                    .unwrap()
-                    .1,
-                    Location::unknown(context),
-                ));
-            }
-
-            match &statements[statement_idx.0] {
-                Statement::Invocation(invocation) => {
-                    let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
-
-                    let result_variables = Rc::new(
-                        invocation
-                            .branches
-                            .iter()
-                            .map(|x| vec![Cell::new(None); x.results.len()])
-                            .collect::<Vec<_>>(),
-                    );
-                    let build_ctx = LibfuncBuilderContext::new(
-                        context,
-                        registry,
-                        module,
-                        block,
-                        Location::unknown(context),
-                        invocation
-                            .branches
-                            .iter()
-                            .map(|branch| {
-                                let target_idx = statement_idx.next(&branch.target);
-                                let (landing_block, block) = &blocks[&target_idx];
-
-                                match landing_block {
-                                    Some((landing_block, state_vars)) => {
-                                        let target_vars = state_vars
-                                            .iter()
-                                            .map(|(var_id, _)| {
-                                                match branch
-                                                    .results
-                                                    .iter()
-                                                    .enumerate()
-                                                    .find_map(|(i, id)| (id == var_id).then_some(i))
-                                                {
-                                                    Some(i) => BranchArg::Returned(i),
-                                                    None => BranchArg::External(state[var_id]),
-                                                }
-                                            })
-                                            .collect::<Vec<_>>();
-
-                                        (landing_block.deref(), target_vars)
-                                    }
-                                    None => {
-                                        let target_vars = match &statements[target_idx.0] {
-                                            Statement::Invocation(x) => &x.args,
-                                            Statement::Return(x) => x,
-                                        }
-                                        .iter()
-                                        .map(|var_id| {
-                                            match branch
-                                                .results
-                                                .iter()
-                                                .enumerate()
-                                                .find_map(|(i, id)| (id == var_id).then_some(i))
-                                            {
-                                                Some(i) => BranchArg::Returned(i),
-                                                None => BranchArg::External(state[var_id]),
-                                            }
-                                        })
-                                        .collect::<Vec<_>>();
-
-                                        (block.deref(), target_vars)
-                                    }
-                                }
-                            })
-                            .collect(),
-                        Rc::clone(&result_variables),
-                    );
-
-                    registry
-                        .get_libfunc(&invocation.libfunc_id)
-                        .unwrap()
-                        .build(build_ctx)
-                        .unwrap();
-                    assert!(block.terminator().is_some());
-
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(result_variables.iter())
-                        .map(|(branch_info, result_values)| {
-                            assert_eq!(
-                                branch_info.results.len(),
-                                result_values.len(),
-                                "Mismatched number of returned values from branch."
-                            );
-                            let state = edit_state::put_results(
-                                state.clone(),
-                                branch_info
-                                    .results
-                                    .iter()
-                                    .zip(result_values.iter().map(|x| x.get().unwrap())),
-                            )
-                            .unwrap();
-
-                            predecessors[&statement_idx.next(&branch_info.target)]
-                                .0
-                                .keys()
-                                .map(|var_id| (var_id.clone(), state[var_id]))
-                                .collect()
-                        })
-                        .collect()
-                }
-                Statement::Return(var_ids) => {
-                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
-                    block.append_operation(func::r#return(&values, Location::unknown(context)));
-
-                    Vec::new()
-                }
-            }
-        },
-    );
-
-    module.body().append_operation(func::func(
-        context,
-        StringAttribute::new(context, &generate_function_name(function)),
-        TypeAttribute::new(
-            FunctionType::new(
-                context,
-                &extract_types(context, &function.signature.param_types, registry)
-                    .collect::<Vec<_>>(),
-                &extract_types(context, &function.signature.ret_types, registry)
-                    .collect::<Vec<_>>(),
-            )
-            .into(),
-        ),
-        region,
-        &[(
-            Identifier::new(context, "sym_visibility"),
-            StringAttribute::new(context, "public").into(),
-        )],
-        Location::unknown(context),
-    ));
-
-    Ok(())
+            })
+            .collect(),
+    ))
 }
 
 fn generate_function_name(function: &Function) -> Cow<str> {
