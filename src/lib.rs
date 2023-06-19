@@ -1,15 +1,20 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
+#![feature(map_try_insert)]
 
-use crate::types::TypeBuilderContext;
+use crate::{
+    libfuncs::{BranchArg, LibfuncBuilderContext},
+    types::TypeBuilderContext,
+};
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
+    ids::ConcreteTypeId,
     program::{Function, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use itertools::Itertools;
-use libfuncs::{BranchArg, LibfuncBuilder, LibfuncBuilderContext};
+use libfuncs::LibfuncBuilder;
 use melior::{
     dialect::{cf, func},
     ir::{
@@ -72,42 +77,6 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let function_name = function
-        .id
-        .debug_name
-        .as_deref()
-        .map(Cow::Borrowed)
-        .unwrap_or_else(|| Cow::Owned(format!("f{}", function.id.id)));
-
-    let param_types = function
-        .signature
-        .param_types
-        .iter()
-        .map(|id| {
-            registry
-                .get_type(id)
-                .map(|ty| {
-                    ty.build(TypeBuilderContext::new(context, registry))
-                        .unwrap()
-                })
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-    let ret_types = function
-        .signature
-        .ret_types
-        .iter()
-        .map(|id| {
-            registry
-                .get_type(id)
-                .map(|ty| {
-                    ty.build(TypeBuilderContext::new(context, registry))
-                        .unwrap()
-                })
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-
     let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
         function
@@ -130,79 +99,75 @@ where
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
-    let mut queue = vec![(function.entry_point, initial_state)];
-    while let Some((statement_idx, state)) = queue.pop() {
-        let block = Block::new(&[]);
+    foreach_statement_in_function(
+        statements,
+        function.entry_point,
+        initial_state,
+        |statement_idx, state| {
+            let block = blocks.try_insert(statement_idx.0, Block::new(&[])).unwrap();
 
-        match &statements[statement_idx.0] {
-            Statement::Invocation(invocation) => {
-                let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
+            match &statements[statement_idx.0] {
+                Statement::Invocation(invocation) => {
+                    let (state, types) =
+                        edit_state::take_args(state.clone(), invocation.args.iter()).unwrap();
 
-                let branch_signatures = registry
-                    .get_libfunc(&invocation.libfunc_id)
-                    .unwrap()
-                    .branch_signatures();
-                for (branch, branch_signature) in invocation.branches.iter().zip(branch_signatures)
-                {
-                    let state = edit_state::put_results(
-                        state.clone(),
-                        branch.results.iter().zip(&branch_signature.vars).map(
-                            |(var_id, var_info)| {
-                                (
-                                    var_id,
-                                    registry
-                                        .get_type(&var_info.ty)
-                                        .unwrap()
-                                        .build(TypeBuilderContext::new(context, registry))
-                                        .unwrap(),
-                                )
-                            },
-                        ),
-                    )
-                    .unwrap();
+                    types.into_iter().for_each(|ty| {
+                        block.add_argument(ty, Location::unknown(context));
+                    });
 
-                    let target = statement_idx.next(&branch.target);
-                    let entry = predecessors.entry(target);
-                    let num_entries = match entry {
-                        Entry::Occupied(x) => x.into_mut(),
-                        Entry::Vacant(x) => {
-                            queue.push((target, state.clone()));
-                            x.insert((state.clone(), 0))
-                        }
-                    };
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
+                    invocation
+                        .branches
+                        .iter()
+                        .zip(libfunc.branch_signatures())
+                        .map(|(branch, branch_signature)| {
+                            let state = edit_state::put_results(
+                                state.clone(),
+                                branch.results.iter().zip(branch_signature.vars.iter().map(
+                                    |var_info| {
+                                        registry
+                                            .get_type(&var_info.ty)
+                                            .unwrap()
+                                            .build(TypeBuilderContext::new(context, registry))
+                                            .unwrap()
+                                    },
+                                )),
+                            )
+                            .unwrap();
 
-                    assert_eq!(num_entries.0, state);
-                    num_entries.1 += 1;
+                            let (prev_state, pred_count) =
+                                match predecessors.entry(statement_idx.next(&branch.target)) {
+                                    Entry::Occupied(entry) => entry.into_mut(),
+                                    Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
+                                };
+                            assert_eq!(prev_state, &state, "Branch target states do not match.");
+                            *pred_count += 1;
+
+                            state
+                        })
+                        .collect()
                 }
-
-                for param_signature in registry
-                    .get_libfunc(&invocation.libfunc_id)?
-                    .param_signatures()
-                {
-                    block.add_argument(
-                        registry
-                            .get_type(&param_signature.ty)?
-                            .build(TypeBuilderContext::new(context, registry))
-                            .unwrap(),
-                        Location::unknown(context),
+                Statement::Return(var_ids) => {
+                    let (state, types) =
+                        edit_state::take_args(state.clone(), var_ids.iter()).unwrap();
+                    assert!(
+                        state.is_empty(),
+                        "State must be empty after a return statement."
                     );
-                }
-            }
-            Statement::Return(_) => {
-                for arg_ty in &ret_types {
-                    block.add_argument(*arg_ty, Location::unknown(context));
-                }
-            }
-        };
 
-        blocks.insert(statement_idx.0, block);
-    }
+                    types.into_iter().for_each(|ty| {
+                        block.add_argument(ty, Location::unknown(context));
+                    });
+
+                    Vec::new()
+                }
+            }
+        },
+    );
 
     let region = Region::new();
     let entry_block = region.append_block(Block::new(
-        &param_types
-            .iter()
-            .copied()
+        &extract_types(context, &function.signature.param_types, registry)
             .map(|ty| (ty, Location::unknown(context)))
             .collect::<Vec<_>>(),
     ));
@@ -263,72 +228,90 @@ where
         Location::unknown(context),
     ));
 
-    let mut queue = vec![(function.entry_point, initial_state)];
-    let mut visited = HashSet::new();
-    while let Some((statement_idx, mut state)) = queue.pop() {
-        if visited.contains(&statement_idx) {
-            continue;
-        }
-        visited.insert(statement_idx);
+    foreach_statement_in_function(
+        statements,
+        function.entry_point,
+        initial_state,
+        |statement_idx, mut state| {
+            let (landing_block, block) = &blocks[&statement_idx];
 
-        let (landing_block, block) = &blocks[&statement_idx];
-
-        if let Some((landing_block, _)) = landing_block {
-            state = edit_state::put_results::<Value>(
-                HashMap::new(),
-                state
-                    .keys()
-                    .sorted_by_key(|x| x.id)
-                    .enumerate()
-                    .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
-            )
-            .unwrap();
-
-            landing_block.append_operation(cf::br(
-                block,
-                &edit_state::take_args(
-                    state.clone(),
-                    match &statements[statement_idx.0] {
-                        Statement::Invocation(x) => &x.args,
-                        Statement::Return(x) => x,
-                    }
-                    .iter(),
+            if let Some((landing_block, _)) = landing_block {
+                state = edit_state::put_results(
+                    HashMap::default(),
+                    state
+                        .keys()
+                        .sorted_by_key(|x| x.id)
+                        .enumerate()
+                        .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
                 )
-                .unwrap()
-                .1,
-                Location::unknown(context),
-            ));
-        }
+                .unwrap();
 
-        match &statements[statement_idx.0] {
-            Statement::Invocation(invocation) => {
-                let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
-
-                let result_variables = Rc::new(
-                    invocation
-                        .branches
-                        .iter()
-                        .map(|x| vec![Cell::new(None); x.results.len()])
-                        .collect::<Vec<_>>(),
-                );
-                let build_ctx = LibfuncBuilderContext::new(
-                    context,
-                    registry,
-                    module,
+                landing_block.append_operation(cf::br(
                     block,
+                    &edit_state::take_args(
+                        state.clone(),
+                        match &statements[statement_idx.0] {
+                            Statement::Invocation(x) => &x.args,
+                            Statement::Return(x) => x,
+                        }
+                        .iter(),
+                    )
+                    .unwrap()
+                    .1,
                     Location::unknown(context),
-                    invocation
-                        .branches
-                        .iter()
-                        .map(|branch| {
-                            let target_idx = statement_idx.next(&branch.target);
-                            let (landing_block, block) = &blocks[&target_idx];
+                ));
+            }
 
-                            match landing_block {
-                                Some((landing_block, state_vars)) => {
-                                    let target_vars = state_vars
+            match &statements[statement_idx.0] {
+                Statement::Invocation(invocation) => {
+                    let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
+
+                    let result_variables = Rc::new(
+                        invocation
+                            .branches
+                            .iter()
+                            .map(|x| vec![Cell::new(None); x.results.len()])
+                            .collect::<Vec<_>>(),
+                    );
+                    let build_ctx = LibfuncBuilderContext::new(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        Location::unknown(context),
+                        invocation
+                            .branches
+                            .iter()
+                            .map(|branch| {
+                                let target_idx = statement_idx.next(&branch.target);
+                                let (landing_block, block) = &blocks[&target_idx];
+
+                                match landing_block {
+                                    Some((landing_block, state_vars)) => {
+                                        let target_vars = state_vars
+                                            .iter()
+                                            .map(|(var_id, _)| {
+                                                match branch
+                                                    .results
+                                                    .iter()
+                                                    .enumerate()
+                                                    .find_map(|(i, id)| (id == var_id).then_some(i))
+                                                {
+                                                    Some(i) => BranchArg::Returned(i),
+                                                    None => BranchArg::External(state[var_id]),
+                                                }
+                                            })
+                                            .collect::<Vec<_>>();
+
+                                        (landing_block.deref(), target_vars)
+                                    }
+                                    None => {
+                                        let target_vars = match &statements[target_idx.0] {
+                                            Statement::Invocation(x) => &x.args,
+                                            Statement::Return(x) => x,
+                                        }
                                         .iter()
-                                        .map(|(var_id, _)| {
+                                        .map(|var_id| {
                                             match branch
                                                 .results
                                                 .iter()
@@ -341,83 +324,147 @@ where
                                         })
                                         .collect::<Vec<_>>();
 
-                                    (landing_block.deref(), target_vars)
-                                }
-                                None => {
-                                    let target_vars = match &statements[target_idx.0] {
-                                        Statement::Invocation(x) => &x.args,
-                                        Statement::Return(x) => x,
+                                        (block.deref(), target_vars)
                                     }
-                                    .iter()
-                                    .map(|var_id| {
-                                        match branch
-                                            .results
-                                            .iter()
-                                            .enumerate()
-                                            .find_map(|(i, id)| (id == var_id).then_some(i))
-                                        {
-                                            Some(i) => BranchArg::Returned(i),
-                                            None => BranchArg::External(state[var_id]),
-                                        }
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                    (block.deref(), target_vars)
                                 }
-                            }
+                            })
+                            .collect(),
+                        Rc::clone(&result_variables),
+                    );
+
+                    registry
+                        .get_libfunc(&invocation.libfunc_id)
+                        .unwrap()
+                        .build(build_ctx)
+                        .unwrap();
+                    assert!(block.terminator().is_some());
+
+                    invocation
+                        .branches
+                        .iter()
+                        .zip(result_variables.iter())
+                        .map(|(branch_info, result_values)| {
+                            assert_eq!(
+                                branch_info.results.len(),
+                                result_values.len(),
+                                "Mismatched number of returned values from branch."
+                            );
+                            let state = edit_state::put_results(
+                                state.clone(),
+                                branch_info
+                                    .results
+                                    .iter()
+                                    .zip(result_values.iter().map(|x| x.get().unwrap())),
+                            )
+                            .unwrap();
+
+                            predecessors[&statement_idx.next(&branch_info.target)]
+                                .0
+                                .keys()
+                                .map(|var_id| (var_id.clone(), state[var_id]))
+                                .collect()
                         })
-                        .collect(),
-                    Rc::clone(&result_variables),
-                );
+                        .collect()
+                }
+                Statement::Return(var_ids) => {
+                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+                    block.append_operation(func::r#return(&values, Location::unknown(context)));
 
-                registry
-                    .get_libfunc(&invocation.libfunc_id)
-                    .unwrap()
-                    .build(build_ctx)
-                    .unwrap();
-                assert!(block.terminator().is_some());
-
-                for (branch, result_vars) in invocation.branches.iter().zip(&*result_variables) {
-                    let next_statement_idx = statement_idx.next(&branch.target);
-
-                    let state = edit_state::put_results(
-                        state.clone(),
-                        branch.results.iter().zip(
-                            result_vars
-                                .iter()
-                                .cloned()
-                                .map(Cell::into_inner)
-                                .map(Option::unwrap),
-                        ),
-                    )
-                    .unwrap();
-
-                    queue.push((next_statement_idx, state));
+                    Vec::new()
                 }
             }
-            Statement::Return(return_vars) => {
-                let (state, return_vars) =
-                    edit_state::take_args(state, return_vars.iter()).unwrap();
-                assert!(state.is_empty());
-
-                block.append_operation(func::r#return(&return_vars, Location::unknown(context)));
-            }
-        }
-    }
+        },
+    );
 
     module.body().append_operation(func::func(
         context,
-        StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &param_types, &ret_types).into()),
+        StringAttribute::new(context, &generate_function_name(function)),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &extract_types(context, &function.signature.param_types, registry)
+                    .collect::<Vec<_>>(),
+                &extract_types(context, &function.signature.ret_types, registry)
+                    .collect::<Vec<_>>(),
+            )
+            .into(),
+        ),
         region,
-        &[
-            (
-                Identifier::new(context, "sym_visibility"),
-                StringAttribute::new(context, "public").into(),
-            ),
-        ],
+        &[(
+            Identifier::new(context, "sym_visibility"),
+            StringAttribute::new(context, "public").into(),
+        )],
         Location::unknown(context),
     ));
 
     Ok(())
+}
+
+fn generate_function_name(function: &Function) -> Cow<str> {
+    function
+        .id
+        .debug_name
+        .as_deref()
+        .map(Cow::Borrowed)
+        .unwrap_or_else(|| Cow::Owned(format!("f{}", function.id.id)))
+}
+
+fn extract_types<'c, 'a, TType, TLibfunc>(
+    context: &'c Context,
+    type_ids: &'a [ConcreteTypeId],
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+) -> impl 'a + Iterator<Item = Type<'c>>
+where
+    'c: 'a,
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    type_ids.iter().map(|id| {
+        registry
+            .get_type(id)
+            .map(|ty| {
+                ty.build(TypeBuilderContext::new(context, registry))
+                    .unwrap()
+            })
+            .unwrap()
+    })
+}
+
+fn foreach_statement_in_function<S>(
+    statements: &[Statement],
+    entry_point: StatementIdx,
+    initial_state: S,
+    mut closure: impl FnMut(StatementIdx, S) -> Vec<S>,
+) where
+    S: Clone,
+{
+    let mut queue = vec![(entry_point, initial_state)];
+    let mut visited = HashSet::new();
+
+    while let Some((statement_idx, state)) = queue.pop() {
+        if !visited.insert(statement_idx) {
+            continue;
+        }
+
+        let branch_states = closure(statement_idx, state);
+
+        let branches = match &statements[statement_idx.0] {
+            Statement::Invocation(x) => x.branches.as_slice(),
+            Statement::Return(_) => &[],
+        };
+        assert_eq!(
+            branches.len(),
+            branch_states.len(),
+            "Returned number of states must match the number of branches."
+        );
+
+        queue.extend(
+            branches
+                .iter()
+                .map(|branch| statement_idx.next(&branch.target))
+                .zip(branch_states),
+        );
+    }
 }
