@@ -1,13 +1,24 @@
-use super::{LibfuncBuilder, LibfuncBuilderContext};
+use super::{LibfuncBuilder, LibfuncHelper};
 use crate::types::TypeBuilder;
-use cairo_lang_sierra::extensions::{
-    lib_func::SignatureOnlyConcreteLibfunc, structure::StructConcreteLibfunc, GenericLibfunc,
-    GenericType,
+use cairo_lang_sierra::{
+    extensions::{
+        lib_func::SignatureOnlyConcreteLibfunc, structure::StructConcreteLibfunc, GenericLibfunc,
+        GenericType,
+    },
+    program_registry::ProgramRegistry,
 };
-use melior::{dialect::llvm, ir::attribute::DenseI64ArrayAttribute};
+use melior::{
+    dialect::llvm,
+    ir::{attribute::DenseI64ArrayAttribute, Block, Location},
+    Context,
+};
 
-pub fn build<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     selector: &StructConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -17,14 +28,20 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     match selector {
-        StructConcreteLibfunc::Construct(info) => build_construct(context, info),
+        StructConcreteLibfunc::Construct(info) => {
+            build_construct(context, registry, entry, location, helper, info)
+        }
         StructConcreteLibfunc::Deconstruct(_) => todo!(),
         StructConcreteLibfunc::SnapshotDeconstruct(_) => todo!(),
     }
 }
 
-pub fn build_construct<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build_construct<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -33,29 +50,24 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let struct_ty = context
-        .registry()
+    let struct_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context.context(), context.registry())
+        .build(context, registry)
         .unwrap();
 
-    let mut acc = context
-        .entry()
-        .append_operation(llvm::undef(struct_ty, context.location()));
+    let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
     for i in 0..info.signature.param_signatures.len() {
-        acc = context.entry().append_operation(llvm::insert_value(
-            context.context(),
+        acc = entry.append_operation(llvm::insert_value(
+            context,
             acc.result(0).unwrap().into(),
-            DenseI64ArrayAttribute::new(context.context(), &[i as _]),
-            context.entry().argument(i).unwrap().into(),
-            context.location(),
+            DenseI64ArrayAttribute::new(context, &[i as _]),
+            entry.argument(i).unwrap().into(),
+            location,
         ));
     }
 
-    context
-        .entry()
-        .append_operation(context.br(0, &[acc.result(0).unwrap().into()]));
+    entry.append_operation(helper.br(0, &[acc.result(0).unwrap().into()], location));
 
     Ok(())
 }

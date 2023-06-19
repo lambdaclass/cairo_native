@@ -1,17 +1,25 @@
-use super::{LibfuncBuilder, LibfuncBuilderContext};
+use super::{LibfuncBuilder, LibfuncHelper};
 use crate::types::TypeBuilder;
-use cairo_lang_sierra::extensions::{
-    int::unsigned::{Uint32Concrete, Uint32Traits, UintConcrete, UintConstConcreteLibfunc},
-    lib_func::SignatureOnlyConcreteLibfunc,
-    GenericLibfunc, GenericType,
+use cairo_lang_sierra::{
+    extensions::{
+        int::unsigned::{Uint32Concrete, Uint32Traits, UintConcrete, UintConstConcreteLibfunc},
+        lib_func::SignatureOnlyConcreteLibfunc,
+        GenericLibfunc, GenericType,
+    },
+    program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{Attribute, Value},
+    ir::{Attribute, Block, Location, Value},
+    Context,
 };
 
-pub fn build<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     selector: &Uint32Concrete,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -21,10 +29,10 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     match selector {
-        UintConcrete::Const(info) => build_const(context, info),
+        UintConcrete::Const(info) => build_const(context, registry, entry, location, helper, info),
         UintConcrete::Operation(_) => todo!(),
         UintConcrete::SquareRoot(_) => todo!(),
-        UintConcrete::Equal(info) => build_equal(context, info),
+        UintConcrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
         UintConcrete::ToFelt252(_) => todo!(),
         UintConcrete::FromFelt252(_) => todo!(),
         UintConcrete::IsZero(_) => todo!(),
@@ -33,8 +41,12 @@ where
     }
 }
 
-pub fn build_const<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     info: &UintConstConcreteLibfunc<Uint32Traits>,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -44,27 +56,28 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let value = info.c;
-    let value_ty = context
-        .registry()
+    let value_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context.context(), context.registry())
+        .build(context, registry)
         .unwrap();
 
-    let op0 = context.entry().append_operation(arith::constant(
-        context.context(),
-        Attribute::parse(context.context(), &format!("{value} : {value_ty}")).unwrap(),
-        context.location(),
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        location,
     ));
-    context
-        .entry()
-        .append_operation(context.br(0, &[op0.result(0).unwrap().into()]));
+    entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
 
     Ok(())
 }
 
-pub fn build_equal<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -73,20 +86,18 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let arg0: Value = context.entry().argument(0).unwrap().into();
-    let arg1: Value = context.entry().argument(1).unwrap().into();
+    let arg0: Value = entry.argument(0).unwrap().into();
+    let arg1: Value = entry.argument(1).unwrap().into();
 
-    let op0 = context.entry().append_operation(arith::cmpi(
-        context.context(),
+    let op0 = entry.append_operation(arith::cmpi(
+        context,
         CmpiPredicate::Eq,
         arg0,
         arg1,
-        context.location(),
+        location,
     ));
 
-    context
-        .entry()
-        .append_operation(context.cond_br(op0.result(0).unwrap().into(), (0, 1), &[]));
+    entry.append_operation(helper.cond_br(op0.result(0).unwrap().into(), (0, 1), &[], location));
 
     Ok(())
 }

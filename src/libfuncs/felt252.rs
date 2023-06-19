@@ -1,13 +1,24 @@
-use super::{LibfuncBuilder, LibfuncBuilderContext};
+use super::{LibfuncBuilder, LibfuncHelper};
 use crate::types::TypeBuilder;
-use cairo_lang_sierra::extensions::{
-    felt252::{Felt252Concrete, Felt252ConstConcreteLibfunc},
-    GenericLibfunc, GenericType,
+use cairo_lang_sierra::{
+    extensions::{
+        felt252::{Felt252Concrete, Felt252ConstConcreteLibfunc},
+        GenericLibfunc, GenericType,
+    },
+    program_registry::ProgramRegistry,
 };
-use melior::{dialect::arith, ir::Attribute};
+use melior::{
+    dialect::arith,
+    ir::{Attribute, Block, Location},
+    Context,
+};
 
-pub fn build<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     selector: &Felt252Concrete,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -18,13 +29,19 @@ where
 {
     match selector {
         Felt252Concrete::BinaryOperation(_) => todo!(),
-        Felt252Concrete::Const(info) => build_const(context, info),
+        Felt252Concrete::Const(info) => {
+            build_const(context, registry, entry, location, helper, info)
+        }
         Felt252Concrete::IsZero(_) => todo!(),
     }
 }
 
-pub fn build_const<TType, TLibfunc>(
-    context: LibfuncBuilderContext<TType, TLibfunc>,
+pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     info: &Felt252ConstConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -34,21 +51,18 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let value = &info.c;
-    let value_ty = context
-        .registry()
+    let value_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context.context(), context.registry())
+        .build(context, registry)
         .unwrap();
 
-    let op0 = context.entry().append_operation(arith::constant(
-        context.context(),
-        Attribute::parse(context.context(), &format!("{value} : {value_ty}")).unwrap(),
-        context.location(),
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        location,
     ));
-    context
-        .entry()
-        .append_operation(context.br(0, &[op0.result(0).unwrap().into()]));
+    entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
 
     Ok(())
 }
