@@ -57,6 +57,8 @@ run_bench() {
         -L "target/release" \
         -lmlir_c_runner_utils \
         -lsierra2mlir_utils \
+        -Wl,-rpath "$MLIR_DIR/lib" \
+        -Wl,-rpath "target/release" \
         -o "$OUTPUT_DIR/$base_name" \
         >> /dev/stderr
 
