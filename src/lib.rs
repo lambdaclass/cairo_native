@@ -2,10 +2,7 @@
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
 
-use crate::{
-    libfuncs::{BranchArg, LibfuncBuilderContext},
-    types::TypeBuilderContext,
-};
+use crate::libfuncs::{BranchArg, LibfuncBuilderContext};
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
@@ -299,7 +296,7 @@ where
                     registry
                         .get_type(ty)
                         .unwrap()
-                        .build(TypeBuilderContext::new(context, registry))
+                        .build(context, registry)
                         .unwrap(),
                 )
             }),
@@ -338,7 +335,7 @@ where
                                         registry
                                             .get_type(&var_info.ty)
                                             .unwrap()
-                                            .build(TypeBuilderContext::new(context, registry))
+                                            .build(context, registry)
                                             .unwrap()
                                     },
                                 )),
@@ -456,10 +453,7 @@ where
     type_ids.iter().map(|id| {
         registry
             .get_type(id)
-            .map(|ty| {
-                ty.build(TypeBuilderContext::new(context, registry))
-                    .unwrap()
-            })
+            .map(|ty| ty.build(context, registry).unwrap())
             .unwrap()
     })
 }

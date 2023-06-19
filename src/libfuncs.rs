@@ -1,4 +1,4 @@
-use crate::types::{TypeBuilder, TypeBuilderContext};
+use crate::types::TypeBuilder;
 use cairo_lang_sierra::{
     extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -8,7 +8,7 @@ use melior::{
     ir::{Block, Location, Module, Operation, Value},
     Context,
 };
-use std::{cell::Cell, error::Error, ops::Deref, rc::Rc};
+use std::{cell::Cell, error::Error, rc::Rc};
 
 pub mod ap_tracking;
 pub mod array;
@@ -51,27 +51,14 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    inner: TypeBuilderContext<'ctx, 'this, TType, TLibfunc>,
+    context: &'ctx Context,
+    registry: &'this ProgramRegistry<TType, TLibfunc>,
 
     module: &'this Module<'ctx>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     results: Rc<Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>>,
-}
-
-impl<'ctx, 'this, TType, TLibfunc> Deref for LibfuncBuilderContext<'ctx, 'this, TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
-{
-    type Target = TypeBuilderContext<'ctx, 'this, TType, TLibfunc>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
 }
 
 impl<'ctx, 'this, TType, TLibfunc> LibfuncBuilderContext<'ctx, 'this, TType, TLibfunc>
@@ -91,13 +78,22 @@ where
         results: Rc<Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>>,
     ) -> Self {
         Self {
-            inner: TypeBuilderContext::new(context, registry),
+            context,
+            registry,
             module,
             entry,
             location,
             branches,
             results,
         }
+    }
+
+    pub fn context(&self) -> &'ctx Context {
+        self.context
+    }
+
+    pub fn registry(&self) -> &'this ProgramRegistry<TType, TLibfunc> {
+        self.registry
     }
 
     pub fn module(&self) -> &'this Module<'ctx> {
