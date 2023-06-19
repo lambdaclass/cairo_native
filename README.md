@@ -3,6 +3,7 @@
 [![mdbook](https://img.shields.io/badge/mdbook-link-blue)](https://lambdaclass.github.io/cairo_sierra_2_MLIR/)
 
 A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
+The bindings used by the project will be our MLIR Rust binding called [mithril-oxide](https://github.com/lambdaclass/mithril-oxide).
 
 ## Documentation
 
