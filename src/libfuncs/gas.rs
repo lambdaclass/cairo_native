@@ -8,8 +8,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{Block, Location},
+    dialect::{arith, llvm},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -42,7 +42,7 @@ where
 }
 
 pub fn build_builtin_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -57,9 +57,15 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     // TODO: Implement libfunc.
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+        location,
+    ));
 
-    entry.append_operation(helper.br(
-        0,
+    entry.append_operation(helper.cond_br(
+        op0.result(0).unwrap().into(),
+        (0, 1),
         &[
             entry.argument(0).unwrap().into(),
             entry.argument(1).unwrap().into(),
