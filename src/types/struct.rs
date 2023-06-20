@@ -1,4 +1,5 @@
 use super::TypeBuilder;
+use crate::metadata::MetadataStorage;
 use cairo_lang_sierra::{
     extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -9,6 +10,7 @@ use std::{borrow::Cow, iter::once};
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
     info: &StructConcreteType,
 ) -> Result<Type<'ctx>, std::convert::Infallible>
 where
@@ -25,7 +27,7 @@ where
                         registry
                             .get_type(x)
                             .unwrap()
-                            .build(context, registry)
+                            .build(context, registry, metadata)
                             .unwrap()
                             .to_string(),
                     )

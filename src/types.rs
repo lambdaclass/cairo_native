@@ -1,3 +1,4 @@
+use crate::metadata::MetadataStorage;
 use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -42,6 +43,7 @@ pub trait TypeBuilder {
         &self,
         context: &'ctx Context,
         registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
     ) -> Result<Type<'ctx>, Self::Error>
     where
         TType: GenericType<Concrete = Self>,
@@ -56,6 +58,7 @@ impl TypeBuilder for CoreTypeConcrete {
         &self,
         context: &'ctx Context,
         registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
     ) -> Result<Type<'ctx>, Self::Error>
     where
         TType: GenericType<Concrete = Self>,
@@ -71,7 +74,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::EcPoint(_) => todo!(),
             Self::EcState(_) => todo!(),
             Self::Enum(_) => todo!(),
-            Self::Felt252(info) => self::felt252::build(context, registry, info),
+            Self::Felt252(info) => self::felt252::build(context, registry, metadata, info),
             Self::Felt252Dict(_) => todo!(),
             Self::Felt252DictEntry(_) => todo!(),
             Self::GasBuiltin(_) => todo!(),
@@ -85,13 +88,13 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Span(_) => todo!(),
             Self::SquashedFelt252Dict(_) => todo!(),
             Self::StarkNet(_) => todo!(),
-            Self::Struct(info) => self::r#struct::build(context, registry, info),
+            Self::Struct(info) => self::r#struct::build(context, registry, metadata, info),
             Self::Uint128(_) => todo!(),
             Self::Uint128MulGuarantee(_) => todo!(),
             Self::Uint16(_) => todo!(),
-            Self::Uint32(info) => self::uint32::build(context, registry, info),
+            Self::Uint32(info) => self::uint32::build(context, registry, metadata, info),
             Self::Uint64(_) => todo!(),
-            Self::Uint8(info) => self::uint8::build(context, registry, info),
+            Self::Uint8(info) => self::uint8::build(context, registry, metadata, info),
             Self::Uninitialized(_) => todo!(),
         }
     }

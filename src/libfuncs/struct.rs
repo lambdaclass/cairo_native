@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{types::TypeBuilder, metadata::MetadataStorage};
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         lib_func::SignatureOnlyConcreteLibfunc, structure::StructConcreteLibfunc, GenericLibfunc,
@@ -19,8 +19,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     selector: &StructConcreteLibfunc,
-    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,
@@ -30,7 +30,7 @@ where
 {
     match selector {
         StructConcreteLibfunc::Construct(info) => {
-            build_construct(context, registry, entry, location, helper, info)
+            build_construct(context, registry, entry, location, helper, metadata, info)
         }
         StructConcreteLibfunc::Deconstruct(_) => todo!(),
         StructConcreteLibfunc::SnapshotDeconstruct(_) => todo!(),
@@ -43,6 +43,7 @@ pub fn build_construct<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -54,7 +55,7 @@ where
     let struct_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context, registry)
+        .build(context, registry, metadata)
         .unwrap();
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));

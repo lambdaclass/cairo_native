@@ -2,7 +2,6 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
-#![feature(trait_upcasting)]
 
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
@@ -90,8 +89,15 @@ where
     let region = Region::new();
 
     tracing::debug!("Generating function structure (region with blocks).");
-    let (entry_block, blocks) =
-        generate_function_structure(context, &region, registry, function, statements).unwrap();
+    let (entry_block, blocks) = generate_function_structure(
+        context,
+        &region,
+        registry,
+        function,
+        statements,
+        metadata_storage,
+    )
+    .unwrap();
 
     tracing::debug!("Generating the function implementation.");
     let initial_state = edit_state::put_results(
@@ -282,10 +288,20 @@ where
         TypeAttribute::new(
             FunctionType::new(
                 context,
-                &extract_types(context, &function.signature.param_types, registry)
-                    .collect::<Vec<_>>(),
-                &extract_types(context, &function.signature.ret_types, registry)
-                    .collect::<Vec<_>>(),
+                &extract_types(
+                    context,
+                    &function.signature.param_types,
+                    registry,
+                    metadata_storage,
+                )
+                .collect::<Vec<_>>(),
+                &extract_types(
+                    context,
+                    &function.signature.ret_types,
+                    registry,
+                    metadata_storage,
+                )
+                .collect::<Vec<_>>(),
             )
             .into(),
         ),
@@ -307,6 +323,7 @@ fn generate_function_structure<'c, 'a, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     function: &Function,
     statements: &[Statement],
+    metadata_storage: &mut MetadataStorage,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -326,7 +343,7 @@ where
                     registry
                         .get_type(ty)
                         .unwrap()
-                        .build(context, registry)
+                        .build(context, registry, metadata_storage)
                         .unwrap(),
                 )
             }),
@@ -370,7 +387,7 @@ where
                                         registry
                                             .get_type(&var_info.ty)
                                             .unwrap()
-                                            .build(context, registry)
+                                            .build(context, registry, metadata_storage)
                                             .unwrap()
                                     },
                                 )),
@@ -413,9 +430,14 @@ where
 
     tracing::trace!("Generating function entry block.");
     let entry_block = region.append_block(Block::new(
-        &extract_types(context, &function.signature.param_types, registry)
-            .map(|ty| (ty, Location::unknown(context)))
-            .collect::<Vec<_>>(),
+        &extract_types(
+            context,
+            &function.signature.param_types,
+            registry,
+            metadata_storage,
+        )
+        .map(|ty| (ty, Location::unknown(context)))
+        .collect::<Vec<_>>(),
     ));
 
     let blocks = blocks
@@ -487,6 +509,7 @@ fn extract_types<'c, 'a, TType, TLibfunc>(
     context: &'c Context,
     type_ids: &'a [ConcreteTypeId],
     registry: &'a ProgramRegistry<TType, TLibfunc>,
+    metadata_storage: &'a mut MetadataStorage,
 ) -> impl 'a + Iterator<Item = Type<'c>>
 where
     'c: 'a,
@@ -498,7 +521,7 @@ where
     type_ids.iter().map(|id| {
         registry
             .get_type(id)
-            .map(|ty| ty.build(context, registry).unwrap())
+            .map(|ty| ty.build(context, registry, metadata_storage).unwrap())
             .unwrap()
     })
 }

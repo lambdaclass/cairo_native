@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{types::TypeBuilder, metadata::MetadataStorage};
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -15,8 +15,8 @@ pub fn build<'ctx, TType, TLibfunc>(
     entry: &Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, '_>,
+    _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,

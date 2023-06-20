@@ -16,8 +16,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     info: &FunctionCallConcreteLibfunc,
-    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,
@@ -35,7 +35,7 @@ where
             registry
                 .get_type(&x.ty)
                 .unwrap()
-                .build(context, registry)
+                .build(context, registry, metadata)
                 .unwrap()
         })
         .collect::<Vec<_>>();
