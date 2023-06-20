@@ -55,7 +55,7 @@ where
     let struct_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context, &helper, registry, metadata)
+        .build(context, helper, registry, metadata)
         .unwrap();
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));

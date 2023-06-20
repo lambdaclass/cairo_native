@@ -5,7 +5,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{r#type::IntegerType, Type, Module},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
