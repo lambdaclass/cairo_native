@@ -1,6 +1,7 @@
 use crate::metadata::MetadataStorage;
 use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -53,6 +54,8 @@ pub trait TypeBuilder {
         TType: GenericType<Concrete = Self>,
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder;
+
+    fn variants(&self) -> Option<&[ConcreteTypeId]>;
 }
 
 impl TypeBuilder for CoreTypeConcrete {
@@ -105,6 +108,13 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint64(_) => todo!(),
             Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
             Self::Uninitialized(_) => todo!(),
+        }
+    }
+
+    fn variants(&self) -> Option<&[ConcreteTypeId]> {
+        match self {
+            Self::Enum(info) => Some(&info.variants),
+            _ => None,
         }
     }
 }
