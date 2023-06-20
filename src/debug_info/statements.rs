@@ -53,7 +53,8 @@ fn find_statement_locations(
 
     // Remove Sierra-specific invocations (they have no location since they are compiler-generated).
     sierra_to_pre_sierra_mappings
-        .drain_filter(|_, statement| match statement {
+        .drain()
+        .filter(|(_, statement)| match statement {
             GenStatement::Invocation(invocation) => contains_libfunc(&invocation.libfunc_id),
             GenStatement::Return(_) => false,
         })

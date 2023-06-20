@@ -2,7 +2,8 @@
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
 
-use crate::libfuncs::{BranchArg, LibfuncHelper};
+pub use self::debug_info::DebugInfo;
+use self::libfuncs::{BranchArg, LibfuncHelper};
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
@@ -29,7 +30,7 @@ use std::{
 };
 use types::TypeBuilder;
 
-// mod debug_info;
+mod debug_info;
 pub(crate) mod ffi;
 pub mod libfuncs;
 pub mod types;
@@ -51,6 +52,7 @@ where
 
     let program_registry = ProgramRegistry::<TType, TLibfunc>::new(program)?;
     for function in &program.funcs {
+        tracing::info!("Compiling function `{}`.", function.id);
         compile_func::<TType, TLibfunc>(
             context,
             &module,
@@ -77,9 +79,12 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let region = Region::new();
+
+    tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) =
         generate_function_structure(context, &region, registry, function, statements).unwrap();
 
+    tracing::debug!("Generating the function implementation.");
     let initial_state = edit_state::put_results(
         HashMap::<_, Value>::new(),
         function
@@ -90,6 +95,7 @@ where
     )
     .unwrap();
 
+    tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
         &blocks[&function.entry_point].1,
         &match &statements[function.entry_point.0] {
@@ -110,6 +116,8 @@ where
             let (landing_block, block) = &blocks[&statement_idx];
 
             if let Some((landing_block, _)) = landing_block {
+                tracing::trace!("Implementing the statement {statement_idx}'s landing block.");
+
                 state = edit_state::put_results(
                     HashMap::default(),
                     state
@@ -138,6 +146,11 @@ where
 
             match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
+                    tracing::trace!(
+                        "Implementing the invocation statement at {statement_idx}: {}.",
+                        invocation.libfunc_id
+                    );
+
                     let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
 
                     let helper = LibfuncHelper {
@@ -233,6 +246,8 @@ where
                         .collect()
                 }
                 Statement::Return(var_ids) => {
+                    tracing::trace!("Implementing the return statement at {statement_idx}");
+
                     let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
@@ -242,9 +257,11 @@ where
         },
     );
 
+    let function_name = generate_function_name(function);
+    tracing::debug!("Creating the actual function, named `{function_name}`.");
     module.body().append_operation(func::func(
         context,
-        StringAttribute::new(context, &generate_function_name(function)),
+        StringAttribute::new(context, &function_name),
         TypeAttribute::new(
             FunctionType::new(
                 context,
@@ -263,6 +280,7 @@ where
         Location::unknown(context),
     ));
 
+    tracing::debug!("Done generating function {}.", function.id);
     Ok(())
 }
 
@@ -310,6 +328,11 @@ where
 
             match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
+                    tracing::trace!(
+                        "Creating block for invocation statement at index {statement_idx}: {}",
+                        invocation.libfunc_id
+                    );
+
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter()).unwrap();
 
@@ -350,6 +373,10 @@ where
                         .collect()
                 }
                 Statement::Return(var_ids) => {
+                    tracing::trace!(
+                        "Creating block for return statement at index {statement_idx}."
+                    );
+
                     let (state, types) =
                         edit_state::take_args(state.clone(), var_ids.iter()).unwrap();
                     assert!(
@@ -367,6 +394,7 @@ where
         },
     );
 
+    tracing::trace!("Generating function entry block.");
     let entry_block = region.append_block(Block::new(
         &extract_types(context, &function.signature.param_types, registry)
             .map(|ty| (ty, Location::unknown(context)))
@@ -378,8 +406,13 @@ where
         .map(|(i, block)| {
             let statement_idx = StatementIdx(i);
 
+            tracing::trace!("Inserting block for statement at index {statement_idx}.");
             let libfunc_block = region.append_block(block);
             let landing_block = (predecessors[&statement_idx].1 > 1).then(|| {
+                tracing::trace!(
+                    "Generating a landing block for the statement at index {statement_idx}."
+                );
+
                 (
                     region.insert_block_before(
                         libfunc_block,

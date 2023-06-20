@@ -90,7 +90,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Box(_) => todo!(),
             Self::Cast(_) => todo!(),
             Self::Drop(info) => self::drop::build(context, registry, entry, location, helper, info),
-            Self::Dup(_) => todo!(),
+            Self::Dup(info) => self::dup::build(context, registry, entry, location, helper, info),
             Self::Ec(_) => todo!(),
             Self::Felt252(selector) => {
                 self::felt252::build(context, registry, entry, location, helper, selector)
