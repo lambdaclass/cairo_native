@@ -77,7 +77,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Array(info) => self::array::build(context, module, registry, metadata, info),
             Self::Bitwise(_) => todo!(),
             Self::Box(_) => todo!(),
-            Self::BuiltinCosts(_) => todo!(),
+            Self::BuiltinCosts(info) => self::builtin_costs::build(context, module, registry, metadata, info),
             Self::EcOp(_) => todo!(),
             Self::EcPoint(_) => todo!(),
             Self::EcState(_) => todo!(),
