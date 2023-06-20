@@ -11,6 +11,8 @@ use melior::{
     Context,
 };
 
+type EnumVariantTypes<'ctx> = (Type<'ctx>, Vec<(Type<'ctx>, Type<'ctx>)>, usize);
+
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -55,7 +57,7 @@ pub fn get_type_for_variants<'ctx, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     variants: &[ConcreteTypeId],
-) -> Result<(Type<'ctx>, Vec<(Type<'ctx>, Type<'ctx>)>, usize), std::convert::Infallible>
+) -> Result<EnumVariantTypes<'ctx>, std::convert::Infallible>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
