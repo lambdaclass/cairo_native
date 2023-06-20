@@ -115,7 +115,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::FunctionCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Gas(_) => todo!(),
+            Self::Gas(selector) => self::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint8(selector) => self::uint8::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
