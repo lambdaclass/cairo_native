@@ -3,7 +3,7 @@ use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
-use melior::{ir::Type, Context};
+use melior::{ir::{Type, Module}, Context};
 use std::error::Error;
 
 pub mod array;
@@ -42,6 +42,7 @@ pub trait TypeBuilder {
     fn build<'ctx, TType, TLibfunc>(
         &self,
         context: &'ctx Context,
+        module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
     ) -> Result<Type<'ctx>, Self::Error>
@@ -57,6 +58,7 @@ impl TypeBuilder for CoreTypeConcrete {
     fn build<'ctx, TType, TLibfunc>(
         &self,
         context: &'ctx Context,
+        module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
     ) -> Result<Type<'ctx>, Self::Error>
@@ -66,35 +68,35 @@ impl TypeBuilder for CoreTypeConcrete {
         <TType as GenericType>::Concrete: TypeBuilder,
     {
         match self {
-            Self::Array(_) => todo!(),
+            Self::Array(info) => self::array::build(context, module, registry, metadata, info),
             Self::Bitwise(_) => todo!(),
             Self::Box(_) => todo!(),
             Self::BuiltinCosts(_) => todo!(),
             Self::EcOp(_) => todo!(),
             Self::EcPoint(_) => todo!(),
             Self::EcState(_) => todo!(),
-            Self::Enum(_) => todo!(),
-            Self::Felt252(info) => self::felt252::build(context, registry, metadata, info),
+            Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
+            Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
             Self::Felt252Dict(_) => todo!(),
             Self::Felt252DictEntry(_) => todo!(),
-            Self::GasBuiltin(_) => todo!(),
+            Self::GasBuiltin(info) => self::gas_builtin::build(context, module, registry, metadata, info),
             Self::NonZero(_) => todo!(),
             Self::Nullable(_) => todo!(),
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
-            Self::RangeCheck(_) => todo!(),
+            Self::RangeCheck(info) => self::range_check::build(context, module, registry, metadata, info),
             Self::SegmentArena(_) => todo!(),
             Self::Snapshot(_) => todo!(),
             Self::Span(_) => todo!(),
             Self::SquashedFelt252Dict(_) => todo!(),
             Self::StarkNet(_) => todo!(),
-            Self::Struct(info) => self::r#struct::build(context, registry, metadata, info),
+            Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
             Self::Uint128(_) => todo!(),
             Self::Uint128MulGuarantee(_) => todo!(),
             Self::Uint16(_) => todo!(),
-            Self::Uint32(info) => self::uint32::build(context, registry, metadata, info),
+            Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
             Self::Uint64(_) => todo!(),
-            Self::Uint8(info) => self::uint8::build(context, registry, metadata, info),
+            Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
             Self::Uninitialized(_) => todo!(),
         }
     }

@@ -6,7 +6,7 @@ use cairo_lang_sierra::{
 };
 use lazy_static::lazy_static;
 use melior::{
-    ir::{r#type::IntegerType, Type},
+    ir::{r#type::IntegerType, Type, Module},
     Context,
 };
 use num_bigint::BigUint;
@@ -23,6 +23,7 @@ pub struct Felt252;
 
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
+    _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     _info: &InfoOnlyConcreteType,

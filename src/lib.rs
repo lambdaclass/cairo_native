@@ -91,6 +91,7 @@ where
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
         context,
+        module,
         &region,
         registry,
         function,
@@ -169,7 +170,7 @@ where
                     let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
 
                     let helper = LibfuncHelper {
-                        _module: module,
+                        module,
                         branches: invocation
                             .branches
                             .iter()
@@ -290,6 +291,7 @@ where
                 context,
                 &extract_types(
                     context,
+                    module,
                     &function.signature.param_types,
                     registry,
                     metadata_storage,
@@ -297,6 +299,7 @@ where
                 .collect::<Vec<_>>(),
                 &extract_types(
                     context,
+                    module,
                     &function.signature.ret_types,
                     registry,
                     metadata_storage,
@@ -319,6 +322,7 @@ where
 
 fn generate_function_structure<'c, 'a, TType, TLibfunc>(
     context: &'c Context,
+    module: &'a Module<'c>,
     region: &'a Region<'c>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     function: &Function,
@@ -343,7 +347,7 @@ where
                     registry
                         .get_type(ty)
                         .unwrap()
-                        .build(context, registry, metadata_storage)
+                        .build(context, module, registry, metadata_storage)
                         .unwrap(),
                 )
             }),
@@ -387,7 +391,7 @@ where
                                         registry
                                             .get_type(&var_info.ty)
                                             .unwrap()
-                                            .build(context, registry, metadata_storage)
+                                            .build(context, module, registry, metadata_storage)
                                             .unwrap()
                                     },
                                 )),
@@ -432,6 +436,7 @@ where
     let entry_block = region.append_block(Block::new(
         &extract_types(
             context,
+            module,
             &function.signature.param_types,
             registry,
             metadata_storage,
@@ -507,6 +512,7 @@ fn generate_function_name(function: &Function) -> Cow<str> {
 
 fn extract_types<'c, 'a, TType, TLibfunc>(
     context: &'c Context,
+    module: &'a Module<'c>,
     type_ids: &'a [ConcreteTypeId],
     registry: &'a ProgramRegistry<TType, TLibfunc>,
     metadata_storage: &'a mut MetadataStorage,
@@ -521,7 +527,10 @@ where
     type_ids.iter().map(|id| {
         registry
             .get_type(id)
-            .map(|ty| ty.build(context, registry, metadata_storage).unwrap())
+            .map(|ty| {
+                ty.build(context, module, registry, metadata_storage)
+                    .unwrap()
+            })
             .unwrap()
     })
 }

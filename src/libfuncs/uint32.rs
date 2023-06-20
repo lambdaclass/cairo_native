@@ -63,7 +63,7 @@ where
     let value_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context, registry, metadata)
+        .build(context, &helper, registry, metadata)
         .unwrap();
 
     let op0 = entry.append_operation(arith::constant(

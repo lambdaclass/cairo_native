@@ -4,11 +4,15 @@ use cairo_lang_sierra::{
     extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
-use melior::{ir::Type, Context};
+use melior::{
+    ir::{Module, Type},
+    Context,
+};
 use std::{borrow::Cow, iter::once};
 
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     info: &StructConcreteType,
@@ -27,7 +31,7 @@ where
                         registry
                             .get_type(x)
                             .unwrap()
-                            .build(context, registry, metadata)
+                            .build(context, module, registry, metadata)
                             .unwrap()
                             .to_string(),
                     )
