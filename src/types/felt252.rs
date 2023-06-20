@@ -6,7 +6,7 @@ use cairo_lang_sierra::{
 };
 use lazy_static::lazy_static;
 use melior::{
-    ir::{r#type::IntegerType, Type, Module},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 use num_bigint::BigUint;

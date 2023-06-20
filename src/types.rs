@@ -3,7 +3,10 @@ use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
-use melior::{ir::{Type, Module}, Context};
+use melior::{
+    ir::{Module, Type},
+    Context,
+};
 use std::error::Error;
 
 pub mod array;
@@ -79,12 +82,16 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
             Self::Felt252Dict(_) => todo!(),
             Self::Felt252DictEntry(_) => todo!(),
-            Self::GasBuiltin(info) => self::gas_builtin::build(context, module, registry, metadata, info),
+            Self::GasBuiltin(info) => {
+                self::gas_builtin::build(context, module, registry, metadata, info)
+            }
             Self::NonZero(_) => todo!(),
             Self::Nullable(_) => todo!(),
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
-            Self::RangeCheck(info) => self::range_check::build(context, module, registry, metadata, info),
+            Self::RangeCheck(info) => {
+                self::range_check::build(context, module, registry, metadata, info)
+            }
             Self::SegmentArena(_) => todo!(),
             Self::Snapshot(_) => todo!(),
             Self::Span(_) => todo!(),

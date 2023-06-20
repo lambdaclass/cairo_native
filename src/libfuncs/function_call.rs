@@ -35,7 +35,7 @@ where
             registry
                 .get_type(&x.ty)
                 .unwrap()
-                .build(context, &helper, registry, metadata)
+                .build(context, helper, registry, metadata)
                 .unwrap()
         })
         .collect::<Vec<_>>();
