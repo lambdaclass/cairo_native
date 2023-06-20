@@ -9,13 +9,8 @@ use melior::{
     ir::{Block, BlockRef, Location, Module, Operation, Region, Type, Value, ValueLike},
     Context,
 };
-use std::{
-    borrow::Cow,
-    cell::{Cell, RefCell},
-    error::Error,
-    mem::transmute,
-    ops::Deref,
-};
+use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
+use typed_arena::Arena;
 
 pub mod ap_tracking;
 pub mod array;
@@ -161,18 +156,24 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     }
 }
 
-pub struct LibfuncHelper<'ctx, 'this> {
+pub struct LibfuncHelper<'ctx, 'this>
+where
+    'this: 'ctx,
+{
     pub(crate) module: &'this Module<'ctx>,
 
     pub(crate) region: &'this Region<'ctx>,
-    pub(crate) entry_block: &'this Block<'ctx>,
-    pub(crate) extra_blocks: RefCell<Vec<BlockRef<'ctx, 'this>>>,
+    pub(crate) blocks_arena: &'this Arena<BlockRef<'ctx, 'this>>,
+    pub(crate) last_block: Cell<&'this BlockRef<'ctx, 'this>>,
 
     pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     pub(crate) results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 }
 
-impl<'ctx, 'this> LibfuncHelper<'ctx, 'this> {
+impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>
+where
+    'this: 'ctx,
+{
     pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
         self.results
             .into_iter()
@@ -180,15 +181,14 @@ impl<'ctx, 'this> LibfuncHelper<'ctx, 'this> {
     }
 
     pub fn append_block(&self, args: &[(Type<'ctx>, Location<'ctx>)]) -> &'this Block<'ctx> {
-        let mut extra_blocks = self.extra_blocks.borrow_mut();
+        let block = self
+            .region
+            .insert_block_after(*self.last_block.get(), Block::new(args));
 
-        let prev_block = extra_blocks
-            .last()
-            .copied()
-            .unwrap_or_else(|| unsafe { transmute(self.entry_block) });
-        extra_blocks.push(self.region.insert_block_after(prev_block, Block::new(args)));
+        let block_ref: &'this mut BlockRef<'ctx, 'this> = self.blocks_arena.alloc(block);
+        self.last_block.set(block_ref);
 
-        unsafe { transmute::<&Block, &'this Block<'ctx>>(extra_blocks.last().unwrap()) }
+        block_ref
     }
 
     pub fn br(

@@ -214,7 +214,8 @@ where
             (default_block, &[]),
             &variant_blocks
                 .iter()
-                .map(|block| (*block, [].as_slice()))
+                .copied()
+                .map(|block| (block, [].as_slice()))
                 .collect::<Vec<_>>(),
             location,
         )
