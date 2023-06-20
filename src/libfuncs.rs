@@ -89,7 +89,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::ApTracking(selector) => self::ap_tracking::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Array(_) => todo!(),
+            Self::Array(selector) => self::array::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Bitwise(_) => todo!(),
             Self::BranchAlign(info) => self::branch_align::build(
                 context, registry, entry, location, helper, metadata, info,
