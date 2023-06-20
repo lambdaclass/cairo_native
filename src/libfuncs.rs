@@ -9,7 +9,7 @@ use melior::{
     ir::{Block, Location, Module, Operation, Value},
     Context,
 };
-use std::{cell::Cell, error::Error};
+use std::{cell::Cell, error::Error, ops::Deref};
 
 pub mod ap_tracking;
 pub mod array;
@@ -150,7 +150,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 }
 
 pub struct LibfuncHelper<'ctx, 'this> {
-    pub(crate) _module: &'this Module<'ctx>,
+    pub(crate) module: &'this Module<'ctx>,
     pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     pub(crate) results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 }
@@ -241,6 +241,14 @@ impl<'ctx, 'this> LibfuncHelper<'ctx, 'this> {
             &args_false,
             location,
         )
+    }
+}
+
+impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
+    type Target = Module<'ctx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.module
     }
 }
 
