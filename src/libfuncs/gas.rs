@@ -32,11 +32,42 @@ where
         GasConcreteLibfunc::WithdrawGas(_) => todo!(),
         GasConcreteLibfunc::RedepositGas(_) => todo!(),
         GasConcreteLibfunc::GetAvailableGas(_) => todo!(),
-        GasConcreteLibfunc::BuiltinWithdrawGas(_) => todo!(),
+        GasConcreteLibfunc::BuiltinWithdrawGas(info) => {
+            build_builtin_withdraw_gas(context, registry, entry, location, helper, metadata, info)
+        }
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+pub fn build_builtin_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    // TODO: Implement libfunc.
+
+    entry.append_operation(helper.br(
+        0,
+        &[
+            entry.argument(0).unwrap().into(),
+            entry.argument(1).unwrap().into(),
+        ],
+        location,
+    ));
+
+    Ok(())
 }
 
 pub fn build_get_builtin_costs<'ctx, 'this, TType, TLibfunc>(
