@@ -28,10 +28,11 @@ use melior::{
 use metadata::MetadataStorage;
 use std::{
     borrow::Cow,
-    cell::{Cell, RefCell},
+    cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
+use typed_arena::Arena;
 use types::TypeBuilder;
 
 mod debug_info;
@@ -88,6 +89,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let region = Region::new();
+    let blocks_arena = Arena::new();
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
@@ -173,8 +175,8 @@ where
                     let helper = LibfuncHelper {
                         module,
                         region: &region,
-                        entry_block: block,
-                        extra_blocks: RefCell::new(Vec::default()),
+                        blocks_arena: &blocks_arena,
+                        last_block: Cell::new(block),
                         branches: invocation
                             .branches
                             .iter()
