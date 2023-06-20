@@ -88,7 +88,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::GasBuiltin(info) => {
                 self::gas_builtin::build(context, module, registry, metadata, info)
             }
-            Self::NonZero(_) => todo!(),
+            Self::NonZero(info) => self::non_zero::build(context, module, registry, metadata, info),
             Self::Nullable(_) => todo!(),
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
