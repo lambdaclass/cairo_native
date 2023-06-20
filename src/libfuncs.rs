@@ -1,6 +1,7 @@
 use crate::types::TypeBuilder;
 use cairo_lang_sierra::{
     extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
+    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -60,6 +61,8 @@ pub trait LibfuncBuilder {
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder,
         <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder;
+
+    fn is_function_call(&self) -> Option<&FunctionId>;
 }
 
 impl LibfuncBuilder for CoreConcreteLibfunc {
@@ -129,6 +132,13 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::StarkNet(_) => todo!(),
             Self::Debug(_) => todo!(),
             Self::SnapshotTake(_) => todo!(),
+        }
+    }
+
+    fn is_function_call(&self) -> Option<&FunctionId> {
+        match self {
+            CoreConcreteLibfunc::FunctionCall(info) => Some(&info.function.id),
+            _ => None,
         }
     }
 }

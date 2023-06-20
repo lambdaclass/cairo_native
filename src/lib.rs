@@ -1,9 +1,12 @@
+#![feature(box_into_inner)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
+#![feature(trait_upcasting)]
 
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
+use crate::metadata::tail_recursion::TailRecursionMeta;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
@@ -22,6 +25,7 @@ use melior::{
     },
     Context,
 };
+use metadata::MetadataStorage;
 use std::{
     borrow::Cow,
     cell::Cell,
@@ -33,6 +37,7 @@ use types::TypeBuilder;
 mod debug_info;
 pub(crate) mod ffi;
 pub mod libfuncs;
+pub mod metadata;
 pub mod types;
 
 type BlockStorage<'c, 'a> =
@@ -50,6 +55,8 @@ where
 {
     let module = Module::new(Location::unknown(context));
 
+    let mut metadata_storage = MetadataStorage::new();
+
     let program_registry = ProgramRegistry::<TType, TLibfunc>::new(program)?;
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
@@ -59,6 +66,7 @@ where
             &program_registry,
             function,
             &program.statements,
+            &mut metadata_storage,
         )?;
     }
 
@@ -71,6 +79,7 @@ fn compile_func<TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     function: &Function,
     statements: &[Statement],
+    metadata_storage: &mut MetadataStorage,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -211,9 +220,14 @@ where
                             .collect::<Vec<_>>(),
                     };
 
-                    registry
-                        .get_libfunc(&invocation.libfunc_id)
-                        .unwrap()
+                    let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
+                    if let Some(target) = concrete_libfunc.is_function_call() {
+                        metadata_storage
+                            .insert(TailRecursionMeta::new(target == &function.id))
+                            .unwrap();
+                    }
+
+                    concrete_libfunc
                         .build(
                             context,
                             registry,
@@ -223,6 +237,8 @@ where
                         )
                         .unwrap();
                     assert!(block.terminator().is_some());
+
+                    metadata_storage.remove::<TailRecursionMeta>();
 
                     invocation
                         .branches
