@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::types::TypeBuilder;
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -17,6 +17,7 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     info: &FunctionCallConcreteLibfunc,
+    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,

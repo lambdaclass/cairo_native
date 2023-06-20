@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::types::TypeBuilder;
+use crate::{types::TypeBuilder, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         int::unsigned::{Uint8Concrete, Uint8Traits, UintConcrete, UintConstConcreteLibfunc},
@@ -20,6 +20,7 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     selector: &Uint8Concrete,
+    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,

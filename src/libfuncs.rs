@@ -1,4 +1,4 @@
-use crate::types::TypeBuilder;
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
     ids::FunctionId,
@@ -55,6 +55,7 @@ pub trait LibfuncBuilder {
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
     ) -> Result<(), Self::Error>
     where
         TType: GenericType,
@@ -75,6 +76,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
     ) -> Result<(), Self::Error>
     where
         TType: GenericType,
@@ -86,45 +88,49 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::ApTracking(_) => todo!(),
             Self::Array(_) => todo!(),
             Self::Bitwise(_) => todo!(),
-            Self::BranchAlign(info) => {
-                self::branch_align::build(context, registry, entry, location, helper, info)
-            }
+            Self::BranchAlign(info) => self::branch_align::build(
+                context, registry, entry, location, helper, info, metadata,
+            ),
             Self::Bool(_) => todo!(),
             Self::Box(_) => todo!(),
             Self::Cast(_) => todo!(),
-            Self::Drop(info) => self::drop::build(context, registry, entry, location, helper, info),
-            Self::Dup(info) => self::dup::build(context, registry, entry, location, helper, info),
+            Self::Drop(info) => {
+                self::drop::build(context, registry, entry, location, helper, info, metadata)
+            }
+            Self::Dup(info) => {
+                self::dup::build(context, registry, entry, location, helper, info, metadata)
+            }
             Self::Ec(_) => todo!(),
-            Self::Felt252(selector) => {
-                self::felt252::build(context, registry, entry, location, helper, selector)
-            }
-            Self::FunctionCall(info) => {
-                self::function_call::build(context, registry, entry, location, helper, info)
-            }
+            Self::Felt252(selector) => self::felt252::build(
+                context, registry, entry, location, helper, selector, metadata,
+            ),
+            Self::FunctionCall(info) => self::function_call::build(
+                context, registry, entry, location, helper, info, metadata,
+            ),
             Self::Gas(_) => todo!(),
-            Self::Uint8(selector) => {
-                self::uint8::build(context, registry, entry, location, helper, selector)
-            }
+            Self::Uint8(selector) => self::uint8::build(
+                context, registry, entry, location, helper, selector, metadata,
+            ),
             Self::Uint16(_) => todo!(),
-            Self::Uint32(selector) => {
-                self::uint32::build(context, registry, entry, location, helper, selector)
-            }
+            Self::Uint32(selector) => self::uint32::build(
+                context, registry, entry, location, helper, selector, metadata,
+            ),
             Self::Uint64(_) => todo!(),
             Self::Uint128(_) => todo!(),
             Self::Uint256(_) => todo!(),
             Self::Uint512(_) => todo!(),
-            Self::Mem(selector) => {
-                self::mem::build(context, registry, entry, location, helper, selector)
-            }
+            Self::Mem(selector) => self::mem::build(
+                context, registry, entry, location, helper, selector, metadata,
+            ),
             Self::Nullable(_) => todo!(),
             Self::UnwrapNonZero(_) => todo!(),
-            Self::UnconditionalJump(info) => {
-                self::unconditional_jump::build(context, registry, entry, location, helper, info)
-            }
+            Self::UnconditionalJump(info) => self::unconditional_jump::build(
+                context, registry, entry, location, helper, info, metadata,
+            ),
             Self::Enum(_) => todo!(),
-            Self::Struct(selector) => {
-                self::r#struct::build(context, registry, entry, location, helper, selector)
-            }
+            Self::Struct(selector) => self::r#struct::build(
+                context, registry, entry, location, helper, selector, metadata,
+            ),
             Self::Felt252Dict(_) => todo!(),
             Self::Felt252DictEntry(_) => todo!(),
             Self::Pedersen(_) => todo!(),
