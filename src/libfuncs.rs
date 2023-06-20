@@ -6,10 +6,16 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::cf,
-    ir::{Block, Location, Module, Operation, Value},
+    ir::{Block, BlockRef, Location, Module, Operation, Region, Type, Value, ValueLike},
     Context,
 };
-use std::{cell::Cell, error::Error, ops::Deref};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    error::Error,
+    mem::transmute,
+    ops::Deref,
+};
 
 pub mod ap_tracking;
 pub mod array;
@@ -85,7 +91,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
     {
         match self {
-            Self::ApTracking(_) => todo!(),
+            Self::ApTracking(selector) => self::ap_tracking::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Array(_) => todo!(),
             Self::Bitwise(_) => todo!(),
             Self::BranchAlign(info) => self::branch_align::build(
@@ -127,7 +135,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::UnconditionalJump(info) => self::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Enum(_) => todo!(),
+            Self::Enum(selector) => self::r#enum::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -151,6 +161,11 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 
 pub struct LibfuncHelper<'ctx, 'this> {
     pub(crate) module: &'this Module<'ctx>,
+
+    pub(crate) region: &'this Region<'ctx>,
+    pub(crate) entry_block: &'this Block<'ctx>,
+    pub(crate) extra_blocks: RefCell<Vec<BlockRef<'ctx, 'this>>>,
+
     pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     pub(crate) results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 }
@@ -160,6 +175,18 @@ impl<'ctx, 'this> LibfuncHelper<'ctx, 'this> {
         self.results
             .into_iter()
             .map(|x| x.into_iter().map(|x| x.into_inner().unwrap()).collect())
+    }
+
+    pub fn append_block(&self, args: &[(Type<'ctx>, Location<'ctx>)]) -> &'this Block<'ctx> {
+        let mut extra_blocks = self.extra_blocks.borrow_mut();
+
+        let prev_block = extra_blocks
+            .last()
+            .copied()
+            .unwrap_or_else(|| unsafe { transmute(self.entry_block) });
+        extra_blocks.push(self.region.insert_block_after(prev_block, Block::new(args)));
+
+        unsafe { transmute::<&Block, &'this Block<'ctx>>(extra_blocks.last().unwrap()) }
     }
 
     pub fn br(
@@ -242,6 +269,78 @@ impl<'ctx, 'this> LibfuncHelper<'ctx, 'this> {
             location,
         )
     }
+
+    pub fn switch(
+        &self,
+        flag: Value<'ctx, 'this>,
+        default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
+        branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
+        location: Location<'ctx>,
+    ) -> Operation<'ctx> {
+        let default_destination = match default.0 {
+            BranchTarget::Jump(x) => (x, Cow::Borrowed(default.1)),
+            BranchTarget::Return(i) => {
+                let (successor, operands) = &self.branches[i];
+
+                for (dst, src) in self.results[i].iter().zip(default.1) {
+                    dst.replace(Some(*src));
+                }
+
+                let destination_operands = operands
+                    .iter()
+                    .copied()
+                    .map(|op| match op {
+                        BranchArg::External(x) => x,
+                        BranchArg::Returned(i) => default.1[i],
+                    })
+                    .collect::<Vec<_>>();
+
+                (*successor, Cow::Owned(destination_operands))
+            }
+        };
+
+        let mut case_values = Vec::with_capacity(branches.len());
+        let mut case_destinations = Vec::with_capacity(branches.len());
+        for (flag, successor, operands) in branches {
+            case_values.push(*flag);
+
+            case_destinations.push(match *successor {
+                BranchTarget::Jump(x) => (x, Cow::Borrowed(*operands)),
+                BranchTarget::Return(i) => {
+                    let (successor, operands) = &self.branches[i];
+
+                    for (dst, src) in self.results[i].iter().zip(default.1) {
+                        dst.replace(Some(*src));
+                    }
+
+                    let destination_operands = operands
+                        .iter()
+                        .copied()
+                        .map(|op| match op {
+                            BranchArg::External(x) => x,
+                            BranchArg::Returned(i) => default.1[i],
+                        })
+                        .collect::<Vec<_>>();
+
+                    (*successor, Cow::Owned(destination_operands))
+                }
+            });
+        }
+
+        cf::switch(
+            unsafe { location.context().to_ref() },
+            &case_values,
+            flag,
+            flag.r#type(),
+            (default_destination.0, &default_destination.1),
+            &case_destinations
+                .iter()
+                .map(|(x, y)| (*x, y.as_ref()))
+                .collect::<Vec<_>>(),
+            location,
+        )
+        .unwrap()
+    }
 }
 
 impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
@@ -256,4 +355,10 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
 pub enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
+}
+
+#[derive(Clone, Copy)]
+pub enum BranchTarget<'ctx, 'a> {
+    Jump(&'a Block<'ctx>),
+    Return(usize),
 }

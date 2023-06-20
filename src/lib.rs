@@ -1,4 +1,5 @@
 #![feature(box_into_inner)]
+#![feature(int_roundings)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
@@ -27,7 +28,7 @@ use melior::{
 use metadata::MetadataStorage;
 use std::{
     borrow::Cow,
-    cell::Cell,
+    cell::{Cell, RefCell},
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
@@ -171,6 +172,9 @@ where
 
                     let helper = LibfuncHelper {
                         module,
+                        region: &region,
+                        entry_block: block,
+                        extra_blocks: RefCell::new(Vec::default()),
                         branches: invocation
                             .branches
                             .iter()
