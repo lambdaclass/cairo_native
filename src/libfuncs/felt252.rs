@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::types::TypeBuilder;
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         felt252::{Felt252Concrete, Felt252ConstConcreteLibfunc},
@@ -20,6 +20,7 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     selector: &Felt252Concrete,
+    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,

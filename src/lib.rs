@@ -234,6 +234,7 @@ where
                             block,
                             Location::unknown(context),
                             &helper,
+                            metadata_storage,
                         )
                         .unwrap();
                     assert!(block.terminator().is_some());
