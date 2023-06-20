@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{types::TypeBuilder, metadata::MetadataStorage};
+use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         int::unsigned::{Uint32Concrete, Uint32Traits, UintConcrete, UintConstConcreteLibfunc},
@@ -20,8 +20,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     selector: &Uint32Concrete,
-    _metadata: &MetadataStorage,
 ) -> Result<(), std::convert::Infallible>
 where
     TType: GenericType,
@@ -30,7 +30,9 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     match selector {
-        UintConcrete::Const(info) => build_const(context, registry, entry, location, helper, info),
+        UintConcrete::Const(info) => {
+            build_const(context, registry, entry, location, helper, metadata, info)
+        }
         UintConcrete::Operation(_) => todo!(),
         UintConcrete::SquareRoot(_) => todo!(),
         UintConcrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
@@ -48,6 +50,7 @@ pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     info: &UintConstConcreteLibfunc<Uint32Traits>,
 ) -> Result<(), std::convert::Infallible>
 where
@@ -60,7 +63,7 @@ where
     let value_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap()
-        .build(context, registry)
+        .build(context, registry, metadata)
         .unwrap();
 
     let op0 = entry.append_operation(arith::constant(
