@@ -152,7 +152,9 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => arena
+                .alloc_layout(self.layout(context, module, registry, metadata))
+                .as_ptr() as *mut (),
             CoreTypeConcrete::GasBuiltin(_) => arena
                 .alloc_layout(self.layout(context, module, registry, metadata))
                 .as_ptr() as *mut (),
@@ -167,9 +169,35 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(_) => null_mut::<()>(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
+            CoreTypeConcrete::Enum(_) => {
+                let (_, _, align) = crate::types::r#enum::get_type_for_variants(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    self.variants().unwrap(),
+                )
+                .unwrap();
+                let data_ty = crate::ffi::get_pointer_element_type(
+                    &self.build(context, module, registry, metadata).unwrap(),
+                );
+
+                let data_ptr = arena
+                    .alloc_layout(
+                        Layout::from_size_align(crate::ffi::get_size(module, &data_ty), align)
+                            .unwrap(),
+                    )
+                    .as_ptr() as *mut ();
+
+                let addr_ptr = arena
+                    .alloc_layout(self.layout(context, module, registry, metadata))
+                    .as_ptr() as *mut ();
+                unsafe {
+                    (addr_ptr as *mut *mut ()).write(data_ptr);
+                }
+
+                addr_ptr
+            }
             CoreTypeConcrete::Struct(_) => todo!(),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
