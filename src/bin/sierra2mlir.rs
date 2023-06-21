@@ -7,11 +7,17 @@ use cairo_lang_compiler::{
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,
+    program_registry::ProgramRegistry,
     ProgramParser,
 };
 use clap::Parser;
-use melior::{dialect::DialectRegistry, utility::register_all_dialects, Context};
-use sierra2mlir::DebugInfo;
+use melior::{
+    dialect::DialectRegistry,
+    ir::{Location, Module},
+    utility::register_all_dialects,
+    Context,
+};
+use sierra2mlir::{metadata::MetadataStorage, DebugInfo};
 use std::{
     ffi::OsStr,
     fs,
@@ -44,7 +50,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.load_all_available_dialects();
 
     // Compile the program.
-    let module = sierra2mlir::compile::<CoreType, CoreLibfunc>(&context, &program)?;
+    let module = Module::new(Location::unknown(&context));
+    let mut metadata = MetadataStorage::new();
+    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
+
+    sierra2mlir::compile::<CoreType, CoreLibfunc>(
+        &context,
+        &module,
+        &program,
+        &registry,
+        &mut metadata,
+    )?;
 
     // Write the output.
     match args.output {

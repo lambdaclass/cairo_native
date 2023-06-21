@@ -3,6 +3,7 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
+#![feature(pointer_byte_offsets)]
 
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
@@ -21,7 +22,7 @@ use melior::{
     ir::{
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
+        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -40,39 +41,38 @@ pub(crate) mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod types;
+pub mod values;
 
 type BlockStorage<'c, 'a> =
     HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>;
 
 pub fn compile<'c, TType, TLibfunc>(
     context: &'c Context,
+    module: &Module<'c>,
     program: &Program,
-) -> Result<Module<'c>, Box<dyn std::error::Error>>
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
+) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let module = Module::new(Location::unknown(context));
-
-    let mut metadata_storage = MetadataStorage::new();
-
-    let program_registry = ProgramRegistry::<TType, TLibfunc>::new(program)?;
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func::<TType, TLibfunc>(
             context,
-            &module,
-            &program_registry,
+            module,
+            registry,
             function,
             &program.statements,
-            &mut metadata_storage,
+            metadata,
         )?;
     }
 
     tracing::info!("The program was compiled successfully.");
-    Ok(module)
+    Ok(())
 }
 
 fn compile_func<TType, TLibfunc>(
@@ -316,10 +316,16 @@ where
             .into(),
         ),
         region,
-        &[(
-            Identifier::new(context, "sym_visibility"),
-            StringAttribute::new(context, "public").into(),
-        )],
+        &[
+            (
+                Identifier::new(context, "sym_visibility"),
+                StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.emit_c_interface"),
+                Attribute::unit(context),
+            ),
+        ],
         Location::unknown(context),
     ));
 
@@ -508,7 +514,7 @@ where
     ))
 }
 
-pub(crate) fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
+pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
     function_id
         .debug_name
         .as_deref()

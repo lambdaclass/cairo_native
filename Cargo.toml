@@ -15,6 +15,7 @@ required-features = ["build-cli"]
 build-cli = ["clap", "tracing-subscriber"]
 
 [dependencies]
+bumpalo = "3.13.0"
 cairo-lang-compiler = "2.0.0-rc3"
 cairo-lang-diagnostics = "2.0.0-rc3"
 cairo-lang-defs = "2.0.0-rc3"

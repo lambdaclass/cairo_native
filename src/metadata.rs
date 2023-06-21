@@ -7,12 +7,13 @@ pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod tail_recursion;
 
+#[derive(Default)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
 }
 
 impl MetadataStorage {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             entries: HashMap::default(),
         }
