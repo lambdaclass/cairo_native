@@ -18,10 +18,13 @@ use cairo_lang_sierra::{
 use itertools::Itertools;
 use libfuncs::LibfuncBuilder;
 use melior::{
-    dialect::{cf, func},
+    dialect::{
+        cf, func,
+        llvm::{self, LoadStoreOptions},
+    },
     ir::{
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
+        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        r#type::{FunctionType, IntegerType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
@@ -273,7 +276,37 @@ where
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+                    let (_, mut values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+
+                    for (ret_val, sierra_ty) in values.iter_mut().zip(&function.signature.ret_types)
+                    {
+                        let concrete_ty = registry.get_type(sierra_ty).unwrap();
+                        let ret_ty = crate::ffi::get_pointer_element_type(
+                            &concrete_ty
+                                .build(context, module, registry, metadata)
+                                .unwrap(),
+                        );
+
+                        if concrete_ty.variants().is_some() {
+                            *ret_val = block
+                                .append_operation(llvm::load(
+                                    context,
+                                    *ret_val,
+                                    ret_ty,
+                                    Location::unknown(context),
+                                    LoadStoreOptions::default().align(Some(IntegerAttribute::new(
+                                        crate::ffi::get_abi_alignment(module, &ret_ty)
+                                            .try_into()
+                                            .unwrap(),
+                                        IntegerType::new(context, 64).into(),
+                                    ))),
+                                ))
+                                .result(0)
+                                .unwrap()
+                                .into();
+                        }
+                    }
+
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
                     Vec::new()
@@ -298,14 +331,27 @@ where
                     metadata,
                 )
                 .collect::<Vec<_>>(),
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.ret_types,
-                    registry,
-                    metadata,
-                )
-                .collect::<Vec<_>>(),
+                &{
+                    let mut types = extract_types(
+                        context,
+                        module,
+                        &function.signature.ret_types,
+                        registry,
+                        metadata,
+                    )
+                    .collect::<Vec<_>>();
+
+                    // Convert enum types to their value.
+                    for (ret_ty, sierra_ty) in types.iter_mut().zip(&function.signature.ret_types) {
+                        let concrete_ty = registry.get_type(sierra_ty).unwrap();
+
+                        if concrete_ty.variants().is_some() {
+                            *ret_ty = crate::ffi::get_pointer_element_type(ret_ty);
+                        }
+                    }
+
+                    types
+                },
             )
             .into(),
         ),
