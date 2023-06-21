@@ -21,8 +21,8 @@ use melior::{
     Context, ExecutionEngine,
 };
 use sierra2mlir::{
-    generate_function_name,
     metadata::MetadataStorage,
+    utils::generate_function_name,
     values::{DebugWrapper, ValueBuilder},
     DebugInfo,
 };
