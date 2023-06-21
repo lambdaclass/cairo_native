@@ -2,17 +2,24 @@ use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
-        array::ArrayConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        array::ArrayConcreteLibfunc,
+        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        func,
+        llvm::{self, LoadStoreOptions},
+        scf,
+    },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location,
+        Block, Location, Region,
     },
     Context,
 };
@@ -36,7 +43,9 @@ where
         ArrayConcreteLibfunc::New(info) => {
             build_new(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::Append(_) => todo!(),
+        ArrayConcreteLibfunc::Append(info) => {
+            build_append(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::PopFront(_) => todo!(),
         ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
         ArrayConcreteLibfunc::Get(_) => todo!(),
@@ -68,29 +77,241 @@ where
         .build(context, helper, registry, metadata)
         .unwrap();
 
-    let op0 = entry.append_operation(arith::constant(
+    let op0 = entry.append_operation(
+        OperationBuilder::new("llvm.mlir.null", location)
+            .add_results(&[crate::ffi::get_struct_field_type_at(&array_ty, 0)])
+            .build(),
+    );
+    let op1 = entry.append_operation(arith::constant(
         context,
         IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
         location,
     ));
 
-    let op1 = entry.append_operation(llvm::undef(array_ty, location));
-    let op2 = entry.append_operation(llvm::insert_value(
-        context,
-        op1.result(0).unwrap().into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
-        op0.result(0).unwrap().into(),
-        location,
-    ));
+    let op2 = entry.append_operation(llvm::undef(array_ty, location));
     let op3 = entry.append_operation(llvm::insert_value(
         context,
         op2.result(0).unwrap().into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
+        DenseI64ArrayAttribute::new(context, &[0]),
         op0.result(0).unwrap().into(),
         location,
     ));
+    let op4 = entry.append_operation(llvm::insert_value(
+        context,
+        op3.result(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        op1.result(0).unwrap().into(),
+        location,
+    ));
+    let op5 = entry.append_operation(llvm::insert_value(
+        context,
+        op4.result(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        op1.result(0).unwrap().into(),
+        location,
+    ));
 
-    entry.append_operation(helper.br(0, &[op3.result(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[op5.result(0).unwrap().into()], location));
+
+    Ok(())
+}
+
+pub fn build_append<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    // Reallocation policy:
+    //   - Min size: 8 * size_of::<T>()
+    //   - Next size: 2 * prev_size
+
+    let array_ty = registry
+        .get_type(&info.param_signatures()[0].ty)
+        .unwrap()
+        .build(context, helper, registry, metadata)
+        .unwrap();
+    let elem_ty = registry
+        .get_type(&info.ty)
+        .unwrap()
+        .build(context, helper, registry, metadata)
+        .unwrap();
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let elem_stride = crate::ffi::get_size(helper, &elem_ty)
+        .next_multiple_of(crate::ffi::get_abi_alignment(helper, &elem_ty));
+
+    let op0 = entry.append_operation(llvm::extract_value(
+        context,
+        entry.argument(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[0]),
+        ptr_ty,
+        location,
+    ));
+    let op1 = entry.append_operation(llvm::extract_value(
+        context,
+        entry.argument(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let op2 = entry.append_operation(llvm::extract_value(
+        context,
+        entry.argument(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+
+    let op3 = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        op1.result(0).unwrap().into(),
+        op2.result(0).unwrap().into(),
+        location,
+    ));
+    let op4 = entry.append_operation(scf::r#if(
+        op3.result(0).unwrap().into(),
+        &[array_ty, ptr_ty],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            // TODO: Grow.
+
+            let op4 = block.append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(8, IntegerType::new(context, 64).into()).into(),
+                location,
+            ));
+            let op5 = block.append_operation(arith::addi(
+                op2.result(0).unwrap().into(),
+                op2.result(0).unwrap().into(),
+                location,
+            ));
+            let op6 = block.append_operation(arith::maxui(
+                op4.result(0).unwrap().into(),
+                op5.result(0).unwrap().into(),
+                location,
+            ));
+
+            let op7 = block.append_operation(arith::extui(
+                op6.result(0).unwrap().into(),
+                IntegerType::new(context, 64).into(),
+                location,
+            ));
+            let op8 = block.append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(
+                    elem_stride.try_into().unwrap(),
+                    IntegerType::new(context, 64).into(),
+                )
+                .into(),
+                location,
+            ));
+            let op9 = block.append_operation(arith::muli(
+                op7.result(0).unwrap().into(),
+                op8.result(0).unwrap().into(),
+                location,
+            ));
+
+            let op10 = block.append_operation(func::call(
+                context,
+                FlatSymbolRefAttribute::new(context, "realloc"),
+                &[op0.result(0).unwrap().into(), op9.result(0).unwrap().into()],
+                &[ptr_ty],
+                location,
+            ));
+
+            let op11 = block.append_operation(llvm::insert_value(
+                context,
+                entry.argument(0).unwrap().into(),
+                DenseI64ArrayAttribute::new(context, &[0]),
+                op10.result(0).unwrap().into(),
+                location,
+            ));
+            let op12 = block.append_operation(llvm::insert_value(
+                context,
+                op11.result(0).unwrap().into(),
+                DenseI64ArrayAttribute::new(context, &[1]),
+                op6.result(0).unwrap().into(),
+                location,
+            ));
+
+            block.append_operation(scf::r#yield(
+                &[
+                    op12.result(0).unwrap().into(),
+                    op10.result(0).unwrap().into(),
+                ],
+                location,
+            ));
+
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            block.append_operation(scf::r#yield(
+                &[
+                    entry.argument(0).unwrap().into(),
+                    op0.result(0).unwrap().into(),
+                ],
+                location,
+            ));
+
+            region
+        },
+        location,
+    ));
+
+    let op5 = entry.append_operation(llvm::get_element_ptr_dynamic(
+        context,
+        op4.result(1).unwrap().into(),
+        &[op1.result(0).unwrap().into()],
+        ptr_ty,
+        elem_ty,
+        location,
+    ));
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(1).unwrap().into(),
+        op5.result(0).unwrap().into(),
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    let op6 = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(1, len_ty).into(),
+        location,
+    ));
+    let op7 = entry.append_operation(arith::addi(
+        op1.result(0).unwrap().into(),
+        op6.result(0).unwrap().into(),
+        location,
+    ));
+
+    let op8 = entry.append_operation(llvm::insert_value(
+        context,
+        op4.result(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        op7.result(0).unwrap().into(),
+        location,
+    ));
+
+    entry.append_operation(helper.br(0, &[op8.result(0).unwrap().into()], location));
 
     Ok(())
 }
