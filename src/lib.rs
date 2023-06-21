@@ -1,5 +1,4 @@
 #![feature(box_into_inner)]
-#![feature(extract_if)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
@@ -19,12 +18,11 @@ use cairo_lang_sierra::{
 use itertools::Itertools;
 use libfuncs::LibfuncBuilder;
 use melior::{
-    dialect::{arith, cf, func},
+    dialect::{cf, func},
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
-        r#type::{FunctionType, IntegerType},
-        Block, BlockRef, Identifier, Location, Module, Region, Type, Value, ValueLike, Attribute,
+        attribute::{StringAttribute, TypeAttribute},
+        r#type::FunctionType,
+        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -99,46 +97,6 @@ where
         context, module, &region, registry, function, statements, metadata,
     )
     .unwrap();
-
-    // Avoid returning locals on the stack, aka. dangling pointers.
-    tracing::debug!("Processing signature for pointer returns by value.");
-    let mut param_types = extract_types(
-        context,
-        module,
-        &function.signature.param_types,
-        registry,
-        metadata,
-    )
-    .collect::<Vec<_>>();
-    let mut ret_types = extract_types(
-        context,
-        module,
-        &function.signature.ret_types,
-        registry,
-        metadata,
-    )
-    .collect::<Vec<_>>();
-
-    let mut transfer_types = Vec::new();
-    for ret_ty in &function.signature.ret_types {
-        if registry.get_type(ret_ty).unwrap().variants().is_some() {
-            transfer_types.push(
-                registry
-                    .get_type(ret_ty)
-                    .unwrap()
-                    .build(context, module, registry, metadata)
-                    .unwrap(),
-            );
-        }
-    }
-
-    param_types.extend(
-        ret_types
-            .extract_if(|ty| transfer_types.contains(ty))
-            .inspect(|ty| {
-                entry_block.add_argument(*ty, Location::unknown(context));
-            }),
-    );
 
     tracing::debug!("Generating the function implementation.");
     let initial_state = edit_state::put_results(
@@ -315,50 +273,7 @@ where
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, mut values) = edit_state::take_args(state, var_ids.iter()).unwrap();
-
-                    for (idx, src) in values
-                        .extract_if(|val| transfer_types.contains(&val.r#type()))
-                        .enumerate()
-                    {
-                        let dst: Value = entry_block
-                            .argument(function.signature.param_types.len() + idx)
-                            .unwrap()
-                            .into();
-                        let len = crate::ffi::get_size(
-                            module,
-                            &crate::ffi::get_pointer_element_type(&src.r#type()),
-                        );
-
-                        let op0 = block.append_operation(arith::constant(
-                            context,
-                            IntegerAttribute::new(
-                                len.try_into().unwrap(),
-                                IntegerType::new(context, 64).into(),
-                            )
-                            .into(),
-                            Location::unknown(context),
-                        ));
-                        let op1 = block.append_operation(arith::constant(
-                            context,
-                            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                            Location::unknown(context),
-                        ));
-                        block.append_operation(
-                            OperationBuilder::new(
-                                "llvm.intr.memcpy.inline",
-                                Location::unknown(context),
-                            )
-                            .add_operands(&[
-                                dst,
-                                src,
-                                op0.result(0).unwrap().into(),
-                                op1.result(0).unwrap().into(),
-                            ])
-                            .build(),
-                        );
-                    }
-
+                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
                     Vec::new()
@@ -372,7 +287,28 @@ where
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &param_types, &ret_types).into()),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &extract_types(
+                    context,
+                    module,
+                    &function.signature.param_types,
+                    registry,
+                    metadata,
+                )
+                .collect::<Vec<_>>(),
+                &extract_types(
+                    context,
+                    module,
+                    &function.signature.ret_types,
+                    registry,
+                    metadata,
+                )
+                .collect::<Vec<_>>(),
+            )
+            .into(),
+        ),
         region,
         &[
             (
