@@ -1,4 +1,5 @@
 #![feature(arc_unwrap_or_clone)]
+#![feature(extract_if)]
 
 use bumpalo::Bump;
 use cairo_lang_compiler::{
@@ -22,6 +23,7 @@ use melior::{
 };
 use sierra2mlir::{
     metadata::MetadataStorage,
+    types::TypeBuilder,
     utils::generate_function_name,
     values::{DebugWrapper, ValueBuilder},
     DebugInfo,
@@ -108,9 +110,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize arguments and return values.
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
     let arena = Bump::new();
-    let mut invoke_io = Vec::new();
+
+    let mut params_io = Vec::new();
     for param in &entry_point.signature.param_types {
         let concrete_type = registry.get_type(param)?;
 
@@ -122,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             | CoreTypeConcrete::Uninitialized(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_) => {
-                invoke_io.push(concrete_type.alloc(
+                params_io.push(concrete_type.alloc(
                     &arena,
                     &context,
                     &module,
@@ -137,7 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .available_gas
                     .expect("Gas is required, but no limit has been provided.");
 
-                invoke_io.push(concrete_type.parsed(
+                params_io.push(concrete_type.parsed(
                     &arena,
                     &context,
                     &module,
@@ -175,22 +177,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             | CoreTypeConcrete::Struct(_) => todo!(),
         }
     }
+
+    let mut rets_io = Vec::new();
     for ret in &entry_point.signature.ret_types {
         let concrete_type = registry.get_type(ret)?;
-        invoke_io.push(concrete_type.alloc(&arena, &context, &module, &registry, &mut metadata));
+        let ret_ptr = concrete_type.alloc(&arena, &context, &module, &registry, &mut metadata);
+
+        // Avoid returning locals on the stack, aka. dangling pointers.
+        match concrete_type.variants() {
+            Some(_) => params_io.push(ret_ptr),
+            None => rets_io.push(ret_ptr),
+        }
     }
 
+    let mut invoke_io = params_io
+        .iter()
+        .chain(rets_io.iter())
+        .copied()
+        .collect::<Vec<_>>();
+
+    // Invoke the entry point.
     unsafe {
         engine.invoke_packed(&generate_function_name(&entry_point.id), &mut invoke_io)?;
     }
 
     // Print returned values.
-    for (ptr, ty) in invoke_io
-        .into_iter()
-        .skip(entry_point.signature.param_types.len())
-        .zip(&entry_point.signature.ret_types)
-    {
+    let mut ret_iter = rets_io.iter();
+    let mut aux_iter = params_io
+        .iter()
+        .skip(entry_point.signature.param_types.len());
+
+    for ty in &entry_point.signature.ret_types {
         let concrete_type = registry.get_type(ty).unwrap();
+        let ptr = *match concrete_type.variants() {
+            Some(_) => aux_iter.next().unwrap(),
+            None => ret_iter.next().unwrap(),
+        };
+
         let wrapper = DebugWrapper {
             inner: concrete_type,
             context: &context,

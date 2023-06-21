@@ -7,7 +7,7 @@ use cairo_lang_sierra::{
 };
 use melior::{ir::Module, Context};
 use num_bigint::BigUint;
-use std::{alloc::Layout, cell::RefCell, error::Error, fmt, ptr::null_mut, slice};
+use std::{alloc::Layout, cell::RefCell, error::Error, fmt, slice};
 
 pub mod array;
 pub mod bitwise;
@@ -98,14 +98,19 @@ pub trait ValueBuilder {
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
     {
-        let ptr = arena
+        let data_ptr = arena
             .alloc_layout(self.layout(context, module, registry, metadata))
             .as_ptr() as *mut ();
         unsafe {
-            self.parse(ptr, src)?;
+            self.parse(data_ptr, src)?;
         }
 
-        Ok(ptr)
+        let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
+        unsafe {
+            (addr_ptr as *mut *mut ()).write(data_ptr);
+        }
+
+        Ok(addr_ptr)
     }
 }
 
@@ -167,7 +172,9 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => null_mut::<()>(),
+            CoreTypeConcrete::RangeCheck(_) => arena
+                .alloc_layout(self.layout(context, module, registry, metadata))
+                .as_ptr() as *mut (),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
                 let (_, _, align) = crate::types::r#enum::get_type_for_variants(
@@ -182,21 +189,19 @@ impl ValueBuilder for CoreTypeConcrete {
                     &self.build(context, module, registry, metadata).unwrap(),
                 );
 
-                let data_ptr = arena
+                arena
                     .alloc_layout(
                         Layout::from_size_align(crate::ffi::get_size(module, &data_ty), align)
                             .unwrap(),
                     )
-                    .as_ptr() as *mut ();
+                    .as_ptr() as *mut ()
 
-                let addr_ptr = arena
-                    .alloc_layout(self.layout(context, module, registry, metadata))
-                    .as_ptr() as *mut ();
-                unsafe {
-                    (addr_ptr as *mut *mut ()).write(data_ptr);
-                }
+                // let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
+                // unsafe {
+                //     (addr_ptr as *mut *mut ()).write(data_ptr);
+                // }
 
-                addr_ptr
+                // addr_ptr
             }
             CoreTypeConcrete::Struct(_) => todo!(),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
@@ -292,6 +297,8 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
+                // let source = (source as *mut *mut ()).read();
+
                 let payload_tys = self.variants().unwrap();
                 let (tag_ty, _, align) = crate::types::r#enum::get_type_for_variants(
                     context,
