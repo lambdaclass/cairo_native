@@ -12,7 +12,12 @@ use cairo_lang_sierra::{
 use clap::Parser;
 use melior::{dialect::DialectRegistry, utility::register_all_dialects, Context};
 use sierra2mlir::DebugInfo;
-use std::{ffi::OsStr, fs, path::Path, sync::Arc};
+use std::{
+    ffi::OsStr,
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,7 +44,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.load_all_available_dialects();
 
     // Compile the program.
-    sierra2mlir::compile::<CoreType, CoreLibfunc>(&context, &program)?;
+    let module = sierra2mlir::compile::<CoreType, CoreLibfunc>(&context, &program)?;
+
+    // Write the output.
+    match args.output {
+        CompilerOutput::Stdout => println!("{}", module.as_operation()),
+        CompilerOutput::Path(path) => fs::write(path, module.as_operation().to_string())?,
+    }
 
     Ok(())
 }
@@ -83,17 +94,42 @@ fn load_program(path: &Path) -> Result<(Program, Option<DebugInfo>), Box<dyn std
 #[derive(Clone, Debug, Parser)]
 struct CmdLine {
     #[clap(value_parser = parse_input)]
-    input: String,
+    input: PathBuf,
+
+    #[clap(short = 'o', long = "output", value_parser = parse_output, default_value = "-")]
+    output: CompilerOutput,
 }
 
-fn parse_input(input: &str) -> Result<String, String> {
+#[derive(Clone, Debug)]
+enum CompilerOutput {
+    Stdout,
+    Path(PathBuf),
+}
+
+fn parse_input(input: &str) -> Result<PathBuf, String> {
     Ok(match Path::new(input).extension().and_then(OsStr::to_str) {
-        Some("cairo" | "sierra") => input.to_string(),
+        Some("cairo" | "sierra") => input.into(),
         _ => {
             return Err(
                 "Input path expected to have either `cairo` or `sierra` as its extension."
                     .to_string(),
             )
         }
+    })
+}
+
+fn parse_output(input: &str) -> Result<CompilerOutput, String> {
+    Ok(if input == "-" {
+        CompilerOutput::Stdout
+    } else {
+        CompilerOutput::Path(match Path::new(input).extension().and_then(OsStr::to_str) {
+            Some("mlir") => input.into(),
+            _ => {
+                return Err(
+                    "Output path expected to be `-` for stdout or have `mlir` as its extension."
+                        .to_string(),
+                )
+            }
+        })
     })
 }

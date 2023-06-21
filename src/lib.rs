@@ -71,6 +71,7 @@ where
         )?;
     }
 
+    tracing::info!("The program was compiled successfully.");
     Ok(module)
 }
 
