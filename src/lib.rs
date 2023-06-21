@@ -1,4 +1,5 @@
 #![feature(box_into_inner)]
+#![feature(extract_if)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
@@ -11,24 +12,24 @@ use crate::{metadata::tail_recursion::TailRecursionMeta, utils::generate_functio
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
-    ids::{ConcreteTypeId, FunctionId, VarId},
+    ids::{ConcreteTypeId, VarId},
     program::{Function, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use itertools::Itertools;
 use libfuncs::LibfuncBuilder;
 use melior::{
-    dialect::{cf, func},
+    dialect::{arith, cf, func},
     ir::{
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
-        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
+        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
+        r#type::{FunctionType, IntegerType},
+        Block, BlockRef, Identifier, Location, Module, Region, Type, Value, ValueLike,
     },
     Context,
 };
 use metadata::MetadataStorage;
 use std::{
-    borrow::Cow,
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
@@ -82,7 +83,7 @@ fn compile_func<TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     function: &Function,
     statements: &[Statement],
-    metadata_storage: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -95,15 +96,49 @@ where
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
-        context,
-        module,
-        &region,
-        registry,
-        function,
-        statements,
-        metadata_storage,
+        context, module, &region, registry, function, statements, metadata,
     )
     .unwrap();
+
+    // Avoid returning locals on the stack, aka. dangling pointers.
+    tracing::debug!("Processing signature for pointer returns by value.");
+    let mut param_types = extract_types(
+        context,
+        module,
+        &function.signature.param_types,
+        registry,
+        metadata,
+    )
+    .collect::<Vec<_>>();
+    let mut ret_types = extract_types(
+        context,
+        module,
+        &function.signature.ret_types,
+        registry,
+        metadata,
+    )
+    .collect::<Vec<_>>();
+
+    let mut transfer_types = Vec::new();
+    for ret_ty in &function.signature.ret_types {
+        if registry.get_type(ret_ty).unwrap().variants().is_some() {
+            transfer_types.push(
+                registry
+                    .get_type(ret_ty)
+                    .unwrap()
+                    .build(context, module, registry, metadata)
+                    .unwrap(),
+            );
+        }
+    }
+
+    param_types.extend(
+        ret_types
+            .extract_if(|ty| transfer_types.contains(ty))
+            .inspect(|ty| {
+                entry_block.add_argument(*ty, Location::unknown(context));
+            }),
+    );
 
     tracing::debug!("Generating the function implementation.");
     let initial_state = edit_state::put_results(
@@ -237,7 +272,7 @@ where
 
                     let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
                     if let Some(target) = concrete_libfunc.is_function_call() {
-                        metadata_storage
+                        metadata
                             .insert(TailRecursionMeta::new(target == &function.id))
                             .unwrap();
                     }
@@ -249,12 +284,12 @@ where
                             block,
                             Location::unknown(context),
                             &helper,
-                            metadata_storage,
+                            metadata,
                         )
                         .unwrap();
                     assert!(block.terminator().is_some());
 
-                    metadata_storage.remove::<TailRecursionMeta>();
+                    metadata.remove::<TailRecursionMeta>();
 
                     invocation
                         .branches
@@ -280,7 +315,50 @@ where
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+                    let (_, mut values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+
+                    for (idx, src) in values
+                        .extract_if(|val| transfer_types.contains(&val.r#type()))
+                        .enumerate()
+                    {
+                        let dst: Value = entry_block
+                            .argument(function.signature.param_types.len() + idx)
+                            .unwrap()
+                            .into();
+                        let len = crate::ffi::get_size(
+                            module,
+                            &crate::ffi::get_pointer_element_type(&src.r#type()),
+                        );
+
+                        let op0 = block.append_operation(arith::constant(
+                            context,
+                            IntegerAttribute::new(
+                                len.try_into().unwrap(),
+                                IntegerType::new(context, 64).into(),
+                            )
+                            .into(),
+                            Location::unknown(context),
+                        ));
+                        let op1 = block.append_operation(arith::constant(
+                            context,
+                            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                            Location::unknown(context),
+                        ));
+                        block.append_operation(
+                            OperationBuilder::new(
+                                "llvm.intr.memcpy.inline",
+                                Location::unknown(context),
+                            )
+                            .add_operands(&[
+                                dst,
+                                src,
+                                op0.result(0).unwrap().into(),
+                                op1.result(0).unwrap().into(),
+                            ])
+                            .build(),
+                        );
+                    }
+
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
                     Vec::new()
@@ -294,38 +372,17 @@ where
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
-        TypeAttribute::new(
-            FunctionType::new(
-                context,
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.param_types,
-                    registry,
-                    metadata_storage,
-                )
-                .collect::<Vec<_>>(),
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.ret_types,
-                    registry,
-                    metadata_storage,
-                )
-                .collect::<Vec<_>>(),
-            )
-            .into(),
-        ),
+        TypeAttribute::new(FunctionType::new(context, &param_types, &ret_types).into()),
         region,
         &[
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
             ),
-            (
-                Identifier::new(context, "llvm.emit_c_interface"),
-                Attribute::unit(context),
-            ),
+            // (
+            //     Identifier::new(context, "llvm.emit_c_interface"),
+            //     Attribute::unit(context),
+            // ),
         ],
         Location::unknown(context),
     ));
