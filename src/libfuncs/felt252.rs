@@ -9,13 +9,14 @@ use cairo_lang_sierra::{
             Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete,
             Felt252ConstConcreteLibfunc,
         },
-        GenericLibfunc, GenericType,
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
-    ir::{r#type::IntegerType, Attribute, Block, Location, Type},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Type},
     Context,
 };
 
@@ -41,7 +42,9 @@ where
         Felt252Concrete::Const(info) => {
             build_const(context, registry, entry, location, helper, metadata, info)
         }
-        Felt252Concrete::IsZero(_) => todo!(),
+        Felt252Concrete::IsZero(info) => {
+            build_is_zero(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -124,18 +127,62 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let value = &info.c;
-    let value_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+    let felt252_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)
         .unwrap()
         .build(context, helper, registry, metadata)
         .unwrap();
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap(),
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
+
+    Ok(())
+}
+
+pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    let felt252_ty = registry
+        .get_type(&info.param_signatures()[0].ty)
+        .unwrap()
+        .build(context, helper, registry, metadata)
+        .unwrap();
+
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, felt252_ty).into(),
+        location,
+    ));
+    let op1 = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        entry.argument(0).unwrap().into(),
+        op0.result(0).unwrap().into(),
+        location,
+    ));
+
+    entry.append_operation(helper.cond_br(
+        op1.result(0).unwrap().into(),
+        [0, 1],
+        [&[], &[entry.argument(0).unwrap().into()]],
+        location,
+    ));
 
     Ok(())
 }

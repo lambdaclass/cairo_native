@@ -65,11 +65,11 @@ where
 
     entry.append_operation(helper.cond_br(
         op0.result(0).unwrap().into(),
-        (0, 1),
-        &[
+        [0, 1],
+        [&[
             entry.argument(0).unwrap().into(),
             entry.argument(1).unwrap().into(),
-        ],
+        ]; 2],
         location,
     ));
 
