@@ -7,7 +7,7 @@
 
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
-use crate::metadata::tail_recursion::TailRecursionMeta;
+use crate::{metadata::tail_recursion::TailRecursionMeta, utils::generate_function_name};
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
@@ -41,6 +41,7 @@ pub(crate) mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod types;
+pub mod utils;
 pub mod values;
 
 type BlockStorage<'c, 'a> =
@@ -512,14 +513,6 @@ where
             })
             .collect(),
     ))
-}
-
-pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
-    function_id
-        .debug_name
-        .as_deref()
-        .map(Cow::Borrowed)
-        .unwrap_or_else(|| Cow::Owned(format!("f{}", function_id.id)))
 }
 
 fn extract_types<'c, 'a, TType, TLibfunc>(
