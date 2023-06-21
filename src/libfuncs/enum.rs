@@ -14,7 +14,7 @@ use melior::{
         llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Block, Identifier, Location,
@@ -93,7 +93,7 @@ where
     let op3 = entry.append_operation(llvm::insert_value(
         context,
         op2.result(0).unwrap().into(),
-        DenseI64ArrayAttribute::new(context, &[0]),
+        DenseI64ArrayAttribute::new(context, &[1]),
         entry.argument(0).unwrap().into(),
         location,
     ));
@@ -105,20 +105,14 @@ where
     ));
     let op5 = entry.append_operation(
         OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[
-                (
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        align.try_into().unwrap(),
-                        IntegerType::new(context, 64).into(),
-                    )
-                    .into(),
-                ),
-                (
-                    Identifier::new(context, "elem_type"),
-                    TypeAttribute::new(variant_tys[info.index].0).into(),
-                ),
-            ])
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    align.try_into().unwrap(),
+                    IntegerType::new(context, 64).into(),
+                )
+                .into(),
+            )])
             .add_operands(&[op4.result(0).unwrap().into()])
             .add_results(&[llvm::r#type::pointer(variant_tys[info.index].0, 0)])
             .build(),
@@ -165,6 +159,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
+    let enum_ty = crate::ffi::get_pointer_element_type(
+        &registry
+            .get_type(&info.param_signatures()[0].ty)
+            .unwrap()
+            .build(context, helper, registry, metadata)
+            .unwrap(),
+    );
     let (tag_ty, variant_tys, align) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
@@ -181,7 +182,7 @@ where
     let op0 = entry.append_operation(llvm::load(
         context,
         entry.argument(0).unwrap().into(),
-        variant_tys[0].0,
+        enum_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
             align.try_into().unwrap(),
@@ -235,27 +236,34 @@ where
             "Invalid enum tag.",
             location,
         ));
+        default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
     }
 
     for (i, (block, (variant_ty, payload_ty))) in
         variant_blocks.into_iter().zip(variant_tys).enumerate()
     {
-        let op2 = block.append_operation(llvm::load(
+        let op2 = block.append_operation(
+            OperationBuilder::new("llvm.bitcast", location)
+                .add_operands(&[entry.argument(0).unwrap().into()])
+                .add_results(&[llvm::r#type::pointer(variant_ty, 0)])
+                .build(),
+        );
+        let op3 = block.append_operation(llvm::load(
             context,
-            entry.argument(0).unwrap().into(),
+            op2.result(0).unwrap().into(),
             variant_ty,
             location,
             LoadStoreOptions::default(),
         ));
-        let op3 = block.append_operation(llvm::extract_value(
+        let op4 = block.append_operation(llvm::extract_value(
             context,
-            op2.result(0).unwrap().into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
+            op3.result(0).unwrap().into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
             payload_ty,
             location,
         ));
 
-        block.append_operation(helper.br(i, &[op3.result(0).unwrap().into()], location));
+        block.append_operation(helper.br(i, &[op4.result(0).unwrap().into()], location));
     }
 
     Ok(())

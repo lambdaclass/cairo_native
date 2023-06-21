@@ -41,6 +41,13 @@ extern "C" unsigned Type_getSizeInBits(const void *mod_ptr, const void *ty_ptr)
     return data_layout.getTypeSizeInBits(ty);
 }
 
+extern "C" const void *LLVMPointerType_getElementType(const void *ty_ptr)
+{
+    mlir::LLVM::LLVMPointerType type = mlir::LLVM::LLVMPointerType::getFromOpaquePointer(ty_ptr);
+
+    return type.getElementType().getAsOpaquePointer();
+}
+
 extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigned index)
 {
     mlir::LLVM::LLVMStructType type = mlir::LLVM::LLVMStructType::getFromOpaquePointer(ty_ptr);

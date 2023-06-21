@@ -9,6 +9,7 @@ extern "C" {
     fn Type_getSize(mod_ptr: *const c_void, ty_ptr: *const c_void) -> u32;
     fn Type_getSizeInBits(mod_ptr: *const c_void, ty_ptr: *const c_void) -> u32;
 
+    fn LLVMPointerType_getElementType(ty_ptr: *const c_void) -> *const c_void;
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
     fn MemRefType_getElementType(ty_ptr: *const c_void) -> *const c_void;
 }
@@ -39,6 +40,13 @@ pub fn get_size_in_bits(module: &Module, r#type: &Type) -> usize {
     let ty_ptr = r#type.to_raw().ptr;
 
     unsafe { Type_getSizeInBits(mod_ptr, ty_ptr) as usize }
+}
+
+pub fn get_pointer_element_type<'c>(r#type: &Type<'c>) -> Type<'c> {
+    let mut ty_ptr = r#type.to_raw();
+
+    ty_ptr.ptr = unsafe { LLVMPointerType_getElementType(ty_ptr.ptr) };
+    unsafe { Type::from_raw(ty_ptr) }
 }
 
 pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c> {

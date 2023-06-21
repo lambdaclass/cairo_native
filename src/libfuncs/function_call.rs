@@ -1,5 +1,5 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{generate_function_name, metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -42,7 +42,7 @@ where
 
     let op0 = entry.append_operation(func::call(
         context,
-        FlatSymbolRefAttribute::new(context, &info.function.id.to_string()),
+        FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
         &arguments,
         &result_types,
         location,

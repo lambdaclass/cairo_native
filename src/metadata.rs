@@ -4,6 +4,7 @@ use std::{
 };
 
 pub mod prime_modulo;
+pub mod realloc_bindings;
 pub mod tail_recursion;
 
 pub struct MetadataStorage {
