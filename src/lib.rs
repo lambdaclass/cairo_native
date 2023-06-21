@@ -508,15 +508,12 @@ where
     ))
 }
 
-pub(crate) fn generate_function_name(function_id: &FunctionId) -> String {
-    mangling::mangle(
-        function_id
-            .debug_name
-            .as_deref()
-            .map(Cow::Borrowed)
-            .unwrap_or_else(|| Cow::Owned(format!("f{}", function_id.id)))
-            .bytes(),
-    )
+pub(crate) fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
+    function_id
+        .debug_name
+        .as_deref()
+        .map(Cow::Borrowed)
+        .unwrap_or_else(|| Cow::Owned(format!("f{}", function_id.id)))
 }
 
 fn extract_types<'c, 'a, TType, TLibfunc>(
