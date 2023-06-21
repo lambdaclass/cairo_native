@@ -1,5 +1,8 @@
-use core::debug::PrintTrait;
+enum MyEnum {
+    A: (),
+    B: felt252,
+}
 
-fn main() {
-    'Hello, world!'.print();
+fn main() -> MyEnum {
+    MyEnum::B(1234)
 }

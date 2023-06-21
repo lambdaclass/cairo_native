@@ -24,7 +24,7 @@ use melior::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType},
-        Block, BlockRef, Identifier, Location, Module, Region, Type, Value, ValueLike,
+        Block, BlockRef, Identifier, Location, Module, Region, Type, Value, ValueLike, Attribute,
     },
     Context,
 };
@@ -379,10 +379,10 @@ where
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
             ),
-            // (
-            //     Identifier::new(context, "llvm.emit_c_interface"),
-            //     Attribute::unit(context),
-            // ),
+            (
+                Identifier::new(context, "llvm.emit_c_interface"),
+                Attribute::unit(context),
+            ),
         ],
         Location::unknown(context),
     ));
