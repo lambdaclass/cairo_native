@@ -101,7 +101,12 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0).unwrap().into(), (0, 1), &[], location));
+    entry.append_operation(helper.cond_br(
+        op0.result(0).unwrap().into(),
+        [0, 1],
+        [&[]; 2],
+        location,
+    ));
 
     Ok(())
 }

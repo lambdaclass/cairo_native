@@ -221,14 +221,14 @@ where
     pub fn cond_br(
         &self,
         condition: Value<'ctx, 'this>,
-        branches: (usize, usize),
-        results: &[Value<'ctx, 'this>],
+        branches: [usize; 2],
+        results: [&[Value<'ctx, 'this>]; 2],
         location: Location<'ctx>,
     ) -> Operation<'ctx> {
         let (block_true, args_true) = {
-            let (successor, operands) = &self.branches[branches.0];
+            let (successor, operands) = &self.branches[branches[0]];
 
-            for (dst, src) in self.results[branches.0].iter().zip(results) {
+            for (dst, src) in self.results[branches[0]].iter().zip(results[0]) {
                 dst.replace(Some(*src));
             }
 
@@ -237,7 +237,7 @@ where
                 .copied()
                 .map(|op| match op {
                     BranchArg::External(x) => x,
-                    BranchArg::Returned(i) => results[i],
+                    BranchArg::Returned(i) => results[0][i],
                 })
                 .collect::<Vec<_>>();
 
@@ -245,9 +245,9 @@ where
         };
 
         let (block_false, args_false) = {
-            let (successor, operands) = &self.branches[branches.1];
+            let (successor, operands) = &self.branches[branches[1]];
 
-            for (dst, src) in self.results[branches.1].iter().zip(results) {
+            for (dst, src) in self.results[branches[1]].iter().zip(results[1]) {
                 dst.replace(Some(*src));
             }
 
@@ -256,7 +256,7 @@ where
                 .copied()
                 .map(|op| match op {
                     BranchArg::External(x) => x,
-                    BranchArg::Returned(i) => results[i],
+                    BranchArg::Returned(i) => results[1][i],
                 })
                 .collect::<Vec<_>>();
 
