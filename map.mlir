@@ -1,5 +1,5 @@
 module {
-  func.func public @_3map02_3a3a3map02_3a3a11iterate_map(%arg0: i252, %arg1: i252) -> i252 {
+  func.func public @"map::map::iterate_map"(%arg0: i252, %arg1: i252) -> i252 {
     cf.br ^bb1(%arg1 : i252)
   ^bb1(%0: i252):  // pred: ^bb0
     cf.br ^bb2(%arg0, %0 : i252, i252)
@@ -39,7 +39,7 @@ module {
   ^bb9(%25: i252):  // pred: ^bb8
     return %24 : i252
   }
-  func.func public @_3map02_3a3a3map02_3a3a4main(%arg0: !llvm.array<0 x i8>, %arg1: !llvm.array<0 x i8>) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<35 x i8>)>>) {
+  func.func public @"map::map::main"(%arg0: !llvm.array<0 x i8>, %arg1: !llvm.array<0 x i8>) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<35 x i8>)>>) {
     cf.br ^bb1
   ^bb1:  // pred: ^bb0
     cf.br ^bb2
@@ -58,7 +58,7 @@ module {
   ^bb7(%3: i252):  // pred: ^bb6
     cf.br ^bb8(%0, %1, %2, %3 : !llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252)
   ^bb8(%4: !llvm.array<0 x i8>, %5: !llvm.array<0 x i8>, %6: i252, %7: i252):  // pred: ^bb7
-    %8:3 = call @_4main01_5b6expr2001_5d(%4, %5, %6, %7) : (!llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>)
+    %8:3 = call @"main[expr20]"(%4, %5, %6, %7) : (!llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>)
     cf.br ^bb9(%8#2 : !llvm.ptr<struct<(i1, array<99 x i8>)>>)
   ^bb9(%9: !llvm.ptr<struct<(i1, array<99 x i8>)>>):  // pred: ^bb8
     %10 = llvm.load %9 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<99 x i8>)>>
@@ -137,7 +137,7 @@ module {
     return %45, %46, %47 : !llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<35 x i8>)>>
   }
   func.func private @realloc(!llvm.ptr, i64) -> !llvm.ptr
-  func.func public @_4main01_5b6expr2001_5d(%arg0: !llvm.array<0 x i8>, %arg1: !llvm.array<0 x i8>, %arg2: i252, %arg3: i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>) {
+  func.func public @"main[expr20]"(%arg0: !llvm.array<0 x i8>, %arg1: !llvm.array<0 x i8>, %arg2: i252, %arg3: i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>) {
     cf.br ^bb1
   ^bb1:  // pred: ^bb0
     cf.br ^bb2
@@ -159,7 +159,7 @@ module {
   ^bb8(%6: i252):  // pred: ^bb7
     cf.br ^bb9(%5, %6 : i252, i252)
   ^bb9(%7: i252, %8: i252):  // pred: ^bb8
-    %9 = call @_3map02_3a3a3map02_3a3a11iterate_map(%7, %8) : (i252, i252) -> i252
+    %9 = call @"map::map::iterate_map"(%7, %8) : (i252, i252) -> i252
     cf.br ^bb10(%arg3 : i252)
   ^bb10(%10: i252):  // pred: ^bb9
     cf.br ^bb11(%2 : !llvm.array<0 x i8>)
@@ -224,7 +224,7 @@ module {
   ^bb28(%43: i252):  // pred: ^bb27
     cf.br ^bb29(%40, %41, %42, %43 : !llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252)
   ^bb29(%44: !llvm.array<0 x i8>, %45: !llvm.array<0 x i8>, %46: i252, %47: i252):  // pred: ^bb28
-    %48:3 = call @_4main01_5b6expr2001_5d(%44, %45, %46, %47) : (!llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>)
+    %48:3 = call @"main[expr20]"(%44, %45, %46, %47) : (!llvm.array<0 x i8>, !llvm.array<0 x i8>, i252, i252) -> (!llvm.array<0 x i8>, !llvm.array<0 x i8>, !llvm.ptr<struct<(i1, array<99 x i8>)>>)
     cf.br ^bb30(%48#2 : !llvm.ptr<struct<(i1, array<99 x i8>)>>)
   ^bb30(%49: !llvm.ptr<struct<(i1, array<99 x i8>)>>):  // pred: ^bb29
     %50 = llvm.load %49 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<99 x i8>)>>

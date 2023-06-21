@@ -7,6 +7,10 @@ edition = "2021"
 name = "sierra2mlir"
 required-features = ["build-cli"]
 
+[[bin]]
+name = "sierrajit"
+required-features = ["build-cli"]
+
 [features]
 build-cli = ["clap", "tracing-subscriber"]
 
@@ -21,7 +25,6 @@ cairo-lang-sierra-generator = "2.0.0-rc3"
 id-arena = "2.2.1"
 itertools = "0.10.5"
 lazy_static = "1.4.0"
-mangling = "0.2.3"
 melior = "0.9.4"
 num-bigint = "0.4.3"
 tracing = "0.1.37"
