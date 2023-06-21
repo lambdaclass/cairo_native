@@ -15,8 +15,13 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Type},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        scf,
+    },
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Region, Type,
+    },
     Context,
 };
 
@@ -50,7 +55,7 @@ where
 
 pub fn build_binary_operation<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -63,12 +68,72 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
+    let felt252_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)
+        .unwrap()
+        .build(context, helper, registry, metadata)
+        .unwrap();
+
     let prime = metadata.get::<PrimeModulo<Felt252>>().unwrap().prime();
 
     let result = match info {
         Felt252BinaryOperationConcrete::WithVar(info) => match info.operator {
             Felt252BinaryOperator::Add => todo!(),
-            Felt252BinaryOperator::Sub => todo!(),
+            Felt252BinaryOperator::Sub => {
+                let op0 = entry.append_operation(arith::subi(
+                    entry.argument(0).unwrap().into(),
+                    entry.argument(1).unwrap().into(),
+                    location,
+                ));
+
+                let op1 = entry.append_operation(arith::cmpi(
+                    context,
+                    CmpiPredicate::Ult,
+                    entry.argument(0).unwrap().into(),
+                    entry.argument(1).unwrap().into(),
+                    location,
+                ));
+                let op2 = entry.append_operation(scf::r#if(
+                    op1.result(0).unwrap().into(),
+                    &[felt252_ty],
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        let op2 = block.append_operation(arith::constant(
+                            context,
+                            Attribute::parse(context, &format!("{prime} : i504")).unwrap(),
+                            location,
+                        ));
+                        let op3 = block.append_operation(arith::addi(
+                            op0.result(0).unwrap().into(),
+                            op2.result(0).unwrap().into(),
+                            location,
+                        ));
+
+                        block.append_operation(scf::r#yield(
+                            &[op3.result(0).unwrap().into()],
+                            location,
+                        ));
+
+                        region
+                    },
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        block.append_operation(scf::r#yield(
+                            &[op0.result(0).unwrap().into()],
+                            location,
+                        ));
+
+                        region
+                    },
+                    location,
+                ));
+
+                op2.result(0).unwrap().into()
+            }
             Felt252BinaryOperator::Mul => {
                 let double_felt252_ty: Type = IntegerType::new(context, 504).into();
 
