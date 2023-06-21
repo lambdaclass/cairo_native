@@ -10,7 +10,7 @@ use crate::metadata::tail_recursion::TailRecursionMeta;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
-    ids::{ConcreteTypeId, VarId},
+    ids::{ConcreteTypeId, FunctionId, VarId},
     program::{Function, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
@@ -288,7 +288,7 @@ where
         },
     );
 
-    let function_name = generate_function_name(function);
+    let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
     module.body().append_operation(func::func(
         context,
@@ -508,13 +508,15 @@ where
     ))
 }
 
-fn generate_function_name(function: &Function) -> Cow<str> {
-    function
-        .id
-        .debug_name
-        .as_deref()
-        .map(Cow::Borrowed)
-        .unwrap_or_else(|| Cow::Owned(format!("f{}", function.id.id)))
+pub(crate) fn generate_function_name(function_id: &FunctionId) -> String {
+    mangling::mangle(
+        function_id
+            .debug_name
+            .as_deref()
+            .map(Cow::Borrowed)
+            .unwrap_or_else(|| Cow::Owned(format!("f{}", function_id.id)))
+            .bytes(),
+    )
 }
 
 fn extract_types<'c, 'a, TType, TLibfunc>(

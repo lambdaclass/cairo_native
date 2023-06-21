@@ -1,5 +1,8 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    metadata::{realloc_bindings::ReallocBindings, MetadataStorage},
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
@@ -16,10 +19,13 @@ use melior::{
         scf,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, FlatSymbolRefAttribute,
+            IntegerAttribute,
+        },
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Region,
+        Block, Identifier, Location, Region,
     },
     Context,
 };
@@ -131,9 +137,9 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    // Reallocation policy:
-    //   - Min size: 8 * size_of::<T>()
-    //   - Next size: 2 * prev_size
+    if metadata.get::<ReallocBindings>().is_none() {
+        metadata.insert(ReallocBindings::new(context, helper));
+    }
 
     let array_ty = registry
         .get_type(&info.param_signatures()[0].ty)
@@ -188,11 +194,9 @@ where
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            // TODO: Grow.
-
             let op4 = block.append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(8, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(8, IntegerType::new(context, 32).into()).into(),
                 location,
             ));
             let op5 = block.append_operation(arith::addi(
@@ -226,24 +230,39 @@ where
                 location,
             ));
 
-            let op10 = block.append_operation(func::call(
+            let op10 = block.append_operation(
+                OperationBuilder::new("llvm.bitcast", location)
+                    .add_operands(&[op0.result(0).unwrap().into()])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
+                    .build(),
+            );
+            let op11 = block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, "realloc"),
-                &[op0.result(0).unwrap().into(), op9.result(0).unwrap().into()],
-                &[ptr_ty],
+                &[
+                    op10.result(0).unwrap().into(),
+                    op9.result(0).unwrap().into(),
+                ],
+                &[llvm::r#type::opaque_pointer(context)],
                 location,
             ));
+            let op12 = block.append_operation(
+                OperationBuilder::new("llvm.bitcast", location)
+                    .add_operands(&[op11.result(0).unwrap().into()])
+                    .add_results(&[ptr_ty])
+                    .build(),
+            );
 
-            let op11 = block.append_operation(llvm::insert_value(
+            let op13 = block.append_operation(llvm::insert_value(
                 context,
                 entry.argument(0).unwrap().into(),
                 DenseI64ArrayAttribute::new(context, &[0]),
-                op10.result(0).unwrap().into(),
+                op12.result(0).unwrap().into(),
                 location,
             ));
-            let op12 = block.append_operation(llvm::insert_value(
+            let op14 = block.append_operation(llvm::insert_value(
                 context,
-                op11.result(0).unwrap().into(),
+                op13.result(0).unwrap().into(),
                 DenseI64ArrayAttribute::new(context, &[1]),
                 op6.result(0).unwrap().into(),
                 location,
@@ -251,8 +270,8 @@ where
 
             block.append_operation(scf::r#yield(
                 &[
+                    op14.result(0).unwrap().into(),
                     op12.result(0).unwrap().into(),
-                    op10.result(0).unwrap().into(),
                 ],
                 location,
             ));
@@ -276,14 +295,17 @@ where
         location,
     ));
 
-    let op5 = entry.append_operation(llvm::get_element_ptr_dynamic(
-        context,
-        op4.result(1).unwrap().into(),
-        &[op1.result(0).unwrap().into()],
-        ptr_ty,
-        elem_ty,
-        location,
-    ));
+    let op5 = entry.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[op4.result(1).unwrap().into()])
+            .add_operands(&[op1.result(0).unwrap().into()])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
     entry.append_operation(llvm::store(
         context,
         entry.argument(1).unwrap().into(),

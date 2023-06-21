@@ -5,7 +5,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    dialect::llvm,
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
@@ -22,5 +23,5 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
 {
     // TODO: Use the actual type.
-    Ok(Type::none(context))
+    Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
 }

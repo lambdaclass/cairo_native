@@ -102,7 +102,7 @@ where
 
                         let op2 = block.append_operation(arith::constant(
                             context,
-                            Attribute::parse(context, &format!("{prime} : i504")).unwrap(),
+                            Attribute::parse(context, &format!("{prime} : {felt252_ty}")).unwrap(),
                             location,
                         ));
                         let op3 = block.append_operation(arith::addi(
@@ -163,8 +163,13 @@ where
                     op3.result(0).unwrap().into(),
                     location,
                 ));
+                let op5 = entry.append_operation(arith::trunci(
+                    op4.result(0).unwrap().into(),
+                    felt252_ty,
+                    location,
+                ));
 
-                op4.result(0).unwrap().into()
+                op5.result(0).unwrap().into()
             }
             Felt252BinaryOperator::Div => todo!(),
         },
