@@ -98,19 +98,12 @@ pub trait ValueBuilder {
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
     {
-        let data_ptr = arena
-            .alloc_layout(self.layout(context, module, registry, metadata))
-            .as_ptr() as *mut ();
+        let ptr = self.alloc(arena, context, module, registry, metadata);
         unsafe {
-            self.parse(data_ptr, src)?;
+            self.parse(ptr, src)?;
         }
 
-        let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
-        unsafe {
-            (addr_ptr as *mut *mut ()).write(data_ptr);
-        }
-
-        Ok(addr_ptr)
+        Ok(ptr)
     }
 }
 
@@ -189,19 +182,19 @@ impl ValueBuilder for CoreTypeConcrete {
                     &self.build(context, module, registry, metadata).unwrap(),
                 );
 
-                arena
+                let data_ptr = arena
                     .alloc_layout(
                         Layout::from_size_align(crate::ffi::get_size(module, &data_ty), align)
                             .unwrap(),
                     )
-                    .as_ptr() as *mut ()
+                    .as_ptr() as *mut ();
 
-                // let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
-                // unsafe {
-                //     (addr_ptr as *mut *mut ()).write(data_ptr);
-                // }
+                let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
+                unsafe {
+                    (addr_ptr as *mut *mut ()).write(data_ptr);
+                }
 
-                // addr_ptr
+                addr_ptr
             }
             CoreTypeConcrete::Struct(_) => todo!(),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
@@ -297,7 +290,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
-                // let source = (source as *mut *mut ()).read();
+                let source = (source as *mut *mut ()).read();
 
                 let payload_tys = self.variants().unwrap();
                 let (tag_ty, _, align) = crate::types::r#enum::get_type_for_variants(
