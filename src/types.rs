@@ -111,9 +111,9 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
             Self::Uint128(_) => todo!(),
             Self::Uint128MulGuarantee(_) => todo!(),
-            Self::Uint16(_) => todo!(),
+            Self::Uint16(info) => self::uint16::build(context, module, registry, metadata, info),
             Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
-            Self::Uint64(_) => todo!(),
+            Self::Uint64(info) => self::uint64::build(context, module, registry, metadata, info),
             Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
             Self::Uninitialized(_) => todo!(),
         }
@@ -142,16 +142,16 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
+            CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
+            CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
+            CoreTypeConcrete::Uint32(_) => get_integer_layout(32),
+            CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
+            CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
+            CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
                 let tag_layout =
@@ -192,7 +192,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
     }

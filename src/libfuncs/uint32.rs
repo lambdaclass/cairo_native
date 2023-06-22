@@ -10,7 +10,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{Attribute, Block, Location, Value},
+    ir::{attribute::IntegerAttribute, Block, Location, Value},
     Context,
 };
 
@@ -68,7 +68,7 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        IntegerAttribute::new(value.into(), value_ty).into(),
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
