@@ -24,6 +24,7 @@ use melior::{
     },
     Context,
 };
+use num_bigint::{Sign, ToBigInt};
 
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
@@ -196,7 +197,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let value = &info.c;
+    let value = match info.c.sign() {
+        Sign::Minus => {
+            let prime = metadata.get::<PrimeModulo<Felt252>>().unwrap().prime();
+            (&info.c + prime.to_bigint().unwrap()).to_biguint().unwrap()
+        }
+        _ => info.c.to_biguint().unwrap(),
+    };
     let felt252_ty = registry
         .get_type(&info.branch_signatures()[0].vars[0].ty)
         .unwrap()
