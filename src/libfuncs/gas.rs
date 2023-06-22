@@ -59,7 +59,7 @@ where
     // TODO: Implement libfunc.
     let op0 = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+        IntegerAttribute::new(1, IntegerType::new(context, 1).into()).into(),
         location,
     ));
 

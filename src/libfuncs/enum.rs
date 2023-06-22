@@ -194,7 +194,7 @@ where
         registry,
         metadata,
         registry
-            .get_type(&info.branch_signatures()[0].vars[0].ty)
+            .get_type(&info.param_signatures()[0].ty)
             .unwrap()
             .variants()
             .unwrap(),
@@ -202,7 +202,7 @@ where
     .unwrap();
 
     let enum_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)
+        .get_type(&info.param_signatures()[0].ty)
         .unwrap()
         .build(context, helper, registry, metadata)
         .unwrap();
@@ -243,6 +243,13 @@ where
         .map(|_| helper.append_block(&[]))
         .collect::<Vec<_>>();
 
+    let op2 = entry.append_operation(llvm::extract_value(
+        context,
+        entry.argument(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[0]),
+        tag_ty,
+        location,
+    ));
     entry.append_operation(
         cf::switch(
             context,
@@ -250,7 +257,7 @@ where
                 .map(i64::try_from)
                 .collect::<Result<Vec<_>, _>>()
                 .unwrap(),
-            op1.result(0).unwrap().into(),
+            op2.result(0).unwrap().into(),
             tag_ty,
             (default_block, &[]),
             &variant_blocks
@@ -264,7 +271,7 @@ where
     );
 
     {
-        let op2 = default_block.append_operation(arith::constant(
+        let op3 = default_block.append_operation(arith::constant(
             context,
             IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
             location,
@@ -272,7 +279,7 @@ where
 
         default_block.append_operation(cf::assert(
             context,
-            op2.result(0).unwrap().into(),
+            op3.result(0).unwrap().into(),
             "Invalid enum tag.",
             location,
         ));
@@ -293,28 +300,28 @@ where
         let concrete_enum_ty =
             llvm::r#type::r#struct(context, &[tag_ty, payload_ty, padding_ty], false);
 
-        let op2 = block.append_operation(
+        let op3 = block.append_operation(
             OperationBuilder::new("llvm.bitcast", location)
-                .add_operands(&[entry.argument(0).unwrap().into()])
+                .add_operands(&[op1.result(0).unwrap().into()])
                 .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
                 .build(),
         );
-        let op3 = block.append_operation(llvm::load(
+        let op4 = block.append_operation(llvm::load(
             context,
-            op2.result(0).unwrap().into(),
+            op3.result(0).unwrap().into(),
             concrete_enum_ty,
             location,
             LoadStoreOptions::default(),
         ));
-        let op4 = block.append_operation(llvm::extract_value(
+        let op5 = block.append_operation(llvm::extract_value(
             context,
-            op3.result(0).unwrap().into(),
+            op4.result(0).unwrap().into(),
             DenseI64ArrayAttribute::new(context, &[1]),
             payload_ty,
             location,
         ));
 
-        block.append_operation(helper.br(i, &[op4.result(0).unwrap().into()], location));
+        block.append_operation(helper.br(i, &[op5.result(0).unwrap().into()], location));
     }
 
     Ok(())

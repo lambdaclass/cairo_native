@@ -1,5 +1,5 @@
 #![feature(arc_unwrap_or_clone)]
-#![feature(extract_if)]
+#![feature(pointer_byte_offsets)]
 
 use bumpalo::Bump;
 use cairo_lang_compiler::{
@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
 };
 use clap::Parser;
 use melior::{
-    dialect::DialectRegistry,
+    dialect::{llvm, DialectRegistry},
     ir::{Location, Module},
     pass::{self, PassManager},
     utility::{register_all_dialects, register_all_passes},
@@ -23,15 +23,18 @@ use melior::{
 };
 use sierra2mlir::{
     metadata::MetadataStorage,
+    types::TypeBuilder,
     utils::generate_function_name,
     values::{DebugWrapper, ValueBuilder},
     DebugInfo,
 };
 use std::{
+    alloc::Layout,
     cell::RefCell,
     convert::Infallible,
     ffi::OsStr,
     fs,
+    iter::once,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -177,17 +180,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let mut rets_io = Vec::new();
-    for ret in &entry_point.signature.ret_types {
-        let concrete_type = registry.get_type(ret)?;
-        rets_io.push(concrete_type.alloc(&arena, &context, &module, &registry, &mut metadata));
-    }
+    let mut invoke_io = once({
+        let ty = llvm::r#type::r#struct(
+            &context,
+            &entry_point
+                .signature
+                .ret_types
+                .iter()
+                .map(|id| {
+                    registry
+                        .get_type(id)
+                        .map(|ty| ty.build(&context, &module, &registry, &mut metadata))
+                })
+                .collect::<Result<Result<Vec<_>, _>, _>>()??,
+            false,
+        );
 
-    let mut invoke_io = params_io
-        .iter()
-        .chain(rets_io.iter())
-        .copied()
-        .collect::<Vec<_>>();
+        arena.alloc(
+            arena
+                .alloc_layout(Layout::from_size_align(
+                    sierra2mlir::ffi::get_size(&module, &ty),
+                    sierra2mlir::ffi::get_preferred_alignment(&module, &ty),
+                )?)
+                .as_ptr() as *mut (),
+        ) as *mut *mut () as *mut ()
+    })
+    .chain(params_io)
+    .collect::<Vec<_>>();
 
     // Invoke the entry point.
     unsafe {
@@ -195,8 +214,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Print returned values.
-    for (ptr, ty) in rets_io.into_iter().zip(&entry_point.signature.ret_types) {
+    let mut layout: Option<Layout> = None;
+    for ty in &entry_point.signature.ret_types {
         let concrete_type = registry.get_type(ty).unwrap();
+
+        let ty_layout = concrete_type.layout(&context, &module, &registry, &mut metadata);
+        let (new_layout, offset) = match layout {
+            Some(layout) => layout.extend(ty_layout)?,
+            None => (ty_layout, 0),
+        };
+        layout = Some(new_layout);
 
         let wrapper = DebugWrapper {
             inner: concrete_type,
@@ -205,11 +232,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             registry: &registry,
             metadata: RefCell::new(&mut metadata),
             id: ty,
-            source: if concrete_type.is_complex() {
-                unsafe { (ptr as *mut *mut ()).read() }
-            } else {
-                ptr
-            },
+            source: unsafe { (invoke_io[0] as *mut *mut ()).read().byte_add(offset) },
         };
 
         match concrete_type {

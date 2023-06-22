@@ -36,7 +36,7 @@ use typed_arena::Arena;
 use types::TypeBuilder;
 
 mod debug_info;
-pub(crate) mod ffi;
+pub mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod types;
