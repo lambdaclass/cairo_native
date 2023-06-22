@@ -68,7 +68,7 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(value.try_into().unwrap(), value_ty).into(),
+        Attribute::parse(context, &format!("{value} : {value_ty}").unwrap(),
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
