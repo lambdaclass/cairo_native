@@ -61,7 +61,7 @@ where
 {
     let value = info.c;
     let value_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.branch_signatures()[0].vars[0].ty)
         .unwrap()
         .build(context, helper, registry, metadata)
         .unwrap();
