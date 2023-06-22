@@ -4,7 +4,7 @@ use cairo_lang_sierra::{
     extensions::{
         int::unsigned::{Uint16Concrete, Uint16Traits, UintConcrete, UintConstConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
