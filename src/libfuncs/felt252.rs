@@ -79,7 +79,61 @@ where
 
     let result = match info {
         Felt252BinaryOperationConcrete::WithVar(info) => match info.operator {
-            Felt252BinaryOperator::Add => todo!(),
+            Felt252BinaryOperator::Add => {
+                let op0 = entry.append_operation(arith::addi(
+                    entry.argument(0).unwrap().into(),
+                    entry.argument(1).unwrap().into(),
+                    location,
+                ));
+
+                let op1 = entry.append_operation(arith::constant(
+                    context,
+                    Attribute::parse(context, &format!("{prime} : {felt252_ty}")).unwrap(),
+                    location,
+                ));
+                let op2 = entry.append_operation(arith::cmpi(
+                    context,
+                    CmpiPredicate::Uge,
+                    op0.result(0).unwrap().into(),
+                    op1.result(0).unwrap().into(),
+                    location,
+                ));
+                let op3 = entry.append_operation(scf::r#if(
+                    op2.result(0).unwrap().into(),
+                    &[felt252_ty],
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        let op3 = block.append_operation(arith::subi(
+                            op0.result(0).unwrap().into(),
+                            op1.result(0).unwrap().into(),
+                            location,
+                        ));
+
+                        block.append_operation(scf::r#yield(
+                            &[op3.result(0).unwrap().into()],
+                            location,
+                        ));
+
+                        region
+                    },
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        block.append_operation(scf::r#yield(
+                            &[op0.result(0).unwrap().into()],
+                            location,
+                        ));
+
+                        region
+                    },
+                    location,
+                ));
+
+                op3.result(0).unwrap().into()
+            }
             Felt252BinaryOperator::Sub => {
                 let op0 = entry.append_operation(arith::subi(
                     entry.argument(0).unwrap().into(),

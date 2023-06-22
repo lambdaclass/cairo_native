@@ -141,7 +141,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -151,7 +151,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => true,
             CoreTypeConcrete::Struct(_) => true,
@@ -206,23 +206,12 @@ impl ValueBuilder for CoreTypeConcrete {
                 .alloc_layout(self.layout(context, module, registry, metadata))
                 .as_ptr() as *mut (),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => arena.alloc(
-                arena
-                    .alloc_layout(self.layout(context, module, registry, metadata))
-                    .as_ptr() as *mut (),
-            ) as *mut *mut () as *mut (),
-            CoreTypeConcrete::Struct(_) => {
-                let data_ptr = arena
-                    .alloc_layout(self.layout(context, module, registry, metadata))
-                    .as_ptr() as *mut ();
-
-                let addr_ptr = arena.alloc_layout(Layout::new::<*mut ()>()).as_ptr() as *mut ();
-                unsafe {
-                    (addr_ptr as *mut *mut ()).write(data_ptr);
-                }
-
-                addr_ptr
-            }
+            CoreTypeConcrete::Enum(_) => arena
+                .alloc_layout(self.layout(context, module, registry, metadata))
+                .as_ptr() as *mut (),
+            CoreTypeConcrete::Struct(_) => arena
+                .alloc_layout(self.layout(context, module, registry, metadata))
+                .as_ptr() as *mut (),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
@@ -290,7 +279,37 @@ impl ValueBuilder for CoreTypeConcrete {
         <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
     {
         match self {
-            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Array(info) => {
+                let mut list_fmt = f.debug_list();
+
+                let ptr = (source as *const *const ()).read();
+                let len = (ptr.byte_add(8) as *const u32).read();
+                let cap = (ptr.byte_add(12) as *const u32).read();
+
+                for i in 0..len.min(cap) {
+                    let source = source.byte_add(
+                        i as usize
+                            * registry
+                                .get_type(&info.ty)
+                                .unwrap()
+                                .layout(context, module, registry, metadata)
+                                .pad_to_align()
+                                .size(),
+                    );
+
+                    list_fmt.entry(&DebugWrapper {
+                        inner: registry.get_type(&info.ty).unwrap(),
+                        context,
+                        module,
+                        registry,
+                        metadata: RefCell::new(metadata),
+                        id: &info.ty,
+                        source,
+                    });
+                }
+
+                list_fmt.finish()
+            }
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
