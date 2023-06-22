@@ -5,10 +5,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    dialect::llvm,
     ir::{Module, Type},
     Context,
 };
-use std::{borrow::Cow, iter::once};
 
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
@@ -22,24 +22,18 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder,
 {
-    let type_asm = once(Cow::Borrowed("!llvm.struct<("))
-        .chain(
-            info.members
-                .iter()
-                .map(|x| {
-                    Cow::Owned(
-                        registry
-                            .get_type(x)
-                            .unwrap()
-                            .build(context, module, registry, metadata)
-                            .unwrap()
-                            .to_string(),
-                    )
-                })
-                .intersperse(Cow::Borrowed(", ")),
-        )
-        .chain(once(Cow::Borrowed(")>")))
-        .collect::<String>();
+    let fields: Vec<_> = info
+        .members
+        .iter()
+        .map(|field| {
+            registry
+                .get_type(field)
+                .unwrap()
+                .build(context, module, registry, metadata)
+                .unwrap()
+        })
+        .collect();
+    let struct_ty = llvm::r#type::r#struct(context, &fields, false);
 
-    Ok(Type::parse(context, &type_asm).unwrap())
+    Ok(struct_ty)
 }
