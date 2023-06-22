@@ -3,13 +3,14 @@ use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         int::unsigned::{Uint8Concrete, Uint8Traits, UintConcrete, UintConstConcreteLibfunc},
+        lib_func::SignatureOnlyConcreteLibfunc,
         GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self},
-    ir::{Attribute, Block, Location},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{attribute::IntegerAttribute, Block, Location, Value},
     Context,
 };
 
@@ -34,7 +35,7 @@ where
         }
         UintConcrete::Operation(_) => todo!(),
         UintConcrete::SquareRoot(_) => todo!(),
-        UintConcrete::Equal(_) => todo!(),
+        UintConcrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
         UintConcrete::ToFelt252(_) => todo!(),
         UintConcrete::FromFelt252(_) => todo!(),
         UintConcrete::IsZero(_) => todo!(),
@@ -67,10 +68,45 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        IntegerAttribute::new(value.into(), value_ty).into(),
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
+
+    Ok(())
+}
+
+pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    let arg0: Value = entry.argument(0).unwrap().into();
+    let arg1: Value = entry.argument(1).unwrap().into();
+
+    let op0 = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        arg1,
+        location,
+    ));
+
+    entry.append_operation(helper.cond_br(
+        op0.result(0).unwrap().into(),
+        [0, 1],
+        [&[]; 2],
+        location,
+    ));
 
     Ok(())
 }
