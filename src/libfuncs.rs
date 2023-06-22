@@ -118,11 +118,15 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint8(selector) => self::uint8::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint16(_) => todo!(),
+            Self::Uint16(selector) => self::uint16::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint32(selector) => self::uint32::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint64(_) => todo!(),
+            Self::Uint64(selector) => self::uint64::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint128(_) => todo!(),
             Self::Uint256(_) => todo!(),
             Self::Uint512(_) => todo!(),
