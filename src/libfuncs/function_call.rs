@@ -1,12 +1,19 @@
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{generate_function_name, metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    generate_function_name,
+    metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::func,
-    ir::{attribute::FlatSymbolRefAttribute, Block, Location},
+    dialect::{cf, func, index, memref},
+    ir::{
+        attribute::{FlatSymbolRefAttribute, IntegerAttribute},
+        Block, Location, Type,
+    },
     Context,
 };
 
@@ -40,25 +47,71 @@ where
         })
         .collect::<Vec<_>>();
 
-    let op0 = entry.append_operation(func::call(
-        context,
-        FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
-        &arguments,
-        &result_types,
-        location,
-    ));
+    if let Some(tailrec_meta) = metadata.get_mut::<TailRecursionMeta>() {
+        let op0 = entry.append_operation(memref::load(tailrec_meta.depth_counter(), &[], location));
+        let op1 = entry.append_operation(index::constant(
+            context,
+            IntegerAttribute::new(1, Type::index(context)),
+            location,
+        ));
+        let op2 = entry.append_operation(index::add(
+            op0.result(0).unwrap().into(),
+            op1.result(0).unwrap().into(),
+            location,
+        ));
+        entry.append_operation(memref::store(
+            op2.result(0).unwrap().into(),
+            tailrec_meta.depth_counter(),
+            &[],
+            location,
+        ));
 
-    entry.append_operation(
-        helper.br(
-            0,
+        entry.append_operation(cf::br(
+            &tailrec_meta.recursion_target(),
+            &arguments,
+            location,
+        ));
+
+        let cont_block = helper.append_block(
             &result_types
                 .iter()
-                .enumerate()
-                .map(|(i, _)| op0.result(i).unwrap().into())
+                .copied()
+                .map(|ty| (ty, location))
                 .collect::<Vec<_>>(),
+        );
+
+        cont_block.append_operation(
+            helper.br(
+                0,
+                &(0..result_types.len())
+                    .map(|i| cont_block.argument(i).unwrap().into())
+                    .collect::<Vec<_>>(),
+                location,
+            ),
+        );
+
+        tailrec_meta.set_return_target(cont_block);
+    } else {
+        let op0 = entry.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
+            &arguments,
+            &result_types,
             location,
-        ),
-    );
+        ));
+
+        entry.append_operation(
+            helper.br(
+                0,
+                &result_types
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| op0.result(i).unwrap().into())
+                    .collect::<Vec<_>>(),
+                location,
+            ),
+        );
+    }
 
     Ok(())
 }
