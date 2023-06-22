@@ -18,10 +18,10 @@ use cairo_lang_sierra::{
 use itertools::Itertools;
 use libfuncs::LibfuncBuilder;
 use melior::{
-    dialect::{cf, func},
+    dialect::{arith::CmpiPredicate, cf, func, index, memref},
     ir::{
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
+        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        r#type::{FunctionType, MemRefType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
@@ -122,11 +122,12 @@ where
         Location::unknown(context),
     ));
 
+    let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
     foreach_statement_in_function(
         statements,
         function.entry_point,
-        initial_state,
-        |statement_idx, mut state| {
+        (initial_state, BTreeMap::<usize, usize>::new()),
+        |statement_idx, (mut state, mut tailrec_state)| {
             let (landing_block, block) = &blocks[&statement_idx];
 
             if let Some((landing_block, _)) = landing_block {
@@ -230,9 +231,43 @@ where
 
                     let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
                     if let Some(target) = concrete_libfunc.is_function_call() {
-                        metadata
-                            .insert(TailRecursionMeta::new(target == &function.id))
-                            .unwrap();
+                        if target == &function.id && state.is_empty() {
+                            let op0 = entry_block.insert_operation(
+                                0,
+                                memref::alloca(
+                                    context,
+                                    MemRefType::new(Type::index(context), &[], None, None),
+                                    &[],
+                                    &[],
+                                    None,
+                                    Location::unknown(context),
+                                ),
+                            );
+                            let op1 = entry_block.insert_operation_after(
+                                op0,
+                                index::constant(
+                                    context,
+                                    IntegerAttribute::new(0, Type::index(context)),
+                                    Location::unknown(context),
+                                ),
+                            );
+                            entry_block.insert_operation_after(
+                                op1,
+                                memref::store(
+                                    op1.result(0).unwrap().into(),
+                                    op0.result(0).unwrap().into(),
+                                    &[],
+                                    Location::unknown(context),
+                                ),
+                            );
+
+                            metadata
+                                .insert(TailRecursionMeta::new(
+                                    op0.result(0).unwrap().into(),
+                                    &entry_block,
+                                ))
+                                .unwrap();
+                        }
                     }
 
                     concrete_libfunc
@@ -247,7 +282,12 @@ where
                         .unwrap();
                     assert!(block.terminator().is_some());
 
-                    metadata.remove::<TailRecursionMeta>();
+                    if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
+                        if let Some(return_block) = tailrec_meta.return_target() {
+                            tailrec_state.insert(statement_idx.0, tailrec_storage.len());
+                            tailrec_storage.push((tailrec_meta.depth_counter(), return_block));
+                        }
+                    }
 
                     invocation
                         .branches
@@ -259,14 +299,18 @@ where
                                 result_values.len(),
                                 "Mismatched number of returned values from branch."
                             );
-                            edit_state::put_results(
-                                state.clone(),
-                                branch_info
-                                    .results
-                                    .iter()
-                                    .zip(result_values.iter().copied()),
+
+                            (
+                                edit_state::put_results(
+                                    state.clone(),
+                                    branch_info
+                                        .results
+                                        .iter()
+                                        .zip(result_values.iter().copied()),
+                                )
+                                .unwrap(),
+                                tailrec_state.clone(),
                             )
-                            .unwrap()
                         })
                         .collect()
                 }
@@ -274,6 +318,63 @@ where
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
                     let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+
+                    let mut block = *block;
+                    if !tailrec_state.is_empty() {
+                        // Perform tail recursion.
+                        for counter_idx in tailrec_state.into_values() {
+                            let cont_block = region.insert_block_after(block, Block::new(&[]));
+
+                            let (depth_counter, return_target) = tailrec_storage[counter_idx];
+                            let op0 = block.append_operation(memref::load(
+                                depth_counter,
+                                &[],
+                                Location::unknown(context),
+                            ));
+                            let op1 = block.append_operation(index::constant(
+                                context,
+                                IntegerAttribute::new(0, Type::index(context)),
+                                Location::unknown(context),
+                            ));
+                            let op2 = block.append_operation(index::cmp(
+                                context,
+                                CmpiPredicate::Eq,
+                                op0.result(0).unwrap().into(),
+                                op1.result(0).unwrap().into(),
+                                Location::unknown(context),
+                            ));
+
+                            let op3 = block.append_operation(index::constant(
+                                context,
+                                IntegerAttribute::new(1, Type::index(context)),
+                                Location::unknown(context),
+                            ));
+                            let op4 = block.append_operation(index::sub(
+                                op0.result(0).unwrap().into(),
+                                op3.result(0).unwrap().into(),
+                                Location::unknown(context),
+                            ));
+                            block.append_operation(memref::store(
+                                op4.result(0).unwrap().into(),
+                                depth_counter,
+                                &[],
+                                Location::unknown(context),
+                            ));
+
+                            block.append_operation(cf::cond_br(
+                                context,
+                                op2.result(0).unwrap().into(),
+                                &cont_block,
+                                &return_target,
+                                &[],
+                                &values,
+                                Location::unknown(context),
+                            ));
+
+                            block = cont_block;
+                        }
+                    }
+
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
                     Vec::new()
@@ -281,6 +382,31 @@ where
             }
         },
     );
+
+    // Workaround for the `entry block of region may not have predecessors` error:
+    if !tailrec_storage.is_empty() {
+        let new_entry_block = region.insert_block_before(
+            entry_block,
+            Block::new(
+                &extract_types(
+                    context,
+                    module,
+                    &function.signature.param_types,
+                    registry,
+                    metadata,
+                )
+                .map(|ty| (ty, Location::unknown(context)))
+                .collect::<Vec<_>>(),
+            ),
+        );
+        new_entry_block.append_operation(cf::br(
+            &entry_block,
+            &(0..entry_block.argument_count())
+                .map(|i| new_entry_block.argument(i).unwrap().into())
+                .collect::<Vec<_>>(),
+            Location::unknown(context),
+        ));
+    }
 
     let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
