@@ -146,17 +146,16 @@ where
         .unwrap()
         .build(context, helper, registry, metadata)
         .unwrap();
-    let elem_ty = registry
-        .get_type(&info.ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let elem_stride = crate::ffi::get_size(helper, &elem_ty)
-        .next_multiple_of(crate::ffi::get_preferred_alignment(helper, &elem_ty).min(8));
+    let elem_stride = registry
+        .get_type(&info.ty)
+        .unwrap()
+        .layout(registry)
+        .pad_to_align()
+        .size();
 
     let op0 = entry.append_operation(llvm::extract_value(
         context,

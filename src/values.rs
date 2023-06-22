@@ -42,27 +42,10 @@ pub mod uninitialized;
 pub trait ValueBuilder {
     type Error: Error;
 
-    fn layout<TType, TLibfunc>(
-        &self,
-        context: &Context,
-        module: &Module,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
-    ) -> Layout
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder;
-
-    fn is_complex(&self) -> bool;
-
     fn alloc<TType, TLibfunc>(
         &self,
         arena: &Bump,
-        context: &Context,
-        module: &Module,
         registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
     ) -> *mut ()
     where
         TType: GenericType<Concrete = Self>,
@@ -89,10 +72,7 @@ pub trait ValueBuilder {
     fn parsed<TType, TLibfunc>(
         &self,
         arena: &Bump,
-        context: &Context,
-        module: &Module,
         registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
         src: &str,
     ) -> Result<*mut (), Self::Error>
     where
@@ -100,7 +80,7 @@ pub trait ValueBuilder {
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
     {
-        let ptr = self.alloc(arena, context, module, registry, metadata);
+        let ptr = self.alloc(arena, registry);
         unsafe {
             self.parse(ptr, src)?;
         }
@@ -112,116 +92,17 @@ pub trait ValueBuilder {
 impl ValueBuilder for CoreTypeConcrete {
     type Error = std::convert::Infallible;
 
-    fn layout<TType, TLibfunc>(
-        &self,
-        context: &Context,
-        module: &Module,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
-    ) -> Layout
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
-    {
-        let mlir_ty = self.build(context, module, registry, metadata).unwrap();
-        Layout::from_size_align(
-            crate::ffi::get_size(module, &mlir_ty),
-            8, /*crate::ffi::get_preferred_alignment(module, &mlir_ty).min(8)*/
-        )
-        .unwrap()
-    }
-
-    fn is_complex(&self) -> bool {
-        match self {
-            CoreTypeConcrete::Array(_) => todo!(),
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => false,
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => false,
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => true,
-            CoreTypeConcrete::Struct(_) => true,
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-        }
-    }
-
     fn alloc<TType, TLibfunc>(
         &self,
         arena: &Bump,
-        context: &Context,
-        module: &Module,
         registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
     ) -> *mut ()
     where
         TType: GenericType<Concrete = Self>,
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
     {
-        match self {
-            CoreTypeConcrete::Array(_) => todo!(),
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
-            CoreTypeConcrete::GasBuiltin(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
-            CoreTypeConcrete::Struct(_) => arena
-                .alloc_layout(self.layout(context, module, registry, metadata))
-                .as_ptr() as *mut (),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-        }
+        arena.alloc_layout(self.layout(registry)).as_ptr() as *mut ()
     }
 
     unsafe fn parse(&self, target: *mut (), src: &str) -> Result<(), Self::Error> {
@@ -292,7 +173,7 @@ impl ValueBuilder for CoreTypeConcrete {
                             * registry
                                 .get_type(&info.ty)
                                 .unwrap()
-                                .layout(context, module, registry, metadata)
+                                .layout(registry)
                                 .pad_to_align()
                                 .size(),
                     );
@@ -336,19 +217,17 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
                 let payload_tys = self.variants().unwrap();
-                let (tag_ty, _, align) = crate::types::r#enum::get_type_for_variants(
-                    context,
-                    module,
-                    registry,
-                    metadata,
-                    payload_tys,
-                )
-                .unwrap();
+                let (_, (_, tag_layout), variant_tys) =
+                    crate::types::r#enum::get_type_for_variants(
+                        context,
+                        module,
+                        registry,
+                        metadata,
+                        payload_tys,
+                    )
+                    .unwrap();
 
-                let tag_size = crate::ffi::get_size(module, &tag_ty);
-                let layout = Layout::from_size_align(tag_size, align).unwrap();
-
-                let index = match tag_size {
+                let index = match tag_layout.size() {
                     1 => (source as *const u8).read() as usize,
                     2 => (source as *const u16).read() as usize,
                     4 => (source as *const u32).read() as usize,
@@ -356,15 +235,7 @@ impl ValueBuilder for CoreTypeConcrete {
                     _ => panic!(),
                 };
 
-                let (_, offset) = layout
-                    .extend(
-                        registry
-                            .get_type(&payload_tys[index])
-                            .unwrap()
-                            .layout(context, module, registry, metadata),
-                    )
-                    .unwrap();
-
+                let (_, offset) = tag_layout.extend(variant_tys[index].1).unwrap();
                 f.debug_tuple(&format!("{id}<{index}>"))
                     .field(&DebugWrapper {
                         inner: registry.get_type(&payload_tys[index]).unwrap(),
@@ -382,10 +253,7 @@ impl ValueBuilder for CoreTypeConcrete {
 
                 let mut layout: Option<(Layout, usize)> = None;
                 for member in info.members.iter() {
-                    let member_layout = registry
-                        .get_type(member)
-                        .unwrap()
-                        .layout(context, module, registry, metadata);
+                    let member_layout = registry.get_type(member).unwrap().layout(registry);
 
                     let (new_layout, offset) = match layout {
                         Some((layout, _)) => layout.extend(member_layout).unwrap(),

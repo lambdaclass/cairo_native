@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
 };
 use clap::Parser;
 use melior::{
-    dialect::{llvm, DialectRegistry},
+    dialect::DialectRegistry,
     ir::{Location, Module},
     pass::{self, PassManager},
     utility::{register_all_dialects, register_all_passes},
@@ -126,13 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             | CoreTypeConcrete::Uninitialized(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_) => {
-                params_io.push(concrete_type.alloc(
-                    &arena,
-                    &context,
-                    &module,
-                    &registry,
-                    &mut metadata,
-                ));
+                params_io.push(concrete_type.alloc(&arena, &registry));
             }
 
             // Types that require special handling.
@@ -143,10 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 params_io.push(concrete_type.parsed(
                     &arena,
-                    &context,
-                    &module,
                     &registry,
-                    &mut metadata,
                     &available_gas.to_string(),
                 )?);
             }
@@ -181,27 +172,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut invoke_io = once({
-        let ty = llvm::r#type::r#struct(
-            &context,
-            &entry_point
-                .signature
-                .ret_types
-                .iter()
-                .map(|id| {
-                    registry
-                        .get_type(id)
-                        .map(|ty| ty.build(&context, &module, &registry, &mut metadata))
-                })
-                .collect::<Result<Result<Vec<_>, _>, _>>()??,
-            false,
-        );
+        // let ty = llvm::r#type::r#struct(
+        //     &context,
+        //     &entry_point
+        //         .signature
+        //         .ret_types
+        //         .iter()
+        //         .map(|id| {
+        //             registry
+        //                 .get_type(id)
+        //                 .map(|ty| ty.build(&context, &module, &registry, &mut metadata))
+        //         })
+        //         .collect::<Result<Result<Vec<_>, _>, _>>()??,
+        //     false,
+        // );
 
         arena.alloc(
             arena
-                .alloc_layout(Layout::from_size_align(
-                    sierra2mlir::ffi::get_size(&module, &ty),
-                    sierra2mlir::ffi::get_preferred_alignment(&module, &ty),
-                )?)
+                .alloc_layout(
+                    entry_point
+                        .signature
+                        .ret_types
+                        .iter()
+                        .try_fold(Option::<Layout>::None, |layout, id| {
+                            registry.get_type(id).map(|ty| {
+                                Some(match layout {
+                                    Some(layout) => layout.extend(ty.layout(&registry)).unwrap().0,
+                                    None => ty.layout(&registry),
+                                })
+                            })
+                        })?
+                        .unwrap_or(Layout::from_size_align(0, 1)?),
+                )
                 .as_ptr() as *mut (),
         ) as *mut *mut () as *mut ()
     })
@@ -218,7 +220,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for ty in &entry_point.signature.ret_types {
         let concrete_type = registry.get_type(ty).unwrap();
 
-        let ty_layout = concrete_type.layout(&context, &module, &registry, &mut metadata);
+        let ty_layout = concrete_type.layout(&registry);
         let (new_layout, offset) = match layout {
             Some(layout) => layout.extend(ty_layout)?,
             None => (ty_layout, 0),
