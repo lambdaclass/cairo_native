@@ -23,7 +23,6 @@ use melior::{
 };
 use sierra2mlir::{
     metadata::MetadataStorage,
-    types::TypeBuilder,
     utils::generate_function_name,
     values::{DebugWrapper, ValueBuilder},
     DebugInfo,
@@ -181,13 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rets_io = Vec::new();
     for ret in &entry_point.signature.ret_types {
         let concrete_type = registry.get_type(ret)?;
-        let ret_ptr = concrete_type.alloc(&arena, &context, &module, &registry, &mut metadata);
-
-        // Avoid returning locals on the stack, aka. dangling pointers.
-        match concrete_type.variants() {
-            Some(_) => params_io.push(ret_ptr),
-            None => rets_io.push(ret_ptr),
-        }
+        rets_io.push(concrete_type.alloc(&arena, &context, &module, &registry, &mut metadata));
     }
 
     let mut invoke_io = params_io
@@ -202,17 +195,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Print returned values.
-    let mut ret_iter = rets_io.iter();
-    let mut aux_iter = params_io
-        .iter()
-        .skip(entry_point.signature.param_types.len());
-
-    for ty in &entry_point.signature.ret_types {
+    for (ptr, ty) in rets_io.into_iter().zip(&entry_point.signature.ret_types) {
         let concrete_type = registry.get_type(ty).unwrap();
-        let ptr = *match concrete_type.variants() {
-            Some(_) => aux_iter.next().unwrap(),
-            None => ret_iter.next().unwrap(),
-        };
 
         let wrapper = DebugWrapper {
             inner: concrete_type,
@@ -221,7 +205,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             registry: &registry,
             metadata: RefCell::new(&mut metadata),
             id: ty,
-            source: ptr,
+            source: if concrete_type.is_complex() {
+                unsafe { (ptr as *mut *mut ()).read() }
+            } else {
+                ptr
+            },
         };
 
         match concrete_type {
@@ -268,6 +256,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    // FIXME: Remove this hack once the segfault on drop is fixed.
+    std::mem::forget(arena);
 
     Ok(())
 }
