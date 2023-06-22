@@ -63,7 +63,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let (tag_ty, variant_tys, align) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -84,11 +84,12 @@ where
 
     let padding_ty = llvm::r#type::array(
         IntegerType::new(context, 8).into(),
-        (crate::ffi::get_size(helper, &enum_ty)
-            - crate::ffi::get_size(
-                helper,
-                &llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index]], false),
-            ))
+        (layout.size()
+            - tag_layout
+                .extend(variant_tys[info.index].1)
+                .unwrap()
+                .0
+                .size())
         .try_into()
         .unwrap(),
     );
@@ -101,7 +102,7 @@ where
 
     let concrete_enum_ty = llvm::r#type::r#struct(
         context,
-        &[tag_ty, variant_tys[info.index], padding_ty],
+        &[tag_ty, variant_tys[info.index].0, padding_ty],
         false,
     );
 
@@ -131,7 +132,7 @@ where
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    align.try_into().unwrap(),
+                    layout.align().try_into().unwrap(),
                     IntegerType::new(context, 64).into(),
                 )
                 .into(),
@@ -146,7 +147,7 @@ where
         op5.result(0).unwrap().into(),
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            align.try_into().unwrap(),
+            layout.align().try_into().unwrap(),
             IntegerType::new(context, 64).into(),
         ))),
     ));
@@ -163,7 +164,7 @@ where
         enum_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            align.try_into().unwrap(),
+            layout.align().try_into().unwrap(),
             IntegerType::new(context, 64).into(),
         ))),
     ));
@@ -188,7 +189,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let (tag_ty, variant_tys, align) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -217,7 +218,7 @@ where
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    align.try_into().unwrap(),
+                    layout.align().try_into().unwrap(),
                     IntegerType::new(context, 64).into(),
                 )
                 .into(),
@@ -232,7 +233,7 @@ where
         op1.result(0).unwrap().into(),
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            align.try_into().unwrap(),
+            layout.align().try_into().unwrap(),
             IntegerType::new(context, 64).into(),
         ))),
     ));
@@ -286,16 +287,14 @@ where
         default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
     }
 
-    for (i, (block, payload_ty)) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
+    for (i, (block, (payload_ty, payload_layout))) in
+        variant_blocks.into_iter().zip(variant_tys).enumerate()
+    {
         let padding_ty = llvm::r#type::array(
             IntegerType::new(context, 8).into(),
-            (crate::ffi::get_size(helper, &enum_ty)
-                - crate::ffi::get_size(
-                    helper,
-                    &llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false),
-                ))
-            .try_into()
-            .unwrap(),
+            (layout.size() - tag_layout.extend(payload_layout).unwrap().0.size())
+                .try_into()
+                .unwrap(),
         );
         let concrete_enum_ty =
             llvm::r#type::r#struct(context, &[tag_ty, payload_ty, padding_ty], false);
