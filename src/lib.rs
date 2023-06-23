@@ -234,6 +234,9 @@ where
                     let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
                     if let Some(target) = concrete_libfunc.is_function_call() {
                         if target == &function.id && state.is_empty() {
+                            // TODO: Defer insertions until after the recursion has been confirmed
+                            //   (when removing the meta, if a return target is set).
+                            // TODO: Explore replacing the `memref` counter with a normal variable.
                             let op0 = entry_block.insert_operation(
                                 0,
                                 memref::alloca(

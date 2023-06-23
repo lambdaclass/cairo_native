@@ -1,6 +1,6 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
-    metadata::{prime_modulo::PrimeModulo, MetadataStorage},
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::{felt252::Felt252, TypeBuilder},
 };
 use cairo_lang_sierra::{
@@ -75,7 +75,7 @@ where
         .build(context, helper, registry, metadata)
         .unwrap();
 
-    let prime = metadata.get::<PrimeModulo<Felt252>>().unwrap().prime();
+    let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
 
     let result = match info {
         Felt252BinaryOperationConcrete::WithVar(info) => match info.operator {
@@ -253,7 +253,7 @@ where
 {
     let value = match info.c.sign() {
         Sign::Minus => {
-            let prime = metadata.get::<PrimeModulo<Felt252>>().unwrap().prime();
+            let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
             (&info.c + prime.to_bigint().unwrap()).to_biguint().unwrap()
         }
         _ => info.c.to_biguint().unwrap(),

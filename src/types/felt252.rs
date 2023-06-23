@@ -5,7 +5,7 @@
 //! [a prime number](struct@self::PRIME).
 
 use super::TypeBuilder;
-use crate::metadata::{prime_modulo::PrimeModulo, MetadataStorage};
+use crate::metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -46,11 +46,11 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder,
 {
-    match metadata.get::<PrimeModulo<Felt252>>() {
+    match metadata.get::<PrimeModuloMeta<Felt252>>() {
         Some(x) => assert_eq!(x.prime(), &*PRIME),
         None => {
             metadata
-                .insert(PrimeModulo::<Felt252>::new(PRIME.clone()))
+                .insert(PrimeModuloMeta::<Felt252>::new(PRIME.clone()))
                 .unwrap();
         }
     }
