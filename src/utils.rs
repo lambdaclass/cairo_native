@@ -1,3 +1,5 @@
+//! # Various utilities
+
 use cairo_lang_sierra::ids::FunctionId;
 use std::{alloc::Layout, borrow::Cow};
 

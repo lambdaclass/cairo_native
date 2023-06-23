@@ -1,10 +1,11 @@
+//! # Cairo Sierra to MLIR compiler and JIT engine
+
 #![feature(box_into_inner)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
 #![feature(pointer_byte_offsets)]
-
 #![warn(missing_docs)]
 
 pub use self::debug_info::DebugInfo;
@@ -48,6 +49,18 @@ pub mod values;
 type BlockStorage<'c, 'a> =
     HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>;
 
+/// Run the compiler on a program.
+///
+/// The generics `TType` and `TLibfunc` contain the information required to generate the MLIR types
+/// and statement operations. Most of the time you'll want to use the default ones, which are
+/// [CoreType](cairo_lang_sierra::extensions::core::CoreType) and
+/// [CoreLibfunc](cairo_lang_sierra::extensions::core::CoreLibfunc) respectively.
+///
+/// This function needs the program and the program's registry, which doesn't need to have AP
+/// tracking information.
+///
+/// Additionally, it needs a reference to the MLIR context, the output module and the metadata
+/// storage. The last one is passed externally so that stuff can be initialized if necessary.
 pub fn compile<'c, TType, TLibfunc>(
     context: &'c Context,
     module: &Module<'c>,
