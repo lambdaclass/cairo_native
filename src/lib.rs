@@ -8,6 +8,7 @@
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
 use crate::{metadata::tail_recursion::TailRecursionMeta, utils::generate_function_name};
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
@@ -32,7 +33,6 @@ use std::{
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
-use typed_arena::Arena;
 use types::TypeBuilder;
 
 mod debug_info;
@@ -90,7 +90,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let region = Region::new();
-    let blocks_arena = Arena::new();
+    let blocks_arena = Bump::new();
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
