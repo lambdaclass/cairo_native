@@ -5,6 +5,8 @@
 #![feature(map_try_insert)]
 #![feature(pointer_byte_offsets)]
 
+#![warn(missing_docs)]
+
 pub use self::debug_info::DebugInfo;
 use self::libfuncs::{BranchArg, LibfuncHelper};
 use crate::{metadata::tail_recursion::TailRecursionMeta, utils::generate_function_name};

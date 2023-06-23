@@ -1,1 +1,3 @@
-
+//! # Snapshot type
+//!
+//! TODO

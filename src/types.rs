@@ -1,3 +1,5 @@
+//! # Compiler type infrastructure
+
 use crate::{metadata::MetadataStorage, utils::get_integer_layout};
 use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
@@ -40,9 +42,15 @@ pub mod uint64;
 pub mod uint8;
 pub mod uninitialized;
 
+/// Generation of MLIR types from their Sierra counterparts.
+///
+/// All possible Sierra types must implement it. It is already implemented for all the core Sierra
+/// types, contained in [CoreTypeConcrete].
 pub trait TypeBuilder {
+    /// Error type returned by this trait's methods.
     type Error: Error;
 
+    /// Build the MLIR type.
     fn build<'ctx, TType, TLibfunc>(
         &self,
         context: &'ctx Context,
@@ -55,13 +63,21 @@ pub trait TypeBuilder {
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder;
 
+    /// Generate the layout of the MLIR type.
+    ///
+    /// Used in both the compiler and the interface when calling the compiled code.
     fn layout<TType, TLibfunc>(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Layout
     where
         TType: GenericType<Concrete = Self>,
         TLibfunc: GenericLibfunc,
         <TType as GenericType>::Concrete: TypeBuilder;
 
-    fn variants(&self) -> Option<&[ConcreteTypeId]>;
+    /// If the type is a variant type, return all possible variants.
+    ///
+    /// TODO: How is it used?
+    fn variants(&self) -> Option<&[ConcreteTypeId]> {
+        None
+    }
 }
 
 impl TypeBuilder for CoreTypeConcrete {
