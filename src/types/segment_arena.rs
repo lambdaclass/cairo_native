@@ -1,1 +1,3 @@
-
+//! # Segment arena type
+//!
+//! TODO

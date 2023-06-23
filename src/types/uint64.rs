@@ -1,3 +1,5 @@
+//! # Unsigned 64-bit integer type
+
 use super::TypeBuilder;
 use crate::metadata::MetadataStorage;
 use cairo_lang_sierra::{
@@ -9,6 +11,9 @@ use melior::{
     Context,
 };
 
+/// Build the MLIR type.
+///
+/// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     _module: &Module<'ctx>,

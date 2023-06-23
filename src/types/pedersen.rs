@@ -1,1 +1,3 @@
-
+//! # Pedersen type
+//!
+//! TODO
