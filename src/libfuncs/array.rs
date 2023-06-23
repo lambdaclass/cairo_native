@@ -1,6 +1,6 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
-    metadata::{realloc_bindings::ReallocBindings, MetadataStorage},
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -137,8 +137,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    if metadata.get::<ReallocBindings>().is_none() {
-        metadata.insert(ReallocBindings::new(context, helper));
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
     let array_ty = registry

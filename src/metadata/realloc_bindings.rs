@@ -1,3 +1,8 @@
+//! # Memory allocation external bindings
+//!
+//! This metadata ensures that the bindings to the C function `realloc` exist in the current
+//! compilation context.
+
 use melior::{
     dialect::{func, llvm},
     ir::{
@@ -9,12 +14,14 @@ use melior::{
 };
 use std::marker::PhantomData;
 
+/// Memory allocation `realloc` metadata.
 #[derive(Debug)]
-pub struct ReallocBindings {
+pub struct ReallocBindingsMeta {
     phantom: PhantomData<()>,
 }
 
-impl ReallocBindings {
+impl ReallocBindingsMeta {
+    /// Register the bindings to the `realloc` C function and return the metadata.
     pub fn new(context: &Context, module: &Module) -> Self {
         module.body().append_operation(func::func(
             context,

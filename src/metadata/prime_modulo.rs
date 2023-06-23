@@ -1,13 +1,21 @@
+//! # Finite field prime modulo
+//!
+//! Contains the prime modulo number of a finite field.
+//!
+//! Currently used only for `felt252`.
+
 use num_bigint::BigUint;
 use std::marker::PhantomData;
 
+/// Prime modulo number metadata.
 #[derive(Debug)]
-pub struct PrimeModulo<T> {
+pub struct PrimeModuloMeta<T> {
     prime: BigUint,
     phantom: PhantomData<T>,
 }
 
-impl<T> PrimeModulo<T> {
+impl<T> PrimeModuloMeta<T> {
+    /// Create the metadata from the prime number.
     pub fn new(prime: BigUint) -> Self {
         Self {
             prime,
@@ -15,6 +23,7 @@ impl<T> PrimeModulo<T> {
         }
     }
 
+    /// Return the stored prime number.
     pub fn prime(&self) -> &BigUint {
         &self.prime
     }
