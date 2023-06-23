@@ -1,3 +1,5 @@
+//! # `u64`-related libfuncs
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -14,6 +16,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -44,6 +47,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `u64_const` libfunc.
 pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -76,6 +80,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u64_eq` libfunc.
 pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,

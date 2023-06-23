@@ -1,3 +1,8 @@
+//! # Function call libfuncs
+//!
+//! Includes logic for handling direct tail recursive function calls. More information on this topic
+//! at the [tail recursive metadata](crate::metadata::tail_recursion).
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     generate_function_name,
@@ -17,6 +22,7 @@ use melior::{
     Context,
 };
 
+/// Generate MLIR operations for the `function_call` libfunc.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -72,13 +78,13 @@ where
             location,
         ));
 
-        let cont_block = helper.append_block(
+        let cont_block = helper.append_block(Block::new(
             &result_types
                 .iter()
                 .copied()
                 .map(|ty| (ty, location))
                 .collect::<Vec<_>>(),
-        );
+        ));
 
         cont_block.append_operation(
             helper.br(

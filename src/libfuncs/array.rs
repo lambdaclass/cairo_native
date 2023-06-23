@@ -1,3 +1,5 @@
+//! # Array libfuncs
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
@@ -30,6 +32,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -62,6 +65,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `array_new` libfunc.
 pub fn build_new<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -122,6 +126,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `array_append` libfunc.
 pub fn build_append<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,

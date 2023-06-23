@@ -1,3 +1,5 @@
+//! # `felt252`-related libfuncs
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
@@ -26,6 +28,7 @@ use melior::{
 };
 use num_bigint::{Sign, ToBigInt};
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -54,6 +57,11 @@ where
     }
 }
 
+/// Generate MLIR operations for the following libfuncs:
+///   - `felt252_add` and `felt252_add_const`.
+///   - `felt252_sub` and `felt252_sub_const`.
+///   - `felt252_mul` and `felt252_mul_const`.
+///   - `felt252_div` and `felt252_div_const`.
 pub fn build_binary_operation<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -236,6 +244,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `felt252_const` libfunc.
 pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -274,6 +283,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `felt252_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,

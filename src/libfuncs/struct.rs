@@ -1,3 +1,5 @@
+//! # Struct-related libfuncs
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -13,6 +15,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -39,6 +42,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `struct_construct` libfunc.
 pub fn build_construct<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -76,6 +80,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `struct_deconstruct` libfunc.
 pub fn build_deconstruct<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,

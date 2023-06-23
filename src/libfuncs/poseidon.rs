@@ -1,1 +1,3 @@
-
+//! # Poseidon hashing libfuncs
+//!
+//! TODO

@@ -1,4 +1,6 @@
 //! # Compiler type infrastructure
+//!
+//! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{metadata::MetadataStorage, utils::get_integer_layout};
 use cairo_lang_sierra::{
@@ -75,9 +77,7 @@ pub trait TypeBuilder {
     /// If the type is a variant type, return all possible variants.
     ///
     /// TODO: How is it used?
-    fn variants(&self) -> Option<&[ConcreteTypeId]> {
-        None
-    }
+    fn variants(&self) -> Option<&[ConcreteTypeId]>;
 }
 
 impl TypeBuilder for CoreTypeConcrete {

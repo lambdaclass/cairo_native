@@ -1,4 +1,9 @@
+//! # Compiler libfunc infrastructure
+//!
+//! Contains libfunc generation stuff (aka. the actual instructions).
+
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
     ids::FunctionId,
@@ -6,11 +11,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::cf,
-    ir::{Block, BlockRef, Location, Module, Operation, Region, Type, Value, ValueLike},
+    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
     Context,
 };
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
-use bumpalo::Bump;
 
 pub mod ap_tracking;
 pub mod array;
@@ -46,9 +50,15 @@ pub mod uint8;
 pub mod unconditional_jump;
 pub mod unwrap_non_zero;
 
+/// Generation of MLIR operations from their Sierra counterparts.
+///
+/// All possible Sierra libfuncs must implement it. It is already implemented for all the core
+/// libfuncs, contained in [CoreConcreteLibfunc].
 pub trait LibfuncBuilder {
+    /// Error type returned by this trait's methods.
     type Error: Error;
 
+    /// Generate the MLIR operations.
     fn build<'ctx, 'this, TType, TLibfunc>(
         &self,
         context: &'ctx Context,
@@ -64,6 +74,10 @@ pub trait LibfuncBuilder {
         <TType as GenericType>::Concrete: TypeBuilder,
         <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder;
 
+    /// Return the target function if the statement is a function call.
+    ///
+    /// This is used by the compiler to check whether a statement is a function call and apply the
+    /// tail recursion logic.
     fn is_function_call(&self) -> Option<&FunctionId>;
 }
 
@@ -162,6 +176,15 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     }
 }
 
+/// Helper struct which contains logic generation for extra MLIR blocks and branch operations to the
+/// next statements.
+///
+/// Each branch index should be present in exactly one call a branching method (either
+/// [`br`](#method.br), [`cond_br`](#method.cond_br) or [`switch`](#method.switch)).
+///
+/// This helper is necessary because the statement following the current one may not have the same
+/// arguments as the results returned by the current statement. Because of that, a direct jump
+/// cannot be made and some processing is required.
 pub struct LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
@@ -186,10 +209,11 @@ where
             .map(|x| x.into_iter().map(|x| x.into_inner().unwrap()).collect())
     }
 
-    pub fn append_block(&self, args: &[(Type<'ctx>, Location<'ctx>)]) -> &'this Block<'ctx> {
+    /// Inserts a new block after all the current libfunc's blocks.
+    pub fn append_block(&self, block: Block<'ctx>) -> &'this Block<'ctx> {
         let block = self
             .region
-            .insert_block_after(*self.last_block.get(), Block::new(args));
+            .insert_block_after(*self.last_block.get(), block);
 
         let block_ref: &'this mut BlockRef<'ctx, 'this> = self.blocks_arena.alloc(block);
         self.last_block.set(block_ref);
@@ -197,6 +221,10 @@ where
         block_ref
     }
 
+    /// Creates an unconditional branching operation out of the libfunc and into the next statement.
+    ///
+    /// This method will also store the returned values so that they can be moved into the state and
+    /// used later on when required.
     pub fn br(
         &self,
         branch: usize,
@@ -221,6 +249,14 @@ where
         cf::br(successor, &destination_operands, location)
     }
 
+    /// Creates a conditional binary branching operation, potentially jumping out of the libfunc and
+    /// into the next statement.
+    ///
+    /// While generating a `cond_br` that doesn't jump out of the libfunc is possible, it should be
+    /// avoided whenever possible. In those cases just use [melior::dialect::cf::cond_br].
+    ///
+    /// This method will also store the returned values so that they can be moved into the state and
+    /// used later on when required.
     // TODO: Allow one block to be libfunc-internal.
     pub fn cond_br(
         &self,
@@ -278,6 +314,14 @@ where
         )
     }
 
+    /// Creates a conditional multi-branching operation, potentially jumping out of the libfunc and
+    /// into the next statement.
+    ///
+    /// While generating a `switch` that doesn't jump out of the libfunc is possible, it should be
+    /// avoided whenever possible. In those cases just use [melior::dialect::cf::switch].
+    ///
+    /// This method will also store the returned values so that they can be moved into the state and
+    /// used later on when required.
     pub fn switch(
         &self,
         flag: Value<'ctx, 'this>,
@@ -360,13 +404,19 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
 }
 
 #[derive(Clone, Copy)]
-pub enum BranchArg<'ctx, 'this> {
+pub(crate) enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
 }
 
+/// A libfunc branching target.
+///
+/// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
+/// statement's branches using [BranchTarget::Return] with the branch index.
 #[derive(Clone, Copy)]
 pub enum BranchTarget<'ctx, 'a> {
+    /// A block within the current libfunc.
     Jump(&'a Block<'ctx>),
+    /// A statement's branch target by its index.
     Return(usize),
 }
