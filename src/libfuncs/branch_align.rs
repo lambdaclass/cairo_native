@@ -1,3 +1,8 @@
+//! # Branch alignment libfunc
+//!
+//! Natively compiled code doesn't need branch alignment because it has no notion of segments.
+//! Because of this, this libfunc is a no-op.
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -9,6 +14,7 @@ use melior::{
     Context,
 };
 
+/// Generate MLIR operations for the `branch_align` libfunc.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,

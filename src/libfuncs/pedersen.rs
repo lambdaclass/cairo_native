@@ -1,1 +1,3 @@
-
+//! # Pedersen hashing libfuncs
+//!
+//! TODO

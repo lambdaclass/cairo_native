@@ -1,3 +1,7 @@
+//! # Enum-related libfuncs
+//!
+//! Check out [the enum type](crate::types::r#enum) for more information on enum layouts.
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -22,6 +26,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -48,6 +53,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `enum_init` libfunc.
 pub fn build_init<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -174,6 +180,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `enum_match` libfunc.
 pub fn build_match<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -238,10 +245,10 @@ where
         ))),
     ));
 
-    let default_block = helper.append_block(&[]);
+    let default_block = helper.append_block(Block::new(&[]));
     let variant_blocks = variant_tys
         .iter()
-        .map(|_| helper.append_block(&[]))
+        .map(|_| helper.append_block(Block::new(&[])))
         .collect::<Vec<_>>();
 
     let op2 = entry.append_operation(llvm::extract_value(

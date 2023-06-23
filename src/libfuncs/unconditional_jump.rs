@@ -1,3 +1,5 @@
+//! # Unconditional jump libfunc
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -9,6 +11,7 @@ use melior::{
     Context,
 };
 
+/// Generate MLIR operations for the `jump` libfunc.
 pub fn build<'ctx, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,

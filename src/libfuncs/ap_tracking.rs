@@ -1,3 +1,8 @@
+//! # `AP` tracking libfuncs
+//!
+//! Natively compiled code doesn't need `AP` tracking because it has no notion of the `AP` pointer.
+//! Because of this, all `AP`-related libfuncs are no-ops.
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
@@ -12,6 +17,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -27,6 +33,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
+    // TODO: Is `revoke_ap_tracking` also a no-op? If it turns out it is NOT a no-op, update the
+    //   docs.
     match selector {
         ApTrackingConcreteLibfunc::Revoke(_) => todo!(),
         ApTrackingConcreteLibfunc::Enable(_) => todo!(),
@@ -36,6 +44,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `disable_ap_tracking` libfunc.
 pub fn build_disable<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,

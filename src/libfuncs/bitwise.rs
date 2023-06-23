@@ -1,1 +1,3 @@
-
+//! # Bitwise libfuncs
+//!
+//! TODO

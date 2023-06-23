@@ -1,1 +1,3 @@
-
+//! # Boolean libfuncs
+//!
+//! TODO
