@@ -30,7 +30,6 @@ melior = "0.9.4"
 mlir-sys = "0.2.0"
 num-bigint = "0.4.3"
 tracing = "0.1.37"
-typed-arena = "2.0.2"
 
 # CLI dependencies
 clap = { version = "4.3.4", features = ["derive"], optional = true }

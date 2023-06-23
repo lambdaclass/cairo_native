@@ -10,7 +10,7 @@ use melior::{
     Context,
 };
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
-use typed_arena::Arena;
+use bumpalo::Bump;
 
 pub mod ap_tracking;
 pub mod array;
@@ -169,7 +169,7 @@ where
     pub(crate) module: &'this Module<'ctx>,
 
     pub(crate) region: &'this Region<'ctx>,
-    pub(crate) blocks_arena: &'this Arena<BlockRef<'ctx, 'this>>,
+    pub(crate) blocks_arena: &'this Bump,
     pub(crate) last_block: Cell<&'this BlockRef<'ctx, 'this>>,
 
     pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
