@@ -38,7 +38,7 @@ use std::{
 use types::TypeBuilder;
 
 mod debug_info;
-pub mod ffi;
+mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod types;
