@@ -1,10 +1,14 @@
 use crate::types::TypeBuilder;
+use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        GenericLibfunc, GenericType,
+    },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeSeed, Serialize};
 use std::{error::Error, fmt, ptr::NonNull};
 
 pub mod array;
@@ -37,67 +41,105 @@ pub mod uint64;
 pub mod uint8;
 pub mod uninitialized;
 
-pub trait ValueBuilder
+pub trait ValueBuilder<TType, TLibfunc>
 where
     Self: TypeBuilder,
+    TType: GenericType<Concrete = Self>,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
 {
+    type Deserializer<'a>: ValueDeserializer<'a, TType, TLibfunc>;
+    type Serializer<'a>: ValueSerializer<'a, TType, TLibfunc>;
+
     type Error: Error;
 
-    unsafe fn deserialize<'de, T>(
-        &self,
-        de: impl Deserialize<'de>,
-        ptr: NonNull<()>,
-    ) -> Result<(), <Self as ValueBuilder>::Error>;
-    unsafe fn serialize(
-        &self,
-        ser: impl Serialize,
-        ptr: NonNull<()>,
-    ) -> Result<(), <Self as ValueBuilder>::Error>;
+    fn is_complex(&self) -> bool;
 
-    unsafe fn debug_fmt<TType, TLibfunc>(
+    unsafe fn debug_fmt(
         &self,
         f: &mut fmt::Formatter,
         id: &ConcreteTypeId,
         registry: &ProgramRegistry<TType, TLibfunc>,
         ptr: NonNull<()>,
-    ) -> fmt::Result
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder;
+    ) -> fmt::Result;
 }
 
-impl ValueBuilder for CoreTypeConcrete {
+pub trait ValueDeserializer<'a, TType, TLibfunc>
+where
+    Self: for<'de> DeserializeSeed<'de, Value = NonNull<()>>,
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+{
+    fn new(
+        arena: &'a Bump,
+        registry: &'a ProgramRegistry<TType, TLibfunc>,
+        info: &'a <TType as GenericType>::Concrete,
+    ) -> Self;
+}
+
+pub trait ValueSerializer<'a, TType, TLibfunc>
+where
+    Self: Serialize,
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+{
+    fn new(
+        ptr: NonNull<()>,
+        registry: &'a ProgramRegistry<TType, TLibfunc>,
+        info: &'a <TType as GenericType>::Concrete,
+    ) -> Self;
+}
+
+impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
+    type Deserializer<'a> = CoreTypeDeserializer<'a, CoreType, CoreLibfunc>;
+    type Serializer<'a> = CoreTypeSerializer<'a, CoreType, CoreLibfunc>;
+
     type Error = std::convert::Infallible;
 
-    unsafe fn deserialize<'de, T>(
-        &self,
-        _de: impl Deserialize<'de>,
-        _ptr: NonNull<()>,
-    ) -> Result<(), <Self as ValueBuilder>::Error> {
-        todo!()
+    fn is_complex(&self) -> bool {
+        match self {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => false,
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => true,
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+        }
     }
 
-    unsafe fn serialize(
-        &self,
-        _ser: impl Serialize,
-        _ptr: NonNull<()>,
-    ) -> Result<(), <Self as ValueBuilder>::Error> {
-        todo!()
-    }
-
-    unsafe fn debug_fmt<TType, TLibfunc>(
+    unsafe fn debug_fmt(
         &self,
         f: &mut fmt::Formatter,
         id: &ConcreteTypeId,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         ptr: NonNull<()>,
-    ) -> fmt::Result
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: ValueBuilder,
-    {
+    ) -> fmt::Result {
         match self {
             CoreTypeConcrete::Array(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => todo!(),
@@ -120,6 +162,154 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => todo!(),
             CoreTypeConcrete::Struct(info) => self::r#struct::debug_fmt(f, id, registry, ptr, info),
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+        }
+    }
+}
+
+pub struct CoreTypeDeserializer<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+{
+    arena: &'a Bump,
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    info: &'a <TType as GenericType>::Concrete,
+}
+
+impl<'a> ValueDeserializer<'a, CoreType, CoreLibfunc>
+    for CoreTypeDeserializer<'a, CoreType, CoreLibfunc>
+{
+    fn new(
+        arena: &'a Bump,
+        registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+        info: &'a CoreTypeConcrete,
+    ) -> Self {
+        Self {
+            arena,
+            registry,
+            info,
+        }
+    }
+}
+
+impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLibfunc> {
+    type Value = NonNull<()>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let ptr = self
+            .arena
+            .alloc_layout(self.info.layout(self.registry))
+            .cast::<()>();
+        match self.info {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(info) => unsafe {
+                self::felt252::deserialize(deserializer, self.registry, ptr, info)?
+            },
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+        }
+
+        Ok(ptr)
+    }
+}
+
+pub struct CoreTypeSerializer<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+{
+    ptr: NonNull<()>,
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    info: &'a <TType as GenericType>::Concrete,
+}
+
+impl<'a> ValueSerializer<'a, CoreType, CoreLibfunc>
+    for CoreTypeSerializer<'a, CoreType, CoreLibfunc>
+{
+    fn new(
+        ptr: NonNull<()>,
+        registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+        info: &'a <CoreType as GenericType>::Concrete,
+    ) -> Self {
+        Self {
+            ptr,
+            registry,
+            info,
+        }
+    }
+}
+
+impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.info {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(info) => unsafe {
+                self::felt252::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(info) => unsafe {
+                self::r#struct::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),

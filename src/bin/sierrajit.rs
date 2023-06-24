@@ -2,13 +2,12 @@
 #![feature(nonzero_ops)]
 #![feature(strict_provenance)]
 
-use bumpalo::Bump;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
@@ -22,19 +21,14 @@ use melior::{
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
-use sierra2mlir::{
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::{debug_with, generate_function_name},
-    values::ValueBuilder,
-    DebugInfo,
-};
+use serde_json::de::StrRead;
+use sierra2mlir::{metadata::MetadataStorage, DebugInfo};
 use std::{
-    alloc::Layout,
+    borrow::Cow,
     convert::Infallible,
     ffi::OsStr,
-    fs,
-    iter::once,
+    fs::{self, File},
+    io::{self, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -111,134 +105,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
     // Initialize arguments and return values.
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-    let arena = Bump::new();
+    let params_input = match args.inputs {
+        Some(StdioOrPath::Stdio) => Cow::Owned(io::read_to_string(io::stdin())?),
+        Some(StdioOrPath::Path(path)) => Cow::Owned(fs::read_to_string(path)?),
+        None => Cow::Borrowed("[]"),
+    };
+    let mut params = serde_json::Deserializer::new(StrRead::new(&params_input));
 
-    let mut params_io = Vec::new();
-    for param in &entry_point.signature.param_types {
-        let concrete_type = registry.get_type(param)?;
-
-        // Deserialize every argument into a value.
-        params_io.push(match concrete_type {
-            CoreTypeConcrete::Array(_) => todo!(),
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => todo!(),
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
-            CoreTypeConcrete::Struct(_) => todo!(),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-        });
-    }
-
-    let mut rets_io = Vec::<usize>::new();
-    let mut rets_layout: Option<Layout> = None;
-    let mut rets_layout_is_complex = entry_point.signature.ret_types.len() > 1;
-    for ret in &entry_point.signature.ret_types {
-        let concrete_type = registry.get_type(ret)?;
-
-        // Generate the layout of a struct with every return value.
-        let layout = concrete_type.layout(&registry);
-        let (layout, offset) = match rets_layout {
-            Some(acc) => acc.extend(layout)?,
-            None => (layout, 0),
-        };
-
-        rets_io.push(offset);
-        rets_layout = Some(layout);
-        rets_layout_is_complex |= match concrete_type {
-            CoreTypeConcrete::Array(_) => todo!(),
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
-            CoreTypeConcrete::Struct(_) => true,
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
+    match args.outputs {
+        Some(StdioOrPath::Stdio) => {
+            sierra2mlir::execute::<CoreType, CoreLibfunc, _, _>(
+                &engine,
+                &registry,
+                &entry_point.id,
+                &mut params,
+                &mut serde_json::Serializer::pretty(io::stdout()),
+            )?;
+            println!();
         }
-    }
-
-    let rets_ptr = arena
-        .alloc_layout(rets_layout.unwrap_or(Layout::from_size_align(0, 1)?))
-        .cast::<()>();
-    let mut invoke_io = once(if rets_layout_is_complex {
-        arena.alloc(rets_ptr.as_ptr()) as *mut *mut () as *mut ()
-    } else {
-        rets_ptr.as_ptr()
-    })
-    .chain(params_io)
-    .collect::<Vec<_>>();
-
-    assert_ne!(rets_ptr.as_ptr(), invoke_io[0]);
-
-    // Invoke the entry point.
-    unsafe {
-        engine.invoke_packed(&generate_function_name(&entry_point.id), &mut invoke_io)?;
-    }
-
-    // Print returned values.
-    let mut layout: Option<Layout> = None;
-    for ty in &entry_point.signature.ret_types {
-        let concrete_type = registry.get_type(ty)?;
-
-        let ty_layout = concrete_type.layout(&registry);
-        let (new_layout, offset) = match layout {
-            Some(layout) => layout.extend(ty_layout)?,
-            None => (ty_layout, 0),
-        };
-        layout = Some(new_layout);
-
-        let value_ptr = rets_ptr.map_addr(|addr| unsafe { addr.unchecked_add(offset) });
-        match args.outputs {
-            StdioOrPath::Stdio => println!(
-                "{:#?}",
-                debug_with(|f| unsafe { concrete_type.debug_fmt(f, ty, &registry, value_ptr) })
-            ),
-            StdioOrPath::Path(_) => todo!(),
+        Some(StdioOrPath::Path(path)) => {
+            let mut file = File::create(path)?;
+            sierra2mlir::execute::<CoreType, CoreLibfunc, _, _>(
+                &engine,
+                &registry,
+                &entry_point.id,
+                &mut params,
+                &mut serde_json::Serializer::pretty(&mut file),
+            )?;
+            writeln!(file)?;
+        }
+        None => {
+            if args.print_outputs {
+                todo!()
+            }
         }
     }
 
@@ -291,8 +190,10 @@ struct CmdLine {
 
     #[clap(short = 'i', long = "inputs", value_parser = parse_io)]
     inputs: Option<StdioOrPath>,
-    #[clap(short = 'o', long = "outputs", value_parser = parse_io, default_value = "-")]
-    outputs: StdioOrPath,
+    #[clap(short = 'o', long = "outputs", value_parser = parse_io)]
+    outputs: Option<StdioOrPath>,
+    #[clap(short = 'p', long = "print-outputs")]
+    print_outputs: bool,
 
     #[clap(short = 'g', long = "available-gas")]
     available_gas: Option<usize>,

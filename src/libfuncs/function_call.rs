@@ -5,9 +5,9 @@
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
-    generate_function_name,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::generate_function_name,
 };
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},

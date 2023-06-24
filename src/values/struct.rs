@@ -5,7 +5,38 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use serde::{Deserializer, Serializer};
 use std::{alloc::Layout, fmt, ptr::NonNull};
+
+pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
+    deserializer: D,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    ptr: NonNull<()>,
+    _info: &StructConcreteType,
+) -> Result<(), D::Error>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+{
+    todo!()
+}
+
+pub unsafe fn serialize<TType, TLibfunc, S>(
+    serializer: S,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    ptr: NonNull<()>,
+    _info: &StructConcreteType,
+) -> Result<S::Ok, S::Error>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    S: Serializer,
+{
+    todo!()
+}
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
     f: &mut fmt::Formatter,
@@ -17,7 +48,7 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
 {
     let mut fmt = f.debug_tuple(id.debug_name.as_deref().unwrap_or(""));
 
