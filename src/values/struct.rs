@@ -1,17 +1,17 @@
-use super::ValueBuilder;
+use super::{ValueBuilder, ValueSerializer};
 use crate::{types::TypeBuilder, utils::debug_with};
 use cairo_lang_sierra::{
     extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use serde::{Deserializer, Serializer};
+use serde::{ser::SerializeTuple, Deserializer, Serializer};
 use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
-    deserializer: D,
+    _deserializer: D,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    ptr: NonNull<()>,
+    _ptr: NonNull<()>,
     _info: &StructConcreteType,
 ) -> Result<(), D::Error>
 where
@@ -25,9 +25,9 @@ where
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
     serializer: S,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     ptr: NonNull<()>,
-    _info: &StructConcreteType,
+    info: &StructConcreteType,
 ) -> Result<S::Ok, S::Error>
 where
     TType: GenericType,
@@ -35,7 +35,29 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    todo!()
+    let mut ser = serializer.serialize_tuple(info.members.len())?;
+
+    let mut layout: Option<Layout> = None;
+    for member_ty in &info.members {
+        let member = registry.get_type(member_ty).unwrap();
+        let member_layout = member.layout(registry);
+
+        let (new_layout, offset) = match layout {
+            Some(layout) => layout.extend(member_layout).unwrap(),
+            None => (member_layout, 0),
+        };
+        layout = Some(new_layout);
+
+        type ParamSerializer<'a, TType, TLibfunc> =
+            <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
+        ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
+            ptr.map_addr(|addr| addr.unchecked_add(offset)),
+            registry,
+            member,
+        ))?;
+    }
+
+    ser.end()
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
