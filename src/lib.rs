@@ -5,7 +5,8 @@
 #![feature(iter_intersperse)]
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
-#![feature(pointer_byte_offsets)]
+#![feature(nonzero_ops)]
+#![feature(strict_provenance)]
 #![warn(missing_docs)]
 
 pub use self::debug_info::DebugInfo;

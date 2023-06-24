@@ -1,13 +1,11 @@
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
-use bumpalo::Bump;
+use crate::types::TypeBuilder;
 use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use melior::{ir::Module, Context};
-use num_bigint::BigUint;
-use std::{alloc::Layout, cell::RefCell, error::Error, fmt, slice};
+use serde::{Deserialize, Serialize};
+use std::{error::Error, fmt, ptr::NonNull};
 
 pub mod array;
 pub mod bitwise;
@@ -39,73 +37,67 @@ pub mod uint64;
 pub mod uint8;
 pub mod uninitialized;
 
-pub trait ValueBuilder {
+pub trait ValueBuilder
+where
+    Self: TypeBuilder,
+{
     type Error: Error;
 
-    fn alloc<TType, TLibfunc>(
+    unsafe fn deserialize<'de, T>(
         &self,
-        arena: &Bump,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-    ) -> *mut ()
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder;
+        de: impl Deserialize<'de>,
+        ptr: NonNull<()>,
+    ) -> Result<(), <Self as ValueBuilder>::Error>;
+    unsafe fn serialize(
+        &self,
+        ser: impl Serialize,
+        ptr: NonNull<()>,
+    ) -> Result<(), <Self as ValueBuilder>::Error>;
 
-    unsafe fn parse(&self, target: *mut (), src: &str) -> Result<(), Self::Error>;
-
-    unsafe fn debug<TType, TLibfunc>(
+    unsafe fn debug_fmt<TType, TLibfunc>(
         &self,
         f: &mut fmt::Formatter,
-        context: &Context,
-        module: &Module,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-        source: *const (),
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        ptr: NonNull<()>,
     ) -> fmt::Result
     where
         TType: GenericType<Concrete = Self>,
         TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder;
-
-    fn parsed<TType, TLibfunc>(
-        &self,
-        arena: &Bump,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-        src: &str,
-    ) -> Result<*mut (), Self::Error>
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
-    {
-        let ptr = self.alloc(arena, registry);
-        unsafe {
-            self.parse(ptr, src)?;
-        }
-
-        Ok(ptr)
-    }
+        <TType as GenericType>::Concrete: TypeBuilder;
 }
 
 impl ValueBuilder for CoreTypeConcrete {
     type Error = std::convert::Infallible;
 
-    fn alloc<TType, TLibfunc>(
+    unsafe fn deserialize<'de, T>(
         &self,
-        arena: &Bump,
+        _de: impl Deserialize<'de>,
+        _ptr: NonNull<()>,
+    ) -> Result<(), <Self as ValueBuilder>::Error> {
+        todo!()
+    }
+
+    unsafe fn serialize(
+        &self,
+        _ser: impl Serialize,
+        _ptr: NonNull<()>,
+    ) -> Result<(), <Self as ValueBuilder>::Error> {
+        todo!()
+    }
+
+    unsafe fn debug_fmt<TType, TLibfunc>(
+        &self,
+        f: &mut fmt::Formatter,
+        id: &ConcreteTypeId,
         registry: &ProgramRegistry<TType, TLibfunc>,
-    ) -> *mut ()
+        ptr: NonNull<()>,
+    ) -> fmt::Result
     where
         TType: GenericType<Concrete = Self>,
         TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
+        <TType as GenericType>::Concrete: ValueBuilder,
     {
-        arena.alloc_layout(self.layout(registry)).as_ptr() as *mut ()
-    }
-
-    unsafe fn parse(&self, target: *mut (), src: &str) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => todo!(),
@@ -113,10 +105,8 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => todo!(),
-            CoreTypeConcrete::GasBuiltin(_) => {
-                (target as *mut usize).write(src.parse::<usize>().unwrap());
-            }
+            CoreTypeConcrete::Felt252(info) => self::felt252::debug_fmt(f, id, registry, ptr, info),
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -129,7 +119,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => todo!(),
-            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Struct(info) => self::r#struct::debug_fmt(f, id, registry, ptr, info),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
@@ -139,187 +129,6 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
-        }
-
-        Ok(())
-    }
-
-    unsafe fn debug<TType, TLibfunc>(
-        &self,
-        f: &mut fmt::Formatter,
-        context: &Context,
-        module: &Module,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-        source: *const (),
-    ) -> fmt::Result
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
-    {
-        match self {
-            CoreTypeConcrete::Array(info) => {
-                let mut list_fmt = f.debug_list();
-
-                let ptr = (source as *const *const ()).read();
-                let len = (ptr.byte_add(8) as *const u32).read();
-                let cap = (ptr.byte_add(12) as *const u32).read();
-
-                for i in 0..len.min(cap) {
-                    let source = source.byte_add(
-                        i as usize
-                            * registry
-                                .get_type(&info.ty)
-                                .unwrap()
-                                .layout(registry)
-                                .pad_to_align()
-                                .size(),
-                    );
-
-                    list_fmt.entry(&DebugWrapper {
-                        inner: registry.get_type(&info.ty).unwrap(),
-                        context,
-                        module,
-                        registry,
-                        metadata: RefCell::new(metadata),
-                        id: &info.ty,
-                        source,
-                    });
-                }
-
-                list_fmt.finish()
-            }
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => {
-                write!(
-                    f,
-                    "{}",
-                    BigUint::from_bytes_le(slice::from_raw_parts(source as *const u8, 32))
-                )
-            }
-            CoreTypeConcrete::GasBuiltin(_) => write!(f, "{}", (source as *const usize).read()),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => {
-                let payload_tys = self.variants().unwrap();
-                let (_, (_, tag_layout), variant_tys) =
-                    crate::types::r#enum::get_type_for_variants(
-                        context,
-                        module,
-                        registry,
-                        metadata,
-                        payload_tys,
-                    )
-                    .unwrap();
-
-                let index = match tag_layout.size() {
-                    1 => (source as *const u8).read() as usize,
-                    2 => (source as *const u16).read() as usize,
-                    4 => (source as *const u32).read() as usize,
-                    8 => (source as *const u64).read() as usize,
-                    _ => panic!(),
-                };
-
-                let (_, offset) = tag_layout.extend(variant_tys[index].1).unwrap();
-                f.debug_tuple(&format!("{id}<{index}>"))
-                    .field(&DebugWrapper {
-                        inner: registry.get_type(&payload_tys[index]).unwrap(),
-                        context,
-                        module,
-                        registry,
-                        metadata: RefCell::new(metadata),
-                        id: &payload_tys[index],
-                        source: source.byte_add(offset),
-                    })
-                    .finish()
-            }
-            CoreTypeConcrete::Struct(info) => {
-                let mut struct_fmt = f.debug_tuple(&format!("{id}"));
-
-                let mut layout: Option<(Layout, usize)> = None;
-                for member in info.members.iter() {
-                    let member_layout = registry.get_type(member).unwrap().layout(registry);
-
-                    let (new_layout, offset) = match layout {
-                        Some((layout, _)) => layout.extend(member_layout).unwrap(),
-                        None => (member_layout, 0),
-                    };
-
-                    struct_fmt.field(&DebugWrapper {
-                        inner: registry.get_type(member).unwrap(),
-                        context,
-                        module,
-                        registry,
-                        metadata: RefCell::new(metadata),
-                        id: member,
-                        source: source.byte_add(offset),
-                    });
-
-                    layout = Some((new_layout, offset));
-                }
-
-                struct_fmt.finish()
-            }
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-        }
-    }
-}
-
-pub struct DebugWrapper<'a, TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
-{
-    pub inner: &'a <TType as GenericType>::Concrete,
-    pub context: &'a Context,
-    pub module: &'a Module<'a>,
-    pub registry: &'a ProgramRegistry<TType, TLibfunc>,
-    pub metadata: RefCell<&'a mut MetadataStorage>,
-    pub id: &'a ConcreteTypeId,
-    pub source: *const (),
-}
-
-impl<'a, TType, TLibfunc> fmt::Debug for DebugWrapper<'a, TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder + ValueBuilder,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            self.inner.debug(
-                f,
-                self.context,
-                self.module,
-                self.registry,
-                *self.metadata.borrow_mut(),
-                self.id,
-                self.source,
-            )
         }
     }
 }
