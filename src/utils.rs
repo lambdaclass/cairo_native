@@ -1,7 +1,7 @@
 //! # Various utilities
 
 use cairo_lang_sierra::ids::FunctionId;
-use std::{alloc::Layout, borrow::Cow};
+use std::{alloc::Layout, borrow::Cow, fmt};
 
 /// Generate a function name.
 ///
@@ -31,6 +31,27 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         Layout::from_size_align(width.next_multiple_of(8) as usize >> 3, 8).unwrap()
     }
+}
+
+/// Return a type that calls a closure when formatted using [Debug](std::fmt::Debug).
+pub fn debug_with<F>(fmt: F) -> impl fmt::Debug
+where
+    F: Fn(&mut fmt::Formatter) -> fmt::Result,
+{
+    struct FmtWrapper<F>(F)
+    where
+        F: Fn(&mut fmt::Formatter) -> fmt::Result;
+
+    impl<F> fmt::Debug for FmtWrapper<F>
+    where
+        F: Fn(&mut fmt::Formatter) -> fmt::Result,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            self.0(f)
+        }
+    }
+
+    FmtWrapper(fmt)
 }
 
 #[cfg(test)]

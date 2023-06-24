@@ -1,5 +1,6 @@
 #![feature(arc_unwrap_or_clone)]
-#![feature(pointer_byte_offsets)]
+#![feature(nonzero_ops)]
+#![feature(strict_provenance)]
 
 use bumpalo::Bump;
 use cairo_lang_compiler::{
@@ -24,13 +25,12 @@ use melior::{
 use sierra2mlir::{
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::generate_function_name,
-    values::{DebugWrapper, ValueBuilder},
+    utils::{debug_with, generate_function_name},
+    values::ValueBuilder,
     DebugInfo,
 };
 use std::{
     alloc::Layout,
-    cell::RefCell,
     convert::Infallible,
     ffi::OsStr,
     fs,
@@ -118,97 +118,102 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for param in &entry_point.signature.param_types {
         let concrete_type = registry.get_type(param)?;
 
-        match concrete_type {
-            // Virtual types (we don't use them, they exist for the VM).
-            CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::BuiltinCosts(_)
-            | CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::Uninitialized(_)
-            | CoreTypeConcrete::Pedersen(_)
-            | CoreTypeConcrete::Poseidon(_) => {
-                params_io.push(concrete_type.alloc(&arena, &registry));
-            }
+        // Deserialize every argument into a value.
+        params_io.push(match concrete_type {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+        });
+    }
 
-            // Types that require special handling.
-            CoreTypeConcrete::GasBuiltin(_) => {
-                let available_gas = args
-                    .available_gas
-                    .expect("Gas is required, but no limit has been provided.");
+    let mut rets_io = Vec::<usize>::new();
+    let mut rets_layout: Option<Layout> = None;
+    let mut rets_layout_is_complex = entry_point.signature.ret_types.len() > 1;
+    for ret in &entry_point.signature.ret_types {
+        let concrete_type = registry.get_type(ret)?;
 
-                params_io.push(concrete_type.parsed(
-                    &arena,
-                    &registry,
-                    &available_gas.to_string(),
-                )?);
-            }
+        // Generate the layout of a struct with every return value.
+        let layout = concrete_type.layout(&registry);
+        let (layout, offset) = match rets_layout {
+            Some(acc) => acc.extend(layout)?,
+            None => (layout, 0),
+        };
 
-            // Unhandled types.
-            CoreTypeConcrete::Box(_)
-            | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::EcPoint(_)
-            | CoreTypeConcrete::EcState(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_)
-            | CoreTypeConcrete::Felt252Dict(_)
-            | CoreTypeConcrete::Felt252DictEntry(_)
-            | CoreTypeConcrete::SquashedFelt252Dict(_)
-            | CoreTypeConcrete::Span(_)
-            | CoreTypeConcrete::StarkNet(_)
-            | CoreTypeConcrete::SegmentArena(_)
-            | CoreTypeConcrete::Snapshot(_) => todo!("unhandled type"),
-
-            // Actual input types.
-            CoreTypeConcrete::Array(_)
-            | CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_)
-            | CoreTypeConcrete::NonZero(_)
-            | CoreTypeConcrete::Nullable(_)
-            | CoreTypeConcrete::Enum(_)
-            | CoreTypeConcrete::Struct(_) => todo!(),
+        rets_io.push(offset);
+        rets_layout = Some(layout);
+        rets_layout_is_complex |= match concrete_type {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => false,
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => true,
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
         }
     }
 
-    let mut invoke_io = once({
-        // let ty = llvm::r#type::r#struct(
-        //     &context,
-        //     &entry_point
-        //         .signature
-        //         .ret_types
-        //         .iter()
-        //         .map(|id| {
-        //             registry
-        //                 .get_type(id)
-        //                 .map(|ty| ty.build(&context, &module, &registry, &mut metadata))
-        //         })
-        //         .collect::<Result<Result<Vec<_>, _>, _>>()??,
-        //     false,
-        // );
-
-        arena.alloc(
-            arena
-                .alloc_layout(
-                    entry_point
-                        .signature
-                        .ret_types
-                        .iter()
-                        .try_fold(Option::<Layout>::None, |layout, id| {
-                            registry.get_type(id).map(|ty| {
-                                Some(match layout {
-                                    Some(layout) => layout.extend(ty.layout(&registry)).unwrap().0,
-                                    None => ty.layout(&registry),
-                                })
-                            })
-                        })?
-                        .unwrap_or(Layout::from_size_align(0, 1)?),
-                )
-                .as_ptr() as *mut (),
-        ) as *mut *mut () as *mut ()
+    let rets_ptr = arena
+        .alloc_layout(rets_layout.unwrap_or(Layout::from_size_align(0, 1)?))
+        .cast::<()>();
+    let mut invoke_io = once(if rets_layout_is_complex {
+        arena.alloc(rets_ptr.as_ptr()) as *mut *mut () as *mut ()
+    } else {
+        rets_ptr.as_ptr()
     })
     .chain(params_io)
     .collect::<Vec<_>>();
+
+    assert_ne!(rets_ptr.as_ptr(), invoke_io[0]);
 
     // Invoke the entry point.
     unsafe {
@@ -218,7 +223,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Print returned values.
     let mut layout: Option<Layout> = None;
     for ty in &entry_point.signature.ret_types {
-        let concrete_type = registry.get_type(ty).unwrap();
+        let concrete_type = registry.get_type(ty)?;
 
         let ty_layout = concrete_type.layout(&registry);
         let (new_layout, offset) = match layout {
@@ -227,63 +232,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         layout = Some(new_layout);
 
-        let wrapper = DebugWrapper {
-            inner: concrete_type,
-            context: &context,
-            module: &module,
-            registry: &registry,
-            metadata: RefCell::new(&mut metadata),
-            id: ty,
-            source: unsafe { (invoke_io[0] as *mut *mut ()).read().byte_add(offset) },
-        };
-
-        match concrete_type {
-            // Virtual types (we don't use them, they exist for the VM).
-            CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::BuiltinCosts(_)
-            | CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::Uninitialized(_)
-            | CoreTypeConcrete::Pedersen(_)
-            | CoreTypeConcrete::Poseidon(_) => {}
-
-            // Types that require special handling.
-            CoreTypeConcrete::GasBuiltin(_) => {
-                println!("Remaining gas: {wrapper:?}");
-            }
-
-            // Unhandled types.
-            CoreTypeConcrete::Box(_)
-            | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::EcPoint(_)
-            | CoreTypeConcrete::EcState(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_)
-            | CoreTypeConcrete::Felt252Dict(_)
-            | CoreTypeConcrete::Felt252DictEntry(_)
-            | CoreTypeConcrete::SquashedFelt252Dict(_)
-            | CoreTypeConcrete::Span(_)
-            | CoreTypeConcrete::StarkNet(_)
-            | CoreTypeConcrete::SegmentArena(_)
-            | CoreTypeConcrete::Snapshot(_) => todo!("unhandled type"),
-
-            // Actual input types.
-            CoreTypeConcrete::Array(_)
-            | CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_)
-            | CoreTypeConcrete::NonZero(_)
-            | CoreTypeConcrete::Nullable(_)
-            | CoreTypeConcrete::Enum(_)
-            | CoreTypeConcrete::Struct(_) => {
-                println!("{wrapper:?}");
-            }
+        let value_ptr = rets_ptr.map_addr(|addr| unsafe { addr.unchecked_add(offset) });
+        match args.outputs {
+            StdioOrPath::Stdio => println!(
+                "{:#?}",
+                debug_with(|f| unsafe { concrete_type.debug_fmt(f, ty, &registry, value_ptr) })
+            ),
+            StdioOrPath::Path(_) => todo!(),
         }
     }
-
-    // FIXME: Remove this hack once the segfault on drop is fixed.
-    std::mem::forget(arena);
 
     Ok(())
 }
@@ -332,8 +289,19 @@ struct CmdLine {
     #[clap(value_parser = parse_entry_point)]
     entry_point: FunctionId,
 
+    #[clap(short = 'i', long = "inputs", value_parser = parse_io)]
+    inputs: Option<StdioOrPath>,
+    #[clap(short = 'o', long = "outputs", value_parser = parse_io, default_value = "-")]
+    outputs: StdioOrPath,
+
     #[clap(short = 'g', long = "available-gas")]
     available_gas: Option<usize>,
+}
+
+#[derive(Clone, Debug)]
+enum StdioOrPath {
+    Stdio,
+    Path(PathBuf),
 }
 
 fn parse_input(input: &str) -> Result<PathBuf, String> {
@@ -352,5 +320,16 @@ fn parse_entry_point(input: &str) -> Result<FunctionId, Infallible> {
     Ok(match input.parse::<u64>() {
         Ok(id) => FunctionId::new(id),
         Err(_) => FunctionId::from_string(input),
+    })
+}
+
+fn parse_io(input: &str) -> Result<StdioOrPath, String> {
+    Ok(if input == "-" {
+        StdioOrPath::Stdio
+    } else {
+        StdioOrPath::Path(match Path::new(input).extension().and_then(OsStr::to_str) {
+            Some("json") => input.into(),
+            _ => return Err("Input path expected to have `json` as its extension.".to_string()),
+        })
     })
 }

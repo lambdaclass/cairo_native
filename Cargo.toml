@@ -26,13 +26,16 @@ cairo-lang-sierra-generator = "2.0.0-rc4"
 id-arena = "2.2.1"
 itertools = "0.10.5"
 lazy_static = "1.4.0"
+libc = "0.2.146"
 melior = "0.9.4"
 mlir-sys = "0.2.0"
 num-bigint = "0.4.3"
+serde = { version = "1.0.164", features = ["derive"] }
 tracing = "0.1.37"
 
 # CLI dependencies
 clap = { version = "4.3.4", features = ["derive"], optional = true }
+serde_json = { version = "1.0.97", optional = true }
 tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
 ], optional = true }
