@@ -7,7 +7,8 @@ use cairo_lang_sierra::{
 };
 use num_bigint::BigUint;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, ptr::NonNull};
+use serde_json::Number;
+use std::{fmt, ptr::NonNull, str::FromStr};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -21,7 +22,8 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    let value = <BigUint as Deserialize>::deserialize(deserializer)?;
+    let value = <Number as Deserialize>::deserialize(deserializer)?;
+    let value: BigUint = value.to_string().parse().unwrap();
     assert!(value < *PRIME);
 
     let mut bytes = value.to_bytes_le();
@@ -44,7 +46,7 @@ where
     S: Serializer,
 {
     let value = BigUint::from_bytes_le(ptr.cast::<[u8; 32]>().as_ref());
-    <BigUint as Serialize>::serialize(&value, serializer)
+    <Number as Serialize>::serialize(&Number::from_str(&value.to_string()).unwrap(), serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
