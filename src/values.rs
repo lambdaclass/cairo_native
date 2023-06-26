@@ -107,7 +107,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -117,9 +117,9 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => true,
             CoreTypeConcrete::Struct(_) => true,
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
@@ -223,7 +223,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::deserialize(deserializer, self.registry, ptr, info)?
             },
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(info) => unsafe {
+                self::gas_builtin::deserialize(deserializer, self.registry, ptr, info)?
+            },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -233,7 +235,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(info) => unsafe {
+                self::range_check::deserialize(deserializer, self.registry, ptr, info)?
+            },
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => todo!(),
             CoreTypeConcrete::Struct(_) => todo!(),
@@ -294,7 +298,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(info) => unsafe {
+                self::gas_builtin::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -304,9 +310,13 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(info) => unsafe {
+                self::range_check::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Enum(info) => unsafe {
+                self::r#enum::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Struct(info) => unsafe {
                 self::r#struct::serialize(serializer, self.registry, self.ptr, info)
             },
