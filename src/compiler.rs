@@ -9,7 +9,7 @@ use cairo_lang_sierra::{
     edit_state,
     extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
     ids::{ConcreteTypeId, VarId},
-    program::{Function, Program, Statement, StatementIdx},
+    program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use itertools::Itertools;
@@ -170,55 +170,13 @@ where
                         region: &region,
                         blocks_arena: &blocks_arena,
                         last_block: Cell::new(block),
-                        branches: invocation
-                            .branches
-                            .iter()
-                            .map(|branch| {
-                                let target_idx = statement_idx.next(&branch.target);
-                                let (landing_block, block) = &blocks[&target_idx];
-
-                                match landing_block {
-                                    Some((landing_block, state_vars)) => {
-                                        let target_vars = state_vars
-                                            .iter()
-                                            .map(|var_id| {
-                                                match branch
-                                                    .results
-                                                    .iter()
-                                                    .find_position(|id| *id == var_id)
-                                                {
-                                                    Some((i, _)) => BranchArg::Returned(i),
-                                                    None => BranchArg::External(state[var_id]),
-                                                }
-                                            })
-                                            .collect::<Vec<_>>();
-
-                                        (landing_block.deref(), target_vars)
-                                    }
-                                    None => {
-                                        let target_vars = match &statements[target_idx.0] {
-                                            Statement::Invocation(x) => &x.args,
-                                            Statement::Return(x) => x,
-                                        }
-                                        .iter()
-                                        .map(|var_id| {
-                                            match branch
-                                                .results
-                                                .iter()
-                                                .enumerate()
-                                                .find_map(|(i, id)| (id == var_id).then_some(i))
-                                            {
-                                                Some(i) => BranchArg::Returned(i),
-                                                None => BranchArg::External(state[var_id]),
-                                            }
-                                        })
-                                        .collect::<Vec<_>>();
-
-                                        (block.deref(), target_vars)
-                                    }
-                                }
-                            })
-                            .collect(),
+                        branches: generate_branching_targets(
+                            &blocks,
+                            statements,
+                            statement_idx,
+                            invocation,
+                            &state,
+                        ),
                         results: invocation
                             .branches
                             .iter()
@@ -694,4 +652,61 @@ fn foreach_statement_in_function<S>(
                 .zip(branch_states),
         );
     }
+}
+
+fn generate_branching_targets<'ctx, 'this, 'a>(
+    blocks: &'this BlockStorage<'ctx, 'this>,
+    statements: &'this [Statement],
+    statement_idx: StatementIdx,
+    invocation: &'this Invocation,
+    state: &HashMap<VarId, Value<'ctx, 'this>>,
+) -> Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>
+where
+    'this: 'ctx,
+{
+    invocation
+        .branches
+        .iter()
+        .map(move |branch| {
+            let target_idx = statement_idx.next(&branch.target);
+            let (landing_block, block) = &blocks[&target_idx];
+
+            match landing_block {
+                Some((landing_block, state_vars)) => {
+                    let target_vars = state_vars
+                        .iter()
+                        .map(|var_id| {
+                            match branch.results.iter().find_position(|id| *id == var_id) {
+                                Some((i, _)) => BranchArg::Returned(i),
+                                None => BranchArg::External(state[var_id]),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    (landing_block.deref(), target_vars)
+                }
+                None => {
+                    let target_vars = match &statements[target_idx.0] {
+                        Statement::Invocation(x) => &x.args,
+                        Statement::Return(x) => x,
+                    }
+                    .iter()
+                    .map(|var_id| {
+                        match branch
+                            .results
+                            .iter()
+                            .enumerate()
+                            .find_map(|(i, id)| (id == var_id).then_some(i))
+                        {
+                            Some(i) => BranchArg::Returned(i),
+                            None => BranchArg::External(state[var_id]),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                    (block.deref(), target_vars)
+                }
+            }
+        })
+        .collect()
 }
