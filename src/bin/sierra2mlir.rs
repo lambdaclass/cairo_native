@@ -14,7 +14,6 @@ use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{self, PassManager},
     utility::register_all_dialects,
     Context,
 };
@@ -51,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.load_all_available_dialects();
 
     // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
+    let module = Module::new(Location::unknown(&context));
     let mut metadata = MetadataStorage::new();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
 
@@ -62,24 +61,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &registry,
         &mut metadata,
     )?;
-
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-
-    if args.optimized {
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-    }
-
-    if args.lowered {
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-        pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    }
-
-    pass_manager.run(&mut module)?;
 
     // Write the output.
     match args.output {
@@ -133,13 +114,6 @@ struct CmdLine {
 
     #[clap(short = 'o', long = "output", value_parser = parse_output, default_value = "-")]
     output: CompilerOutput,
-
-    #[clap(long = "optimized")]
-    optimized: bool,
-
-    /// Emit the MLIR IR lowered to the LLVM IR Dialect.
-    #[clap(long = "lowered")]
-    lowered: bool,
 }
 
 #[derive(Clone, Debug)]
