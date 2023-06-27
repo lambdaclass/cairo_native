@@ -206,7 +206,7 @@ where
     'this: 'ctx,
 {
     pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
-        dbg!(self.results)
+        self.results
             .into_iter()
             .map(|x| x.into_iter().map(|x| x.into_inner().unwrap()).collect())
     }
