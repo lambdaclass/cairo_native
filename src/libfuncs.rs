@@ -164,7 +164,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Poseidon(_) => todo!(),
             Self::StarkNet(_) => todo!(),
             Self::Debug(_) => todo!(),
-            Self::SnapshotTake(_) => todo!(),
+            Self::SnapshotTake(info) => self::snapshot_take::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
         }
     }
 
