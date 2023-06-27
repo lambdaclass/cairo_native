@@ -1,10 +1,11 @@
 use super::ValueBuilder;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
-    program_registry::ProgramRegistry, ids::ConcreteTypeId,
+    ids::ConcreteTypeId,
+    program_registry::ProgramRegistry,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{ptr::NonNull, fmt};
+use std::{fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,

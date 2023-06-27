@@ -256,7 +256,7 @@ where
         context,
         result,
         DenseI64ArrayAttribute::new(context, &[1]),
-        values_type,
+        IntegerType::new(context, 1).into(),
         location,
     ));
     let op_overflow = op.result(0).unwrap().into();

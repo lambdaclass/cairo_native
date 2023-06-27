@@ -109,10 +109,10 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Felt252(_) => false,
             CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => false,
+            CoreTypeConcrete::Uint16(_) => false,
+            CoreTypeConcrete::Uint32(_) => false,
+            CoreTypeConcrete::Uint64(_) => false,
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
@@ -150,10 +150,10 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Felt252(info) => self::felt252::debug_fmt(f, id, registry, ptr, info),
             CoreTypeConcrete::GasBuiltin(_) => todo!(),
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint8(info) => self::uint8::debug_fmt(f, id, registry, ptr, info),
+            CoreTypeConcrete::Uint16(info) => self::uint16::debug_fmt(f, id, registry, ptr, info),
+            CoreTypeConcrete::Uint32(info) => self::uint32::debug_fmt(f, id, registry, ptr, info),
+            CoreTypeConcrete::Uint64(info) => self::uint64::debug_fmt(f, id, registry, ptr, info),
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
@@ -227,10 +227,18 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 self::gas_builtin::deserialize(deserializer, self.registry, ptr, info)?
             },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint8(info) => {
+                unsafe { self::uint8::deserialize(deserializer, self.registry, ptr, info) }?
+            }
+            CoreTypeConcrete::Uint16(info) => {
+                unsafe { self::uint16::deserialize(deserializer, self.registry, ptr, info) }?
+            }
+            CoreTypeConcrete::Uint32(info) => {
+                unsafe { self::uint32::deserialize(deserializer, self.registry, ptr, info) }?
+            }
+            CoreTypeConcrete::Uint64(info) => {
+                unsafe { self::uint64::deserialize(deserializer, self.registry, ptr, info) }?
+            }
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
@@ -302,10 +310,18 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::gas_builtin::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint8(info) => unsafe {
+                self::uint8::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::Uint16(info) => unsafe {
+                self::uint16::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::Uint32(info) => unsafe {
+                self::uint32::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::Uint64(info) => unsafe {
+                self::uint64::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
