@@ -190,6 +190,7 @@ where
     'this: 'ctx,
 {
     pub(crate) module: &'this Module<'ctx>,
+    pub(crate) init_block: &'this BlockRef<'ctx, 'this>,
 
     pub(crate) region: &'this Region<'ctx>,
     pub(crate) blocks_arena: &'this Bump,
@@ -207,6 +208,15 @@ where
         self.results
             .into_iter()
             .map(|x| x.into_iter().map(|x| x.into_inner().unwrap()).collect())
+    }
+
+    /// Return the initialization block.
+    ///
+    /// The init block is used for `llvm.alloca` instructions. It is guaranteed to not be executed
+    /// multiple times on tail-recursive functions. This property allows generating tail-recursive
+    /// functions that do not grow the stack.
+    pub fn init_block(&self) -> &Block<'ctx> {
+        self.init_block
     }
 
     /// Inserts a new block after all the current libfunc's blocks.
