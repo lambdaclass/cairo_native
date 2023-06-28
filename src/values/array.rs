@@ -23,7 +23,6 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    dbg!(&info.info);
     todo!();
     /*
     let payload_ty = registry.get_type(&info.info.).unwrap();
@@ -33,7 +32,7 @@ where
     let value: u32 = value.to_string().parse().unwrap();
     std::ptr::write(ptr.cast::<u32>().as_mut(), value);
     */
-    Ok(())
+    // Ok(())
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -62,21 +61,6 @@ where
     let array_data_ptr = ptr.cast::<*mut ()>();
     let len_value = *ptr
         .map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
-        .cast::<u32>()
-        .as_ref();
-
-    let cap_value = *ptr
-        .map_addr(|addr| {
-            addr.unchecked_add(
-                ptr_layout
-                    .extend(len_layout)
-                    .unwrap()
-                    .0
-                    .extend(len_layout)
-                    .unwrap()
-                    .1,
-            )
-        })
         .cast::<u32>()
         .as_ref();
 
