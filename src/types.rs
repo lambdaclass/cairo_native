@@ -120,7 +120,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 self::range_check::build(context, module, registry, metadata, info)
             }
             Self::SegmentArena(_) => todo!(),
-            Self::Snapshot(_) => todo!(),
+            Self::Snapshot(info) => {
+                self::snapshot::build(context, module, registry, metadata, info)
+            }
             Self::Span(_) => todo!(),
             Self::SquashedFelt252Dict(_) => todo!(),
             Self::StarkNet(_) => todo!(),

@@ -116,7 +116,7 @@ where
     let op5 = entry.append_operation(llvm::insert_value(
         context,
         op4.result(0).unwrap().into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
+        DenseI64ArrayAttribute::new(context, &[2]),
         op1.result(0).unwrap().into(),
         location,
     ));
@@ -179,7 +179,7 @@ where
     let op2 = entry.append_operation(llvm::extract_value(
         context,
         entry.argument(0).unwrap().into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
+        DenseI64ArrayAttribute::new(context, &[2]),
         len_ty,
         location,
     ));
@@ -267,7 +267,7 @@ where
             let op14 = block.append_operation(llvm::insert_value(
                 context,
                 op13.result(0).unwrap().into(),
-                DenseI64ArrayAttribute::new(context, &[1]),
+                DenseI64ArrayAttribute::new(context, &[2]),
                 op6.result(0).unwrap().into(),
                 location,
             ));
