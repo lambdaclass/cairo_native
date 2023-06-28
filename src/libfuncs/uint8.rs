@@ -263,7 +263,7 @@ where
 
     entry.append_operation(helper.cond_br(
         op_overflow,
-        [0, 1],
+        [1, 0],
         [&[range_check, op_result], &[range_check, op_result]],
         location,
     ));

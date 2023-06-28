@@ -214,7 +214,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             .alloc_layout(self.info.layout(self.registry))
             .cast::<()>();
         match self.info {
-            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Array(info) => unsafe {
+                self::array::deserialize(deserializer, self.registry, ptr, info)?
+            },
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
@@ -297,7 +299,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
         S: serde::Serializer,
     {
         match self.info {
-            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Array(info) => unsafe {
+                self::array::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
