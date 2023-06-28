@@ -100,7 +100,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
 
     fn is_complex(&self) -> bool {
         match self {
-            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
