@@ -133,7 +133,7 @@ where
         IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
         location,
     ));
-    let op5 = entry.append_operation(
+    let op5 = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -220,7 +220,7 @@ where
         IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
         location,
     ));
-    let op1 = entry.append_operation(
+    let op1 = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
