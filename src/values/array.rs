@@ -57,17 +57,16 @@ where
     let ptr_layout = Layout::new::<*mut ()>();
     let len_layout = crate::utils::get_integer_layout(32);
 
-    let array_data_ptr = ptr.cast::<*mut ()>();
     let len_value = *ptr
         .map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
         .cast::<u32>()
         .as_ref();
 
-    let mut ser = serializer.serialize_seq(Some(len_value.try_into().unwrap()))?;
-    let mut cur_elem_ptr = array_data_ptr;
+    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
 
+    let mut ser = serializer.serialize_seq(Some(len_value.try_into().unwrap()))?;
     for i in 0..(len_value as usize) {
-        cur_elem_ptr = cur_elem_ptr.map_addr(|addr| addr.unchecked_add(elem_stride * i));
+        let cur_elem_ptr = data_ptr.map_addr(|addr| addr.unchecked_add(elem_stride * i));
 
         ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
             cur_elem_ptr.cast(),

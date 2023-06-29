@@ -300,7 +300,7 @@ mod test {
     #[test]
     fn run_add() {
         fn run<const LHS: u8, const RHS: u8>() -> serde_json::Value {
-            run_cairo! { run_test((), 0, 0) in mod {
+            run_cairo! { run_test((), LHS, RHS) in mod {
                 fn run_test(lhs: u8, rhs: u8) -> u8 {
                     lhs + rhs
                 }
