@@ -23,4 +23,5 @@ Cargo.lock
 *.sierra
 corelib
 
+.env
 .vscode/
