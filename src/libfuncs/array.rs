@@ -401,7 +401,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     let array_ty = registry
-        .get_type(&info.param_signatures()[0].ty)
+        .get_type(&info.param_signatures()[1].ty)
         .unwrap()
         .build(context, helper, registry, metadata)
         .unwrap();
@@ -463,14 +463,16 @@ where
     ));
     let array_ptr = op.result(0).unwrap().into();
 
-    let op = block_not_oob.append_operation(llvm::get_element_ptr_dynamic(
-        context,
-        array_ptr,
-        &[index_val],
-        elem_ty,
-        llvm::r#type::pointer(elem_ty, 0),
-        location,
-    ));
+    let op = block_not_oob.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, index_val])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
     let elem_ptr = op.result(0).unwrap().into();
 
     let op = block_not_oob.append_operation(llvm::load(
