@@ -275,8 +275,8 @@ mod test {
     use crate::utils::test::run_cairo;
     use serde_json::json;
 
-    fn error_value() -> serde_json::Value {
-        json!([(), [1, [[], [608642104203229548495787928534675319u128]]]])
+    fn error_value(n: u128) -> serde_json::Value {
+        json!([(), [1, [[], [n]]]])
     }
 
     #[test]
@@ -319,17 +319,35 @@ mod test {
         assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
         assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
         assert_eq!(run::<1, 254>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<1, 255>(), error_value());
+        assert_eq!(
+            run::<1, 255>(),
+            error_value(608642104203229548495787928534675319)
+        );
 
         assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
         assert_eq!(run::<254, 1>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<254, 254>(), error_value());
-        assert_eq!(run::<254, 255>(), error_value());
+        assert_eq!(
+            run::<254, 254>(),
+            error_value(608642104203229548495787928534675319)
+        );
+        assert_eq!(
+            run::<254, 255>(),
+            error_value(608642104203229548495787928534675319)
+        );
 
         assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<255, 1>(), error_value());
-        assert_eq!(run::<255, 254>(), error_value());
-        assert_eq!(run::<255, 255>(), error_value());
+        assert_eq!(
+            run::<255, 1>(),
+            error_value(608642104203229548495787928534675319)
+        );
+        assert_eq!(
+            run::<255, 254>(),
+            error_value(608642104203229548495787928534675319)
+        );
+        assert_eq!(
+            run::<255, 255>(),
+            error_value(608642104203229548495787928534675319)
+        );
     }
 
     #[test]
@@ -343,23 +361,41 @@ mod test {
         }
 
         assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<0, 1>(), error_value());
-        assert_eq!(run::<0, 254>(), error_value());
-        assert_eq!(run::<0, 255>(), error_value());
+        assert_eq!(
+            run::<0, 1>(),
+            error_value(608642109794502019480482122260311927)
+        );
+        assert_eq!(
+            run::<0, 254>(),
+            error_value(608642109794502019480482122260311927)
+        );
+        assert_eq!(
+            run::<0, 255>(),
+            error_value(608642109794502019480482122260311927)
+        );
 
         assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
         assert_eq!(run::<1, 1>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<1, 254>(), error_value());
-        assert_eq!(run::<1, 255>(), error_value());
+        assert_eq!(
+            run::<1, 254>(),
+            error_value(608642109794502019480482122260311927)
+        );
+        assert_eq!(
+            run::<1, 255>(),
+            error_value(608642109794502019480482122260311927)
+        );
 
         assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
         assert_eq!(run::<254, 1>(), json!([(), [0, [253]]]));
-        assert_eq!(run::<254, 254>(), json!([(), [1, [0]]]));
-        assert_eq!(run::<254, 255>(), error_value());
+        assert_eq!(run::<254, 254>(), json!([(), [0, [0]]]));
+        assert_eq!(
+            run::<254, 255>(),
+            error_value(608642109794502019480482122260311927)
+        );
 
         assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<255, 1>(), json!([(), [1, [254]]]));
-        assert_eq!(run::<255, 254>(), json!([(), [1, [1]]]));
-        assert_eq!(run::<255, 255>(), json!([(), [1, [0]]]));
+        assert_eq!(run::<255, 1>(), json!([(), [0, [254]]]));
+        assert_eq!(run::<255, 254>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<255, 255>(), json!([(), [0, [0]]]));
     }
 }

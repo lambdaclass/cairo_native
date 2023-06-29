@@ -149,11 +149,6 @@ pub mod test {
         )
         .expect("Could not compile test program to MLIR.");
 
-        assert!(
-            module.as_operation().verify(),
-            "Test program generated invalid MLIR."
-        );
-
         let pass_manager = PassManager::new(&context);
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -170,6 +165,11 @@ pub mod test {
         pass_manager
             .run(&mut module)
             .expect("Could not apply passes to the compiled test program.");
+
+        assert!(
+            module.as_operation().verify(),
+            "Test program generated invalid MLIR."
+        );
 
         let engine = ExecutionEngine::new(&module, 0, &[], false);
         crate::execute::<CoreType, CoreLibfunc, _, _>(

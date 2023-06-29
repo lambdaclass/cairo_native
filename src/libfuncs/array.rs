@@ -59,9 +59,9 @@ where
         ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
         ArrayConcreteLibfunc::Get(_) => todo!(),
         ArrayConcreteLibfunc::Slice(_) => todo!(),
-        ArrayConcreteLibfunc::Len(info) =>  {
+        ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
-        },
+        }
         ArrayConcreteLibfunc::SnapshotPopFront(_) => todo!(),
         ArrayConcreteLibfunc::SnapshotPopBack(_) => todo!(),
     }
