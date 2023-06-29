@@ -160,7 +160,7 @@ where
                 ptr = unsafe {
                     libc::realloc(ptr.cast(), elem_layout.size() * new_cap as usize).cast()
                 };
-                cap = len.try_into().unwrap();
+                cap = new_cap;
             }
 
             unsafe {
