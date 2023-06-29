@@ -1,27 +1,30 @@
 use super::ValueBuilder;
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, ptr::NonNull};
+use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
+    arena: &Bump,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    ptr: NonNull<()>,
     _info: &InfoOnlyConcreteType,
-) -> Result<(), D::Error>
+) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
+    let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
+
     *ptr.cast::<u64>().as_mut() = <u64 as Deserialize>::deserialize(deserializer)?;
 
-    Ok(())
+    Ok(ptr)
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
