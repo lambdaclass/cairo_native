@@ -209,13 +209,13 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
     where
         D: serde::Deserializer<'de>,
     {
-        let ptr = self
-            .arena
-            .alloc_layout(self.info.layout(self.registry))
-            .cast::<()>();
-        match self.info {
+        // let ptr = self
+        //     .arena
+        //     .alloc_layout(self.info.layout(self.registry))
+        //     .cast::<()>();
+        Ok(match self.info {
             CoreTypeConcrete::Array(info) => unsafe {
-                self::array::deserialize(deserializer, self.registry, ptr, info)?
+                self::array::deserialize(deserializer, self.arena, self.registry, info)?
             },
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
@@ -223,30 +223,37 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(info) => unsafe {
-                self::felt252::deserialize(deserializer, self.registry, ptr, info)?
+                // self::felt252::deserialize(deserializer, self.registry, ptr, info)?
+                todo!()
             },
             CoreTypeConcrete::GasBuiltin(info) => unsafe {
-                self::gas_builtin::deserialize(deserializer, self.registry, ptr, info)?
+                // self::gas_builtin::deserialize(deserializer, self.registry, ptr, info)?
+                todo!()
             },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(info) => {
-                unsafe { self::uint8::deserialize(deserializer, self.registry, ptr, info) }?
+                // unsafe { self::uint8::deserialize(deserializer, self.registry, ptr, info) }?
+                todo!()
             }
             CoreTypeConcrete::Uint16(info) => {
-                unsafe { self::uint16::deserialize(deserializer, self.registry, ptr, info) }?
+                // unsafe { self::uint16::deserialize(deserializer, self.registry, ptr, info) }?
+                todo!()
             }
             CoreTypeConcrete::Uint32(info) => {
-                unsafe { self::uint32::deserialize(deserializer, self.registry, ptr, info) }?
+                // unsafe { self::uint32::deserialize(deserializer, self.registry, ptr, info) }?
+                todo!()
             }
             CoreTypeConcrete::Uint64(info) => {
-                unsafe { self::uint64::deserialize(deserializer, self.registry, ptr, info) }?
+                // unsafe { self::uint64::deserialize(deserializer, self.registry, ptr, info) }?
+                todo!()
             }
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(info) => unsafe {
-                self::range_check::deserialize(deserializer, self.registry, ptr, info)?
+                // self::range_check::deserialize(deserializer, self.registry, ptr, info)?
+                todo!()
             },
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => todo!(),
@@ -260,9 +267,7 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
-        }
-
-        Ok(ptr)
+        })
     }
 }
 
