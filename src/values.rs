@@ -209,10 +209,6 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
     where
         D: serde::Deserializer<'de>,
     {
-        // let ptr = self
-        //     .arena
-        //     .alloc_layout(self.info.layout(self.registry))
-        //     .cast::<()>();
         unsafe {
             match self.info {
                 CoreTypeConcrete::Array(info) => {
