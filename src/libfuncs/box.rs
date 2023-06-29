@@ -3,7 +3,10 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
-    extensions::{boxing::BoxConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        boxing::BoxConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc, ConcreteLibfunc,
+        GenericLibfunc, GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -29,6 +32,28 @@ where
 {
     match selector {
         BoxConcreteLibfunc::Into(_) => todo!(),
-        BoxConcreteLibfunc::Unbox(_) => todo!(),
+        BoxConcreteLibfunc::Unbox(info) => {
+            build_unbox(context, registry, entry, location, helper, metadata, info)
+        }
     }
+}
+
+/// Generate MLIR operations for the `array_append` libfunc.
+pub fn build_unbox<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    Ok(())
 }
