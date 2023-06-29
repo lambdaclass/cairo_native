@@ -13,11 +13,14 @@ use cairo_lang_sierra::{
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
-    ir::{Location, Module},
+    ir::{operation::OperationPrintingFlags, Location, Module},
     utility::register_all_dialects,
     Context,
 };
-use sierra2mlir::{metadata::MetadataStorage, DebugInfo};
+use sierra2mlir::{
+    debug_info::{DebugInfo, DebugLocations},
+    metadata::MetadataStorage,
+};
 use std::{
     ffi::OsStr,
     fs,
@@ -38,10 +41,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Load the program.
-    let (program, _debug_info) = load_program(Path::new(&args.input))?;
+    let context = Context::new();
+    let (program, debug_info) = load_program(Path::new(&args.input), Some(&context))?;
 
     // Initialize MLIR.
-    let context = Context::new();
     context.append_dialect_registry(&{
         let registry = DialectRegistry::new();
         register_all_dialects(&registry);
@@ -60,18 +63,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &program,
         &registry,
         &mut metadata,
+        debug_info.as_ref(),
     )?;
 
     // Write the output.
+    let output_str = module
+        .as_operation()
+        .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))?;
     match args.output {
-        CompilerOutput::Stdout => println!("{}", module.as_operation()),
-        CompilerOutput::Path(path) => fs::write(path, module.as_operation().to_string())?,
+        CompilerOutput::Stdout => println!("{output_str}"),
+        CompilerOutput::Path(path) => fs::write(path, &output_str)?,
     }
 
     Ok(())
 }
 
-fn load_program(path: &Path) -> Result<(Program, Option<DebugInfo>), Box<dyn std::error::Error>> {
+fn load_program<'c>(
+    path: &Path,
+    context: Option<&'c Context>,
+) -> Result<(Program, Option<DebugLocations<'c>>), Box<dyn std::error::Error>> {
     Ok(match path.extension().and_then(OsStr::to_str) {
         Some("cairo") => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
@@ -85,13 +95,19 @@ fn load_program(path: &Path) -> Result<(Program, Option<DebugInfo>), Box<dyn std
                 },
             )?);
 
-            let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                buffer
-            })?;
+            let debug_locations = if let Some(context) = context {
+                let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
+                    let mut buffer = String::new();
+                    assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
+                    buffer
+                })?;
 
-            (program, Some(debug_info))
+                Some(DebugLocations::extract(context, &db, &debug_info))
+            } else {
+                None
+            };
+
+            (program, debug_locations)
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;

@@ -3,8 +3,7 @@
 #![feature(strict_provenance)]
 
 use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
+    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -22,7 +21,7 @@ use melior::{
     Context, ExecutionEngine,
 };
 use serde_json::de::StrRead;
-use sierra2mlir::{metadata::MetadataStorage, DebugInfo};
+use sierra2mlir::metadata::MetadataStorage;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -46,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Load the program.
-    let (program, _debug_info) = load_program(Path::new(&args.input))?;
+    let program = load_program(Path::new(&args.input))?;
 
     let entry_point = match program
         .funcs
@@ -83,6 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &program,
         &registry,
         &mut metadata,
+        None,
     )?;
 
     // Lower to LLVM.
@@ -144,37 +144,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn load_program(path: &Path) -> Result<(Program, Option<DebugInfo>), Box<dyn std::error::Error>> {
+fn load_program(path: &Path) -> Result<Program, Box<dyn std::error::Error>> {
     Ok(match path.extension().and_then(OsStr::to_str) {
         Some("cairo") => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            let program = Arc::unwrap_or_clone(compile_prepared_db(
+            Arc::unwrap_or_clone(compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
-            )?);
-
-            let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                buffer
-            })?;
-
-            (program, Some(debug_info))
+            )?)
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;
 
             let program_parser = ProgramParser::new();
-            let program = program_parser
+            program_parser
                 .parse(&program_src)
-                .map_err(|e| e.map_token(|t| t.to_string()))?;
-
-            (program, None)
+                .map_err(|e| e.map_token(|t| t.to_string()))?
         }
         _ => unreachable!(),
     })

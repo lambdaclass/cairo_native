@@ -1,4 +1,5 @@
 use crate::{
+    debug_info::DebugLocations,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
@@ -43,12 +44,13 @@ type BlockStorage<'c, 'a> =
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
-pub fn compile<'c, TType, TLibfunc>(
-    context: &'c Context,
-    module: &Module<'c>,
+pub fn compile<TType, TLibfunc>(
+    context: &Context,
+    module: &Module,
     program: &Program,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
+    debug_info: Option<&DebugLocations>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -65,6 +67,7 @@ where
             function,
             &program.statements,
             metadata,
+            debug_info,
         )?;
     }
 
@@ -79,6 +82,7 @@ fn compile_func<TType, TLibfunc>(
     function: &Function,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
+    debug_info: Option<&DebugLocations>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -118,6 +122,22 @@ where
         .collect::<Vec<_>>(),
         Location::unknown(context),
     ));
+
+    // Workaround for the `entry block of region may not have predecessors` error:
+    let pre_entry_block = region.insert_block_before(
+        entry_block,
+        Block::new(
+            &extract_types(
+                context,
+                module,
+                &function.signature.param_types,
+                registry,
+                metadata,
+            )
+            .map(|ty| (ty, Location::unknown(context)))
+            .collect::<Vec<_>>(),
+        ),
+    );
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
     foreach_statement_in_function(
@@ -167,6 +187,7 @@ where
 
                     let helper = LibfuncHelper {
                         module,
+                        init_block: &pre_entry_block,
                         region: &region,
                         blocks_arena: &blocks_arena,
                         last_block: Cell::new(block),
@@ -190,7 +211,7 @@ where
                             // TODO: Defer insertions until after the recursion has been confirmed
                             //   (when removing the meta, if a return target is set).
                             // TODO: Explore replacing the `memref` counter with a normal variable.
-                            let op0 = entry_block.insert_operation(
+                            let op0 = pre_entry_block.insert_operation(
                                 0,
                                 memref::alloca(
                                     context,
@@ -201,7 +222,7 @@ where
                                     Location::unknown(context),
                                 ),
                             );
-                            let op1 = entry_block.insert_operation_after(
+                            let op1 = pre_entry_block.insert_operation_after(
                                 op0,
                                 index::constant(
                                     context,
@@ -209,7 +230,7 @@ where
                                     Location::unknown(context),
                                 ),
                             );
-                            entry_block.insert_operation_after(
+                            pre_entry_block.insert_operation_after(
                                 op1,
                                 memref::store(
                                     op1.result(0).unwrap().into(),
@@ -233,7 +254,11 @@ where
                             context,
                             registry,
                             block,
-                            Location::unknown(context),
+                            debug_info
+                                .and_then(|debug_info| {
+                                    debug_info.statements.get(&statement_idx).copied()
+                                })
+                                .unwrap_or_else(|| Location::unknown(context)),
                             &helper,
                             metadata,
                         )
@@ -341,30 +366,13 @@ where
         },
     );
 
-    // Workaround for the `entry block of region may not have predecessors` error:
-    if !tailrec_storage.is_empty() {
-        let new_entry_block = region.insert_block_before(
-            entry_block,
-            Block::new(
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.param_types,
-                    registry,
-                    metadata,
-                )
-                .map(|ty| (ty, Location::unknown(context)))
-                .collect::<Vec<_>>(),
-            ),
-        );
-        new_entry_block.append_operation(cf::br(
-            &entry_block,
-            &(0..entry_block.argument_count())
-                .map(|i| new_entry_block.argument(i).unwrap().into())
-                .collect::<Vec<_>>(),
-            Location::unknown(context),
-        ));
-    }
+    pre_entry_block.append_operation(cf::br(
+        &entry_block,
+        &(0..entry_block.argument_count())
+            .map(|i| pre_entry_block.argument(i).unwrap().into())
+            .collect::<Vec<_>>(),
+        Location::unknown(context),
+    ));
 
     let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
