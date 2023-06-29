@@ -27,7 +27,7 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Region,
+        Block, Identifier, Location, Region, Value,
     },
     Context,
 };
@@ -415,11 +415,12 @@ where
         len_ty,
         location,
     ));
-    let len = op.result(0).unwrap().into();
+    let len: Value = op.result(0).unwrap().into();
 
-    entry.append_operation(helper.br(0, &[len], location));
+    todo!()
+    //entry.append_operation(helper.br(0, &[len], location));
 
-    Ok(())
+    //Ok(())
 }
 
 #[cfg(test)]
@@ -453,6 +454,24 @@ mod test {
                 numbers.append(3_u32);
                 numbers.append(2_u32);
                 numbers.len()
+            }
+        }};
+
+        assert_eq!(result, json!([3]));
+    }
+
+    #[test]
+    fn run_get() {
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.append(1_u32);
+                *numbers.at(1)
             }
         }};
 

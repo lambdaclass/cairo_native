@@ -98,7 +98,7 @@ impl TypeBuilder for CoreTypeConcrete {
         match self {
             Self::Array(info) => self::array::build(context, module, registry, metadata, info),
             Self::Bitwise(_) => todo!(),
-            Self::Box(_) => todo!(),
+            Self::Box(info) => self::r#box::build(context, module, registry, metadata, info),
             Self::BuiltinCosts(info) => {
                 self::builtin_costs::build(context, module, registry, metadata, info)
             }
@@ -154,7 +154,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     .0
             }
             CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::Box(info) => registry.get_type(&info.ty).unwrap().layout(registry),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
@@ -167,7 +167,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => {
+                registry.get_type(&info.ty).unwrap().layout(registry)
+            }
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
             CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -211,7 +213,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Snapshot(info) => {
+                registry.get_type(&info.ty).unwrap().layout(registry)
+            }
         }
     }
 
