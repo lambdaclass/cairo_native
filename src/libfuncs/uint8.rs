@@ -275,6 +275,10 @@ mod test {
     use crate::utils::test::run_cairo;
     use serde_json::json;
 
+    fn error_value() -> serde_json::Value {
+        json!([(), [1, [[], [608642104203229548495787928534675319u128]]]])
+    }
+
     #[test]
     fn run_const_min() {
         let result = run_cairo! { run_test() in mod {
@@ -315,16 +319,47 @@ mod test {
         assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
         assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
         assert_eq!(run::<1, 254>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<1, 255>(), json!([(), [1, []]]));
+        assert_eq!(run::<1, 255>(), error_value());
 
         assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
         assert_eq!(run::<254, 1>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<254, 254>(), json!([(), [1, []]]));
-        assert_eq!(run::<254, 255>(), json!([(), [1, []]]));
+        assert_eq!(run::<254, 254>(), error_value());
+        assert_eq!(run::<254, 255>(), error_value());
 
         assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<255, 1>(), json!([(), [1, []]]));
-        assert_eq!(run::<255, 254>(), json!([(), [1, []]]));
-        assert_eq!(run::<255, 255>(), json!([(), [1, []]]));
+        assert_eq!(run::<255, 1>(), error_value());
+        assert_eq!(run::<255, 254>(), error_value());
+        assert_eq!(run::<255, 255>(), error_value());
+    }
+
+    #[test]
+    fn run_sub() {
+        fn run<const LHS: u8, const RHS: u8>() -> serde_json::Value {
+            run_cairo! { run_test((), LHS, RHS) in mod {
+                fn run_test(lhs: u8, rhs: u8) -> u8 {
+                    lhs - rhs
+                }
+            }}
+        }
+
+        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
+        assert_eq!(run::<0, 1>(), error_value());
+        assert_eq!(run::<0, 254>(), error_value());
+        assert_eq!(run::<0, 255>(), error_value());
+
+        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<1, 1>(), json!([(), [0, [0]]]));
+        assert_eq!(run::<1, 254>(), error_value());
+        assert_eq!(run::<1, 255>(), error_value());
+
+        assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
+        assert_eq!(run::<254, 1>(), json!([(), [0, [253]]]));
+        assert_eq!(run::<254, 254>(), json!([(), [1, [0]]]));
+        assert_eq!(run::<254, 255>(), error_value());
+
+        assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
+        assert_eq!(run::<255, 1>(), json!([(), [1, [254]]]));
+        assert_eq!(run::<255, 254>(), json!([(), [1, [1]]]));
+        assert_eq!(run::<255, 255>(), json!([(), [1, [0]]]));
     }
 }
