@@ -213,54 +213,60 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
         //     .arena
         //     .alloc_layout(self.info.layout(self.registry))
         //     .cast::<()>();
-        Ok(match self.info {
-            CoreTypeConcrete::Array(info) => unsafe {
-                self::array::deserialize(deserializer, self.arena, self.registry, info)?
-            },
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(info) => unsafe {
-                self::felt252::deserialize(deserializer, self.arena, self.registry, info)?
-            },
-            CoreTypeConcrete::GasBuiltin(info) => unsafe {
-                self::gas_builtin::deserialize(deserializer, self.arena, self.registry, info)?
-            },
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(info) => {
-                unsafe { self::uint8::deserialize(deserializer, self.arena, self.registry, info) }?
+        unsafe {
+            match self.info {
+                CoreTypeConcrete::Array(info) => {
+                    self::array::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Bitwise(_) => todo!(),
+                CoreTypeConcrete::Box(_) => todo!(),
+                CoreTypeConcrete::EcOp(_) => todo!(),
+                CoreTypeConcrete::EcPoint(_) => todo!(),
+                CoreTypeConcrete::EcState(_) => todo!(),
+                CoreTypeConcrete::Felt252(info) => {
+                    self::felt252::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::GasBuiltin(info) => {
+                    self::gas_builtin::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+                CoreTypeConcrete::Uint8(info) => {
+                    self::uint8::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Uint16(info) => {
+                    self::uint16::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Uint32(info) => {
+                    self::uint32::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Uint64(info) => {
+                    self::uint64::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Uint128(_) => todo!(),
+                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+                CoreTypeConcrete::NonZero(_) => todo!(),
+                CoreTypeConcrete::Nullable(_) => todo!(),
+                CoreTypeConcrete::RangeCheck(info) => {
+                    self::range_check::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Uninitialized(_) => todo!(),
+                CoreTypeConcrete::Enum(info) => {
+                    self::r#enum::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Struct(info) => {
+                    self::r#struct::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::Felt252Dict(_) => todo!(),
+                CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+                CoreTypeConcrete::Pedersen(_) => todo!(),
+                CoreTypeConcrete::Poseidon(_) => todo!(),
+                CoreTypeConcrete::Span(_) => todo!(),
+                CoreTypeConcrete::StarkNet(_) => todo!(),
+                CoreTypeConcrete::SegmentArena(_) => todo!(),
+                CoreTypeConcrete::Snapshot(_) => todo!(),
             }
-            CoreTypeConcrete::Uint16(info) => {
-                unsafe { self::uint16::deserialize(deserializer, self.arena, self.registry, info) }?
-            }
-            CoreTypeConcrete::Uint32(info) => {
-                unsafe { self::uint32::deserialize(deserializer, self.arena, self.registry, info) }?
-            }
-            CoreTypeConcrete::Uint64(info) => {
-                unsafe { self::uint64::deserialize(deserializer, self.arena, self.registry, info) }?
-            }
-            CoreTypeConcrete::Uint128(_) => todo!(),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(info) => unsafe {
-                self::range_check::deserialize(deserializer, self.arena, self.registry, info)?
-            },
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
-            CoreTypeConcrete::Struct(_) => todo!(),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-        })
+        }
     }
 }
 

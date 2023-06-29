@@ -7,13 +7,14 @@ use cairo_lang_sierra::{
 };
 use serde::{ser::SerializeTuple, Deserializer, Serializer};
 use std::{alloc::Layout, fmt, ptr::NonNull};
+use bumpalo::Bump;
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     _deserializer: D,
+    _arena: &Bump,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _ptr: NonNull<()>,
     _info: &StructConcreteType,
-) -> Result<(), D::Error>
+) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
