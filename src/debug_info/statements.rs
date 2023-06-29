@@ -1,5 +1,5 @@
 use cairo_lang_compiler::db::RootDatabase;
-use cairo_lang_defs::diagnostic_utils::StableLocation;
+use cairo_lang_defs::diagnostic_utils::{StableLocation, StableLocationOption};
 use cairo_lang_diagnostics::DiagnosticAdded;
 use cairo_lang_lowering::{
     db::LoweringGroup, FlatLowered, Statement as LoweringStatement, Variable,
@@ -119,8 +119,14 @@ fn locate_statement(
     statement: &LoweringStatement,
 ) -> Option<StableLocation> {
     match statement {
-        LoweringStatement::Literal(x) => Some(variables[x.output].location.unwrap()),
-        LoweringStatement::Call(x) => Some(x.location.unwrap()),
+        LoweringStatement::Literal(x) => match variables[x.output].location {
+            StableLocationOption::None => None,
+            StableLocationOption::Some(x) => Some(x),
+        },
+        LoweringStatement::Call(x) => match x.location {
+            StableLocationOption::None => None,
+            StableLocationOption::Some(x) => Some(x),
+        },
         LoweringStatement::StructConstruct(_) => None,
         LoweringStatement::StructDestructure(_) => None,
         LoweringStatement::EnumConstruct(_) => None,

@@ -113,7 +113,7 @@ where
         location,
     ));
 
-    let op4 = entry.append_operation(arith::constant(
+    let op4 = helper.init_block().append_operation(arith::constant(
         context,
         IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
         location,
@@ -201,7 +201,7 @@ where
         .build(context, helper, registry, metadata)
         .unwrap();
 
-    let op0 = entry.append_operation(arith::constant(
+    let op0 = helper.init_block().append_operation(arith::constant(
         context,
         IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
         location,
