@@ -57,7 +57,9 @@ where
         }
         ArrayConcreteLibfunc::PopFront(_) => todo!(),
         ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
-        ArrayConcreteLibfunc::Get(_) => todo!(),
+        ArrayConcreteLibfunc::Get(info) => {
+            build_get(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::Slice(_) => todo!(),
         ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
@@ -380,4 +382,80 @@ where
     entry.append_operation(helper.br(0, &[len], location));
 
     Ok(())
+}
+
+/// Generate MLIR operations for the `array_append` libfunc.
+pub fn build_get<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    let array_ty = registry
+        .get_type(&info.param_signatures()[0].ty)
+        .unwrap()
+        .build(context, helper, registry, metadata)
+        .unwrap();
+
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        entry.argument(0).unwrap().into(),
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let len = op.result(0).unwrap().into();
+
+    entry.append_operation(helper.br(0, &[len], location));
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::run_cairo;
+    use serde_json::json;
+
+    #[test]
+    fn run_append() {
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers
+            }
+        }};
+
+        assert_eq!(result, json!([[4]]));
+    }
+
+    #[test]
+    fn run_len() {
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.len()
+            }
+        }};
+
+        assert_eq!(result, json!([3]));
+    }
 }
