@@ -1,5 +1,6 @@
 use super::{ValueBuilder, ValueSerializer};
 use crate::types::TypeBuilder;
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
@@ -10,10 +11,10 @@ use std::{fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     _deserializer: D,
+    _arena: &Bump,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _ptr: NonNull<()>,
     _info: &EnumConcreteType,
-) -> Result<(), D::Error>
+) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
