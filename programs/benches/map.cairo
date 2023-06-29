@@ -11,7 +11,7 @@ fn main() -> felt252 {
     let mut x = 1234567890123456789012345678901234567890;
 
     // Iterate the map.
-    let mut i = 10000000; // 10000 causes stack overflow
+    let mut i = 10000; // 10000 causes stack overflow
     loop {
         x = iterate_map(4, x);
 
