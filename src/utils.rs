@@ -145,6 +145,7 @@ pub mod test {
             &program,
             &registry,
             &mut metadata,
+            None,
         )
         .expect("Could not compile test program to MLIR.");
 
