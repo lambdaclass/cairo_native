@@ -4,8 +4,7 @@
 # Environment detection.
 #
 
-LLVM_PREFIX := $(shell scripts/find-llvm.sh)
-ifeq ($(LLVM_PREFIX),)
+ifeq ($(MLIR_SYS_160_PREFIX),)
   $(error Could not find a suitable LLVM 16 toolchain)
 endif
 
