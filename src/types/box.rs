@@ -1,6 +1,6 @@
 //! # Box type
 //!
-//! The type snapshot for a given type `T`.
+//! The type box for a given type `T`.
 //!
 //! ## Layout
 //!

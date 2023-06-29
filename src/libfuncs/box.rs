@@ -4,8 +4,8 @@ use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
-        boxing::BoxConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        boxing::BoxConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc, GenericLibfunc,
+        GenericType,
     },
     program_registry::ProgramRegistry,
 };
