@@ -22,3 +22,5 @@ Cargo.lock
 .clangd
 *.sierra
 corelib
+
+.vscode/
