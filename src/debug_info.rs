@@ -5,10 +5,12 @@ use self::{
 use cairo_lang_compiler::db::RootDatabase;
 use cairo_lang_defs::diagnostic_utils::StableLocation;
 use cairo_lang_diagnostics::DiagnosticAdded;
+use cairo_lang_filesystem::{db::FilesGroup, ids::FileLongId};
 use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId},
     program::{Program, StatementIdx},
 };
+use melior::{ir::Location, Context};
 use std::collections::HashMap;
 
 mod funcs;
@@ -62,4 +64,88 @@ impl DebugInfo {
             funcs,
         })
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct DebugLocations<'c> {
+    pub type_declarations: HashMap<ConcreteTypeId, Location<'c>>,
+    pub libfunc_declarations: HashMap<ConcreteLibfuncId, Location<'c>>,
+    pub statements: HashMap<StatementIdx, Location<'c>>,
+    pub funcs: HashMap<FunctionId, Location<'c>>,
+}
+
+impl<'c> DebugLocations<'c> {
+    pub fn extract(context: &'c Context, db: &RootDatabase, debug_info: &DebugInfo) -> Self {
+        let type_declarations = debug_info
+            .type_declarations
+            .iter()
+            .map(|(type_id, stable_loc)| {
+                (
+                    type_id.clone(),
+                    extract_location_from_stable_loc(context, db, *stable_loc),
+                )
+            })
+            .collect();
+
+        let libfunc_declarations = debug_info
+            .libfunc_declarations
+            .iter()
+            .map(|(libfunc_id, stable_loc)| {
+                (
+                    libfunc_id.clone(),
+                    extract_location_from_stable_loc(context, db, *stable_loc),
+                )
+            })
+            .collect();
+
+        let statements = debug_info
+            .statements
+            .iter()
+            .map(|(statement_idx, stable_loc)| {
+                (
+                    *statement_idx,
+                    extract_location_from_stable_loc(context, db, *stable_loc),
+                )
+            })
+            .collect();
+
+        let funcs = debug_info
+            .funcs
+            .iter()
+            .map(|(function_id, stable_loc)| {
+                (
+                    function_id.clone(),
+                    extract_location_from_stable_loc(context, db, *stable_loc),
+                )
+            })
+            .collect();
+
+        Self {
+            type_declarations,
+            libfunc_declarations,
+            statements,
+            funcs,
+        }
+    }
+}
+
+fn extract_location_from_stable_loc<'c>(
+    context: &'c Context,
+    db: &RootDatabase,
+    stable_loc: StableLocation,
+) -> Location<'c> {
+    let diagnostic_location = stable_loc.diagnostic_location(db);
+
+    let path = match db.lookup_intern_file(diagnostic_location.file_id) {
+        FileLongId::OnDisk(path) => path,
+        FileLongId::Virtual(_) => todo!(),
+    };
+
+    let pos = diagnostic_location
+        .span
+        .start
+        .position_in_file(db, diagnostic_location.file_id)
+        .unwrap();
+
+    Location::new(context, path.to_str().unwrap(), pos.line, pos.col)
 }

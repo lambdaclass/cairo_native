@@ -1,4 +1,5 @@
 use crate::{
+    debug_info::DebugLocations,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
@@ -43,12 +44,13 @@ type BlockStorage<'c, 'a> =
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
-pub fn compile<'c, TType, TLibfunc>(
-    context: &'c Context,
-    module: &Module<'c>,
+pub fn compile<TType, TLibfunc>(
+    context: &Context,
+    module: &Module,
     program: &Program,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
+    debug_info: Option<&DebugLocations>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -65,6 +67,7 @@ where
             function,
             &program.statements,
             metadata,
+            debug_info,
         )?;
     }
 
@@ -79,6 +82,7 @@ fn compile_func<TType, TLibfunc>(
     function: &Function,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
+    debug_info: Option<&DebugLocations>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     TType: GenericType,
@@ -233,7 +237,11 @@ where
                             context,
                             registry,
                             block,
-                            Location::unknown(context),
+                            debug_info
+                                .and_then(|debug_info| {
+                                    debug_info.statements.get(&statement_idx).copied()
+                                })
+                                .unwrap_or_else(|| Location::unknown(context)),
                             &helper,
                             metadata,
                         )
