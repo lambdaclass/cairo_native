@@ -69,7 +69,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -88,29 +88,14 @@ where
         .build(context, helper, registry, metadata)
         .unwrap();
 
-    let padding_ty = llvm::r#type::array(
-        IntegerType::new(context, 8).into(),
-        (layout.size()
-            - tag_layout
-                .extend(variant_tys[info.index].1)
-                .unwrap()
-                .0
-                .size())
-        .try_into()
-        .unwrap(),
-    );
-
     let op0 = entry.append_operation(arith::constant(
         context,
         IntegerAttribute::new(info.index.try_into().unwrap(), tag_ty).into(),
         location,
     ));
 
-    let concrete_enum_ty = llvm::r#type::r#struct(
-        context,
-        &[tag_ty, variant_tys[info.index].0, padding_ty],
-        false,
-    );
+    let concrete_enum_ty =
+        llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
 
     let op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
     let op2 = entry.append_operation(llvm::insert_value(
@@ -144,13 +129,20 @@ where
                 .into(),
             )])
             .add_operands(&[op4.result(0).unwrap().into()])
+            .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
+            .build(),
+    );
+
+    let op6 = entry.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[op5.result(0).unwrap().into()])
             .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
             .build(),
     );
     entry.append_operation(llvm::store(
         context,
         op3.result(0).unwrap().into(),
-        op5.result(0).unwrap().into(),
+        op6.result(0).unwrap().into(),
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
             layout.align().try_into().unwrap(),
@@ -158,15 +150,9 @@ where
         ))),
     ));
 
-    let op6 = entry.append_operation(
-        OperationBuilder::new("llvm.bitcast", location)
-            .add_operands(&[op5.result(0).unwrap().into()])
-            .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build(),
-    );
     let op7 = entry.append_operation(llvm::load(
         context,
-        op6.result(0).unwrap().into(),
+        op5.result(0).unwrap().into(),
         enum_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
@@ -196,7 +182,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
-    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -294,17 +280,8 @@ where
         default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
     }
 
-    for (i, (block, (payload_ty, payload_layout))) in
-        variant_blocks.into_iter().zip(variant_tys).enumerate()
-    {
-        let padding_ty = llvm::r#type::array(
-            IntegerType::new(context, 8).into(),
-            (layout.size() - tag_layout.extend(payload_layout).unwrap().0.size())
-                .try_into()
-                .unwrap(),
-        );
-        let concrete_enum_ty =
-            llvm::r#type::r#struct(context, &[tag_ty, payload_ty, padding_ty], false);
+    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
+        let concrete_enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
         let op3 = block.append_operation(
             OperationBuilder::new("llvm.bitcast", location)

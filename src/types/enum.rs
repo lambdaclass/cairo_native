@@ -445,6 +445,13 @@ where
             Layout::from_size_align(0, 1).unwrap(),
         ));
 
+    let filling_ty = llvm::r#type::array(
+        IntegerType::new(context, 8).into(),
+        (tag_layout.extend(variant_layout).unwrap().1 - tag_layout.size())
+            .try_into()
+            .unwrap(),
+    );
+
     let total_len = variant_tys
         .iter()
         .map(|(_, layout)| tag_layout.extend(*layout).unwrap().0.size())
@@ -459,7 +466,7 @@ where
 
     Ok(llvm::r#type::r#struct(
         context,
-        &[tag_ty, variant_ty, padding_ty],
+        &[tag_ty, filling_ty, variant_ty, padding_ty],
         false,
     ))
 }
