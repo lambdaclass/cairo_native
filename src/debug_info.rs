@@ -138,7 +138,7 @@ fn extract_location_from_stable_loc<'c>(
 
     let path = match db.lookup_intern_file(diagnostic_location.file_id) {
         FileLongId::OnDisk(path) => path,
-        FileLongId::Virtual(_) => todo!(),
+        FileLongId::Virtual(_) => return Location::unknown(context),
     };
 
     let pos = diagnostic_location
