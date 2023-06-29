@@ -27,15 +27,10 @@ Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
 ### Linux
 
-If you've compiled LLVM manually, or installed it in a non-standard path, then please set the
-environment variable `MLIR_SYS_160_PREFIX` accordingly.
-
-To build and install LLVM manually see the `scripts/install-llvm.sh` script.
-
-Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the mlir directory:
+Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm directory:
 
 ```bash
-MLIR_SYS_160_PREFIX=~/mlir
+MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
 ### MacOS
@@ -45,18 +40,33 @@ export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
 ```
 
 ## CLI Interface
-```
-Usage: cli --input <INPUT> <COMMAND>
 
-Commands:
-  compile  Compile to MLIR with LLVM dialect, ready to be converted by `mlir-translate --mlir-to-llvmir`
-  run      Compile and run a program. The entry point must be a function without arguments
-  help     Print this message or the help of the given subcommand(s)
+sierra2mlir:
+```
+Usage: sierra2mlir [OPTIONS] <INPUT>
+
+Arguments:
+  <INPUT>
 
 Options:
-  -i, --input <INPUT>  The input sierra file
-  -h, --help           Print help (see more with '--help')
-  -V, --version        Print version
+  -o, --output <OUTPUT>  [default: -]
+  -h, --help             Print help
+```
+
+sierrajit:
+```
+Usage: sierrajit [OPTIONS] <INPUT> <ENTRY_POINT>
+
+Arguments:
+  <INPUT>
+  <ENTRY_POINT>
+
+Options:
+  -i, --inputs <INPUTS>
+  -o, --outputs <OUTPUTS>
+  -p, --print-outputs
+  -g, --available-gas <AVAILABLE_GAS>
+  -h, --help                           Print help
 ```
 
 ## Benchmarking
@@ -81,7 +91,7 @@ make bench
 ## From MLIR to native binary
 ```bash
 # to mlir with llvm dialect
-cargo r -- compile program.sierra -m --available-gas 9000000000 -o program.mlir
+cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o program.mlir
 
 # translate mlir to llvm-ir
 "$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
