@@ -7,15 +7,14 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Number;
-use std::{alloc::Layout, fmt, ptr::NonNull, str::FromStr};
+use serde::{ser::SerializeSeq, Deserializer, Serializer};
+use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
-    deserializer: D,
+    _deserializer: D,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    ptr: NonNull<()>,
-    info: &InfoAndTypeConcreteType,
+    _ptr: NonNull<()>,
+    _info: &InfoAndTypeConcreteType,
 ) -> Result<(), D::Error>
 where
     TType: GenericType,
@@ -80,10 +79,10 @@ where
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
-    f: &mut fmt::Formatter,
+    _f: &mut fmt::Formatter,
     _id: &ConcreteTypeId,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    ptr: NonNull<()>,
+    _ptr: NonNull<()>,
     _info: &InfoAndTypeConcreteType,
 ) -> fmt::Result
 where

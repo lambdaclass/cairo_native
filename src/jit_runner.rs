@@ -19,7 +19,7 @@ pub fn execute<'de, TType, TLibfunc, D, S>(
     function_id: &FunctionId,
     params: D,
     returns: S,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<S::Ok, Box<dyn std::error::Error>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
@@ -101,8 +101,7 @@ where
             .unwrap();
     }
 
-    return_seq.end().unwrap();
-    Ok(())
+    Ok(return_seq.end().unwrap())
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>

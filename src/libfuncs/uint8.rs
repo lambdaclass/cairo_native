@@ -100,6 +100,73 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the u8 operation libfunc.
+pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    info: &UintOperationConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    let range_check: Value = entry.argument(0).unwrap().into();
+    let lhs: Value = entry.argument(1).unwrap().into();
+    let rhs: Value = entry.argument(2).unwrap().into();
+
+    let op_name = match info.operator {
+        IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
+        IntOperator::OverflowingSub => "llvm.intr.usub.with.overflow",
+    };
+
+    let values_type = lhs.r#type();
+
+    let result_type = llvm::r#type::r#struct(
+        context,
+        &[values_type, IntegerType::new(context, 1).into()],
+        false,
+    );
+
+    let op = entry.append_operation(
+        OperationBuilder::new(op_name, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_type])
+            .build(),
+    );
+    let result = op.result(0).unwrap().into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        result,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        values_type,
+        location,
+    ));
+    let op_result = op.result(0).unwrap().into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        result,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        IntegerType::new(context, 1).into(),
+        location,
+    ));
+    let op_overflow = op.result(0).unwrap().into();
+
+    entry.append_operation(helper.cond_br(
+        op_overflow,
+        [1, 0],
+        [&[range_check, op_result], &[range_check, op_result]],
+        location,
+    ));
+    Ok(())
+}
+
 /// Generate MLIR operations for the `u8_eq` libfunc.
 pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
@@ -203,69 +270,61 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the u8 operation libfunc.
-pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    info: &UintOperationConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
-{
-    let range_check: Value = entry.argument(0).unwrap().into();
-    let lhs: Value = entry.argument(1).unwrap().into();
-    let rhs: Value = entry.argument(2).unwrap().into();
+#[cfg(test)]
+mod test {
+    use crate::utils::test::run_cairo;
+    use serde_json::json;
 
-    let op_name = match info.operator {
-        IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
-        IntOperator::OverflowingSub => "llvm.intr.usub.with.overflow",
-    };
+    #[test]
+    fn run_const_min() {
+        let result = run_cairo! { run_test() in mod {
+            fn run_test() -> u8 {
+                0_u8
+            }
+        }};
 
-    let values_type = lhs.r#type();
+        assert_eq!(result, json!([0]));
+    }
 
-    let result_type = llvm::r#type::r#struct(
-        context,
-        &[values_type, IntegerType::new(context, 1).into()],
-        false,
-    );
+    #[test]
+    fn run_const_max() {
+        let result = run_cairo! { run_test() in mod {
+            fn run_test() -> u8 {
+                255_u8
+            }
+        }};
 
-    let op = entry.append_operation(
-        OperationBuilder::new(op_name, location)
-            .add_operands(&[lhs, rhs])
-            .add_results(&[result_type])
-            .build(),
-    );
-    let result = op.result(0).unwrap().into();
+        assert_eq!(result, json!([255]));
+    }
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        values_type,
-        location,
-    ));
-    let op_result = op.result(0).unwrap().into();
+    #[test]
+    fn run_add() {
+        fn run<const LHS: u8, const RHS: u8>() -> serde_json::Value {
+            run_cairo! { run_test((), 0, 0) in mod {
+                fn run_test(lhs: u8, rhs: u8) -> u8 {
+                    lhs + rhs
+                }
+            }}
+        }
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        IntegerType::new(context, 1).into(),
-        location,
-    ));
-    let op_overflow = op.result(0).unwrap().into();
+        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
+        assert_eq!(run::<0, 1>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<0, 254>(), json!([(), [0, [254]]]));
+        assert_eq!(run::<0, 255>(), json!([(), [0, [255]]]));
 
-    entry.append_operation(helper.cond_br(
-        op_overflow,
-        [1, 0],
-        [&[range_check, op_result], &[range_check, op_result]],
-        location,
-    ));
-    Ok(())
+        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
+        assert_eq!(run::<1, 254>(), json!([(), [0, [255]]]));
+        assert_eq!(run::<1, 255>(), json!([(), [1, []]]));
+
+        assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
+        assert_eq!(run::<254, 1>(), json!([(), [0, [255]]]));
+        assert_eq!(run::<254, 254>(), json!([(), [1, []]]));
+        assert_eq!(run::<254, 255>(), json!([(), [1, []]]));
+
+        assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
+        assert_eq!(run::<255, 1>(), json!([(), [1, []]]));
+        assert_eq!(run::<255, 254>(), json!([(), [1, []]]));
+        assert_eq!(run::<255, 255>(), json!([(), [1, []]]));
+    }
 }

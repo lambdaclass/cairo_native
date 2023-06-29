@@ -1,5 +1,6 @@
 //! # Cairo Sierra to MLIR compiler and JIT engine
 
+#![feature(arc_unwrap_or_clone)]
 #![feature(box_into_inner)]
 #![feature(int_roundings)]
 #![feature(iter_intersperse)]
