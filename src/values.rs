@@ -223,37 +223,30 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(info) => unsafe {
-                // self::felt252::deserialize(deserializer, self.registry, ptr, info)?
-                todo!()
+                self::felt252::deserialize(deserializer, self.arena, self.registry, info)?
             },
             CoreTypeConcrete::GasBuiltin(info) => unsafe {
-                // self::gas_builtin::deserialize(deserializer, self.registry, ptr, info)?
-                todo!()
+                self::gas_builtin::deserialize(deserializer, self.arena, self.registry, info)?
             },
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(info) => {
-                // unsafe { self::uint8::deserialize(deserializer, self.registry, ptr, info) }?
-                todo!()
+                unsafe { self::uint8::deserialize(deserializer, self.arena, self.registry, info) }?
             }
             CoreTypeConcrete::Uint16(info) => {
-                // unsafe { self::uint16::deserialize(deserializer, self.registry, ptr, info) }?
-                todo!()
+                unsafe { self::uint16::deserialize(deserializer, self.arena, self.registry, info) }?
             }
             CoreTypeConcrete::Uint32(info) => {
-                // unsafe { self::uint32::deserialize(deserializer, self.registry, ptr, info) }?
-                todo!()
+                unsafe { self::uint32::deserialize(deserializer, self.arena, self.registry, info) }?
             }
             CoreTypeConcrete::Uint64(info) => {
-                // unsafe { self::uint64::deserialize(deserializer, self.registry, ptr, info) }?
-                todo!()
+                unsafe { self::uint64::deserialize(deserializer, self.arena, self.registry, info) }?
             }
             CoreTypeConcrete::Uint128(_) => todo!(),
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(info) => unsafe {
-                // self::range_check::deserialize(deserializer, self.registry, ptr, info)?
-                todo!()
+                self::range_check::deserialize(deserializer, self.arena, self.registry, info)?
             },
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => todo!(),
