@@ -276,7 +276,11 @@ mod test {
     use serde_json::json;
 
     fn error_value(n: u128) -> serde_json::Value {
-        json!([(), [1, [[], [n]]]])
+        let mut bytes = [0u8; 32];
+        bytes[..16].copy_from_slice(&n.to_le_bytes());
+
+        let data = unsafe { std::mem::transmute_copy::<_, [u32; 8]>(&bytes) };
+        json!([(), [1, [[], [data]]]])
     }
 
     #[test]
