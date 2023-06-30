@@ -31,11 +31,33 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
 {
     match selector {
-        BoxConcreteLibfunc::Into(_) => todo!(),
+        BoxConcreteLibfunc::Into(info) => {
+            build_into_box(context, registry, entry, location, helper, metadata, info)
+        }
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+/// Generate MLIR operations for the `array_append` libfunc.
+pub fn build_into_box<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<(), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+{
+    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    Ok(())
 }
 
 /// Generate MLIR operations for the `array_append` libfunc.
@@ -56,4 +78,26 @@ where
 {
     entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::run_cairo;
+    use serde_json::json;
+
+    #[test]
+    fn run_box_unbox() {
+        let result = run_cairo! { run_test() in mod {
+            use box::BoxTrait;
+            use box::BoxImpl;
+
+            fn run_test() -> u32 {
+                let x: u32 = 2_u32;
+                let box_x: Box<u32> = BoxTrait::new(x);
+                box_x.unbox()
+            }
+        }};
+
+        assert_eq!(result, json!([2]));
+    }
 }
