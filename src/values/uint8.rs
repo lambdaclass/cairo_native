@@ -6,8 +6,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Number;
-use std::{alloc::Layout, fmt, ptr::NonNull, str::FromStr};
+use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -23,8 +22,7 @@ where
 {
     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
 
-    let value = <Number as Deserialize>::deserialize(deserializer)?;
-    let value: u8 = value.to_string().parse().unwrap();
+    let value = u8::deserialize(deserializer)?;
     *ptr.cast::<u8>().as_mut() = value;
 
     Ok(ptr)
@@ -42,8 +40,7 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    let value = ptr.cast::<u8>().as_ref();
-    <Number as Serialize>::serialize(&Number::from_str(&value.to_string()).unwrap(), serializer)
+    ptr.cast::<u8>().as_ref().serialize(serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
