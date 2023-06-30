@@ -1,5 +1,8 @@
 use crate::{
-    error::JitRunnerError,
+    error::{
+        jit_engine::{make_deserializer_error, make_serializer_error, make_type_builder_error},
+        JitRunnerError,
+    },
     libfuncs::LibfuncBuilder,
     types::TypeBuilder,
     utils::generate_function_name,
@@ -39,19 +42,14 @@ where
             registry,
             params: &entry_point.signature.param_types,
         })
-        .map_err(JitRunnerError::DeserializeError)?;
+        .map_err(make_deserializer_error)?;
 
     let mut complex_results = entry_point.signature.ret_types.len() > 1;
     let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
             let ty = registry.get_type(id)?;
-            let ty_layout =
-                ty.layout(registry)
-                    .map_err(|error| JitRunnerError::TypeBuilderError {
-                        type_id: id.clone(),
-                        error,
-                    })?;
+            let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
             let (layout, offset) = match acc {
                 Some(layout) => layout.extend(ty_layout)?,
@@ -88,7 +86,7 @@ where
 
     let mut return_seq = returns
         .serialize_seq(Some(entry_point.signature.ret_types.len()))
-        .map_err(JitRunnerError::SerializeError)?;
+        .map_err(make_serializer_error)?;
 
     for (id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
         let ty = registry.get_type(id)?;
@@ -104,12 +102,12 @@ where
                 registry,
                 ty,
             ))
-            .map_err(JitRunnerError::SerializeError)?;
+            .map_err(make_serializer_error)?;
 
         // TODO: Drop if necessary (ex. arrays).
     }
 
-    return_seq.end().map_err(JitRunnerError::SerializeError)
+    return_seq.end().map_err(make_serializer_error)
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>

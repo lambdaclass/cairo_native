@@ -8,7 +8,7 @@ use cairo_lang_sierra::{
 use std::{backtrace::Backtrace, fmt, ops::Deref};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Error)]
 pub struct Error<TType, TLibfunc>
 where
     TType: GenericType,
@@ -59,6 +59,23 @@ where
             backtrace: Backtrace::capture(),
             source: error.into(),
         }
+    }
+}
+
+// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
+// both implement `Debug`, which isn't the case.
+impl<TType, TLibfunc> fmt::Debug for Error<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("backtrace", &self.backtrace)
+            .field("source", &self.source)
+            .finish()
     }
 }
 
@@ -116,5 +133,47 @@ where
                 .field("error", error)
                 .finish(),
         }
+    }
+}
+
+pub fn make_type_builder_error<TType, TLibfunc>(
+    id: &ConcreteTypeId,
+) -> impl '_
+       + FnOnce(
+    <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+) -> Error<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    move |source| {
+        ErrorImpl::TypeBuilderError {
+            type_id: id.clone(),
+            error: source,
+        }
+        .into()
+    }
+}
+
+pub fn make_libfunc_builder_error<TType, TLibfunc>(
+    id: &ConcreteLibfuncId,
+) -> impl '_
+       + FnOnce(
+    <<TLibfunc as GenericLibfunc>::Concrete as LibfuncBuilder<TType, TLibfunc>>::Error,
+) -> Error<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    move |source| {
+        ErrorImpl::LibfuncBuilderError {
+            libfunc_id: id.clone(),
+            error: source,
+        }
+        .into()
     }
 }

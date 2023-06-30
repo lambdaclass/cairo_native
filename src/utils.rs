@@ -21,15 +21,15 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
     if width == 0 {
-        Layout::from_size_align(0, 1).unwrap()
+        Layout::new::<()>()
     } else if width <= 8 {
-        Layout::from_size_align(1, 1).unwrap()
+        Layout::new::<u8>()
     } else if width <= 16 {
-        Layout::from_size_align(2, 2).unwrap()
+        Layout::new::<u16>()
     } else if width <= 32 {
-        Layout::from_size_align(4, 4).unwrap()
+        Layout::new::<u32>()
     } else {
-        Layout::from_size_align(width.next_multiple_of(8) as usize >> 3, 8).unwrap()
+        Layout::array::<u64>(width.next_multiple_of(8) as usize >> 3).unwrap()
     }
 }
 
