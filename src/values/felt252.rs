@@ -8,8 +8,7 @@ use cairo_lang_sierra::{
 };
 use num_bigint::BigUint;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Number;
-use std::{alloc::Layout, fmt, ptr::NonNull, str::FromStr};
+use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -27,14 +26,10 @@ where
         .alloc_layout(Layout::from_size_align(32, 8).unwrap())
         .cast();
 
-    let value = <Number as Deserialize>::deserialize(deserializer)?;
-    let value: BigUint = value.to_string().parse().unwrap();
-    assert!(value < *PRIME);
+    let data = <[u32; 8] as Deserialize>::deserialize(deserializer)?;
+    assert!(BigUint::new(data.to_vec()) < *PRIME);
 
-    let mut bytes = value.to_bytes_le();
-    bytes.resize(32, 0);
-    ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&bytes);
-
+    ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
     Ok(ptr)
 }
 
@@ -50,8 +45,7 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    let value = BigUint::from_bytes_le(ptr.cast::<[u8; 32]>().as_ref());
-    <Number as Serialize>::serialize(&Number::from_str(&value.to_string()).unwrap(), serializer)
+    ptr.cast::<[u32; 8]>().as_ref().serialize(serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
