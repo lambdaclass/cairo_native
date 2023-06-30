@@ -1,16 +1,52 @@
-[workspace]
-members = [
-    "cli",
-    "melior-asm",
-    "melior-asm-proc",
-    "melior-next",
-    "sierra2mlir",
-    "sierra2mlir-utils",
-]
+[package]
+name = "sierra2mlir"
+version = "0.1.0"
+edition = "2021"
 
-resolver = "2"
+[[bin]]
+name = "sierra2mlir"
+required-features = ["build-cli"]
 
-[profile.ci-coverage]
+[[bin]]
+name = "sierrajit"
+required-features = ["build-cli"]
+
+[features]
+build-cli = ["clap", "serde_json", "tracing-subscriber"]
+
+[dependencies]
+bumpalo = "3.13.0"
+cairo-lang-compiler = "2.0.0-rc5"
+cairo-lang-diagnostics = "2.0.0-rc5"
+cairo-lang-defs = "2.0.0-rc5"
+cairo-lang-filesystem = "2.0.0-rc5"
+cairo-lang-lowering = "2.0.0-rc5"
+cairo-lang-sierra = "2.0.0-rc5"
+cairo-lang-sierra-generator = "2.0.0-rc5"
+id-arena = "2.2.1"
+itertools = "0.11.0"
+lazy_static = "1.4.0"
+libc = "0.2.146"
+melior = "0.9.4"
+mlir-sys = "0.2.0"
+num-bigint = { version = "0.4.3" }
+serde = { version = "1.0.164", features = ["derive"] }
+tracing = "0.1.37"
+
+# CLI dependencies
+clap = { version = "4.3.4", features = ["derive"], optional = true }
+serde_json = { version = "1.0.97", features = ["arbitrary_precision"], optional = true }
+tracing-subscriber = { version = "0.3.17", features = [
+    "env-filter",
+], optional = true }
+
+[dev-dependencies]
+serde_json = "1.0.97"
+tempfile = "3.6.0"
+
+[build-dependencies]
+cc = "1.0.79"
+
+[profile.optimized-dev]
 inherits = "dev"
 opt-level = 3
-debug = true

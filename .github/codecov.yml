@@ -3,12 +3,3 @@ coverage:
     project:
       default: # This can be anything, but it needs to exist as the name
         threshold: 5%
-
-ignore:
-  - ./examples
-  - ./docs
-  - ./dialect
-  - "./scripts"
-  - "./sierra2mlir/benches"
-  - "./sierra2mlir/tests"
-  - "./**/*.sh"

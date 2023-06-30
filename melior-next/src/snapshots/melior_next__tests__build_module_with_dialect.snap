@@ -1,8 +1,0 @@
----
-source: src/lib.rs
-assertion_line: 141
-expression: module.as_operation()
----
-module {
-}
-

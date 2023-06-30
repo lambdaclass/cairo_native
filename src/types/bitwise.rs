@@ -1,0 +1,3 @@
+//! # Bitwise type
+//!
+//! TODO

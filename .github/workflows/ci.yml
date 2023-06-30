@@ -67,17 +67,7 @@ jobs:
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          cargo-udeps-*/cargo-udeps udeps --all-targets
-
-  cairo-release:
-    name: cairo release check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install deps
-        run: sudo apt-get install curl ripgrep jq
-      - uses: actions/checkout@v3
-      - name: Check cairo release
-        run: bash .github/scripts/check-git-deps.sh '${{ secrets.GITHUB_TOKEN }}'
+          cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
 
   coverage:
     name: test and coverage
@@ -109,6 +99,6 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          #token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
           files: lcov.info
           fail_ci_if_error: true
