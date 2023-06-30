@@ -1,5 +1,6 @@
 use crate::{
     debug_info::DebugLocations,
+    error::CompileError,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
@@ -51,7 +52,7 @@ pub fn compile<TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<(), CompileError<TType, TLibfunc>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
@@ -83,7 +84,7 @@ fn compile_func<TType, TLibfunc>(
     statements: &[Statement],
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<(), CompileError<TType, TLibfunc>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
@@ -96,8 +97,7 @@ where
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
         context, module, &region, registry, function, statements, metadata,
-    )
-    .unwrap();
+    )?;
 
     tracing::debug!("Generating the function implementation.");
     let initial_state = edit_state::put_results(
@@ -106,9 +106,10 @@ where
             .params
             .iter()
             .enumerate()
-            .map(|(idx, param)| (&param.id, entry_block.argument(idx).unwrap().into())),
-    )
-    .unwrap();
+            .map(|(idx, param)| Ok((&param.id, entry_block.argument(idx)?.into())))
+            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+            .into_iter(),
+    )?;
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
@@ -134,13 +135,13 @@ where
                 registry,
                 metadata,
             )
-            .map(|ty| (ty, Location::unknown(context)))
-            .collect::<Vec<_>>(),
+            .map(|ty| Ok((ty?, Location::unknown(context))))
+            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
         ),
     );
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
-    foreach_statement_in_function(
+    foreach_statement_in_function::<_, CompileError<TType, TLibfunc>>(
         statements,
         function.entry_point,
         (initial_state, BTreeMap::<usize, usize>::new()),
@@ -156,9 +157,10 @@ where
                         .keys()
                         .sorted_by_key(|x| x.id)
                         .enumerate()
-                        .map(|(idx, var_id)| (var_id, landing_block.argument(idx).unwrap().into())),
-                )
-                .unwrap();
+                        .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
+                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+                        .into_iter(),
+                )?;
 
                 landing_block.append_operation(cf::br(
                     block,
@@ -169,21 +171,20 @@ where
                             Statement::Return(x) => x,
                         }
                         .iter(),
-                    )
-                    .unwrap()
+                    )?
                     .1,
                     Location::unknown(context),
                 ));
             }
 
-            match &statements[statement_idx.0] {
+            Ok(match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
                     tracing::trace!(
                         "Implementing the invocation statement at {statement_idx}: {}.",
                         invocation.libfunc_id
                     );
 
-                    let (state, _) = edit_state::take_args(state, invocation.args.iter()).unwrap();
+                    let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let helper = LibfuncHelper {
                         module,
@@ -205,7 +206,7 @@ where
                             .collect::<Vec<_>>(),
                     };
 
-                    let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
+                    let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     if let Some(target) = concrete_libfunc.is_function_call() {
                         if target == &function.id && state.is_empty() {
                             // TODO: Defer insertions until after the recursion has been confirmed
@@ -233,18 +234,15 @@ where
                             pre_entry_block.insert_operation_after(
                                 op1,
                                 memref::store(
-                                    op1.result(0).unwrap().into(),
-                                    op0.result(0).unwrap().into(),
+                                    op1.result(0)?.into(),
+                                    op0.result(0)?.into(),
                                     &[],
                                     Location::unknown(context),
                                 ),
                             );
 
                             metadata
-                                .insert(TailRecursionMeta::new(
-                                    op0.result(0).unwrap().into(),
-                                    &entry_block,
-                                ))
+                                .insert(TailRecursionMeta::new(op0.result(0)?.into(), &entry_block))
                                 .unwrap();
                         }
                     }
@@ -262,7 +260,10 @@ where
                             &helper,
                             metadata,
                         )
-                        .unwrap();
+                        .map_err(|error| CompileError::LibfuncBuilderError {
+                            libfunc_id: invocation.libfunc_id.clone(),
+                            error,
+                        })?;
                     assert!(block.terminator().is_some());
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
@@ -283,24 +284,23 @@ where
                                 "Mismatched number of returned values from branch."
                             );
 
-                            (
+                            Ok((
                                 edit_state::put_results(
                                     state.clone(),
                                     branch_info
                                         .results
                                         .iter()
                                         .zip(result_values.iter().copied()),
-                                )
-                                .unwrap(),
+                                )?,
                                 tailrec_state.clone(),
-                            )
+                            ))
                         })
-                        .collect()
+                        .collect::<Result<_, CompileError<TType, TLibfunc>>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, values) = edit_state::take_args(state, var_ids.iter()).unwrap();
+                    let (_, values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
                     if !tailrec_state.is_empty() {
@@ -322,8 +322,8 @@ where
                             let op2 = block.append_operation(index::cmp(
                                 context,
                                 CmpiPredicate::Eq,
-                                op0.result(0).unwrap().into(),
-                                op1.result(0).unwrap().into(),
+                                op0.result(0)?.into(),
+                                op1.result(0)?.into(),
                                 Location::unknown(context),
                             ));
 
@@ -333,12 +333,12 @@ where
                                 Location::unknown(context),
                             ));
                             let op4 = block.append_operation(index::sub(
-                                op0.result(0).unwrap().into(),
-                                op3.result(0).unwrap().into(),
+                                op0.result(0)?.into(),
+                                op3.result(0)?.into(),
                                 Location::unknown(context),
                             ));
                             block.append_operation(memref::store(
-                                op4.result(0).unwrap().into(),
+                                op4.result(0)?.into(),
                                 depth_counter,
                                 &[],
                                 Location::unknown(context),
@@ -346,7 +346,7 @@ where
 
                             block.append_operation(cf::cond_br(
                                 context,
-                                op2.result(0).unwrap().into(),
+                                op2.result(0)?.into(),
                                 &cont_block,
                                 &return_target,
                                 &[],
@@ -362,15 +362,15 @@ where
 
                     Vec::new()
                 }
-            }
+            })
         },
-    );
+    )?;
 
     pre_entry_block.append_operation(cf::br(
         &entry_block,
         &(0..entry_block.argument_count())
-            .map(|i| pre_entry_block.argument(i).unwrap().into())
-            .collect::<Vec<_>>(),
+            .map(|i| Ok(pre_entry_block.argument(i)?.into()))
+            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
         Location::unknown(context),
     ));
 
@@ -389,7 +389,7 @@ where
                     registry,
                     metadata,
                 )
-                .collect::<Vec<_>>(),
+                .collect::<Result<Vec<_>, _>>()?,
                 &extract_types(
                     context,
                     module,
@@ -397,7 +397,7 @@ where
                     registry,
                     metadata,
                 )
-                .collect::<Vec<_>>(),
+                .collect::<Result<Vec<_>, _>>()?,
             )
             .into(),
         ),
@@ -427,7 +427,7 @@ fn generate_function_structure<'c, 'a, TType, TLibfunc>(
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Box<dyn std::error::Error>>
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), CompileError<TType, TLibfunc>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
@@ -441,29 +441,32 @@ where
             .iter()
             .zip(&function.signature.param_types)
             .map(|(param, ty)| {
-                (
+                Ok((
                     &param.id,
                     registry
-                        .get_type(ty)
-                        .unwrap()
+                        .get_type(ty)?
                         .build(context, module, registry, metadata_storage)
-                        .unwrap(),
-                )
-            }),
-    )
-    .unwrap();
+                        .map_err(|error| CompileError::TypeBuilderError {
+                            type_id: ty.clone(),
+                            error,
+                        })?,
+                ))
+            })
+            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+            .into_iter(),
+    )?;
 
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
-    foreach_statement_in_function(
+    foreach_statement_in_function::<_, CompileError<TType, TLibfunc>>(
         statements,
         function.entry_point,
         initial_state,
         |statement_idx, state| {
             let block = blocks.try_insert(statement_idx.0, Block::new(&[])).unwrap();
 
-            match &statements[statement_idx.0] {
+            Ok(match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
                     tracing::trace!(
                         "Creating block for invocation statement at index {statement_idx}: {}",
@@ -471,13 +474,13 @@ where
                     );
 
                     let (state, types) =
-                        edit_state::take_args(state.clone(), invocation.args.iter()).unwrap();
+                        edit_state::take_args(state.clone(), invocation.args.iter())?;
 
                     types.into_iter().for_each(|ty| {
                         block.add_argument(ty, Location::unknown(context));
                     });
 
-                    let libfunc = registry.get_libfunc(&invocation.libfunc_id).unwrap();
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     invocation
                         .branches
                         .iter()
@@ -485,17 +488,23 @@ where
                         .map(|(branch, branch_signature)| {
                             let state = edit_state::put_results(
                                 state.clone(),
-                                branch.results.iter().zip(branch_signature.vars.iter().map(
-                                    |var_info| {
-                                        registry
-                                            .get_type(&var_info.ty)
-                                            .unwrap()
-                                            .build(context, module, registry, metadata_storage)
-                                            .unwrap()
-                                    },
-                                )),
-                            )
-                            .unwrap();
+                                branch.results.iter().zip(
+                                    branch_signature
+                                        .vars
+                                        .iter()
+                                        .map(|var_info| {
+                                            registry
+                                                .get_type(&var_info.ty)?
+                                                .build(context, module, registry, metadata_storage)
+                                                .map_err(|error| CompileError::TypeBuilderError {
+                                                    type_id: var_info.ty.clone(),
+                                                    error,
+                                                })
+                                        })
+                                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+                                        .into_iter(),
+                                ),
+                            )?;
 
                             let (prev_state, pred_count) =
                                 match predecessors.entry(statement_idx.next(&branch.target)) {
@@ -505,17 +514,16 @@ where
                             assert_eq!(prev_state, &state, "Branch target states do not match.");
                             *pred_count += 1;
 
-                            state
+                            Ok(state)
                         })
-                        .collect()
+                        .collect::<Result<_, CompileError<TType, TLibfunc>>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!(
                         "Creating block for return statement at index {statement_idx}."
                     );
 
-                    let (state, types) =
-                        edit_state::take_args(state.clone(), var_ids.iter()).unwrap();
+                    let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
                     assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
@@ -527,9 +535,9 @@ where
 
                     Vec::new()
                 }
-            }
+            })
         },
-    );
+    )?;
 
     tracing::trace!("Generating function entry block.");
     let entry_block = region.append_block(Block::new(
@@ -540,8 +548,8 @@ where
             registry,
             metadata_storage,
         )
-        .map(|ty| (ty, Location::unknown(context)))
-        .collect::<Vec<_>>(),
+        .map(|ty| Ok((ty?, Location::unknown(context))))
+        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
     ));
 
     let blocks = blocks
@@ -606,7 +614,7 @@ fn extract_types<'c, 'a, TType, TLibfunc>(
     type_ids: &'a [ConcreteTypeId],
     registry: &'a ProgramRegistry<TType, TLibfunc>,
     metadata_storage: &'a mut MetadataStorage,
-) -> impl 'a + Iterator<Item = Type<'c>>
+) -> impl 'a + Iterator<Item = Result<Type<'c>, CompileError<TType, TLibfunc>>>
 where
     'c: 'a,
     TType: GenericType,
@@ -616,21 +624,22 @@ where
 {
     type_ids.iter().map(|id| {
         registry
-            .get_type(id)
-            .map(|ty| {
-                ty.build(context, module, registry, metadata_storage)
-                    .unwrap()
+            .get_type(id)?
+            .build(context, module, registry, metadata_storage)
+            .map_err(|error| CompileError::<TType, TLibfunc>::TypeBuilderError {
+                type_id: id.clone(),
+                error,
             })
-            .unwrap()
     })
 }
 
-fn foreach_statement_in_function<S>(
+fn foreach_statement_in_function<S, E>(
     statements: &[Statement],
     entry_point: StatementIdx,
     initial_state: S,
-    mut closure: impl FnMut(StatementIdx, S) -> Vec<S>,
-) where
+    mut closure: impl FnMut(StatementIdx, S) -> Result<Vec<S>, E>,
+) -> Result<(), E>
+where
     S: Clone,
 {
     let mut queue = vec![(entry_point, initial_state)];
@@ -641,7 +650,7 @@ fn foreach_statement_in_function<S>(
             continue;
         }
 
-        let branch_states = closure(statement_idx, state);
+        let branch_states = closure(statement_idx, state)?;
 
         let branches = match &statements[statement_idx.0] {
             Statement::Invocation(x) => x.branches.as_slice(),
@@ -660,6 +669,8 @@ fn foreach_statement_in_function<S>(
                 .zip(branch_states),
         );
     }
+
+    Ok(())
 }
 
 fn generate_branching_targets<'ctx, 'this, 'a>(

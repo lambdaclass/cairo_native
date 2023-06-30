@@ -92,10 +92,8 @@ where
 {
     let value = info.c;
     let value_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
-        ?
-        .build(context, helper, registry, metadata)
-        ?;
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
     let op0 = entry.append_operation(arith::constant(
         context,
@@ -133,12 +131,7 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(
-        op0.result(0)?.into(),
-        [0, 1],
-        [&[]; 2],
-        location,
-    ));
+    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [0, 1], [&[]; 2], location));
 
     Ok(())
 }
