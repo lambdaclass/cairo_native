@@ -40,7 +40,7 @@ where
     }
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `into_box` libfunc.
 pub fn build_into_box<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -60,7 +60,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `unbox` libfunc.
 pub fn build_unbox<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
