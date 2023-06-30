@@ -1,19 +1,19 @@
-use super::{ValueBuilder, ValueSerializer};
+use super::{ValueBuilder, ValueDeserializer, ValueSerializer};
 use crate::{types::TypeBuilder, utils::debug_with};
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use serde::{ser::SerializeTuple, Deserializer, Serializer};
+use serde::{de, ser::SerializeTuple, Deserializer, Serializer};
 use std::{alloc::Layout, fmt, ptr::NonNull};
-use bumpalo::Bump;
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
-    _deserializer: D,
-    _arena: &Bump,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
-    _info: &StructConcreteType,
+    deserializer: D,
+    arena: &Bump,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    info: &StructConcreteType,
 ) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
@@ -21,7 +21,7 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    todo!()
+    deserializer.deserialize_tuple(info.members.len(), Visitor::new(arena, registry, info))
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -97,4 +97,96 @@ where
     }
 
     fmt.finish()
+}
+
+struct Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    arena: &'a Bump,
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    info: &'a StructConcreteType,
+}
+
+impl<'a, TType, TLibfunc> Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    fn new(
+        arena: &'a Bump,
+        registry: &'a ProgramRegistry<TType, TLibfunc>,
+        info: &'a StructConcreteType,
+    ) -> Self {
+        Self {
+            arena,
+            registry,
+            info,
+        }
+    }
+}
+
+impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    type Value = NonNull<()>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "A tuple containing the struct's fields")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::SeqAccess<'de>,
+    {
+        let mut layout: Option<Layout> = None;
+        let mut data = Vec::with_capacity(self.info.members.len());
+
+        type ParamDeserializer<'a, TType, TLibfunc> =
+            <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
+        for member in &self.info.members {
+            let member_ty = self.registry.get_type(member).unwrap();
+            let member_layout = member_ty.layout(self.registry);
+
+            let (new_layout, offset) = match layout {
+                Some(layout) => layout.extend(member_layout).unwrap(),
+                None => (member_layout, 0),
+            };
+            layout = Some(new_layout);
+
+            data.push((
+                member_layout,
+                offset,
+                seq.next_element_seed(ParamDeserializer::<TType, TLibfunc>::new(
+                    self.arena,
+                    self.registry,
+                    member_ty,
+                ))?
+                .unwrap(),
+            ));
+        }
+
+        let ptr = self
+            .arena
+            .alloc_layout(layout.unwrap_or(Layout::new::<()>()))
+            .cast();
+
+        for (layout, offset, member_ptr) in data {
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    member_ptr.as_ptr(),
+                    ptr.map_addr(|addr| addr.unchecked_add(offset)).as_ptr(),
+                    layout.size(),
+                );
+            }
+        }
+
+        Ok(ptr)
+    }
 }
