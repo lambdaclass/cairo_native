@@ -6,7 +6,8 @@ use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
-use std::fmt;
+use serde::{Deserializer, Serializer};
+use std::{alloc::LayoutError, fmt};
 use thiserror::Error;
 
 pub mod libfuncs;
@@ -65,6 +66,62 @@ where
                 .field("libfunc_id", libfunc_id)
                 .field("error", error)
                 .finish(),
+        }
+    }
+}
+
+#[derive(Error)]
+pub enum JitRunnerError<'de, TType, TLibfunc, D, S>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+    S: Serializer,
+{
+    #[error(transparent)]
+    LayoutError(#[from] LayoutError),
+    #[error(transparent)]
+    MlirError(#[from] melior::Error),
+    #[error(transparent)]
+    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+
+    #[error("Error building type '{type_id}': {error}")]
+    TypeBuilderError {
+        type_id: ConcreteTypeId,
+        error: <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+    },
+
+    #[error(transparent)]
+    DeserializeError(D::Error),
+    #[error(transparent)]
+    SerializeError(S::Error),
+}
+
+impl<'de, TType, TLibfunc, D, S> fmt::Debug for JitRunnerError<'de, TType, TLibfunc, D, S>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+    S: Serializer,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::LayoutError(arg0) => f.debug_tuple("LayoutError").field(arg0).finish(),
+            Self::MlirError(arg0) => f.debug_tuple("MlirError").field(arg0).finish(),
+            Self::ProgramRegistryError(arg0) => {
+                f.debug_tuple("ProgramRegistryError").field(arg0).finish()
+            }
+            Self::TypeBuilderError { type_id, error } => f
+                .debug_struct("TypeBuilderError")
+                .field("type_id", type_id)
+                .field("error", error)
+                .finish(),
+            Self::DeserializeError(arg0) => f.debug_tuple("DeserializeError").field(arg0).finish(),
+            Self::SerializeError(arg0) => f.debug_tuple("SerializeError").field(arg0).finish(),
         }
     }
 }
