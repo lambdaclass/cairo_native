@@ -30,7 +30,7 @@ Install LLVM with MLIR. You can use the official packages provided by LLVM.
 Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm directory:
 
 ```bash
-MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
+export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
 ### MacOS
