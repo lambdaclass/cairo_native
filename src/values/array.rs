@@ -25,7 +25,7 @@ pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
     deserializer.deserialize_seq(Visitor::new(arena, registry, info))
@@ -40,12 +40,12 @@ pub unsafe fn serialize<TType, TLibfunc, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
     let elem_ty = registry.get_type(&info.ty).unwrap();
 
-    let elem_layout = elem_ty.layout(registry);
+    let elem_layout = elem_ty.layout(registry).unwrap();
     let elem_stride = elem_layout.pad_to_align().size();
 
     type ParamSerializer<'a, TType, TLibfunc> =
@@ -84,7 +84,7 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     todo!()
 }
@@ -93,7 +93,7 @@ struct Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     arena: &'a Bump,
     registry: &'a ProgramRegistry<TType, TLibfunc>,
@@ -104,7 +104,7 @@ impl<'a, TType, TLibfunc> Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     fn new(
         arena: &'a Bump,
@@ -123,7 +123,7 @@ impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     type Value = NonNull<()>;
 
@@ -136,7 +136,7 @@ where
         A: de::SeqAccess<'de>,
     {
         let elem_ty = self.registry.get_type(&self.info.ty).unwrap();
-        let elem_layout = elem_ty.layout(self.registry).pad_to_align();
+        let elem_layout = elem_ty.layout(self.registry).unwrap().pad_to_align();
 
         let mut ptr: *mut NonNull<()> = null_mut();
         let mut len: u32 = 0;

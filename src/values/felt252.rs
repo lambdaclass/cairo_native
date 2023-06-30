@@ -1,5 +1,5 @@
 use super::ValueBuilder;
-use crate::types::felt252::PRIME;
+use crate::types::{felt252::PRIME, TypeBuilder};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
@@ -19,7 +19,7 @@ pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
     let ptr = arena
@@ -42,7 +42,7 @@ pub unsafe fn serialize<TType, TLibfunc, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
     ptr.cast::<[u32; 8]>().as_ref().serialize(serializer)
@@ -58,7 +58,7 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     fmt::Debug::fmt(&BigUint::from_bytes_le(ptr.cast::<[u8; 32]>().as_ref()), f)
 }

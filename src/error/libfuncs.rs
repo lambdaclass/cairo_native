@@ -17,7 +17,7 @@ pub enum Error {
 }
 
 impl From<super::CoreTypeBuilderError> for Error {
-    fn from(value: super::CoreTypeBuilderError) -> Self {
+    fn from(_value: super::CoreTypeBuilderError) -> Self {
         todo!()
     }
 }

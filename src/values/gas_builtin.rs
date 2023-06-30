@@ -7,6 +7,7 @@ use cairo_lang_sierra::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{alloc::Layout, fmt, ptr::NonNull};
+use crate::types::TypeBuilder;
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -17,7 +18,7 @@ pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
     let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
@@ -36,7 +37,7 @@ pub unsafe fn serialize<TType, TLibfunc, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
     <u64 as Serialize>::serialize(ptr.cast::<u64>().as_ref(), serializer)
@@ -52,7 +53,7 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     fmt::Debug::fmt(ptr.cast::<u64>().as_ref(), f)
 }

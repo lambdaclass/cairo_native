@@ -39,12 +39,12 @@ pub fn build<'ctx, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     // TODO: Should this just be a transparent wrapper or should it actually be a reference?
     // Reference = alloca and get the pointer, then pass the pointer around and "load" on snapshot_take
 
-    Ok(registry
+    registry
         .get_type(&info.ty)?
-        .build(context, module, registry, metadata)?)
+        .build(context, module, registry, metadata)
 }

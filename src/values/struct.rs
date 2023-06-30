@@ -18,7 +18,7 @@ pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
     deserializer.deserialize_tuple(info.members.len(), Visitor::new(arena, registry, info))
@@ -33,7 +33,7 @@ pub unsafe fn serialize<TType, TLibfunc, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
     let mut ser = serializer.serialize_tuple(info.members.len())?;
@@ -41,7 +41,7 @@ where
     let mut layout: Option<Layout> = None;
     for member_ty in &info.members {
         let member = registry.get_type(member_ty).unwrap();
-        let member_layout = member.layout(registry);
+        let member_layout = member.layout(registry).unwrap();
 
         let (new_layout, offset) = match layout {
             Some(layout) => layout.extend(member_layout).unwrap(),
@@ -71,14 +71,14 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     let mut fmt = f.debug_tuple(id.debug_name.as_deref().unwrap_or(""));
 
     let mut layout: Option<Layout> = None;
     for member_ty in &info.members {
         let member = registry.get_type(member_ty).unwrap();
-        let member_layout = member.layout(registry);
+        let member_layout = member.layout(registry).unwrap();
 
         let (new_layout, offset) = match layout {
             Some(layout) => layout.extend(member_layout).unwrap(),
@@ -133,7 +133,7 @@ impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     type Value = NonNull<()>;
 
@@ -152,7 +152,7 @@ where
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
         for member in &self.info.members {
             let member_ty = self.registry.get_type(member).unwrap();
-            let member_layout = member_ty.layout(self.registry);
+            let member_layout = member_ty.layout(self.registry).unwrap();
 
             let (new_layout, offset) = match layout {
                 Some(layout) => layout.extend(member_layout).unwrap(),

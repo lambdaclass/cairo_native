@@ -23,7 +23,7 @@ pub fn execute<'de, TType, TLibfunc, D, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
     S: Serializer,
 {
@@ -43,7 +43,7 @@ where
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
             let ty = registry.get_type(id).unwrap();
-            let ty_layout = ty.layout(registry);
+            let ty_layout = ty.layout(registry).unwrap();
 
             let (layout, offset) = match acc {
                 Some(layout) => layout.extend(ty_layout).unwrap(),

@@ -55,8 +55,8 @@ pub fn compile<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
@@ -87,8 +87,8 @@ fn compile_func<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     let region = Region::new();
     let blocks_arena = Bump::new();
@@ -431,8 +431,8 @@ fn generate_function_structure<'c, 'a, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
@@ -611,8 +611,8 @@ where
     'c: 'a,
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     type_ids.iter().map(|id| {
         registry
