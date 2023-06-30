@@ -1,4 +1,6 @@
 use crate::{
+    error::JitRunnerError,
+    libfuncs::LibfuncBuilder,
     types::TypeBuilder,
     utils::generate_function_name,
     values::{ValueBuilder, ValueDeserializer, ValueSerializer},
@@ -19,45 +21,51 @@ pub fn execute<'de, TType, TLibfunc, D, S>(
     function_id: &FunctionId,
     params: D,
     returns: S,
-) -> Result<S::Ok, Box<dyn std::error::Error>>
+) -> Result<S::Ok, JitRunnerError<'de, TType, TLibfunc, D, S>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
     S: Serializer,
 {
     let arena = Bump::new();
 
-    let entry_point = registry.get_function(function_id).unwrap();
+    let entry_point = registry.get_function(function_id)?;
     let params = params
         .deserialize_seq(ArgsVisitor {
             arena: &arena,
             registry,
             params: &entry_point.signature.param_types,
         })
-        .unwrap();
+        .map_err(JitRunnerError::DeserializeError)?;
 
     let mut complex_results = entry_point.signature.ret_types.len() > 1;
-    let (layout, offsets) = entry_point.signature.ret_types.iter().fold(
+    let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
-            let ty = registry.get_type(id).unwrap();
-            let ty_layout = ty.layout(registry).unwrap();
+            let ty = registry.get_type(id)?;
+            let ty_layout =
+                ty.layout(registry)
+                    .map_err(|error| JitRunnerError::TypeBuilderError {
+                        type_id: id.clone(),
+                        error,
+                    })?;
 
             let (layout, offset) = match acc {
-                Some(layout) => layout.extend(ty_layout).unwrap(),
+                Some(layout) => layout.extend(ty_layout)?,
                 None => (ty_layout, 0),
             };
 
             offsets.push(offset);
             complex_results |= ty.is_complex();
 
-            (Some(layout), offsets)
+            Result::<_, JitRunnerError<'de, TType, TLibfunc, D, S>>::Ok((Some(layout), offsets))
         },
-    );
+    )?;
 
-    let layout = layout.unwrap_or(Layout::from_size_align(0, 1).unwrap());
+    let layout = layout.unwrap_or(Layout::new::<()>());
     let ret_ptr = arena.alloc_layout(layout).cast::<()>();
 
     let function_name = generate_function_name(function_id);
@@ -75,17 +83,15 @@ where
     };
 
     unsafe {
-        engine
-            .invoke_packed(&function_name, &mut io_pointers)
-            .unwrap();
+        engine.invoke_packed(&function_name, &mut io_pointers)?;
     }
 
     let mut return_seq = returns
         .serialize_seq(Some(entry_point.signature.ret_types.len()))
-        .unwrap();
+        .map_err(JitRunnerError::SerializeError)?;
 
     for (id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
-        let ty = registry.get_type(id).unwrap();
+        let ty = registry.get_type(id)?;
         type ParamSerializer<'a, TType, TLibfunc> =
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
 
@@ -98,12 +104,12 @@ where
                 registry,
                 ty,
             ))
-            .unwrap();
+            .map_err(JitRunnerError::SerializeError)?;
 
         // TODO: Drop if necessary (ex. arrays).
     }
 
-    Ok(return_seq.end().unwrap())
+    return_seq.end().map_err(JitRunnerError::SerializeError)
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>
