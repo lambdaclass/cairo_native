@@ -120,7 +120,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(io::stdout()),
-            )?;
+            )
+            .unwrap();
             println!();
         }
         Some(StdioOrPath::Path(path)) => {
@@ -131,7 +132,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(&mut file),
-            )?;
+            )
+            .unwrap();
             writeln!(file)?;
         }
         None => {
