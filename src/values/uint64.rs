@@ -1,29 +1,31 @@
 use super::ValueBuilder;
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Number;
-use std::{fmt, ptr::NonNull, str::FromStr};
+use std::{alloc::Layout, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
+    arena: &Bump,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    ptr: NonNull<()>,
     _info: &InfoOnlyConcreteType,
-) -> Result<(), D::Error>
+) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    let value = <Number as Deserialize>::deserialize(deserializer)?;
-    let value: u64 = value.to_string().parse().unwrap();
-    std::ptr::write(ptr.cast::<u64>().as_mut(), value);
-    Ok(())
+    let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
+
+    let value = u64::deserialize(deserializer)?;
+    *ptr.cast::<u64>().as_mut() = value;
+
+    Ok(ptr)
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -38,8 +40,7 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    let value = ptr.cast::<u64>().as_ref();
-    <Number as Serialize>::serialize(&Number::from_str(&value.to_string()).unwrap(), serializer)
+    ptr.cast::<u64>().as_ref().serialize(serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(

@@ -99,6 +99,8 @@ where
                 ty,
             ))
             .unwrap();
+
+        // TODO: Drop if necessary (ex. arrays).
     }
 
     Ok(return_seq.end().unwrap())

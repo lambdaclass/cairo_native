@@ -1,26 +1,27 @@
-use super::{ValueBuilder, ValueSerializer};
+use super::{ValueBuilder, ValueDeserializer, ValueSerializer};
 use crate::types::TypeBuilder;
+use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use serde::{ser::SerializeSeq, Deserializer, Serializer};
+use serde::{de, ser::SerializeSeq, Deserializer, Serializer};
 use std::{fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
-    _deserializer: D,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
-    _ptr: NonNull<()>,
-    _info: &EnumConcreteType,
-) -> Result<(), D::Error>
+    deserializer: D,
+    arena: &Bump,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    info: &EnumConcreteType,
+) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    todo!()
+    deserializer.deserialize_seq(Visitor::new(arena, registry, info))
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -77,4 +78,96 @@ where
     <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
 {
     todo!()
+}
+
+struct Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    arena: &'a Bump,
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    info: &'a EnumConcreteType,
+}
+
+impl<'a, TType, TLibfunc> Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    fn new(
+        arena: &'a Bump,
+        registry: &'a ProgramRegistry<TType, TLibfunc>,
+        info: &'a EnumConcreteType,
+    ) -> Self {
+        Self {
+            arena,
+            registry,
+            info,
+        }
+    }
+}
+
+impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    type Value = NonNull<()>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "A sequence of the discriminant followed by the payload")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::SeqAccess<'de>,
+    {
+        let tag_value = seq.next_element::<usize>()?.unwrap();
+        assert!(tag_value <= self.info.variants.len());
+
+        type ParamDeserializer<'a, TType, TLibfunc> =
+            <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
+
+        let payload_ty = self
+            .registry
+            .get_type(&self.info.variants[tag_value])
+            .unwrap();
+        let payload = seq
+            .next_element_seed(ParamDeserializer::<TType, TLibfunc>::new(
+                self.arena,
+                self.registry,
+                payload_ty,
+            ))?
+            .unwrap();
+
+        let (layout, tag_layout, variant_layouts) =
+            crate::types::r#enum::get_layout_for_variants(self.registry, &self.info.variants)
+                .unwrap();
+        let ptr = self.arena.alloc_layout(layout).cast();
+
+        match tag_layout.size() {
+            1 => *unsafe { ptr.cast::<u8>().as_mut() } = tag_value as u8,
+            2 => *unsafe { ptr.cast::<u16>().as_mut() } = tag_value as u16,
+            4 => *unsafe { ptr.cast::<u32>().as_mut() } = tag_value as u32,
+            8 => *unsafe { ptr.cast::<u64>().as_mut() } = tag_value as u64,
+            _ => unreachable!(),
+        }
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                payload.as_ptr(),
+                ptr.map_addr(|addr| {
+                    addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                })
+                .as_ptr(),
+                variant_layouts[tag_value].size(),
+            );
+        };
+
+        Ok(ptr)
+    }
 }
