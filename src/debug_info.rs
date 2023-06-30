@@ -147,5 +147,5 @@ fn extract_location_from_stable_loc<'c>(
         .position_in_file(db, diagnostic_location.file_id)
         .unwrap();
 
-    Location::new(context, path.to_str().unwrap(), pos.line, pos.col)
+    Location::new(context, &path.to_string_lossy(), pos.line, pos.col)
 }
