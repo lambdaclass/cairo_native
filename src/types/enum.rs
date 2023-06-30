@@ -471,6 +471,39 @@ where
     ))
 }
 
+/// Extract layout for the default enum representation, itsdiscriminant and all its payloads.
+pub fn get_layout_for_variants<TType, TLibfunc>(
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    variants: &[ConcreteTypeId],
+) -> Result<(Layout, Layout, Vec<Layout>), std::convert::Infallible>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder,
+{
+    let tag_bits = variants.len().next_power_of_two().trailing_zeros();
+    let tag_layout = get_integer_layout(tag_bits);
+
+    let mut layout = tag_layout;
+    let mut output = Vec::with_capacity(variants.len());
+    for variant in variants {
+        let concrete_payload_ty = registry.get_type(variant).unwrap();
+
+        let payload_layout = concrete_payload_ty.layout(registry);
+
+        let full_layout = tag_layout.extend(payload_layout).unwrap().0;
+        layout = Layout::from_size_align(
+            layout.size().max(full_layout.size()),
+            layout.align().max(full_layout.align()),
+        )
+        .unwrap();
+
+        output.push(payload_layout);
+    }
+
+    Ok((layout, tag_layout, output))
+}
+
 /// Extract the type and layout for the default enum representation, its discriminant and all its
 /// payloads.
 pub fn get_type_for_variants<'ctx, TType, TLibfunc>(
