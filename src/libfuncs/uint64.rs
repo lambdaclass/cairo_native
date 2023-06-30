@@ -1,7 +1,14 @@
 //! # `u64`-related libfuncs
 
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         int::{
@@ -39,12 +46,12 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &Uint64Concrete,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
     match selector {
         UintConcrete::Const(info) => {
@@ -76,26 +83,24 @@ pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &UintConstConcreteLibfunc<Uint64Traits>,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
     let value = info.c;
     let value_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
     let op0 = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
         location,
     ));
-    entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
 
     Ok(())
 }
@@ -108,15 +113,15 @@ pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
-    let arg0: Value = entry.argument(0).unwrap().into();
-    let arg1: Value = entry.argument(1).unwrap().into();
+    let arg0: Value = entry.argument(0)?.into();
+    let arg1: Value = entry.argument(1)?.into();
 
     let op0 = entry.append_operation(arith::cmpi(
         context,
@@ -126,12 +131,7 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(
-        op0.result(0).unwrap().into(),
-        [0, 1],
-        [&[]; 2],
-        location,
-    ));
+    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [0, 1], [&[]; 2], location));
 
     Ok(())
 }
@@ -144,21 +144,21 @@ pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
-    let arg0: Value = entry.argument(0).unwrap().into();
+    let arg0: Value = entry.argument(0)?.into();
 
     let op = entry.append_operation(arith::constant(
         context,
         IntegerAttribute::new(0, arg0.r#type()).into(),
         location,
     ));
-    let const_0 = op.result(0).unwrap().into();
+    let const_0 = op.result(0)?.into();
 
     let op = entry.append_operation(arith::cmpi(
         context,
@@ -167,7 +167,7 @@ where
         const_0,
         location,
     ));
-    let condition = op.result(0).unwrap().into();
+    let condition = op.result(0)?.into();
 
     entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
 
@@ -182,21 +182,21 @@ pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
-    let lhs: Value = entry.argument(0).unwrap().into();
-    let rhs: Value = entry.argument(1).unwrap().into();
+    let lhs: Value = entry.argument(0)?.into();
+    let rhs: Value = entry.argument(1)?.into();
 
     let op = entry.append_operation(arith::divui(lhs, rhs, location));
 
-    let result_div = op.result(0).unwrap().into();
+    let result_div = op.result(0)?.into();
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
-    let result_rem = op.result(0).unwrap().into();
+    let result_rem = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[result_div, result_rem], location));
 
@@ -211,16 +211,16 @@ pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     info: &UintOperationConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
 {
-    let range_check: Value = entry.argument(0).unwrap().into();
-    let lhs: Value = entry.argument(1).unwrap().into();
-    let rhs: Value = entry.argument(2).unwrap().into();
+    let range_check: Value = entry.argument(0)?.into();
+    let lhs: Value = entry.argument(1)?.into();
+    let rhs: Value = entry.argument(2)?.into();
 
     let op_name = match info.operator {
         IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
@@ -241,7 +241,7 @@ where
             .add_results(&[result_type])
             .build(),
     );
-    let result = op.result(0).unwrap().into();
+    let result = op.result(0)?.into();
 
     let op = entry.append_operation(llvm::extract_value(
         context,
@@ -250,7 +250,7 @@ where
         values_type,
         location,
     ));
-    let op_result = op.result(0).unwrap().into();
+    let op_result = op.result(0)?.into();
 
     let op = entry.append_operation(llvm::extract_value(
         context,
@@ -259,7 +259,7 @@ where
         IntegerType::new(context, 1).into(),
         location,
     ));
-    let op_overflow = op.result(0).unwrap().into();
+    let op_overflow = op.result(0)?.into();
 
     entry.append_operation(helper.cond_br(
         op_overflow,

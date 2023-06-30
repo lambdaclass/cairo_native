@@ -5,7 +5,10 @@
 //! [a prime number](struct@self::PRIME).
 
 use super::TypeBuilder;
-use crate::metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage};
+use crate::{
+    error::types::{Error, Result},
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+};
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -40,11 +43,11 @@ pub fn build<'ctx, TType, TLibfunc>(
     _registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     _info: &InfoOnlyConcreteType,
-) -> Result<Type<'ctx>, std::convert::Infallible>
+) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
 {
     match metadata.get::<PrimeModuloMeta<Felt252>>() {
         Some(x) => assert_eq!(x.prime(), &*PRIME),
