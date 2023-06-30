@@ -33,8 +33,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     // TODO: Should this act like dup like it does now? or are there special requirements. So far it seems to work.
     // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.

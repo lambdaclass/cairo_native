@@ -60,17 +60,15 @@ pub fn build<'ctx, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let fields: Vec<_> = info
         .members
         .iter()
         .map(|field| {
-            Result::Ok(
-                registry
+            registry
                     .get_type(field)?
-                    .build(context, module, registry, metadata)?,
-            )
+                    .build(context, module, registry, metadata)
         })
         .try_collect()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);

@@ -1,5 +1,5 @@
 use super::{ValueBuilder, ValueDeserializer, ValueSerializer};
-use crate::types::TypeBuilder;
+use crate::{error::CoreTypeBuilderError, types::TypeBuilder};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
@@ -18,7 +18,8 @@ pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
     deserializer.deserialize_seq(Visitor::new(arena, registry, info))
@@ -33,7 +34,8 @@ pub unsafe fn serialize<TType, TLibfunc, S>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
     let tag_layout = crate::utils::get_integer_layout(
@@ -50,7 +52,7 @@ where
     };
 
     let payload_ty = registry.get_type(&info.variants[tag_value]).unwrap();
-    let payload_layout = payload_ty.layout(registry);
+    let payload_layout = payload_ty.layout(registry).unwrap();
 
     type ParamSerializer<'a, TType, TLibfunc> =
         <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
@@ -75,7 +77,8 @@ pub unsafe fn debug_fmt<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
 {
     todo!()
 }
@@ -84,7 +87,7 @@ struct Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
     arena: &'a Bump,
     registry: &'a ProgramRegistry<TType, TLibfunc>,
@@ -95,7 +98,8 @@ impl<'a, TType, TLibfunc> Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
 {
     fn new(
         arena: &'a Bump,
@@ -114,7 +118,8 @@ impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
 {
     type Value = NonNull<()>;
 

@@ -29,7 +29,7 @@ pub fn build<'ctx, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     Ok(IntegerType::new(context, 64).into())
 }

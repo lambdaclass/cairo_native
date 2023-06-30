@@ -1,7 +1,14 @@
 //! # Box libfuncs
 
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         boxing::BoxConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc, GenericLibfunc,
@@ -23,12 +30,12 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &BoxConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
         BoxConcreteLibfunc::Into(info) => {
@@ -49,12 +56,12 @@ pub fn build_into_box<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
     Ok(())
@@ -69,12 +76,12 @@ pub fn build_unbox<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
     Ok(())

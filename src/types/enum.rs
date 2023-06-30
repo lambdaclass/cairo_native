@@ -435,7 +435,7 @@ pub fn build<'ctx, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let (_, (tag_ty, tag_layout), variant_tys) =
         get_type_for_variants(context, module, registry, metadata, &info.variants)?;
@@ -478,7 +478,7 @@ pub fn get_layout_for_variants<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);
@@ -514,7 +514,7 @@ pub fn get_type_for_variants<'ctx, TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);

@@ -2,7 +2,7 @@
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
-use crate::{metadata::MetadataStorage, utils::get_integer_layout};
+use crate::{error::CoreTypeBuilderError, metadata::MetadataStorage, utils::get_integer_layout};
 use cairo_lang_sierra::{
     extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
@@ -48,34 +48,27 @@ pub mod uninitialized;
 ///
 /// All possible Sierra types must implement it. It is already implemented for all the core Sierra
 /// types, contained in [CoreTypeConcrete].
-pub trait TypeBuilder {
+pub trait TypeBuilder<TType, TLibfunc>
+where
+    TType: GenericType<Concrete = Self>,
+    TLibfunc: GenericLibfunc,
+{
     /// Error type returned by this trait's methods.
     type Error: Error;
 
     /// Build the MLIR type.
-    fn build<'ctx, TType, TLibfunc>(
+    fn build<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
-    ) -> Result<Type<'ctx>, Self::Error>
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder;
+    ) -> Result<Type<'ctx>, Self::Error>;
 
     /// Generate the layout of the MLIR type.
     ///
     /// Used in both the compiler and the interface when calling the compiled code.
-    fn layout<TType, TLibfunc>(
-        &self,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-    ) -> Result<Layout, Self::Error>
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder;
+    fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error>;
 
     /// If the type is a variant type, return all possible variants.
     ///
@@ -83,21 +76,20 @@ pub trait TypeBuilder {
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
 }
 
-impl TypeBuilder for CoreTypeConcrete {
-    type Error = crate::error::CoreTypeBuilderError;
+impl<TType, TLibfunc> TypeBuilder<TType, TLibfunc> for CoreTypeConcrete
+where
+    TType: GenericType<Concrete = Self>,
+    TLibfunc: GenericLibfunc,
+{
+    type Error = CoreTypeBuilderError;
 
-    fn build<'ctx, TType, TLibfunc>(
+    fn build<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
-    ) -> Result<Type<'ctx>, Self::Error>
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder,
-    {
+    ) -> Result<Type<'ctx>, Self::Error> {
         match self {
             Self::Array(info) => self::array::build(context, module, registry, metadata, info),
             Self::Bitwise(_) => todo!(),
@@ -140,15 +132,7 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn layout<TType, TLibfunc>(
-        &self,
-        registry: &ProgramRegistry<TType, TLibfunc>,
-    ) -> Result<Layout, Self::Error>
-    where
-        TType: GenericType<Concrete = Self>,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder,
-    {
+    fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error> {
         Ok(match self {
             CoreTypeConcrete::Array(_) => {
                 Layout::new::<*mut ()>()
@@ -158,7 +142,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     .0
             }
             CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(info) => registry.get_type(&info.ty).unwrap().layout(registry),
+            CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
@@ -171,9 +155,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
-            CoreTypeConcrete::NonZero(info) => {
-                registry.get_type(&info.ty).unwrap().layout(registry)
-            }
+            CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
             CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -210,9 +192,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Snapshot(info) => {
-                registry.get_type(&info.ty).unwrap().layout(registry)
-            }
+            CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
         })
     }
 
