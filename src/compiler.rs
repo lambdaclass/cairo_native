@@ -1,6 +1,9 @@
 use crate::{
     debug_info::DebugLocations,
-    error::CompileError,
+    error::{
+        compile::{make_libfunc_builder_error, make_type_builder_error},
+        CompileError,
+    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
@@ -260,10 +263,7 @@ where
                             &helper,
                             metadata,
                         )
-                        .map_err(|error| CompileError::LibfuncBuilderError {
-                            libfunc_id: invocation.libfunc_id.clone(),
-                            error,
-                        })?;
+                        .map_err(make_libfunc_builder_error(&invocation.libfunc_id))?;
                     assert!(block.terminator().is_some());
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
@@ -446,10 +446,7 @@ where
                     registry
                         .get_type(ty)?
                         .build(context, module, registry, metadata_storage)
-                        .map_err(|error| CompileError::TypeBuilderError {
-                            type_id: ty.clone(),
-                            error,
-                        })?,
+                        .map_err(make_type_builder_error(ty))?,
                 ))
             })
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
@@ -496,10 +493,7 @@ where
                                             registry
                                                 .get_type(&var_info.ty)?
                                                 .build(context, module, registry, metadata_storage)
-                                                .map_err(|error| CompileError::TypeBuilderError {
-                                                    type_id: var_info.ty.clone(),
-                                                    error,
-                                                })
+                                                .map_err(make_type_builder_error(&var_info.ty))
                                         })
                                         .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
                                         .into_iter(),
@@ -626,10 +620,7 @@ where
         registry
             .get_type(id)?
             .build(context, module, registry, metadata_storage)
-            .map_err(|error| CompileError::<TType, TLibfunc>::TypeBuilderError {
-                type_id: id.clone(),
-                error,
-            })
+            .map_err(make_type_builder_error(id))
     })
 }
 
