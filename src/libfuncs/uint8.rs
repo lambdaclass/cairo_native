@@ -279,6 +279,11 @@ mod test {
         let mut bytes = [0u8; 32];
         bytes[..16].copy_from_slice(&n.to_le_bytes());
 
+        // The following transmute is safe because:
+        //   - It transmutes between a slice of `Copy`.
+        //   - Each element is a primitive which is valid no matter its underlying data.
+        //   - The slices have the same size.
+        //   - Their alignment is respected by using `transmute_copy()`.
         let data = unsafe { std::mem::transmute_copy::<_, [u32; 8]>(&bytes) };
         json!([(), [1, [[], [data]]]])
     }
