@@ -67,8 +67,8 @@ where
         .iter()
         .map(|field| {
             registry
-                    .get_type(field)?
-                    .build(context, module, registry, metadata)
+                .get_type(field)?
+                .build(context, module, registry, metadata)
         })
         .try_collect()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);

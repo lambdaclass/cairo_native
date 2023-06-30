@@ -1,4 +1,5 @@
 use super::ValueBuilder;
+use crate::types::TypeBuilder;
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
@@ -6,7 +7,6 @@ use cairo_lang_sierra::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{alloc::Layout, ptr::NonNull};
-use crate::types::TypeBuilder;
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,

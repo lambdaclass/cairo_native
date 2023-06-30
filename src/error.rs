@@ -1,4 +1,70 @@
 pub use self::{libfuncs::Error as CoreLibfuncBuilderError, types::Error as CoreTypeBuilderError};
+use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
+use cairo_lang_sierra::{
+    edit_state::EditStateError,
+    extensions::{GenericLibfunc, GenericType},
+    ids::{ConcreteLibfuncId, ConcreteTypeId},
+    program_registry::ProgramRegistryError,
+};
+use std::fmt;
+use thiserror::Error;
 
 pub mod libfuncs;
 pub mod types;
+
+#[derive(Error)]
+pub enum CompileError<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    #[error(transparent)]
+    EditStateError(#[from] EditStateError),
+    #[error(transparent)]
+    MlirError(#[from] melior::Error),
+    #[error(transparent)]
+    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+
+    #[error("Error building type '{type_id}': {error}")]
+    TypeBuilderError {
+        type_id: ConcreteTypeId,
+        error: <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+    },
+    #[error("Error building type '{libfunc_id}': {error}")]
+    LibfuncBuilderError {
+        libfunc_id: ConcreteLibfuncId,
+        error: <<TLibfunc as GenericLibfunc>::Concrete as LibfuncBuilder<TType, TLibfunc>>::Error,
+    },
+}
+
+// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
+// both implement `Debug`, which isn't the case.
+impl<TType, TLibfunc> fmt::Debug for CompileError<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EditStateError(arg0) => f.debug_tuple("EditStateError").field(arg0).finish(),
+            Self::MlirError(arg0) => f.debug_tuple("MlirError").field(arg0).finish(),
+            Self::ProgramRegistryError(arg0) => {
+                f.debug_tuple("ProgramRegistryError").field(arg0).finish()
+            }
+            Self::TypeBuilderError { type_id, error } => f
+                .debug_struct("TypeBuilderError")
+                .field("type_id", type_id)
+                .field("error", error)
+                .finish(),
+            Self::LibfuncBuilderError { libfunc_id, error } => f
+                .debug_struct("LibfuncBuilderError")
+                .field("libfunc_id", libfunc_id)
+                .field("error", error)
+                .finish(),
+        }
+    }
+}
