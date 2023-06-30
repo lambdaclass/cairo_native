@@ -530,19 +530,19 @@ mod test {
 
     #[test]
     fn run_get() {
-        let result = run_cairo! { run_test() in mod {
+        let result = run_cairo! { run_test(()) in mod {
             use array::ArrayTrait;
 
-            fn run_test() -> u32 {
+            fn run_test() -> (u32, u32, u32, u32) {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
                 numbers.append(3_u32);
                 numbers.append(2_u32);
                 numbers.append(1_u32);
-                *numbers.at(1)
+                (*numbers.at(0), *numbers.at(1), *numbers.at(2), *numbers.at(3))
             }
         }};
 
-        assert_eq!(result, json!([3]));
+        assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
     }
 }
