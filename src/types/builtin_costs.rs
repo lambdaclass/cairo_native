@@ -3,7 +3,10 @@
 //! TODO
 
 use super::TypeBuilder;
-use crate::metadata::MetadataStorage;
+use crate::{
+    error::types::{Error, Result},
+    metadata::MetadataStorage,
+};
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -23,11 +26,11 @@ pub fn build<'ctx, TType, TLibfunc>(
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
     _info: &InfoOnlyConcreteType,
-) -> Result<Type<'ctx>, std::convert::Infallible>
+) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<Error = Error>,
 {
     Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
 }
