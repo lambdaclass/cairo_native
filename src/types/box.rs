@@ -41,9 +41,7 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    Ok(registry
-        .get_type(&info.ty)
-        .unwrap()
+    registry
+        .get_type(&info.ty)?
         .build(context, module, registry, metadata)
-        .unwrap())
 }

@@ -63,7 +63,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 
@@ -83,7 +83,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 

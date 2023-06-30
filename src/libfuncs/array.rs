@@ -389,25 +389,19 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let array_ty = registry
-        .get_type(&info.param_signatures()[1].ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
+        .get_type(&info.param_signatures()[1].ty)?
+        .build(context, helper, registry, metadata)?;
 
-    let elem_concrete_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[1].ty)
-        .unwrap();
+    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
     let elem_layout = elem_concrete_ty.layout(registry)?;
-    let elem_ty = elem_concrete_ty
-        .build(context, helper, registry, metadata)
-        .unwrap();
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let range_check = entry.argument(0).unwrap().into();
-    let array_val = entry.argument(1).unwrap().into();
-    let index_val = entry.argument(2).unwrap().into();
+    let range_check = entry.argument(0)?.into();
+    let array_val = entry.argument(1)?.into();
+    let index_val = entry.argument(2)?.into();
 
     let op = entry.append_operation(llvm::extract_value(
         context,
@@ -416,7 +410,7 @@ where
         len_ty,
         location,
     ));
-    let len: Value = op.result(0).unwrap().into();
+    let len: Value = op.result(0)?.into();
 
     let op = entry.append_operation(arith::cmpi(
         context,
@@ -425,7 +419,7 @@ where
         len,
         location,
     ));
-    let is_oob = op.result(0).unwrap().into();
+    let is_oob = op.result(0)?.into();
 
     let block_not_oob = helper.append_block(Block::new(&[]));
     let block_oob = helper.append_block(Block::new(&[]));
@@ -449,7 +443,7 @@ where
         ptr_ty,
         location,
     ));
-    let array_ptr = op.result(0).unwrap().into();
+    let array_ptr = op.result(0)?.into();
 
     let op = block_not_oob.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
@@ -461,7 +455,7 @@ where
             .add_results(&[ptr_ty])
             .build(),
     );
-    let elem_ptr = op.result(0).unwrap().into();
+    let elem_ptr = op.result(0)?.into();
 
     let op = block_not_oob.append_operation(llvm::load(
         context,
@@ -469,11 +463,11 @@ where
         elem_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            elem_layout.align().try_into().unwrap(),
+            elem_layout.align().try_into()?,
             IntegerType::new(context, 64).into(),
         ))),
     ));
-    let value = op.result(0).unwrap().into();
+    let value = op.result(0)?.into();
     block_not_oob.append_operation(helper.br(0, &[range_check, value], location));
 
     Ok(())
