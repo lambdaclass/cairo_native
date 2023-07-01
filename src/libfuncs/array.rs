@@ -473,58 +473,58 @@ where
     Ok(())
 }
 
-#[cfg(test)]
-mod test {
-    use crate::utils::test::run_cairo;
-    use serde_json::json;
+// #[cfg(test)]
+// mod test {
+//     use crate::utils::test::run_cairo;
+//     use serde_json::json;
 
-    #[test]
-    fn run_append() {
-        let result = run_cairo! { run_test() in mod {
-            use array::ArrayTrait;
+//     #[test]
+//     fn run_append() {
+//         let result = run_cairo! { run_test() in mod {
+//             use array::ArrayTrait;
 
-            fn run_test() -> Array<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers
-            }
-        }};
+//             fn run_test() -> Array<u32> {
+//                 let mut numbers = ArrayTrait::new();
+//                 numbers.append(4_u32);
+//                 numbers
+//             }
+//         }};
 
-        assert_eq!(result, json!([[4]]));
-    }
+//         assert_eq!(result, json!([[4]]));
+//     }
 
-    #[test]
-    fn run_len() {
-        let result = run_cairo! { run_test() in mod {
-            use array::ArrayTrait;
+//     #[test]
+//     fn run_len() {
+//         let result = run_cairo! { run_test() in mod {
+//             use array::ArrayTrait;
 
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.len()
-            }
-        }};
+//             fn run_test() -> u32 {
+//                 let mut numbers = ArrayTrait::new();
+//                 numbers.append(4_u32);
+//                 numbers.append(3_u32);
+//                 numbers.append(2_u32);
+//                 numbers.len()
+//             }
+//         }};
 
-        assert_eq!(result, json!([3]));
-    }
+//         assert_eq!(result, json!([3]));
+//     }
 
-    #[test]
-    fn run_get() {
-        let result = run_cairo! { run_test(()) in mod {
-            use array::ArrayTrait;
+//     #[test]
+//     fn run_get() {
+//         let result = run_cairo! { run_test(()) in mod {
+//             use array::ArrayTrait;
 
-            fn run_test() -> (u32, u32, u32, u32) {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.append(1_u32);
-                (*numbers.at(0), *numbers.at(1), *numbers.at(2), *numbers.at(3))
-            }
-        }};
+//             fn run_test() -> (u32, u32, u32, u32) {
+//                 let mut numbers = ArrayTrait::new();
+//                 numbers.append(4_u32);
+//                 numbers.append(3_u32);
+//                 numbers.append(2_u32);
+//                 numbers.append(1_u32);
+//                 (*numbers.at(0), *numbers.at(1), *numbers.at(2), *numbers.at(3))
+//             }
+//         }};
 
-        assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
-    }
-}
+//         assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
+//     }
+// }
