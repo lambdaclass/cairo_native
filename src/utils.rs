@@ -29,7 +29,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 32 {
         Layout::new::<u32>()
     } else {
-        Layout::array::<u64>(width.next_multiple_of(8) as usize >> 3).unwrap()
+        Layout::array::<u64>(width.next_multiple_of(64) as usize >> 6).unwrap()
     }
 }
 
@@ -54,6 +54,114 @@ where
     FmtWrapper(fmt)
 }
 
+macro_rules! mlir_asm {
+    (
+        $context:expr, $block:expr, $location:expr =>
+            $( ; $( $( $ret:ident ),+ = )? $op:literal
+                ( $( $( $arg:expr ),+ $(,)? )? ) // Operands.
+                $( [ $( $( ^ $successor:ident $( ( $( $( $successor_arg:expr ),+ $(,)? )? ) )? ),+ $(,)? )? ] )? // Successors.
+                $( < { $( $( $prop_name:pat_param = $prop_value:expr ),+ $(,)? )? } > )? // Properties.
+                $( ( $( $( $region:expr ),+ $(,)? )? ) )? // Regions.
+                $( { $( $( $attr_name:literal = $attr_value:expr ),+ $(,)? )? } )? // Attributes.
+                : $args_ty:tt -> $rets_ty:tt // Signature.
+            )*
+    ) => { $(
+        #[allow(unused_mut)]
+        $( let $crate::utils::codegen_ret_decl!($($ret),+) = )? {
+            #[allow(unused_variables)]
+            let context = $context;
+            let mut builder = melior::ir::operation::OperationBuilder::new($op, $location);
+
+            // Process operands.
+            $( let builder = builder.add_operands(&[$( $arg, )+]); )?
+
+            // TODO: Process successors.
+            // TODO: Process properties.
+            // TODO: Process regions.
+
+            // Process attributes.
+            $( $(
+                let builder = $crate::utils::codegen_attributes!(context, builder => $($attr_name = $attr_value),+);
+            )? )?
+
+            // Process signature.
+            // #[cfg(debug_assertions)]
+            // $crate::utils::codegen_signature!( PARAMS $args_ty );
+            let builder = $crate::utils::codegen_signature!( RETS builder => $rets_ty );
+
+            let op = $block.append_operation(builder.build());
+            $( $crate::utils::codegen_ret_extr!(op => $($ret),+) )?
+        };
+    )* };
+}
+pub(crate) use mlir_asm;
+
+macro_rules! codegen_attributes {
+    // Macro entry points.
+    ( $context:ident, $builder:ident => $name:literal = $value:expr ) => {
+        $builder.add_attributes(&[
+            $crate::utils::codegen_attributes!(INTERNAL $context, $builder => $name = $value),
+        ])
+    };
+    ( $context:ident, $builder:ident => $( $name:literal = $value:expr ),+ ) => {
+        $builder.add_attributes(&[
+            $( $crate::utils::codegen_attributes!(INTERNAL $context, $builder => $name = $value), )+
+        ])
+    };
+
+    ( INTERNAL $context:ident, $builder:ident => $name:literal = $value:expr ) => {
+        (
+            melior::ir::Identifier::new($context, $name),
+            $value,
+        )
+    };
+}
+pub(crate) use codegen_attributes;
+
+macro_rules! codegen_signature {
+    ( PARAMS ) => {
+        // TODO: Check operand types.
+    };
+
+    ( RETS $builder:ident => $ret_ty:expr ) => {
+        $builder.add_results(&[$ret_ty])
+    };
+    ( RETS $builder:ident => $( $ret_ty:expr ),+ $(,)? ) => {
+        $builder.add_results(&[$($ret_ty),+])
+    };
+}
+pub(crate) use codegen_signature;
+
+macro_rules! codegen_ret_decl {
+    // Macro entry points.
+    ( $ret:ident ) => { $ret };
+    ( $( $ret:ident ),+ ) => {
+        ( $( codegen_ret_decl!($ret) ),+ )
+    };
+}
+pub(crate) use codegen_ret_decl;
+
+macro_rules! codegen_ret_extr {
+    // Macro entry points.
+    ( $op:ident => $ret:ident ) => {{
+        melior::ir::Value::from($op.result(0)?)
+    }};
+    ( $op:ident => $( $ret:ident ),+ ) => {{
+        let mut idx = 0;
+        ( $( codegen_ret_extr!(INTERNAL idx, $op => $ret) ),+ )
+    }};
+
+    // Internal entry points.
+    ( INTERNAL $count:ident, $op:ident => $ret:ident ) => {
+        {
+            let idx = $count;
+            $count += 1;
+            melior::ir::Value::from($op.result(idx)?)
+        }
+    };
+}
+pub(crate) use codegen_ret_extr;
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -64,6 +172,7 @@ pub mod test {
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
+        program::Program,
         program_registry::ProgramRegistry,
     };
     use melior::{
@@ -75,56 +184,53 @@ pub mod test {
     };
     use std::{env::var, fs, path::Path, sync::Arc};
 
-    macro_rules! run_cairo {
-        ( $entry_point:ident( $( $args:tt ),* ) in mod { $( $program:tt )+ } ) => {
-            $crate::utils::test::run_cairo_str(
-                stringify!($($program)+),
-                stringify!($entry_point),
-                json!([$($args),*]),
-            )
+    macro_rules! load_cairo {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_cairo_str(stringify!($($program)+))
         };
     }
-    pub(crate) use run_cairo;
+    pub(crate) use load_cairo;
 
-    pub fn run_cairo_str(
-        program_str: &str,
+    pub fn load_cairo_str(program_str: &str) -> (String, Program) {
+        let mut program_file = tempfile::Builder::new()
+            .prefix("test_")
+            .suffix(".cairo")
+            .tempfile()
+            .unwrap();
+        fs::write(&mut program_file, program_str).unwrap();
+
+        let mut db = RootDatabase::default();
+        init_dev_corelib(
+            &mut db,
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+        );
+        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+        let program = Arc::unwrap_or_clone(
+            compile_prepared_db(
+                &mut db,
+                main_crate_ids,
+                CompilerConfig {
+                    replace_ids: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap(),
+        );
+
+        let module_name = program_file.path().with_extension("");
+        let module_name = module_name.file_name().unwrap().to_str().unwrap();
+        (module_name.to_string(), program)
+    }
+
+    pub fn run_program(
+        program: &(String, Program),
         entry_point: &str,
         args: serde_json::Value,
     ) -> serde_json::Value {
-        let (program, entry_point) = {
-            let mut program_file = tempfile::Builder::new()
-                .prefix("test_")
-                .suffix(".cairo")
-                .tempfile()
-                .unwrap();
-            fs::write(&mut program_file, program_str).unwrap();
+        let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
+        let program = &program.1;
 
-            let mut db = RootDatabase::default();
-            init_dev_corelib(
-                &mut db,
-                Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
-            );
-            let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-            let program = Arc::unwrap_or_clone(
-                compile_prepared_db(
-                    &mut db,
-                    main_crate_ids,
-                    CompilerConfig {
-                        replace_ids: true,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
-            );
-
-            let module_name = program_file.path().with_extension("");
-            let module_name = module_name.file_name().unwrap().to_str().unwrap();
-            (
-                program,
-                format!("{module_name}::{module_name}::{entry_point}"),
-            )
-        };
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
             .expect("Could not create the test program registry.");
 
         let context = Context::new();
@@ -142,7 +248,7 @@ pub mod test {
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
             &module,
-            &program,
+            program,
             &registry,
             &mut metadata,
             None,
@@ -151,7 +257,8 @@ pub mod test {
 
         assert!(
             module.as_operation().verify(),
-            "Test program generated invalid MLIR."
+            "Test program generated invalid MLIR:\n{}",
+            module.as_operation()
         );
 
         let pass_manager = PassManager::new(&context);
