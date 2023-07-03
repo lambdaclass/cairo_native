@@ -14,6 +14,7 @@ use std::{
     collections::HashMap,
 };
 
+pub mod memmove_bindings;
 pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod tail_recursion;

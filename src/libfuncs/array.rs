@@ -6,7 +6,10 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::{
+        memmove_bindings::MemmoveBindingsMeta, realloc_bindings::ReallocBindingsMeta,
+        MetadataStorage,
+    },
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -20,18 +23,15 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, func,
+        cf,
         llvm::{self, LoadStoreOptions},
         scf,
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, FlatSymbolRefAttribute,
-            IntegerAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Region, Value,
+        Block, Identifier, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -59,7 +59,9 @@ where
         ArrayConcreteLibfunc::Append(info) => {
             build_append(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::PopFront(_) => todo!(),
+        ArrayConcreteLibfunc::PopFront(info) => {
+            build_pop_front(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
@@ -243,11 +245,10 @@ where
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             );
-            let op11 = block.append_operation(func::call(
+            let op11 = block.append_operation(ReallocBindingsMeta::realloc(
                 context,
-                FlatSymbolRefAttribute::new(context, "realloc"),
-                &[op10.result(0)?.into(), op9.result(0)?.into()],
-                &[llvm::r#type::opaque_pointer(context)],
+                op10.result(0)?.into(),
+                op9.result(0)?.into(),
                 location,
             ));
             let op12 = block.append_operation(
@@ -473,6 +474,224 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `array_get` libfunc.
+pub fn build_pop_front<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    if metadata.get::<MemmoveBindingsMeta>().is_none() {
+        metadata.insert(MemmoveBindingsMeta::new(context, helper));
+    }
+
+    let array_ty = registry
+        .get_type(&info.param_signatures()[0].ty)?
+        .build(context, helper, registry, metadata)?;
+
+    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
+    let elem_layout = elem_concrete_ty.layout(registry)?;
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+
+    let elem_stride = registry
+        .get_type(&info.ty)?
+        .layout(registry)?
+        .pad_to_align()
+        .size();
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let array_val = entry.argument(0)?.into();
+
+    // get len
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let len: Value = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, len.r#type()).into(),
+        location,
+    ));
+    let const_0 = op.result(0)?.into();
+
+    // check if array is empty
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        len,
+        const_0,
+        location,
+    ));
+    let is_empty = op.result(0)?.into();
+
+    let block_not_empty = helper.append_block(Block::new(&[]));
+    let block_empty = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_empty,
+        block_empty,
+        block_not_empty,
+        &[],
+        &[],
+        location,
+    ));
+
+    // empty branch
+    block_empty.append_operation(helper.br(1, &[array_val], location));
+
+    // non empty branch
+
+    // get ptr
+    let op = block_not_empty.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        ptr_ty,
+        location,
+    ));
+    let array_ptr = op.result(0)?.into();
+
+    // get the first elem
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, const_0])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let elem_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::load(
+        context,
+        elem_ptr,
+        elem_ty,
+        location,
+        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
+            elem_layout.align().try_into()?,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
+    let elem_value = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(1, len.r#type()).into(),
+        location,
+    ));
+    let const_1 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, const_1])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let array_ptr_src = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::subi(len, const_1, location));
+    let len_min_1_i32 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::extui(
+        len_min_1_i32,
+        IntegerType::new(context, 64).into(),
+        location,
+    ));
+    let len_min_1 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(
+            elem_stride.try_into()?,
+            IntegerType::new(context, 64).into(),
+        )
+        .into(),
+        location,
+    ));
+    let elem_stride_val = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::muli(len_min_1, elem_stride_val, location));
+    let elems_size = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[array_ptr])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build(),
+    );
+    let array_opaque_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[array_ptr_src])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build(),
+    );
+    let array_ptr_src_opaque = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(MemmoveBindingsMeta::memmove(
+        context,
+        array_opaque_ptr,
+        array_ptr_src_opaque,
+        elems_size,
+        location,
+    ));
+    let array_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[array_ptr])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let array_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::insert_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        array_ptr,
+        location,
+    ));
+    let array_val = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::insert_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_min_1_i32,
+        location,
+    ));
+    let array_val = op.result(0)?.into();
+
+    block_not_empty.append_operation(helper.br(0, &[array_val, elem_value], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::test::run_cairo;
@@ -526,5 +745,50 @@ mod test {
         }};
 
         assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
+    }
+
+    #[test]
+    fn run_pop_front() {
+        let result = run_cairo! { run_test(()) in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.pop_front();
+                numbers.append(1_u32);
+                *numbers.at(0)
+            }
+        }};
+
+        assert_eq!(result, json!([null, [0, [3]]]));
+    }
+
+    #[test]
+    fn run_pop_front_result() {
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> Option<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.pop_front()
+            }
+        }};
+
+        assert_eq!(result, json!([[0, 4]]));
+
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> Option<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.pop_front()
+            }
+        }};
+
+        assert_eq!(result, json!([[1, []]]));
     }
 }

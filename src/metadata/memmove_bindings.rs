@@ -1,6 +1,6 @@
 //! # Memory allocation external bindings
 //!
-//! This metadata ensures that the bindings to the C function `realloc` exist in the current
+//! This metadata ensures that the bindings to the C function `memmove` exist in the current
 //! compilation context.
 
 use melior::{
@@ -14,24 +14,25 @@ use melior::{
 };
 use std::marker::PhantomData;
 
-/// Memory allocation `realloc` metadata.
+/// Memory allocation `memmove` metadata.
 #[derive(Debug)]
-pub struct ReallocBindingsMeta {
+pub struct MemmoveBindingsMeta {
     phantom: PhantomData<()>,
 }
 
-impl ReallocBindingsMeta {
-    /// Register the bindings to the `realloc` C function and return the metadata.
+impl MemmoveBindingsMeta {
+    /// Register the bindings to the `memmove` C function and return the metadata.
     pub fn new(context: &Context, module: &Module) -> Self {
         module.body().append_operation(func::func(
             context,
-            StringAttribute::new(context, "realloc"),
+            StringAttribute::new(context, "memmove"),
             TypeAttribute::new(
                 FunctionType::new(
                     context,
                     &[
-                        llvm::r#type::opaque_pointer(context),
-                        IntegerType::new(context, 64).into(),
+                        llvm::r#type::opaque_pointer(context), // dst
+                        llvm::r#type::opaque_pointer(context), // src
+                        IntegerType::new(context, 64).into(),  // len
                     ],
                     &[llvm::r#type::opaque_pointer(context)],
                 )
@@ -50,17 +51,18 @@ impl ReallocBindingsMeta {
         }
     }
 
-    /// Calls the `realloc` function, returns a op with 1 result: an opaque pointer.
-    pub fn realloc<'c, 'a>(
+    /// Calls the `memmove` function, returns a op with 1 result: an opaque pointer.
+    pub fn memmove<'c, 'a>(
         context: &'c Context,
-        ptr: Value<'c, 'a>,
+        dst_ptr: Value<'c, 'a>,
+        src_ptr: Value<'c, 'a>,
         len: Value<'c, 'a>,
         location: Location<'c>,
     ) -> Operation<'c> {
         func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "realloc"),
-            &[ptr, len],
+            FlatSymbolRefAttribute::new(context, "memmove"),
+            &[dst_ptr, src_ptr, len],
             &[llvm::r#type::opaque_pointer(context)],
             location,
         )
