@@ -54,6 +54,19 @@ where
     FmtWrapper(fmt)
 }
 
+/// The `mlir_asm!` macro is a shortcut to manually building operations.
+///
+/// It works by forwarding the custom DSL code to their respective functions within melior's
+/// `OperationBuilder`.
+///
+/// The DSL's syntax is similar to that of MLIR, but has some differences, or rather restrictions,
+/// due to the way declarative macros work:
+///   - All macro invocations need the MLIR context, the target block and the operations' locations.
+///   - The operations are defined using a syntax similar to that of MLIR's generic operations, with
+///     some differences. The results are Rust variables (MLIR values) and the inputs (operands,
+///     attributes...) are all Rust expressions that evaluate to their respective type.
+///
+/// Check out the [felt252 libfunc implementations](crate::libfuncs::felt252) for an example on their usage.
 macro_rules! mlir_asm {
     (
         $context:expr, $block:expr, $location:expr =>
