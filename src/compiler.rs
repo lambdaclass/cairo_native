@@ -489,14 +489,20 @@ where
                                     branch_signature
                                         .vars
                                         .iter()
-                                        .map(|var_info| {
-                                            registry
-                                                .get_type(&var_info.ty)?
-                                                .build(context, module, registry, metadata_storage)
-                                                .map_err(make_type_builder_error(&var_info.ty))
-                                        })
-                                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>(
-                                        )?,
+                                        .map(
+                                            |var_info| -> Result<_, CompileError<TType, TLibfunc>> {
+                                                registry
+                                                    .get_type(&var_info.ty)?
+                                                    .build(
+                                                        context,
+                                                        module,
+                                                        registry,
+                                                        metadata_storage,
+                                                    )
+                                                    .map_err(make_type_builder_error(&var_info.ty))
+                                            },
+                                        )
+                                        .collect::<Result<Vec<_>, _>>()?,
                                 ),
                             )?;
 

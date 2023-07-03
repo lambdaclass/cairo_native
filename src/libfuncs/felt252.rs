@@ -8,6 +8,7 @@ use crate::{
     },
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::{felt252::Felt252, TypeBuilder},
+    utils::mlir_asm,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,13 +22,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith::{self, CmpiPredicate},
-        scf,
-    },
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Region, Type,
-    },
+    dialect::arith::CmpiPredicate,
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
     Context,
 };
 use num_bigint::{Sign, ToBigInt};
@@ -81,152 +77,122 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let bool_ty = IntegerType::new(context, 1).into();
     let felt252_ty = registry
         .get_type(&info.branch_signatures()[0].vars[0].ty)?
         .build(context, helper, registry, metadata)?;
+    let i256 = IntegerType::new(context, 256).into();
+    let i512 = IntegerType::new(context, 512).into();
 
-    let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
+    let attr_prime_i256 = Attribute::parse(
+        context,
+        &format!(
+            "{} : {i256}",
+            metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime()
+        ),
+    )
+    .unwrap();
+    let attr_prime_i512 = Attribute::parse(
+        context,
+        &format!(
+            "{} : {i512}",
+            metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime()
+        ),
+    )
+    .unwrap();
 
-    let result = match info {
-        Felt252BinaryOperationConcrete::WithVar(info) => match info.operator {
-            Felt252BinaryOperator::Add => {
-                let op0 = entry.append_operation(arith::addi(
-                    entry.argument(0)?.into(),
-                    entry.argument(1)?.into(),
-                    location,
-                ));
+    let attr_cmp_uge = IntegerAttribute::new(
+        CmpiPredicate::Uge as i64,
+        IntegerType::new(context, 64).into(),
+    )
+    .into();
+    let attr_cmp_ult = IntegerAttribute::new(
+        CmpiPredicate::Ult as i64,
+        IntegerType::new(context, 64).into(),
+    )
+    .into();
 
-                let op1 = entry.append_operation(arith::constant(
-                    context,
-                    Attribute::parse(context, &format!("{prime} : {felt252_ty}")).unwrap(),
-                    location,
-                ));
-                let op2 = entry.append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Uge,
-                    op0.result(0)?.into(),
-                    op1.result(0)?.into(),
-                    location,
-                ));
-                let op3 = entry.append_operation(scf::r#if(
-                    op2.result(0)?.into(),
-                    &[felt252_ty],
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
+    let (op, lhs, rhs) = match info {
+        Felt252BinaryOperationConcrete::WithVar(operation) => (
+            operation.operator,
+            entry.argument(0)?.into(),
+            entry.argument(1)?.into(),
+        ),
+        Felt252BinaryOperationConcrete::WithConst(operation) => {
+            let value = match operation.c.sign() {
+                Sign::Minus => {
+                    let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
+                    (&operation.c + prime.to_bigint().unwrap())
+                        .to_biguint()
+                        .unwrap()
+                }
+                _ => operation.c.to_biguint().unwrap(),
+            };
 
-                        let op3 = block.append_operation(arith::subi(
-                            op0.result(0)?.into(),
-                            op1.result(0)?.into(),
-                            location,
-                        ));
+            let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap();
 
-                        block.append_operation(scf::r#yield(&[op3.result(0)?.into()], location));
-
-                        region
-                    },
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
-
-                        block.append_operation(scf::r#yield(&[op0.result(0)?.into()], location));
-
-                        region
-                    },
-                    location,
-                ));
-
-                op3.result(0)?.into()
+            // TODO: Ensure that the constant is on the right side of the operation.
+            mlir_asm! { context, entry, location =>
+                ; rhs = "arith.constant"() { "value" = attr_c } : () -> felt252_ty
             }
-            Felt252BinaryOperator::Sub => {
-                let op0 = entry.append_operation(arith::subi(
-                    entry.argument(0)?.into(),
-                    entry.argument(1)?.into(),
-                    location,
-                ));
 
-                let op1 = entry.append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Ult,
-                    entry.argument(0)?.into(),
-                    entry.argument(1)?.into(),
-                    location,
-                ));
-                let op2 = entry.append_operation(scf::r#if(
-                    op1.result(0)?.into(),
-                    &[felt252_ty],
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
+            (operation.operator, entry.argument(0)?.into(), rhs)
+        }
+    };
 
-                        let op2 = block.append_operation(arith::constant(
-                            context,
-                            Attribute::parse(context, &format!("{prime} : {felt252_ty}")).unwrap(),
-                            location,
-                        ));
-                        let op3 = block.append_operation(arith::addi(
-                            op0.result(0)?.into(),
-                            op2.result(0)?.into(),
-                            location,
-                        ));
+    let result = match op {
+        Felt252BinaryOperator::Add => {
+            mlir_asm! { context, entry, location =>
+                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256
+                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i256
+                ; result = "arith.addi"(lhs, rhs) : (i256, i256) -> i256
 
-                        block.append_operation(scf::r#yield(&[op3.result(0)?.into()], location));
+                ; prime = "arith.constant"() { "value" = attr_prime_i256 } : () -> i256
+                ; result_mod = "arith.subi"(result, prime) : (i256, i256) -> i256
+                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i256, i256) -> bool_ty
 
-                        region
-                    },
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
+                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -> i256
+                ; result = "arith.trunci"(result) : (i256) -> felt252_ty
+            };
 
-                        block.append_operation(scf::r#yield(&[op0.result(0)?.into()], location));
+            result
+        }
+        Felt252BinaryOperator::Sub => {
+            mlir_asm! { context, entry, location =>
+                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256
+                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i256
+                ; result = "arith.subi"(lhs, rhs) : (i256, i256) -> i256
 
-                        region
-                    },
-                    location,
-                ));
+                ; prime = "arith.constant"() { "value" = attr_prime_i256 } : () -> i256
+                ; result_mod = "arith.addi"(result, prime) : (i256, i256) -> i256
+                ; is_out_of_range = "arith.cmpi"(lhs, rhs) { "predicate" = attr_cmp_ult } : (i256, i256) -> bool_ty
 
-                op2.result(0)?.into()
+                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -> i256
+                ; result = "arith.trunci"(result) : (i256) -> felt252_ty
             }
-            Felt252BinaryOperator::Mul => {
-                let double_felt252_ty: Type = IntegerType::new(context, 504).into();
 
-                let op0 = entry.append_operation(arith::extui(
-                    entry.argument(0)?.into(),
-                    double_felt252_ty,
-                    location,
-                ));
-                let op1 = entry.append_operation(arith::extui(
-                    entry.argument(1)?.into(),
-                    double_felt252_ty,
-                    location,
-                ));
+            result
+        }
+        Felt252BinaryOperator::Mul => {
+            mlir_asm! { context, entry, location =>
+                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i512
+                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i512
+                ; result = "arith.muli"(lhs, rhs) : (i512, i512) -> i512
 
-                let op2 = entry.append_operation(arith::muli(
-                    op0.result(0)?.into(),
-                    op1.result(0)?.into(),
-                    location,
-                ));
-                let op3 = entry.append_operation(arith::constant(
-                    context,
-                    Attribute::parse(context, &format!("{prime} : i504")).unwrap(),
-                    location,
-                ));
-                let op4 = entry.append_operation(arith::remui(
-                    op2.result(0)?.into(),
-                    op3.result(0)?.into(),
-                    location,
-                ));
-                let op5 = entry.append_operation(arith::trunci(
-                    op4.result(0)?.into(),
-                    felt252_ty,
-                    location,
-                ));
+                ; prime = "arith.constant"() { "value" = attr_prime_i512 } : () -> i512
+                ; result_mod = "arith.remui"(result, prime) : (i512, i512) -> i512
+                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i512, i512) -> bool_ty
 
-                op5.result(0)?.into()
+                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -> i512
+                ; result = "arith.trunci"(result) : (i512) -> felt252_ty
             }
-            Felt252BinaryOperator::Div => todo!(),
-        },
-        Felt252BinaryOperationConcrete::WithConst(_) => todo!(),
+
+            result
+        }
+        Felt252BinaryOperator::Div => {
+            // TODO: Implement `felt252_div` and `felt252_div_const`.
+            todo!("Implement `felt252_div` and `felt252_div_const`")
+        }
     };
 
     entry.append_operation(helper.br(0, &[result], location));
@@ -249,6 +215,8 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
         Sign::Minus => {
@@ -257,17 +225,18 @@ where
         }
         _ => info.c.to_biguint().unwrap(),
     };
+
     let felt252_ty = registry
         .get_type(&info.branch_signatures()[0].vars[0].ty)?
         .build(context, helper, registry, metadata)?;
 
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap(),
-        location,
-    ));
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
+    let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap();
 
+    mlir_asm! { context, entry, location =>
+        ; k0 = "arith.constant"() { "value" = attr_c } : () -> felt252_ty
+    }
+
+    entry.append_operation(helper.br(0, &[k0], location));
     Ok(())
 }
 
@@ -287,29 +256,185 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let bool_ty = IntegerType::new(context, 1).into();
     let felt252_ty = registry
         .get_type(&info.param_signatures()[0].ty)?
         .build(context, helper, registry, metadata)?;
 
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(0, felt252_ty).into(),
-        location,
-    ));
-    let op1 = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        entry.argument(0)?.into(),
-        op0.result(0)?.into(),
-        location,
-    ));
+    let attr_k0 = IntegerAttribute::new(0, felt252_ty).into();
+    let attr_cmp_eq = IntegerAttribute::new(
+        CmpiPredicate::Eq as i64,
+        IntegerType::new(context, 64).into(),
+    )
+    .into();
 
-    entry.append_operation(helper.cond_br(
-        op1.result(0)?.into(),
-        [0, 1],
-        [&[], &[entry.argument(0)?.into()]],
-        location,
-    ));
+    let value: Value = entry.argument(0)?.into();
+    mlir_asm! { context, entry, location =>
+        ; k0 = "arith.constant"() { "value" = attr_k0 } : () -> felt252_ty
+        ; is_zero = "arith.cmpi"(value, k0) { "predicate" = attr_cmp_eq } : () -> bool_ty
+    };
 
+    entry.append_operation(helper.cond_br(is_zero, [0, 1], [&[], &[value]], location));
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        types::felt252::PRIME,
+        utils::test::{load_cairo, run_program},
+    };
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::{BigInt, Sign};
+    use serde_json::json;
+    use std::ops::Neg;
+
+    lazy_static! {
+        static ref FELT252_ADD: (String, Program) = load_cairo! {
+            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                lhs + rhs
+            }
+        };
+
+        static ref FELT252_SUB: (String, Program) = load_cairo! {
+            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                lhs - rhs
+            }
+        };
+
+        static ref FELT252_MUL: (String, Program) = load_cairo! {
+            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                lhs * rhs
+            }
+        };
+
+        // TODO: Add test program for `felt252_div`.
+
+        // TODO: Add test program for `felt252_add_const`.
+        // TODO: Add test program for `felt252_sub_const`.
+        // TODO: Add test program for `felt252_mul_const`.
+        // TODO: Add test program for `felt252_div_const`.
+
+        static ref FELT252_CONST: (String, Program) = load_cairo! {
+            fn run_test() -> (felt252, felt252, felt252, felt252) {
+                (0, 1, -2, -1)
+            }
+        };
+
+        static ref FELT252_IS_ZERO: (String, Program) = load_cairo! {
+            fn run_test(x: felt252) -> felt252 {
+                match x {
+                    0 => 1,
+                    _ => 0,
+                }
+            }
+        };
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    fn f(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
+    }
+
+    #[test]
+    fn felt252_add() {
+        let r = |lhs, rhs| run_program(&FELT252_ADD, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("0"), f("1")), json!([f("1")]));
+        assert_eq!(r(f("0"), f("-2")), json!([f("-2")]));
+        assert_eq!(r(f("0"), f("-1")), json!([f("-1")]));
+
+        assert_eq!(r(f("1"), f("0")), json!([f("1")]));
+        assert_eq!(r(f("1"), f("1")), json!([f("2")]));
+        assert_eq!(r(f("1"), f("-2")), json!([f("-1")]));
+        assert_eq!(r(f("1"), f("-1")), json!([f("0")]));
+
+        assert_eq!(r(f("-2"), f("0")), json!([f("-2")]));
+        assert_eq!(r(f("-2"), f("1")), json!([f("-1")]));
+        assert_eq!(r(f("-2"), f("-2")), json!([f("-4")]));
+        assert_eq!(r(f("-2"), f("-1")), json!([f("-3")]));
+
+        assert_eq!(r(f("-1"), f("0")), json!([f("-1")]));
+        assert_eq!(r(f("-1"), f("1")), json!([f("0")]));
+        assert_eq!(r(f("-1"), f("-2")), json!([f("-3")]));
+        assert_eq!(r(f("-1"), f("-1")), json!([f("-2")]));
+    }
+
+    #[test]
+    fn felt252_sub() {
+        let r = |lhs, rhs| run_program(&FELT252_SUB, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("0"), f("1")), json!([f("-1")]));
+        assert_eq!(r(f("0"), f("-2")), json!([f("2")]));
+        assert_eq!(r(f("0"), f("-1")), json!([f("1")]));
+
+        assert_eq!(r(f("1"), f("0")), json!([f("1")]));
+        assert_eq!(r(f("1"), f("1")), json!([f("0")]));
+        assert_eq!(r(f("1"), f("-2")), json!([f("3")]));
+        assert_eq!(r(f("1"), f("-1")), json!([f("2")]));
+
+        assert_eq!(r(f("-2"), f("0")), json!([f("-2")]));
+        assert_eq!(r(f("-2"), f("1")), json!([f("-3")]));
+        assert_eq!(r(f("-2"), f("-2")), json!([f("0")]));
+        assert_eq!(r(f("-2"), f("-1")), json!([f("-1")]));
+
+        assert_eq!(r(f("-1"), f("0")), json!([f("-1")]));
+        assert_eq!(r(f("-1"), f("1")), json!([f("-2")]));
+        assert_eq!(r(f("-1"), f("-2")), json!([f("1")]));
+        assert_eq!(r(f("-1"), f("-1")), json!([f("0")]));
+    }
+
+    #[test]
+    fn felt252_mul() {
+        let r = |lhs, rhs| run_program(&FELT252_MUL, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("0"), f("1")), json!([f("0")]));
+        assert_eq!(r(f("0"), f("-2")), json!([f("0")]));
+        assert_eq!(r(f("0"), f("-1")), json!([f("0")]));
+
+        assert_eq!(r(f("1"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("1"), f("1")), json!([f("1")]));
+        assert_eq!(r(f("1"), f("-2")), json!([f("-2")]));
+        assert_eq!(r(f("1"), f("-1")), json!([f("-1")]));
+
+        assert_eq!(r(f("-2"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("-2"), f("1")), json!([f("-2")]));
+        assert_eq!(r(f("-2"), f("-2")), json!([f("4")]));
+        assert_eq!(r(f("-2"), f("-1")), json!([f("2")]));
+
+        assert_eq!(r(f("-1"), f("0")), json!([f("0")]));
+        assert_eq!(r(f("-1"), f("1")), json!([f("-1")]));
+        assert_eq!(r(f("-1"), f("-2")), json!([f("2")]));
+        assert_eq!(r(f("-1"), f("-1")), json!([f("1")]));
+    }
+
+    #[test]
+    fn felt252_const() {
+        assert_eq!(
+            run_program(&FELT252_CONST, "run_test", json!([])),
+            json!([[f("0"), f("1"), f("-2"), f("-1")]])
+        );
+    }
+
+    #[test]
+    fn felt252_is_zero() {
+        let r = |x| run_program(&FELT252_IS_ZERO, "run_test", json!([x]));
+
+        assert_eq!(r(f("0")), json!([f("1")]));
+        assert_eq!(r(f("1")), json!([f("0")]));
+        assert_eq!(r(f("-2")), json!([f("0")]));
+        assert_eq!(r(f("-1")), json!([f("0")]));
+    }
 }

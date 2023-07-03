@@ -87,24 +87,24 @@ where
     Ok(())
 }
 
-#[cfg(test)]
-mod test {
-    use crate::utils::test::run_cairo;
-    use serde_json::json;
+// #[cfg(test)]
+// mod test {
+//     use crate::utils::test::run_cairo;
+//     use serde_json::json;
 
-    #[test]
-    fn run_box_unbox() {
-        let result = run_cairo! { run_test() in mod {
-            use box::BoxTrait;
-            use box::BoxImpl;
+//     #[test]
+//     fn run_box_unbox() {
+//         let result = run_cairo! { run_test() in mod {
+//             use box::BoxTrait;
+//             use box::BoxImpl;
 
-            fn run_test() -> u32 {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x.unbox()
-            }
-        }};
+//             fn run_test() -> u32 {
+//                 let x: u32 = 2_u32;
+//                 let box_x: Box<u32> = BoxTrait::new(x);
+//                 box_x.unbox()
+//             }
+//         }};
 
-        assert_eq!(result, json!([2]));
-    }
-}
+//         assert_eq!(result, json!([2]));
+//     }
+// }

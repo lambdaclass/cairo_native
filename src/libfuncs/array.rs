@@ -697,12 +697,12 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::run_cairo;
+    use crate::utils::test::{load_cairo, run_program};
     use serde_json::json;
 
     #[test]
     fn run_append() {
-        let result = run_cairo! { run_test() in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> Array<u32> {
@@ -710,14 +710,15 @@ mod test {
                 numbers.append(4_u32);
                 numbers
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([[4]]));
     }
 
     #[test]
     fn run_len() {
-        let result = run_cairo! { run_test() in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> u32 {
@@ -727,14 +728,15 @@ mod test {
                 numbers.append(2_u32);
                 numbers.len()
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([3]));
     }
 
     #[test]
     fn run_get() {
-        let result = run_cairo! { run_test(()) in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> (u32, u32, u32, u32) {
@@ -743,16 +745,22 @@ mod test {
                 numbers.append(3_u32);
                 numbers.append(2_u32);
                 numbers.append(1_u32);
-                (*numbers.at(0), *numbers.at(1), *numbers.at(2), *numbers.at(3))
+                (
+                    *numbers.at(0),
+                    *numbers.at(1),
+                    *numbers.at(2),
+                    *numbers.at(3),
+                )
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([null]));
 
         assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
     }
 
     #[test]
     fn run_pop_front() {
-        let result = run_cairo! { run_test(()) in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> u32 {
@@ -763,14 +771,15 @@ mod test {
                 numbers.append(1_u32);
                 *numbers.at(0)
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([null]));
 
         assert_eq!(result, json!([null, [0, [3]]]));
     }
 
     #[test]
     fn run_pop_front_result() {
-        let result = run_cairo! { run_test() in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> Option<u32> {
@@ -779,25 +788,27 @@ mod test {
                 numbers.append(3_u32);
                 numbers.pop_front()
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([[0, 4]]));
 
-        let result = run_cairo! { run_test() in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> Option<u32> {
                 let mut numbers = ArrayTrait::new();
                 numbers.pop_front()
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([[1, []]]));
     }
 
     #[test]
     fn run_pop_front_consume() {
-        let result = run_cairo! { run_test() in mod {
+        let program = load_cairo!(
             use array::ArrayTrait;
 
             fn run_test() -> u32 {
@@ -805,15 +816,12 @@ mod test {
                 numbers.append(4_u32);
                 numbers.append(3_u32);
                 match numbers.pop_front_consume() {
-                    Option::Some((arr, x)) => {
-                        x
-                    },
-                    Option::None(()) => {
-                        0_u32
-                    },
+                    Option::Some((arr, x)) => x,
+                    Option::None(()) => 0_u32,
                 }
             }
-        }};
+        );
+        let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([4]));
     }
