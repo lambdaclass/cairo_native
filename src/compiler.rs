@@ -495,8 +495,8 @@ where
                                                 .build(context, module, registry, metadata_storage)
                                                 .map_err(make_type_builder_error(&var_info.ty))
                                         })
-                                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
-                                        .into_iter(),
+                                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>(
+                                        )?,
                                 ),
                             )?;
 
