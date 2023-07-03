@@ -35,14 +35,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
             {
                 return 1;
             };
-        } else if writeln!(
-            target,
-            "[DEBUG]\t{:<31}\t(raw: {})",
-            ' ',
-            value.to_bigint()
-        )
-        .is_err()
-        {
+        } else if writeln!(target, "[DEBUG]\t{:<31}\t(raw: {})", ' ', value.to_bigint()).is_err() {
             return 1;
         }
     }

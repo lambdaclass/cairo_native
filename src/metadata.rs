@@ -16,8 +16,8 @@ use std::{
 
 pub mod prime_modulo;
 pub mod realloc_bindings;
-pub mod tail_recursion;
 pub mod runtime_bindings;
+pub mod tail_recursion;
 
 /// Metadata container.
 #[derive(Default)]
