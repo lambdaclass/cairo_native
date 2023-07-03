@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .collect::<String>()
                     )
                 }
-                e => Err(e).unwrap(),
+                e => panic!("{:?}", e),
             });
             println!();
         }
