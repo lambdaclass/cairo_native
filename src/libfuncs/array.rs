@@ -63,8 +63,7 @@ where
             build_pop_front(context, registry, entry, location, helper, metadata, info)
         }
         ArrayConcreteLibfunc::PopFrontConsume(info) => {
-            // same signature at sierra level
-            build_pop_front(context, registry, entry, location, helper, metadata, info)
+            build_pop_front_consume(context, registry, entry, location, helper, metadata, info)
         }
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
@@ -655,31 +654,23 @@ where
     );
     let array_ptr_src_opaque = op.result(0)?.into();
 
-    let op = block_not_empty.append_operation(MemmoveBindingsMeta::memmove(
+    let op = block_not_empty.append_operation(arith::constant(
         context,
-        array_opaque_ptr,
-        array_ptr_src_opaque,
-        elems_size,
+        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
         location,
     ));
-    let array_ptr = op.result(0)?.into();
+    let const_false = op.result(0)?.into();
 
-    let op = block_not_empty.append_operation(
-        OperationBuilder::new("llvm.bitcast", location)
-            .add_operands(&[array_ptr])
-            .add_results(&[ptr_ty])
+    block_not_empty.append_operation(
+        OperationBuilder::new("llvm.intr.memmove", location)
+            .add_operands(&[
+                array_opaque_ptr,
+                array_ptr_src_opaque,
+                elems_size,
+                const_false,
+            ])
             .build(),
     );
-    let array_ptr = op.result(0)?.into();
-
-    let op = block_not_empty.append_operation(llvm::insert_value(
-        context,
-        array_val,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        array_ptr,
-        location,
-    ));
-    let array_val = op.result(0)?.into();
 
     let op = block_not_empty.append_operation(llvm::insert_value(
         context,
@@ -693,6 +684,26 @@ where
     block_not_empty.append_operation(helper.br(0, &[array_val, elem_value], location));
 
     Ok(())
+}
+
+/// Generate MLIR operations for the `array_pop_front_consume` libfunc.
+pub fn build_pop_front_consume<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // same signature at sierra level
+    build_pop_front(context, registry, entry, location, helper, metadata, info)
 }
 
 #[cfg(test)]
