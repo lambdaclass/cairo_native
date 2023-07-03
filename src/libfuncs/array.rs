@@ -20,18 +20,15 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, func,
+        cf,
         llvm::{self, LoadStoreOptions},
         scf,
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, FlatSymbolRefAttribute,
-            IntegerAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Region, Value,
+        Block, Identifier, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -59,8 +56,12 @@ where
         ArrayConcreteLibfunc::Append(info) => {
             build_append(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::PopFront(_) => todo!(),
-        ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
+        ArrayConcreteLibfunc::PopFront(info) => {
+            build_pop_front(context, registry, entry, location, helper, metadata, info)
+        }
+        ArrayConcreteLibfunc::PopFrontConsume(info) => {
+            build_pop_front_consume(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
         }
@@ -243,11 +244,10 @@ where
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             );
-            let op11 = block.append_operation(func::call(
+            let op11 = block.append_operation(ReallocBindingsMeta::realloc(
                 context,
-                FlatSymbolRefAttribute::new(context, "realloc"),
-                &[op10.result(0)?.into(), op9.result(0)?.into()],
-                &[llvm::r#type::opaque_pointer(context)],
+                op10.result(0)?.into(),
+                op9.result(0)?.into(),
                 location,
             ));
             let op12 = block.append_operation(
@@ -473,58 +473,360 @@ where
     Ok(())
 }
 
-// #[cfg(test)]
-// mod test {
-//     use crate::utils::test::run_cairo;
-//     use serde_json::json;
+/// Generate MLIR operations for the `array_pop_front` libfunc.
+pub fn build_pop_front<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let array_ty = registry
+        .get_type(&info.param_signatures()[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
-//     #[test]
-//     fn run_append() {
-//         let result = run_cairo! { run_test() in mod {
-//             use array::ArrayTrait;
+    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
+    let elem_layout = elem_concrete_ty.layout(registry)?;
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
-//             fn run_test() -> Array<u32> {
-//                 let mut numbers = ArrayTrait::new();
-//                 numbers.append(4_u32);
-//                 numbers
-//             }
-//         }};
+    let elem_stride = registry
+        .get_type(&info.ty)?
+        .layout(registry)?
+        .pad_to_align()
+        .size();
 
-//         assert_eq!(result, json!([[4]]));
-//     }
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-//     #[test]
-//     fn run_len() {
-//         let result = run_cairo! { run_test() in mod {
-//             use array::ArrayTrait;
+    let array_val = entry.argument(0)?.into();
 
-//             fn run_test() -> u32 {
-//                 let mut numbers = ArrayTrait::new();
-//                 numbers.append(4_u32);
-//                 numbers.append(3_u32);
-//                 numbers.append(2_u32);
-//                 numbers.len()
-//             }
-//         }};
+    // get len
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let len: Value = op.result(0)?.into();
 
-//         assert_eq!(result, json!([3]));
-//     }
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, len.r#type()).into(),
+        location,
+    ));
+    let const_0 = op.result(0)?.into();
 
-//     #[test]
-//     fn run_get() {
-//         let result = run_cairo! { run_test(()) in mod {
-//             use array::ArrayTrait;
+    // check if array is empty
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        len,
+        const_0,
+        location,
+    ));
+    let is_empty = op.result(0)?.into();
 
-//             fn run_test() -> (u32, u32, u32, u32) {
-//                 let mut numbers = ArrayTrait::new();
-//                 numbers.append(4_u32);
-//                 numbers.append(3_u32);
-//                 numbers.append(2_u32);
-//                 numbers.append(1_u32);
-//                 (*numbers.at(0), *numbers.at(1), *numbers.at(2), *numbers.at(3))
-//             }
-//         }};
+    let block_not_empty = helper.append_block(Block::new(&[]));
+    let block_empty = helper.append_block(Block::new(&[]));
 
-//         assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
-//     }
-// }
+    entry.append_operation(cf::cond_br(
+        context,
+        is_empty,
+        block_empty,
+        block_not_empty,
+        &[],
+        &[],
+        location,
+    ));
+
+    // empty branch
+    block_empty.append_operation(helper.br(1, &[array_val], location));
+
+    // non empty branch
+
+    // get ptr
+    let op = block_not_empty.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        ptr_ty,
+        location,
+    ));
+    let array_ptr = op.result(0)?.into();
+
+    // get the first elem
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, const_0])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let elem_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::load(
+        context,
+        elem_ptr,
+        elem_ty,
+        location,
+        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
+            elem_layout.align().try_into()?,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
+    let elem_value = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(1, len.r#type()).into(),
+        location,
+    ));
+    let const_1 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, const_1])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let array_ptr_src = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::subi(len, const_1, location));
+    let len_min_1_i32 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::extui(
+        len_min_1_i32,
+        IntegerType::new(context, 64).into(),
+        location,
+    ));
+    let len_min_1 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(
+            elem_stride.try_into()?,
+            IntegerType::new(context, 64).into(),
+        )
+        .into(),
+        location,
+    ));
+    let elem_stride_val = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::muli(len_min_1, elem_stride_val, location));
+    let elems_size = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[array_ptr])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build(),
+    );
+    let array_opaque_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.bitcast", location)
+            .add_operands(&[array_ptr_src])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build(),
+    );
+    let array_ptr_src_opaque = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+        location,
+    ));
+    let const_false = op.result(0)?.into();
+
+    block_not_empty.append_operation(
+        OperationBuilder::new("llvm.intr.memmove", location)
+            .add_operands(&[
+                array_opaque_ptr,
+                array_ptr_src_opaque,
+                elems_size,
+                const_false,
+            ])
+            .build(),
+    );
+
+    let op = block_not_empty.append_operation(llvm::insert_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_min_1_i32,
+        location,
+    ));
+    let array_val = op.result(0)?.into();
+
+    block_not_empty.append_operation(helper.br(0, &[array_val, elem_value], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `array_pop_front_consume` libfunc.
+pub fn build_pop_front_consume<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // same signature at sierra level
+    build_pop_front(context, registry, entry, location, helper, metadata, info)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::{load_cairo, run_program};
+    use serde_json::json;
+
+    #[test]
+    fn run_append() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[4]]));
+    }
+
+    #[test]
+    fn run_len() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.len()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([3]));
+    }
+
+    #[test]
+    fn run_get() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (u32, u32, u32, u32) {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.append(1_u32);
+                (
+                    *numbers.at(0),
+                    *numbers.at(1),
+                    *numbers.at(2),
+                    *numbers.at(3),
+                )
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
+    }
+
+    #[test]
+    fn run_pop_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.pop_front();
+                numbers.append(1_u32);
+                *numbers.at(0)
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(result, json!([null, [0, [3]]]));
+    }
+
+    #[test]
+    fn run_pop_front_result() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Option<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.pop_front()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[0, 4]]));
+
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Option<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.pop_front()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[1, []]]));
+    }
+
+    #[test]
+    fn run_pop_front_consume() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                match numbers.pop_front_consume() {
+                    Option::Some((arr, x)) => x,
+                    Option::None(()) => 0_u32,
+                }
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([4]));
+    }
+}

@@ -6,9 +6,9 @@
 use melior::{
     dialect::{func, llvm},
     ir::{
-        attribute::{StringAttribute, TypeAttribute},
+        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Identifier, Location, Module, Region,
+        Identifier, Location, Module, Operation, Region, Value,
     },
     Context,
 };
@@ -48,5 +48,21 @@ impl ReallocBindingsMeta {
         Self {
             phantom: PhantomData,
         }
+    }
+
+    /// Calls the `realloc` function, returns a op with 1 result: an opaque pointer.
+    pub fn realloc<'c, 'a>(
+        context: &'c Context,
+        ptr: Value<'c, 'a>,
+        len: Value<'c, 'a>,
+        location: Location<'c>,
+    ) -> Operation<'c> {
+        func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "realloc"),
+            &[ptr, len],
+            &[llvm::r#type::opaque_pointer(context)],
+            location,
+        )
     }
 }
