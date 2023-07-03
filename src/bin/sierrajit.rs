@@ -13,6 +13,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
     ProgramParser,
 };
+use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
@@ -22,7 +23,6 @@ use melior::{
     Context, ExecutionEngine,
 };
 use serde_json::de::StrRead;
-use sierra2mlir::metadata::MetadataStorage;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -77,7 +77,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut metadata = MetadataStorage::new();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
 
-    sierra2mlir::compile::<CoreType, CoreLibfunc>(
+    // Make the runtime library available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
         &program,
@@ -105,6 +108,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
+    #[cfg(feature = "with-runtime")]
+    unsafe {
+        engine.register_symbol(
+            "cairo_native__libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc__debug__print
+                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+        );
+    }
+
     // Initialize arguments and return values.
     let params_input = match args.inputs {
         Some(StdioOrPath::Stdio) => Cow::Owned(io::read_to_string(io::stdin())?),
@@ -115,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.outputs {
         Some(StdioOrPath::Stdio) => {
-            sierra2mlir::execute::<CoreType, CoreLibfunc, _, _>(
+            cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
                 &engine,
                 &registry,
                 &entry_point.id,
@@ -123,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &mut serde_json::Serializer::pretty(io::stdout()),
             )
             .unwrap_or_else(|e| match &*e {
-                sierra2mlir::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+                cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
                     panic!(
                         "Expected inputs with signature: ({})",
                         entry_point
@@ -141,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(StdioOrPath::Path(path)) => {
             let mut file = File::create(path)?;
-            sierra2mlir::execute::<CoreType, CoreLibfunc, _, _>(
+            cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
                 &engine,
                 &registry,
                 &entry_point.id,
