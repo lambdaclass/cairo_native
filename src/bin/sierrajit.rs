@@ -201,9 +201,10 @@ struct CmdLine {
     outputs: Option<StdioOrPath>,
     #[clap(short = 'p', long = "print-outputs")]
     print_outputs: bool,
-
-    #[clap(short = 'g', long = "available-gas")]
-    available_gas: Option<usize>,
+    //
+    // TODO: Uncomment after removing builtins from arguments and returns.
+    // #[clap(short = 'g', long = "available-gas")]
+    // available_gas: Option<usize>,
 }
 
 #[derive(Clone, Debug)]
