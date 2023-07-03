@@ -4,7 +4,14 @@
 //! segments. Because of this, all of the memory-related libfuncs here are no-ops.
 
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
@@ -27,12 +34,12 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     selector: &MemConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
         MemConcreteLibfunc::StoreTemp(info) => {
@@ -55,14 +62,14 @@ pub fn build_store_temp<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
     Ok(())
 }
@@ -75,14 +82,14 @@ pub fn build_rename<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    entry.append_operation(helper.br(0, &[entry.argument(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
     Ok(())
 }

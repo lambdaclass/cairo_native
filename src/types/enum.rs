@@ -402,7 +402,11 @@
 //! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
 
 use super::TypeBuilder;
-use crate::{metadata::MetadataStorage, utils::get_integer_layout};
+use crate::{
+    error::types::{Error, Result},
+    metadata::MetadataStorage,
+    utils::get_integer_layout,
+};
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
     ids::ConcreteTypeId,
@@ -427,14 +431,14 @@ pub fn build<'ctx, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     info: &EnumConcreteType,
-) -> Result<Type<'ctx>, std::convert::Infallible>
+) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let (_, (tag_ty, tag_layout), variant_tys) =
-        get_type_for_variants(context, module, registry, metadata, &info.variants).unwrap();
+        get_type_for_variants(context, module, registry, metadata, &info.variants)?;
 
     let (variant_ty, variant_layout) = variant_tys
         .iter()
@@ -442,26 +446,21 @@ where
         .max_by_key(|(_, layout)| layout.align())
         .unwrap_or((
             llvm::r#type::r#struct(context, &[], false),
-            Layout::from_size_align(0, 1).unwrap(),
+            Layout::new::<()>(),
         ));
 
     let filling_ty = llvm::r#type::array(
         IntegerType::new(context, 8).into(),
-        (tag_layout.extend(variant_layout).unwrap().1 - tag_layout.size())
-            .try_into()
-            .unwrap(),
+        (tag_layout.extend(variant_layout)?.1 - tag_layout.size()).try_into()?,
     );
 
     let total_len = variant_tys
         .iter()
-        .map(|(_, layout)| tag_layout.extend(*layout).unwrap().0.size())
-        .max()
-        .unwrap_or(0);
+        .map(|(_, layout)| tag_layout.extend(*layout).map(|(x, _)| x.size()))
+        .try_fold(0, |acc, x| x.map(|x| acc.max(x)))?;
     let padding_ty = llvm::r#type::array(
         IntegerType::new(context, 8).into(),
-        (total_len - tag_layout.extend(variant_layout).unwrap().0.size())
-            .try_into()
-            .unwrap(),
+        (total_len - tag_layout.extend(variant_layout)?.0.size()).try_into()?,
     );
 
     Ok(llvm::r#type::r#struct(
@@ -475,11 +474,11 @@ where
 pub fn get_layout_for_variants<TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     variants: &[ConcreteTypeId],
-) -> Result<(Layout, Layout, Vec<Layout>), std::convert::Infallible>
+) -> Result<(Layout, Layout, Vec<Layout>)>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);
@@ -487,16 +486,15 @@ where
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant).unwrap();
+        let concrete_payload_ty = registry.get_type(variant)?;
 
-        let payload_layout = concrete_payload_ty.layout(registry);
+        let payload_layout = concrete_payload_ty.layout(registry)?;
 
-        let full_layout = tag_layout.extend(payload_layout).unwrap().0;
+        let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(
             layout.size().max(full_layout.size()),
             layout.align().max(full_layout.align()),
-        )
-        .unwrap();
+        )?;
 
         output.push(payload_layout);
     }
@@ -512,11 +510,11 @@ pub fn get_type_for_variants<'ctx, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     variants: &[ConcreteTypeId],
-) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>), std::convert::Infallible>
+) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);
@@ -525,19 +523,16 @@ where
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant).unwrap();
+        let concrete_payload_ty = registry.get_type(variant)?;
 
-        let payload_ty = concrete_payload_ty
-            .build(context, module, registry, metadata)
-            .unwrap();
-        let payload_layout = concrete_payload_ty.layout(registry);
+        let payload_ty = concrete_payload_ty.build(context, module, registry, metadata)?;
+        let payload_layout = concrete_payload_ty.layout(registry)?;
 
-        let full_layout = tag_layout.extend(payload_layout).unwrap().0;
+        let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(
             layout.size().max(full_layout.size()),
             layout.align().max(full_layout.align()),
-        )
-        .unwrap();
+        )?;
 
         output.push((payload_ty, payload_layout));
     }

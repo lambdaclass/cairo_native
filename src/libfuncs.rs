@@ -2,7 +2,11 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{CoreLibfuncBuilderError, CoreTypeBuilderError},
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
@@ -54,12 +58,17 @@ pub mod unwrap_non_zero;
 ///
 /// All possible Sierra libfuncs must implement it. It is already implemented for all the core
 /// libfuncs, contained in [CoreConcreteLibfunc].
-pub trait LibfuncBuilder {
+pub trait LibfuncBuilder<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc<Concrete = Self>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+{
     /// Error type returned by this trait's methods.
     type Error: Error;
 
     /// Generate the MLIR operations.
-    fn build<'ctx, 'this, TType, TLibfunc>(
+    fn build<'ctx, 'this>(
         &self,
         context: &'ctx Context,
         registry: &ProgramRegistry<TType, TLibfunc>,
@@ -67,12 +76,7 @@ pub trait LibfuncBuilder {
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
-    ) -> Result<(), Self::Error>
-    where
-        TType: GenericType,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder,
-        <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder;
+    ) -> Result<(), Self::Error>;
 
     /// Return the target function if the statement is a function call.
     ///
@@ -81,10 +85,15 @@ pub trait LibfuncBuilder {
     fn is_function_call(&self) -> Option<&FunctionId>;
 }
 
-impl LibfuncBuilder for CoreConcreteLibfunc {
-    type Error = std::convert::Infallible;
+impl<TType, TLibfunc> LibfuncBuilder<TType, TLibfunc> for CoreConcreteLibfunc
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc<Concrete = Self>,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+{
+    type Error = CoreLibfuncBuilderError;
 
-    fn build<'ctx, 'this, TType, TLibfunc>(
+    fn build<'ctx, 'this>(
         &self,
         context: &'ctx Context,
         registry: &ProgramRegistry<TType, TLibfunc>,
@@ -92,13 +101,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
-    ) -> Result<(), Self::Error>
-    where
-        TType: GenericType,
-        TLibfunc: GenericLibfunc,
-        <TType as GenericType>::Concrete: TypeBuilder,
-        <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
-    {
+    ) -> Result<(), Self::Error> {
         match self {
             Self::ApTracking(selector) => self::ap_tracking::build(
                 context, registry, entry, location, helper, metadata, selector,

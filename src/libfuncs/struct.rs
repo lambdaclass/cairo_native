@@ -1,7 +1,14 @@
 //! # Struct-related libfuncs
 
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         lib_func::SignatureOnlyConcreteLibfunc, structure::StructConcreteLibfunc, ConcreteLibfunc,
@@ -24,12 +31,12 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &StructConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
         StructConcreteLibfunc::Construct(info) => {
@@ -51,31 +58,29 @@ pub fn build_construct<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let struct_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
+        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
     for i in 0..info.param_signatures().len() {
         acc = entry.append_operation(llvm::insert_value(
             context,
-            acc.result(0).unwrap().into(),
+            acc.result(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[i as _]),
-            entry.argument(i).unwrap().into(),
+            entry.argument(i)?.into(),
             location,
         ));
     }
 
-    entry.append_operation(helper.br(0, &[acc.result(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[acc.result(0)?.into()], location));
 
     Ok(())
 }
@@ -89,18 +94,16 @@ pub fn build_deconstruct<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let struct_ty = registry
-        .get_type(&info.param_signatures()[0].ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
+        .get_type(&info.param_signatures()[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
     let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
     for i in 0..info.branch_signatures()[0].vars.len() {
@@ -108,13 +111,12 @@ where
             entry
                 .append_operation(llvm::extract_value(
                     context,
-                    entry.argument(0).unwrap().into(),
-                    DenseI64ArrayAttribute::new(context, &[i.try_into().unwrap()]),
+                    entry.argument(0)?.into(),
+                    DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
                     crate::ffi::get_struct_field_type_at(&struct_ty, i),
                     location,
                 ))
-                .result(0)
-                .unwrap()
+                .result(0)?
                 .into(),
         );
     }

@@ -33,7 +33,10 @@
 //! only a single byte per element.
 
 use super::TypeBuilder;
-use crate::metadata::MetadataStorage;
+use crate::{
+    error::types::{Error, Result},
+    metadata::MetadataStorage,
+};
 use cairo_lang_sierra::{
     extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
@@ -53,23 +56,21 @@ pub fn build<'ctx, TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
     info: &StructConcreteType,
-) -> Result<Type<'ctx>, std::convert::Infallible>
+) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     let fields: Vec<_> = info
         .members
         .iter()
         .map(|field| {
             registry
-                .get_type(field)
-                .unwrap()
+                .get_type(field)?
                 .build(context, module, registry, metadata)
-                .unwrap()
         })
-        .collect();
+        .try_collect()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);
 
     Ok(struct_ty)

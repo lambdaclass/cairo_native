@@ -3,7 +3,14 @@
 //! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         gas::GasConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
@@ -26,12 +33,12 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &GasConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
         GasConcreteLibfunc::WithdrawGas(_) => todo!(),
@@ -55,12 +62,12 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     // TODO: Implement libfunc.
     let op0 = entry.append_operation(arith::constant(
@@ -70,12 +77,9 @@ where
     ));
 
     entry.append_operation(helper.cond_br(
-        op0.result(0).unwrap().into(),
+        op0.result(0)?.into(),
         [0, 1],
-        [&[
-            entry.argument(0).unwrap().into(),
-            entry.argument(1).unwrap().into(),
-        ]; 2],
+        [&[entry.argument(0)?.into(), entry.argument(1)?.into()]; 2],
         location,
     ));
 
@@ -91,23 +95,21 @@ pub fn build_get_builtin_costs<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let builtin_costs_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)
-        .unwrap()
-        .build(context, helper, registry, metadata)
-        .unwrap();
+        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
 
     // TODO: Implement libfunc.
     let op0 = entry.append_operation(llvm::undef(builtin_costs_ty, location));
 
-    entry.append_operation(helper.br(0, &[op0.result(0).unwrap().into()], location));
+    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
 
     Ok(())
 }

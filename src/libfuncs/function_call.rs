@@ -5,6 +5,10 @@
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
+    error::{
+        libfuncs::{Error, Result},
+        CoreTypeBuilderError,
+    },
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,
@@ -31,27 +35,27 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &FunctionCallConcreteLibfunc,
-) -> Result<(), std::convert::Infallible>
+) -> Result<()>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let arguments = (0..entry.argument_count())
-        .map(|i| entry.argument(i).unwrap().into())
-        .collect::<Vec<_>>();
+        .map(|i| Result::Ok(entry.argument(i)?.into()))
+        .try_collect::<Vec<_>>()?;
     let result_types = info.signature.branch_signatures[0]
         .vars
         .iter()
         .map(|x| {
-            registry
-                .get_type(&x.ty)
-                .unwrap()
-                .build(context, helper, registry, metadata)
-                .unwrap()
+            Result::Ok(
+                registry
+                    .get_type(&x.ty)?
+                    .build(context, helper, registry, metadata)?,
+            )
         })
-        .collect::<Vec<_>>();
+        .try_collect::<Vec<_>>()?;
 
     if let Some(tailrec_meta) = metadata.get_mut::<TailRecursionMeta>() {
         let op0 = entry.append_operation(memref::load(tailrec_meta.depth_counter(), &[], location));
@@ -61,12 +65,12 @@ where
             location,
         ));
         let op2 = entry.append_operation(index::add(
-            op0.result(0).unwrap().into(),
-            op1.result(0).unwrap().into(),
+            op0.result(0)?.into(),
+            op1.result(0)?.into(),
             location,
         ));
         entry.append_operation(memref::store(
-            op2.result(0).unwrap().into(),
+            op2.result(0)?.into(),
             tailrec_meta.depth_counter(),
             &[],
             location,
@@ -90,8 +94,8 @@ where
             helper.br(
                 0,
                 &(0..result_types.len())
-                    .map(|i| cont_block.argument(i).unwrap().into())
-                    .collect::<Vec<_>>(),
+                    .map(|i| Result::Ok(cont_block.argument(i)?.into()))
+                    .try_collect::<Vec<_>>()?,
                 location,
             ),
         );
@@ -112,8 +116,8 @@ where
                 &result_types
                     .iter()
                     .enumerate()
-                    .map(|(i, _)| op0.result(i).unwrap().into())
-                    .collect::<Vec<_>>(),
+                    .map(|(i, _)| Result::Ok(op0.result(i)?.into()))
+                    .try_collect::<Vec<_>>()?,
                 location,
             ),
         );

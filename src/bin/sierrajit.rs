@@ -1,4 +1,5 @@
 #![feature(arc_unwrap_or_clone)]
+#![feature(iter_intersperse)]
 #![feature(nonzero_ops)]
 #![feature(strict_provenance)]
 
@@ -120,7 +121,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(io::stdout()),
-            )?;
+            )
+            .unwrap_or_else(|e| match &*e {
+                sierra2mlir::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+                    panic!(
+                        "Expected inputs with signature: ({})",
+                        entry_point
+                            .signature
+                            .param_types
+                            .iter()
+                            .map(ToString::to_string)
+                            .intersperse_with(|| ", ".to_string())
+                            .collect::<String>()
+                    )
+                }
+                e => Err(e).unwrap(),
+            });
             println!();
         }
         Some(StdioOrPath::Path(path)) => {
@@ -131,7 +147,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(&mut file),
-            )?;
+            )
+            .unwrap();
             writeln!(file)?;
         }
         None => {
