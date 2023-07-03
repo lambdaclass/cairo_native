@@ -62,7 +62,10 @@ where
         ArrayConcreteLibfunc::PopFront(info) => {
             build_pop_front(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
+        ArrayConcreteLibfunc::PopFrontConsume(info) => {
+            // same signature at sierra level
+            build_pop_front(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
         }
@@ -474,7 +477,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_get` libfunc.
+/// Generate MLIR operations for the `array_pop_front` libfunc.
 pub fn build_pop_front<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -790,5 +793,28 @@ mod test {
         }};
 
         assert_eq!(result, json!([[1, []]]));
+    }
+
+    #[test]
+    fn run_pop_front_consume() {
+        let result = run_cairo! { run_test() in mod {
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                match numbers.pop_front_consume() {
+                    Option::Some((arr, x)) => {
+                        x
+                    },
+                    Option::None(()) => {
+                        0_u32
+                    },
+                }
+            }
+        }};
+
+        assert_eq!(result, json!([4]));
     }
 }
