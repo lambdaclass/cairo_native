@@ -79,7 +79,7 @@ run_bench() {
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --warmup 3 \
         "cairo-run --available-gas 18446744073709551615 $base_path.cairo" \
-        "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_path::$base_path::main --inputs -" \
+        "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
         "$OUTPUT_DIR/$base_name" \
         >> /dev/stderr
 }
