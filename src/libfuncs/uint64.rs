@@ -19,14 +19,14 @@ use cairo_lang_sierra::{
             IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        cf, llvm,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
@@ -62,8 +62,12 @@ where
         }
         UintConcrete::SquareRoot(_) => todo!(),
         UintConcrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
-        UintConcrete::ToFelt252(_) => todo!(),
-        UintConcrete::FromFelt252(_) => todo!(),
+        UintConcrete::ToFelt252(info) => {
+            build_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+        UintConcrete::FromFelt252(info) => {
+            build_from_felt252(context, registry, entry, location, helper, metadata, info)
+        }
         UintConcrete::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, info)
         }
@@ -102,6 +106,73 @@ where
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
 
+    Ok(())
+}
+
+/// Generate MLIR operations for the u64 operation libfunc.
+pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    info: &UintOperationConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let range_check: Value = entry.argument(0)?.into();
+    let lhs: Value = entry.argument(1)?.into();
+    let rhs: Value = entry.argument(2)?.into();
+
+    let op_name = match info.operator {
+        IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
+        IntOperator::OverflowingSub => "llvm.intr.usub.with.overflow",
+    };
+
+    let values_type = lhs.r#type();
+
+    let result_type = llvm::r#type::r#struct(
+        context,
+        &[values_type, IntegerType::new(context, 1).into()],
+        false,
+    );
+
+    let op = entry.append_operation(
+        OperationBuilder::new(op_name, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_type])
+            .build(),
+    );
+    let result = op.result(0)?.into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        result,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        values_type,
+        location,
+    ));
+    let op_result = op.result(0)?.into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        result,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        IntegerType::new(context, 1).into(),
+        location,
+    ));
+    let op_overflow = op.result(0)?.into();
+
+    entry.append_operation(helper.cond_br(
+        op_overflow,
+        [1, 0],
+        [&[range_check, op_result], &[range_check, op_result]],
+        location,
+    ));
     Ok(())
 }
 
@@ -203,14 +274,45 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the u64 operation libfunc.
-pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+/// Generate MLIR operations for the `u64_to_felt252` libfunc.
+pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    info: &UintOperationConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let felt252_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
+    let value: Value = entry.argument(0)?.into();
+
+    let op = entry.append_operation(arith::extui(value, felt252_ty, location));
+
+    let result = op.result(0)?.into();
+
+    entry.append_operation(helper.br(0, &[result], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `u64_from_felt252` libfunc.
+pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -219,53 +321,49 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let range_check: Value = entry.argument(0)?.into();
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let value: Value = entry.argument(1)?.into();
 
-    let op_name = match info.operator {
-        IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
-        IntOperator::OverflowingSub => "llvm.intr.usub.with.overflow",
-    };
+    let felt252_ty = registry
+        .get_type(&info.param_signatures()[1].ty)?
+        .build(context, helper, registry, metadata)?;
+    let result_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[1].ty)?
+        .build(context, helper, registry, metadata)?;
 
-    let values_type = lhs.r#type();
-
-    let result_type = llvm::r#type::r#struct(
+    let op = entry.append_operation(arith::constant(
         context,
-        &[values_type, IntegerType::new(context, 1).into()],
-        false,
-    );
-
-    let op = entry.append_operation(
-        OperationBuilder::new(op_name, location)
-            .add_operands(&[lhs, rhs])
-            .add_results(&[result_type])
-            .build(),
-    );
-    let result = op.result(0)?.into();
-
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        values_type,
+        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty)).unwrap(),
         location,
     ));
-    let op_result = op.result(0)?.into();
+    let const_max = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::extract_value(
+    let op = entry.append_operation(arith::cmpi(
         context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        IntegerType::new(context, 1).into(),
+        CmpiPredicate::Ule,
+        value,
+        const_max,
         location,
     ));
-    let op_overflow = op.result(0)?.into();
+    let is_ule = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(
-        op_overflow,
-        [1, 0],
-        [&[range_check, op_result], &[range_check, op_result]],
+    let block_success = helper.append_block(Block::new(&[]));
+    let block_failure = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_ule,
+        block_success,
+        block_failure,
+        &[],
+        &[],
         location,
     ));
+
+    let op = block_success.append_operation(arith::trunci(value, result_ty, location));
+    let value = op.result(0)?.into();
+    block_success.append_operation(helper.br(0, &[range_check, value], location));
+
+    block_failure.append_operation(helper.br(1, &[range_check], location));
+
     Ok(())
 }
