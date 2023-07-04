@@ -24,6 +24,9 @@ coverage:
 book:
 	mdbook serve docs
 
+bench:
+	./scripts/bench-hyperfine.sh
+
 bench-ci:
 	cargo criterion --all-features
 

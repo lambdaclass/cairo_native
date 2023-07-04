@@ -65,12 +65,26 @@ run_bench() {
 
     "$MLIR_DIR/bin/clang" \
         -O3 \
+        -Wno-override-module \
         "$base_path.c" \
         "$OUTPUT_DIR/$base_name.ll" \
         -L "target/release" \
         -Wl,-rpath "$MLIR_DIR/lib" \
         -Wl,-rpath "target/release" \
         -o "$OUTPUT_DIR/$base_name" \
+        >> /dev/stderr
+
+    "$MLIR_DIR/bin/clang" \
+        -O3 \
+        -march=native \
+        -mtune=native \
+        -Wno-override-module \
+        "$base_path.c" \
+        "$OUTPUT_DIR/$base_name.ll" \
+        -L "target/release" \
+        -Wl,-rpath "$MLIR_DIR/lib" \
+        -Wl,-rpath "target/release" \
+        -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 
     hyperfine \
@@ -81,6 +95,7 @@ run_bench() {
         "cairo-run --available-gas 18446744073709551615 $base_path.cairo" \
         "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
         "$OUTPUT_DIR/$base_name" \
+        "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 }
 
