@@ -25,9 +25,14 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm,
+    },
     ir::{
-        attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        operation::OperationBuilder,
+        r#type::IntegerType,
         Attribute, Block, Location, Value, ValueLike,
     },
     Context,
@@ -58,16 +63,24 @@ where
         Uint128Concrete::Divmod(info) => {
             build_divmod(context, registry, entry, location, helper, metadata, info)
         }
-        Uint128Concrete::Equal(_) => todo!(),
-        Uint128Concrete::FromFelt252(_) => todo!(),
+        Uint128Concrete::Equal(info) => {
+            build_equal(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::FromFelt252(info) => {
+            build_from_felt252(context, registry, entry, location, helper, metadata, info)
+        }
         Uint128Concrete::GuaranteeMul(_) => todo!(),
-        Uint128Concrete::IsZero(_) => todo!(),
+        Uint128Concrete::IsZero(info) => {
+            build_is_zero(context, registry, entry, location, helper, metadata, info)
+        }
         Uint128Concrete::MulGuaranteeVerify(_) => todo!(),
         Uint128Concrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, metadata, info)
         }
         Uint128Concrete::SquareRoot(_) => todo!(),
-        Uint128Concrete::ToFelt252(_) => todo!(),
+        Uint128Concrete::ToFelt252(info) => {
+            build_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -158,13 +171,99 @@ where
     Ok(())
 }
 
-pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let arg0: Value = entry.argument(0)?.into();
+    let arg1: Value = entry.argument(1)?.into();
+
+    let op0 = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        arg1,
+        location,
+    ));
+
+    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [0, 1], [&[]; 2], location));
+
+    Ok(())
+}
+
+pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let arg0: Value = entry.argument(0)?.into();
+
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, arg0.r#type()).into(),
+        location,
+    ));
+    let const_0 = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        const_0,
+        location,
+    ));
+    let condition = op.result(0)?.into();
+
+    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+    Ok(())
+}
+
+pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
     info: &UintOperationConcreteLibfunc,
 ) -> Result<()>
 where
@@ -227,5 +326,30 @@ where
         [&[range_check, result], &[range_check, result]],
         location,
     ));
+    Ok(())
+}
+
+pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let op = entry.append_operation(arith::extui(
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 252).into(),
+        location,
+    ));
+
+    entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
     Ok(())
 }
