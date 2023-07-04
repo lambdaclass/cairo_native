@@ -1,0 +1,12 @@
+[package]
+name = "cairo-native-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[dependencies]
+cairo-felt = "0.6"
+cairo-lang-runner = "2.0.0-rc5"
+libc = "0.2.146"

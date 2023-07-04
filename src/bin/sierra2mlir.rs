@@ -10,16 +10,16 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
     ProgramParser,
 };
+use cairo_native::{
+    debug_info::{DebugInfo, DebugLocations},
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+};
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
     ir::{operation::OperationPrintingFlags, Location, Module},
     utility::register_all_dialects,
     Context,
-};
-use sierra2mlir::{
-    debug_info::{DebugInfo, DebugLocations},
-    metadata::MetadataStorage,
 };
 use std::{
     ffi::OsStr,
@@ -57,7 +57,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut metadata = MetadataStorage::new();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
 
-    sierra2mlir::compile::<CoreType, CoreLibfunc>(
+    // Make the runtime library available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
         &program,
