@@ -19,14 +19,14 @@ use cairo_lang_sierra::{
             IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        cf, llvm,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
@@ -62,8 +62,12 @@ where
         }
         UintConcrete::SquareRoot(_) => todo!(),
         UintConcrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
-        UintConcrete::ToFelt252(_) => todo!(),
-        UintConcrete::FromFelt252(_) => todo!(),
+        UintConcrete::ToFelt252(info) => {
+            build_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+        UintConcrete::FromFelt252(info) => {
+            build_from_felt252(context, registry, entry, location, helper, metadata, info)
+        }
         UintConcrete::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, info)
         }
@@ -270,6 +274,100 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u8_to_felt252` libfunc.
+pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let felt252_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
+    let value: Value = entry.argument(0)?.into();
+
+    let op = entry.append_operation(arith::extui(value, felt252_ty, location));
+
+    let result = op.result(0)?.into();
+
+    entry.append_operation(helper.br(0, &[result], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `u8_from_felt252` libfunc.
+pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let range_check: Value = entry.argument(0)?.into();
+    let value: Value = entry.argument(1)?.into();
+
+    let felt252_ty = registry
+        .get_type(&info.param_signatures()[1].ty)?
+        .build(context, helper, registry, metadata)?;
+    let result_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[1].ty)?
+        .build(context, helper, registry, metadata)?;
+
+    let op = entry.append_operation(arith::constant(
+        context,
+        Attribute::parse(context, &format!("{} : {}", u8::MAX, felt252_ty)).unwrap(),
+        location,
+    ));
+    let const_max = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Ule,
+        value,
+        const_max,
+        location,
+    ));
+    let is_ule = op.result(0)?.into();
+
+    let block_success = helper.append_block(Block::new(&[]));
+    let block_failure = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_ule,
+        block_success,
+        block_failure,
+        &[],
+        &[],
+        location,
+    ));
+
+    let op = block_success.append_operation(arith::trunci(value, result_ty, location));
+    let value = op.result(0)?.into();
+    block_success.append_operation(helper.br(0, &[range_check, value], location));
+
+    block_failure.append_operation(helper.br(1, &[range_check], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::test::{load_cairo, run_program};
@@ -325,6 +423,34 @@ mod test {
         let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([255]));
+    }
+
+    #[test]
+    fn run_to_felt252() {
+        let program = load_cairo!(
+            use traits::Into;
+
+            fn run_test() -> felt252 {
+                2_u8.into()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[2, 0, 0, 0, 0, 0, 0, 0]]));
+    }
+
+    #[test]
+    fn run_from_felt252() {
+        let program = load_cairo!(
+            use traits::TryInto;
+
+            fn run_test() -> (Option<u8>, Option<u8>) {
+                (255.try_into(), 256.try_into())
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(result, json!([null, [[0, 255], [1, []]]]));
     }
 
     #[test]
