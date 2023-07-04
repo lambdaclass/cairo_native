@@ -19,25 +19,55 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::MetadataStorage,
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
-    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        debug::DebugConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc,
+        GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    dialect::{arith, cf, llvm},
+    ir::{
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        r#type::IntegerType,
+        Block, Location,
+    },
     Context,
 };
 
-fn build<'ctx, TType, TLibfunc>(
-    _context: &'ctx Context,
+pub fn build<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, '_>,
+    metadata: &mut MetadataStorage,
+    selector: &DebugConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    match selector {
+        DebugConcreteLibfunc::Print(info) => {
+            build_print(context, registry, entry, location, helper, metadata, info)
+        }
+    }
+}
+
+pub fn build_print<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _entry: &Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, '_>,
-    _metadata: &mut MetadataStorage,
+    entry: &Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, '_>,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -46,5 +76,70 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    todo!()
+    let runtime_bindings = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
+
+    let stdout_fd = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let values_ptr = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[0]),
+            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let values_len = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 32).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let return_code = runtime_bindings.libfunc_debug_print(
+        context, helper, entry, stdout_fd, values_ptr, values_len, location,
+    )?;
+
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let return_code_is_ok = entry
+        .append_operation(arith::cmpi(
+            context,
+            arith::CmpiPredicate::Eq,
+            return_code,
+            k0,
+            location,
+        ))
+        .result(0)?
+        .into();
+    cf::assert(
+        context,
+        return_code_is_ok,
+        "Print libfunc invocation failed.",
+        location,
+    );
+
+    entry.append_operation(helper.br(0, &[], location));
+
+    Ok(())
 }

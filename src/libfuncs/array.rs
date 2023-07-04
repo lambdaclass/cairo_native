@@ -69,8 +69,12 @@ where
         ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::SnapshotPopFront(_) => todo!(),
-        ArrayConcreteLibfunc::SnapshotPopBack(_) => todo!(),
+        ArrayConcreteLibfunc::SnapshotPopFront(info) => {
+            build_snapshot_pop_front(context, registry, entry, location, helper, metadata, info)
+        }
+        ArrayConcreteLibfunc::SnapshotPopBack(info) => {
+            build_snapshot_pop_back(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -697,6 +701,160 @@ where
 {
     // same signature at sierra level
     build_pop_front(context, registry, entry, location, helper, metadata, info)
+}
+
+/// Generate MLIR operations for the `array_snapshot_pop_front` libfunc.
+pub fn build_snapshot_pop_front<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // same signature at sierra level
+    // TODO: is this really equal?
+    build_pop_front(context, registry, entry, location, helper, metadata, info)
+}
+
+/// Generate MLIR operations for the `array_snapshot_pop_back` libfunc.
+pub fn build_snapshot_pop_back<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let array_ty = registry
+        .get_type(&info.param_signatures()[0].ty)?
+        .build(context, helper, registry, metadata)?;
+
+    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
+    let elem_layout = elem_concrete_ty.layout(registry)?;
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let array_val = entry.argument(0)?.into();
+
+    // get len
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let len: Value = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, len.r#type()).into(),
+        location,
+    ));
+    let const_0 = op.result(0)?.into();
+
+    // check if array is empty
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        len,
+        const_0,
+        location,
+    ));
+    let is_empty = op.result(0)?.into();
+
+    let block_not_empty = helper.append_block(Block::new(&[]));
+    let block_empty = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_empty,
+        block_empty,
+        block_not_empty,
+        &[],
+        &[],
+        location,
+    ));
+
+    // empty branch
+    block_empty.append_operation(helper.br(1, &[array_val], location));
+
+    // non empty branch
+
+    // get ptr
+    let op = block_not_empty.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        ptr_ty,
+        location,
+    ));
+    let array_ptr = op.result(0)?.into();
+
+    // get the last elem
+    let op = block_not_empty.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, len])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let elem_ptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::load(
+        context,
+        elem_ptr,
+        elem_ty,
+        location,
+        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
+            elem_layout.align().try_into()?,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
+    let elem_value = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(1, len.r#type()).into(),
+        location,
+    ));
+    let const_1 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::subi(len, const_1, location));
+    let len_min_1_i32 = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(llvm::insert_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_min_1_i32,
+        location,
+    ));
+    let array_val = op.result(0)?.into();
+
+    block_not_empty.append_operation(helper.br(0, &[array_val, elem_value], location));
+
+    Ok(())
 }
 
 #[cfg(test)]
