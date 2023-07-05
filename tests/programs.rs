@@ -66,3 +66,43 @@ fn factorial() {
     let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
     assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
 }
+
+#[test]
+fn logistic_map() {
+    let (source, program, runner) = load_cairo! {
+        fn iterate_map(r: felt252, x: felt252) -> felt252 {
+            r * x * -x
+        }
+
+        fn run_test() -> felt252 {
+            // Initial value.
+            let mut x = 1234567890123456789012345678901234567890;
+
+            // Iterate the map.
+            let mut i = 1000;
+            loop {
+                x = iterate_map(4, x);
+
+                if i == 0 {
+                    break x;
+                }
+
+                i = i - 1;
+            }
+        }
+    };
+
+    let result_vm = run_vm_program(
+        &(source.clone(), program.clone(), runner),
+        "run_test",
+        &[],
+        Some(GAS),
+    )
+    .unwrap();
+
+    let vm_results = get_result_success(result_vm.value);
+    let fib_result = &vm_results[0];
+
+    let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
+    assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
+}
