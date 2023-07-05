@@ -111,7 +111,7 @@ where
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let lhs = entry.argument(0)?.into();
-    let rhs = entry.argument(0)?.into();
+    let rhs = entry.argument(1)?.into();
 
     let op = entry.append_operation(llvm::extract_value(
         context,
@@ -214,29 +214,29 @@ mod test {
     use crate::utils::test::{load_cairo, run_program};
     use serde_json::json;
 
+    pub fn true_js() -> serde_json::Value {
+        json!([1, []])
+    }
+
+    pub fn false_js() -> serde_json::Value {
+        json!([0, []])
+    }
+
     #[test]
     fn run_not() {
         let program = load_cairo!(
             use array::ArrayTrait;
 
-            fn run_test() -> bool {
-                true == true
+            fn run_test(a: bool) -> bool {
+                !a
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([[1, []]]));
+        let result = run_program(&program, "run_test", json!([true_js()]));
+        assert_eq!(result, json!([false_js()]));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> bool {
-                true == false
-            }
-        );
-        let result = run_program(&program, "run_test", json!([]));
-
-        assert_eq!(result, json!([[0, []]]));
+        let result = run_program(&program, "run_test", json!([false_js()]));
+        assert_eq!(result, json!([true_js()]));
     }
 
     #[test]
@@ -244,24 +244,21 @@ mod test {
         let program = load_cairo!(
             use array::ArrayTrait;
 
-            fn run_test() -> bool {
-                true && true
+            fn run_test(a: bool, b: bool) -> bool {
+                a && b
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-        assert_eq!(result, json!([[1, []]]));
+        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
+        assert_eq!(result, json!([false_js()]));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
+        assert_eq!(result, json!([false_js()]));
 
-            fn run_test() -> bool {
-                true && false
-            }
-        );
-        let result = run_program(&program, "run_test", json!([]));
-
-        assert_eq!(result, json!([[0, []]]));
+        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
+        assert_eq!(result, json!([false_js()]));
     }
 
     #[test]
@@ -269,24 +266,22 @@ mod test {
         let program = load_cairo!(
             use array::ArrayTrait;
 
-            fn run_test() -> bool {
-                true ^ true
+            fn run_test(a: bool, b: bool) -> bool {
+                a ^ b
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([[0, []]]));
+        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
+        assert_eq!(result, json!([false_js()]));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-            fn run_test() -> bool {
-                true ^ false
-            }
-        );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-        assert_eq!(result, json!([[0, []]]));
+        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
+        assert_eq!(result, json!([false_js()]));
     }
 
     #[test]
@@ -294,23 +289,21 @@ mod test {
         let program = load_cairo!(
             use array::ArrayTrait;
 
-            fn run_test() -> bool {
-                true || true
+            fn run_test(a: bool, b: bool) -> bool {
+                a || b
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([[1, []]]));
+        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-            fn run_test() -> bool {
-                true || false
-            }
-        );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
+        assert_eq!(result, json!([true_js()]));
 
-        assert_eq!(result, json!([[1, []]]));
+        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
+        assert_eq!(result, json!([false_js()]));
     }
 }
