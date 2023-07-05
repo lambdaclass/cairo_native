@@ -331,3 +331,73 @@ where
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        types::felt252::PRIME,
+        utils::test::{load_cairo, run_program},
+    };
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::{BigInt, Sign};
+    use serde_json::json;
+    use std::ops::Neg;
+
+    lazy_static! {
+        static ref ENUM_INIT: (String, Program) = load_cairo! {
+            enum MySmallEnum {
+                A: felt252,
+            }
+
+            enum MyEnum {
+                A: felt252,
+                B: u8,
+                C: u16,
+                D: u32,
+                E: u64,
+            }
+
+            fn run_test() -> (MySmallEnum, MyEnum, MyEnum, MyEnum, MyEnum, MyEnum) {
+                (
+                    MySmallEnum::A(-1),
+                    MyEnum::A(5678),
+                    MyEnum::B(90),
+                    MyEnum::C(9012),
+                    MyEnum::D(34567890),
+                    MyEnum::E(1234567890123456),
+                )
+            }
+        };
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    fn f(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
+    }
+
+    #[test]
+    fn enum_init() {
+        let r = || run_program(&ENUM_INIT, "run_test", json!([]));
+
+        assert_eq!(
+            r(),
+            json!([[
+                [0, f("-1")],
+                [0, f("5678")],
+                [1, 90u8],
+                [2, 9012u16],
+                [3, 34567890u32],
+                [4, 1234567890123456u64],
+            ]])
+        );
+    }
+}
