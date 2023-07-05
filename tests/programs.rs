@@ -30,10 +30,10 @@ fn fib() {
     .unwrap();
 
     let vm_results = get_result_success(result_vm.value);
-    let fib_result = &vm_results[0];
+    let vm_result = &vm_results[0];
 
     let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
-    assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
+    assert_eq!(result, json!([null, GAS, [0, [felt(vm_result)]]]));
 }
 
 #[test]
@@ -61,10 +61,10 @@ fn factorial() {
     .unwrap();
 
     let vm_results = get_result_success(result_vm.value);
-    let fib_result = &vm_results[0];
+    let vm_result = &vm_results[0];
 
     let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
-    assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
+    assert_eq!(result, json!([null, GAS, [0, [felt(vm_result)]]]));
 }
 
 #[test]
