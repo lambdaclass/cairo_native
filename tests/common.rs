@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -28,6 +30,8 @@ macro_rules! load_cairo {
         $crate::common::load_cairo_str(stringify!($($program)+))
     };
 }
+
+#[allow(unused_imports)]
 pub(crate) use load_cairo;
 
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
