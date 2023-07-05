@@ -466,7 +466,7 @@ where
     Ok(llvm::r#type::r#struct(
         context,
         &[tag_ty, filling_ty, variant_ty, padding_ty],
-        false,
+        true,
     ))
 }
 

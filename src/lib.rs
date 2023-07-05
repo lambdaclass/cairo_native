@@ -1,5 +1,6 @@
 //! # Cairo Sierra to MLIR compiler and JIT engine
 
+#![feature(alloc_layout_extra)]
 #![feature(arc_unwrap_or_clone)]
 #![feature(box_into_inner)]
 #![feature(error_generic_member_access)]

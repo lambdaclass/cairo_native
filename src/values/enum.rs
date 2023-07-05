@@ -38,17 +38,25 @@ where
         TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    let tag_layout = crate::utils::get_integer_layout(
-        (info.variants.len().next_power_of_two().next_multiple_of(8) >> 3)
+    let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
+        0 | 1 => 0,
+        num_variants => (num_variants.next_power_of_two().next_multiple_of(8) >> 3)
             .try_into()
             .unwrap(),
-    );
-    let tag_value = match tag_layout.size() {
-        1 => *ptr.cast::<u8>().as_ref() as usize,
-        2 => *ptr.cast::<u16>().as_ref() as usize,
-        4 => *ptr.cast::<u32>().as_ref() as usize,
-        8 => *ptr.cast::<u64>().as_ref() as usize,
-        _ => unreachable!(),
+    });
+    let tag_value = match info.variants.len() {
+        0 => {
+            // An enum without variants is basically the `!` (never) type in Rust.
+            panic!("An enum without variants is not a valid type.")
+        }
+        1 => 0,
+        _ => match tag_layout.size() {
+            1 => *ptr.cast::<u8>().as_ref() as usize,
+            2 => *ptr.cast::<u16>().as_ref() as usize,
+            4 => *ptr.cast::<u32>().as_ref() as usize,
+            8 => *ptr.cast::<u64>().as_ref() as usize,
+            _ => unreachable!(),
+        },
     };
 
     let payload_ty = registry.get_type(&info.variants[tag_value]).unwrap();

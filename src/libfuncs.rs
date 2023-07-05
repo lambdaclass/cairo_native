@@ -113,7 +113,9 @@ where
             Self::BranchAlign(info) => self::branch_align::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Bool(_) => todo!(),
+            Self::Bool(selector) => self::r#bool::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Box(selector) => self::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -168,7 +170,9 @@ where
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
             Self::StarkNet(_) => todo!(),
-            Self::Debug(_) => todo!(),
+            Self::Debug(selector) => self::debug::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
