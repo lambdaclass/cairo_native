@@ -38,11 +38,12 @@ where
         TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    let tag_layout = crate::utils::get_integer_layout(
-        (info.variants.len().next_power_of_two().next_multiple_of(8) >> 3)
+    let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
+        0 | 1 => 0,
+        num_variants => (num_variants.next_power_of_two().next_multiple_of(8) >> 3)
             .try_into()
             .unwrap(),
-    );
+    });
     let tag_value = match info.variants.len() {
         0 => {
             // An enum without variants is basically the `!` (never) type in Rust.
