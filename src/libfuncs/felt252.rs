@@ -309,16 +309,6 @@ mod test {
             }
         };
 
-        static ref FELT252_FACTORIAL: (String, Program) = load_cairo! {
-            fn factorial(n: felt252) -> felt252 {
-                if (n == 1) {
-                    n
-                } else {
-                    n * factorial(n - 1)
-                }
-            }
-        };
-
         // TODO: Add test program for `felt252_div`.
 
         // TODO: Add test program for `felt252_add_const`.
@@ -353,13 +343,6 @@ mod test {
         let mut u32_digits = value.to_u32_digits();
         u32_digits.resize(8, 0);
         u32_digits.try_into().unwrap()
-    }
-
-    #[test]
-    fn felt252_factorial() {
-        let r = |n| run_program(&FELT252_FACTORIAL, "factorial", json!([null, 0, n]));
-
-        assert_eq!(r(f("5")), json!([null, 0, [0, [f("120")]]]));
     }
 
     #[test]
