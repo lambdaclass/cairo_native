@@ -44,6 +44,8 @@ tracing-subscriber = { version = "0.3.17", features = [
 ], optional = true }
 
 [dev-dependencies]
+cairo-lang-runner = "2.0.1"
+cairo-lang-starknet = "2.0.1"
 serde_json = "1.0.97"
 tempfile = "3.6.0"
 
