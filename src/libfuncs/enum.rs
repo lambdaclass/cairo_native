@@ -76,7 +76,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -97,8 +97,20 @@ where
         location,
     ));
 
-    let concrete_enum_ty =
-        llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
+    let concrete_enum_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            tag_ty,
+            llvm::r#type::array(
+                IntegerType::new(context, 8).into(),
+                tag_layout
+                    .padding_needed_for(variant_tys[info.index].1.align())
+                    .try_into()?,
+            ),
+            variant_tys[info.index].0,
+        ],
+        true,
+    );
 
     let op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
     let op2 = entry.append_operation(llvm::insert_value(
@@ -111,7 +123,7 @@ where
     let op3 = entry.append_operation(llvm::insert_value(
         context,
         op2.result(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
+        DenseI64ArrayAttribute::new(context, &[2]),
         entry.argument(0)?.into(),
         location,
     ));
@@ -185,7 +197,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -275,8 +287,23 @@ where
         default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
     }
 
-    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
-        let concrete_enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+    for (i, (block, (payload_ty, payload_layout))) in
+        variant_blocks.into_iter().zip(variant_tys).enumerate()
+    {
+        let concrete_enum_ty = llvm::r#type::r#struct(
+            context,
+            &[
+                tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    tag_layout
+                        .padding_needed_for(payload_layout.align())
+                        .try_into()?,
+                ),
+                payload_ty,
+            ],
+            true,
+        );
 
         let op3 = block.append_operation(
             OperationBuilder::new("llvm.bitcast", location)
@@ -294,7 +321,7 @@ where
         let op5 = block.append_operation(llvm::extract_value(
             context,
             op4.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
+            DenseI64ArrayAttribute::new(context, &[2]),
             payload_ty,
             location,
         ));
