@@ -1,4 +1,3 @@
-#include <dlfcn.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,16 +19,15 @@ typedef struct map_return_values
 } map_return_values_t;
 
 
+static void run_bench(map_return_values_t *, void *, uint64_t)
+    __attribute__((weakref("_mlir_ciface_map::map::main")));
+
+
 int main()
 {
     map_return_values_t return_values;
-    void (*ptr)(map_return_values_t *, void *, uint64_t);
-    void *handle;
 
-    handle = dlopen(NULL, RTLD_LAZY);
-
-    *(void **) (&ptr) = dlsym(handle, "_mlir_ciface_map::map::main");
-    ptr(&return_values, NULL, 0);
+    run_bench(&return_values, NULL, 0);
 
     return 0;
 }

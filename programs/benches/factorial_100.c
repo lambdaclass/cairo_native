@@ -1,4 +1,3 @@
-#include <dlfcn.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,16 +19,15 @@ typedef struct factorial_return_values
 } factorial_return_values_t;
 
 
+static void run_bench(factorial_return_values_t *, void *, uint64_t)
+    __attribute__((weakref("_mlir_ciface_factorial_100::factorial_100::main")));
+
+
 int main()
 {
     factorial_return_values_t return_values;
-    void (*ptr)(factorial_return_values_t *, void *, uint64_t);
-    void *handle;
 
-    handle = dlopen(NULL, RTLD_LAZY);
-
-    *(void **) (&ptr) = dlsym(handle, "_mlir_ciface_factorial_100c::factorial_100c::main");
-    ptr(&return_values, NULL, 0);
+    run_bench(&return_values, NULL, 0);
 
     return 0;
 }
