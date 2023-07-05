@@ -217,7 +217,69 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    todo!()
+    let arg0 = entry.argument(0)?.into();
+
+    let k1 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let k128 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(128, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let min_wide_val = entry
+        .append_operation(arith::shli(k1, k128, location))
+        .result(0)?
+        .into();
+    let is_wide = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Uge,
+            arg0,
+            min_wide_val,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let lsb_bits = entry
+        .append_operation(arith::trunci(
+            arg0,
+            IntegerType::new(context, 128).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let msb_bits = entry
+        .append_operation(arith::shrui(arg0, k128, location))
+        .result(0)?
+        .into();
+    let msb_bits = entry
+        .append_operation(arith::trunci(
+            msb_bits,
+            IntegerType::new(context, 128).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        is_wide,
+        [1, 0],
+        [&[msb_bits, lsb_bits], &[lsb_bits]],
+        location,
+    ));
+    Ok(())
 }
 
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
