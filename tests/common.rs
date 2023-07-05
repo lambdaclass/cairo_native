@@ -2,7 +2,9 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_filesystem::db::init_dev_corelib;
-use cairo_lang_runner::{Arg, RunResult, RunnerError, SierraCasmRunner, StarknetState};
+use cairo_lang_runner::{
+    Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,
@@ -39,6 +41,13 @@ pub fn felt(value: &str) -> [u32; 8] {
     let mut u32_digits = value.to_u32_digits();
     u32_digits.resize(8, 0);
     u32_digits.try_into().unwrap()
+}
+
+pub fn get_result_success(r: RunResultValue) -> Vec<String> {
+    match r {
+        RunResultValue::Success(x) => x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+        RunResultValue::Panic(_) => panic!(),
+    }
 }
 
 pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) {

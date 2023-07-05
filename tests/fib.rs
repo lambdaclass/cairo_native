@@ -1,7 +1,9 @@
 mod common;
-use crate::common::{felt, run_native_program};
+use crate::common::{felt, get_result_success, run_native_program, run_vm_program};
 use common::load_cairo;
 use serde_json::json;
+
+const GAS: usize = usize::MAX;
 
 #[test]
 fn fib() {
@@ -19,6 +21,17 @@ fn fib() {
 
     };
 
-    let result = run_native_program(&(source, program), "run_test", json!([null, 0]));
-    assert_eq!(result, json!([felt("55")]));
+    let result_vm = run_vm_program(
+        &(source.clone(), program.clone(), runner),
+        "run_test",
+        &[],
+        Some(GAS),
+    )
+    .unwrap();
+
+    let vm_results = get_result_success(result_vm.value);
+    let fib_result = &vm_results[0];
+
+    let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
+    assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
 }
