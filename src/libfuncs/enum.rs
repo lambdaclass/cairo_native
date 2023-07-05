@@ -76,7 +76,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -97,8 +97,20 @@ where
         location,
     ));
 
-    let concrete_enum_ty =
-        llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
+    let concrete_enum_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            tag_ty,
+            llvm::r#type::array(
+                IntegerType::new(context, 8).into(),
+                tag_layout
+                    .padding_needed_for(variant_tys[info.index].1.align())
+                    .try_into()?,
+            ),
+            variant_tys[info.index].0,
+        ],
+        true,
+    );
 
     let op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
     let op2 = entry.append_operation(llvm::insert_value(
@@ -111,7 +123,7 @@ where
     let op3 = entry.append_operation(llvm::insert_value(
         context,
         op2.result(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[1]),
+        DenseI64ArrayAttribute::new(context, &[2]),
         entry.argument(0)?.into(),
         location,
     ));
@@ -185,7 +197,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -275,8 +287,23 @@ where
         default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
     }
 
-    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
-        let concrete_enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+    for (i, (block, (payload_ty, payload_layout))) in
+        variant_blocks.into_iter().zip(variant_tys).enumerate()
+    {
+        let concrete_enum_ty = llvm::r#type::r#struct(
+            context,
+            &[
+                tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    tag_layout
+                        .padding_needed_for(payload_layout.align())
+                        .try_into()?,
+                ),
+                payload_ty,
+            ],
+            true,
+        );
 
         let op3 = block.append_operation(
             OperationBuilder::new("llvm.bitcast", location)
@@ -294,7 +321,7 @@ where
         let op5 = block.append_operation(llvm::extract_value(
             context,
             op4.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
+            DenseI64ArrayAttribute::new(context, &[2]),
             payload_ty,
             location,
         ));
@@ -303,4 +330,74 @@ where
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        types::felt252::PRIME,
+        utils::test::{load_cairo, run_program},
+    };
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::{BigInt, Sign};
+    use serde_json::json;
+    use std::ops::Neg;
+
+    lazy_static! {
+        static ref ENUM_INIT: (String, Program) = load_cairo! {
+            enum MySmallEnum {
+                A: felt252,
+            }
+
+            enum MyEnum {
+                A: felt252,
+                B: u8,
+                C: u16,
+                D: u32,
+                E: u64,
+            }
+
+            fn run_test() -> (MySmallEnum, MyEnum, MyEnum, MyEnum, MyEnum, MyEnum) {
+                (
+                    MySmallEnum::A(-1),
+                    MyEnum::A(5678),
+                    MyEnum::B(90),
+                    MyEnum::C(9012),
+                    MyEnum::D(34567890),
+                    MyEnum::E(1234567890123456),
+                )
+            }
+        };
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    fn f(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
+    }
+
+    #[test]
+    fn enum_init() {
+        let r = || run_program(&ENUM_INIT, "run_test", json!([]));
+
+        assert_eq!(
+            r(),
+            json!([[
+                [0, f("-1")],
+                [0, f("5678")],
+                [1, 90u8],
+                [2, 9012u16],
+                [3, 34567890u32],
+                [4, 1234567890123456u64],
+            ]])
+        );
+    }
 }
