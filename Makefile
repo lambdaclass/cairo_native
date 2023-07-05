@@ -24,7 +24,7 @@ coverage:
 book:
 	mdbook serve docs
 
-bench:
+bench: build
 	./scripts/bench-hyperfine.sh
 
 bench-ci:
