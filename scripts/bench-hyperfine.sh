@@ -89,7 +89,6 @@ run_bench() {
 
     hyperfine \
         --shell=none \
-        --ignore-failure \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --warmup 3 \
         "cairo-run --available-gas 18446744073709551615 $base_path.cairo" \
