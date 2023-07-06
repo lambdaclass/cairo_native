@@ -19,6 +19,8 @@
 //! ## Secp256Point
 //! TODO
 
+// TODO: Maybe the types used here can be i251 instead of i252.
+
 use super::TypeBuilder;
 use crate::{
     error::types::{Error, Result},
