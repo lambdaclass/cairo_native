@@ -1,6 +1,4 @@
 //! # `u128`-related libfuncs
-//!
-//! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -30,7 +28,7 @@ use melior::{
         llvm,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Attribute, Block, Location, Value, ValueLike,
@@ -100,15 +98,17 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let u128_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .get_type(&info.branch_signatures()[0].vars[1].ty)?
         .build(context, helper, registry, metadata)?;
 
-    let arg0 = entry.argument(0)?.into();
+    let bswap_intrin_attr = StringAttribute::new(context, "llvm.bswap.i128").into();
+
+    let arg1 = entry.argument(1)?.into();
     mlir_asm! { context, entry, location =>
-        ; res = "llvm.intr.bswap"(arg0) : (u128_ty) -> u128_ty
+        ; res = "llvm.call_intrinsic"(arg1) { "intrin" = bswap_intrin_attr } : (u128_ty) -> u128_ty
     };
 
-    entry.append_operation(helper.br(0, &[res], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), res], location));
     Ok(())
 }
 
@@ -414,4 +414,125 @@ where
 
     entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        types::felt252::PRIME,
+        utils::test::{load_cairo, run_program},
+    };
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::{BigInt, Sign};
+    use serde_json::json;
+    use std::ops::Neg;
+
+    lazy_static! {
+        static ref U128_BYTE_REVERSE: (String, Program) = load_cairo! {
+            extern fn u128_byte_reverse(input: u128) -> u128 implicits(Bitwise) nopanic;
+
+            fn run_test(value: u128) -> u128 {
+                u128_byte_reverse(value)
+            }
+        };
+
+        static ref U128_CONST: (String, Program) = load_cairo! {
+            fn run_test() -> u128 {
+                1234567890
+            }
+        };
+
+        static ref U128_SAFE_DIVMOD: (String, Program) = load_cairo! {
+            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
+                let q = lhs / rhs;
+                let r = lhs % rhs;
+
+                (q, r)
+            }
+        };
+
+        static ref U128_EQUAL: (String, Program) = load_cairo! {
+            fn run_test(lhs: u128, rhs: u128) -> bool {
+                lhs == rhs
+            }
+        };
+
+        static ref U128_FROM_FELT252: (String, Program) = load_cairo! {
+            enum U128sFromFelt252Result {
+                Narrow: u128,
+                Wide: (u128, u128),
+            }
+
+            extern fn u128s_from_felt252(a: felt252) -> U128sFromFelt252Result implicits(RangeCheck) nopanic;
+
+            fn run_test(value: felt252) -> U128sFromFelt252Result {
+                u128s_from_felt252(value)
+            }
+        };
+
+        // TODO: Add test program for `u128_guarantee_mul`.
+
+        static ref U128_IS_ZERO: (String, Program) = load_cairo! {
+            fn run_test(value: u128) -> bool {
+                match value {
+                    0 => true,
+                    _ => false,
+                }
+            }
+        };
+
+        // TODO: Add test program for `u128_mul_guarantee_verify`.
+
+        static ref U128_ADD: (String, Program) = load_cairo! {
+            fn run_test(lhs: u128, rhs: u128) -> u128 {
+                lhs + rhs
+            }
+        };
+
+        static ref U128_SUB: (String, Program) = load_cairo! {
+            fn run_test(lhs: u128, rhs: u128) -> u128 {
+                lhs - rhs
+            }
+        };
+
+        static ref U128_TO_FELT252: (String, Program) = load_cairo! {
+            extern fn u128_to_felt252(a: u128) -> felt252 nopanic;
+
+            fn run_test(value: u128) -> felt252 {
+                u128_to_felt252(value)
+            }
+        };
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    fn f(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
+    }
+
+    #[test]
+    fn u128_byte_reverse() {
+        let r = |value| run_program(&U128_BYTE_REVERSE, "run_test", json!([(), value]));
+
+        assert_eq!(
+            r(0x00000000_00000000_00000000_00000000u128),
+            json!([(), 0x00000000_00000000_00000000_00000000u128])
+        );
+        assert_eq!(
+            r(0x00000000_00000000_00000000_00000001u128),
+            json!([(), 0x01000000_00000000_00000000_00000000u128])
+        );
+        assert_eq!(
+            r(0x12345678_90ABCDEF_12345678_90ABCDEFu128),
+            json!([(), 0xEFCDAB90_78563412_EFCDAB90_78563412u128])
+        );
+    }
 }

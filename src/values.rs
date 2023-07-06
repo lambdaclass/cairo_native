@@ -96,7 +96,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
     fn is_complex(&self) -> bool {
         match self {
             CoreTypeConcrete::Array(_) => true,
-            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
@@ -108,7 +108,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Uint16(_) => false,
             CoreTypeConcrete::Uint32(_) => false,
             CoreTypeConcrete::Uint64(_) => false,
-            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => false,
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
@@ -209,7 +209,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Array(info) => {
                     self::array::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::Bitwise(_) => todo!(),
+                CoreTypeConcrete::Bitwise(info) => {
+                    self::bitwise::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Box(_) => todo!(),
                 CoreTypeConcrete::EcOp(_) => todo!(),
                 CoreTypeConcrete::EcPoint(_) => todo!(),
@@ -233,7 +235,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Uint64(info) => {
                     self::uint64::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::Uint128(_) => todo!(),
+                CoreTypeConcrete::Uint128(info) => {
+                    self::uint128::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
                 CoreTypeConcrete::NonZero(_) => todo!(),
                 CoreTypeConcrete::Nullable(_) => todo!(),
@@ -296,7 +300,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Array(info) => unsafe {
                 self::array::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Bitwise(info) => unsafe {
+                self::bitwise::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
@@ -320,7 +326,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Uint64(info) => unsafe {
                 self::uint64::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128(info) => unsafe {
+                self::uint128::serialize(serializer, self.registry, self.ptr, info)
+            }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
