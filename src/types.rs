@@ -92,7 +92,7 @@ where
     ) -> Result<Type<'ctx>, Self::Error> {
         match self {
             Self::Array(info) => self::array::build(context, module, registry, metadata, info),
-            Self::Bitwise(_) => todo!(),
+            Self::Bitwise(info) => self::bitwise::build(context, module, registry, metadata, info),
             Self::Box(info) => self::r#box::build(context, module, registry, metadata, info),
             Self::BuiltinCosts(info) => {
                 self::builtin_costs::build(context, module, registry, metadata, info)
@@ -122,7 +122,7 @@ where
             Self::SquashedFelt252Dict(_) => todo!(),
             Self::StarkNet(_) => todo!(),
             Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
-            Self::Uint128(_) => todo!(),
+            Self::Uint128(info) => self::uint128::build(context, module, registry, metadata, info),
             Self::Uint128MulGuarantee(_) => todo!(),
             Self::Uint16(info) => self::uint16::build(context, module, registry, metadata, info),
             Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
@@ -141,23 +141,23 @@ where
                     .extend(get_integer_layout(32))?
                     .0
             }
-            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
             CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
-            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
+            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
             CoreTypeConcrete::Uint32(_) => get_integer_layout(32),
             CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
+            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(), // TODO: Figure out builtins layout
+            CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
                 let tag_layout =

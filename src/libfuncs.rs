@@ -148,7 +148,9 @@ where
             Self::Uint64(selector) => self::uint64::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint128(_) => todo!(),
+            Self::Uint128(selector) => self::uint128::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint256(_) => todo!(),
             Self::Uint512(_) => todo!(),
             Self::Mem(selector) => self::mem::build(
