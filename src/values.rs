@@ -328,7 +328,7 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             },
             CoreTypeConcrete::Uint128(info) => unsafe {
                 self::uint128::serialize(serializer, self.registry, self.ptr, info)
-            }
+            },
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),

@@ -158,8 +158,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let lhs: Value = entry.argument(0)?.into();
-    let rhs: Value = entry.argument(1)?.into();
+    let lhs: Value = entry.argument(1)?.into();
+    let rhs: Value = entry.argument(2)?.into();
 
     let op = entry.append_operation(arith::divui(lhs, rhs, location));
     let result_div = op.result(0)?.into();
@@ -167,7 +167,11 @@ where
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
     let result_rem = op.result(0)?.into();
 
-    entry.append_operation(helper.br(0, &[result_div, result_rem], location));
+    entry.append_operation(helper.br(
+        0,
+        &[entry.argument(0)?.into(), result_div, result_rem],
+        location,
+    ));
     Ok(())
 }
 
@@ -534,5 +538,32 @@ mod test {
             r(0x12345678_90ABCDEF_12345678_90ABCDEFu128),
             json!([(), 0xEFCDAB90_78563412_EFCDAB90_78563412u128])
         );
+    }
+
+    #[test]
+    fn u128_const() {
+        let r = || run_program(&U128_CONST, "run_test", json!([]));
+
+        assert_eq!(r(), json!([1234567890_u128]));
+    }
+
+    #[test]
+    fn u128_safe_divmod() {
+        let r = |lhs, rhs| run_program(&U128_SAFE_DIVMOD, "run_test", json!([(), lhs, rhs]));
+
+        let u128_is_zero = json!([f("2161814014192570802224")]);
+        let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
+
+        assert_eq!(r(0, 0), json!([(), [1, [[], u128_is_zero]]]));
+        assert_eq!(r(0, 1), json!([(), [0, [[0u128, 0u128]]]]));
+        assert_eq!(r(0, max_value), json!([(), [0, [[0u128, 0u128]]]]));
+
+        assert_eq!(r(1, 0), json!([(), [1, [[], u128_is_zero]]]));
+        assert_eq!(r(1, 1), json!([(), [0, [[1u128, 0u128]]]]));
+        assert_eq!(r(1, max_value), json!([(), [0, [[0u128, 1u128]]]]));
+
+        assert_eq!(r(max_value, 0), json!([(), [1, [[], u128_is_zero]]]));
+        assert_eq!(r(max_value, 1), json!([(), [0, [[max_value, 0u128]]]]));
+        assert_eq!(r(max_value, max_value), json!([(), [0, [[1u128, 0u128]]]]));
     }
 }
