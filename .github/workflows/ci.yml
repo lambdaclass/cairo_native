@@ -116,5 +116,7 @@ jobs:
           uses: dtolnay/rust-toolchain@nightly
           with:
             components: clippy
+        - name: Fetch corelibs.
+          run: ./scripts/fetch-corelibs.sh
         - name: Run tests
           run: make test
