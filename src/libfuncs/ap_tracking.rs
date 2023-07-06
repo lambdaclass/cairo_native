@@ -43,7 +43,9 @@ where
     // TODO: Is `revoke_ap_tracking` also a no-op? If it turns out it is NOT a no-op, update the
     //   docs.
     match selector {
-        ApTrackingConcreteLibfunc::Revoke(_) => todo!(),
+        ApTrackingConcreteLibfunc::Revoke(info) => {
+            build_revoke(context, registry, entry, location, helper, metadata, info)
+        }
         ApTrackingConcreteLibfunc::Enable(info) => {
             build_enable(context, registry, entry, location, helper, metadata, info)
         }
@@ -76,6 +78,27 @@ where
 
 /// Generate MLIR operations for the `disable_ap_tracking` libfunc.
 pub fn build_disable<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    entry.append_operation(helper.br(0, &[], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `revoke_ap_tracking.` libfunc.
+pub fn build_revoke<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
