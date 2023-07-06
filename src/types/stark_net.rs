@@ -46,14 +46,14 @@ pub fn build<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &StarkNetTypeConcrete,
+    selector: &StarkNetTypeConcrete,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    match info {
+    match selector {
         StarkNetTypeConcrete::ClassHash(info) => {
             build_class_hash(context, module, registry, metadata, info)
         }

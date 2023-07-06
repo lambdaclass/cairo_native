@@ -122,8 +122,8 @@ where
             }
             Self::Span(_) => todo!(),
             Self::SquashedFelt252Dict(_) => todo!(),
-            Self::StarkNet(info) => {
-                self::stark_net::build(context, module, registry, metadata, info)
+            Self::StarkNet(selector) => {
+                self::stark_net::build(context, module, registry, metadata, selector)
             }
             Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
             Self::Uint128(info) => self::uint128::build(context, module, registry, metadata, info),
