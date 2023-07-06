@@ -1,5 +1,22 @@
-//! # StarkNet type
+//! # StarkNet types
 //!
+//! ## ClassHash
+//! Type for Starknet class hash, a value in the range [0, 2 ** 251).
+//!
+//! ## ContractAddress
+//! Type for Starknet contract address, a value in the range [0, 2 ** 251).
+//!
+//! ## StorageBaseAddress
+//! Type for Starknet storage base address, a value in the range [0, 2 ** 251 - 256).
+//!
+//! ## StorageAddress
+//! Type for Starknet storage base address, a value in the range [0, 2 ** 251).
+//!
+//! ## System
+//! Type for Starknet system object.
+//! Used to make system calls.
+//!
+//! ## Secp256Point
 //! TODO
 
 use super::TypeBuilder;
@@ -35,15 +52,87 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     match info {
-        StarkNetTypeConcrete::ClassHash(_) => todo!(),
-        StarkNetTypeConcrete::ContractAddress(_) => todo!(),
-        StarkNetTypeConcrete::StorageBaseAddress(_) => todo!(),
-        StarkNetTypeConcrete::StorageAddress(_) => todo!(),
+        StarkNetTypeConcrete::ClassHash(info) => {
+            build_class_hash(context, module, registry, metadata, info)
+        }
+        StarkNetTypeConcrete::ContractAddress(info) => {
+            build_contract_address(context, module, registry, metadata, info)
+        }
+        StarkNetTypeConcrete::StorageBaseAddress(info) => {
+            build_storage_base_address(context, module, registry, metadata, info)
+        }
+        StarkNetTypeConcrete::StorageAddress(info) => {
+            build_storage_address(context, module, registry, metadata, info)
+        }
         StarkNetTypeConcrete::System(info) => {
             build_system(context, module, registry, metadata, info)
         }
         StarkNetTypeConcrete::Secp256Point(_) => todo!(),
     }
+}
+
+pub fn build_class_hash<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &InfoOnlyConcreteType,
+) -> Result<Type<'ctx>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+{
+    // it's a felt252 value
+    super::felt252::build(context, module, registry, metadata, info)
+}
+
+pub fn build_contract_address<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &InfoOnlyConcreteType,
+) -> Result<Type<'ctx>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+{
+    // it's a felt252 value
+    super::felt252::build(context, module, registry, metadata, info)
+}
+
+pub fn build_storage_base_address<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &InfoOnlyConcreteType,
+) -> Result<Type<'ctx>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+{
+    // it's a felt252 value
+    super::felt252::build(context, module, registry, metadata, info)
+}
+
+pub fn build_storage_address<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &InfoOnlyConcreteType,
+) -> Result<Type<'ctx>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+{
+    // it's a felt252 value
+    super::felt252::build(context, module, registry, metadata, info)
 }
 
 pub fn build_system<'ctx, TType, TLibfunc>(
@@ -58,6 +147,6 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: should it be transparent like this in MLIR?
+    // builtin
     Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
 }
