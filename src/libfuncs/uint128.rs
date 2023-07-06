@@ -596,7 +596,7 @@ mod test {
         assert_eq!(r(max_u128), json!([(), [0, u128::MAX]]));
         assert_eq!(r(max_u128_plus_1), json!([(), [1, [1u128, 0u128]]]));
         assert_eq!(
-            r((&*PRIME - 1usize).to_u32_digits().try_into().unwrap()),
+            r(f("-1")),
             json!([(), [1, [10633823966279327296825105735305134080u128, 0u128]]])
         );
     }
