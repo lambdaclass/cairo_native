@@ -264,8 +264,8 @@ where
     let rhs: Value = entry.argument(1)?.into();
 
     let op = entry.append_operation(arith::divui(lhs, rhs, location));
-
     let result_div = op.result(0)?.into();
+
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
     let result_rem = op.result(0)?.into();
 
