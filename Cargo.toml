@@ -17,13 +17,13 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.13.0"
-cairo-lang-compiler = "2.0.0"
-cairo-lang-diagnostics = "2.0.0"
-cairo-lang-defs = "2.0.0"
-cairo-lang-filesystem = "2.0.0"
-cairo-lang-lowering = "2.0.0"
-cairo-lang-sierra = "2.0.0"
-cairo-lang-sierra-generator = "2.0.0"
+cairo-lang-compiler = "2.0.1"
+cairo-lang-diagnostics = "2.0.1"
+cairo-lang-defs = "2.0.1"
+cairo-lang-filesystem = "2.0.1"
+cairo-lang-lowering = "2.0.1"
+cairo-lang-sierra = "2.0.1"
+cairo-lang-sierra-generator = "2.0.1"
 id-arena = "2.2.1"
 itertools = "0.11.0"
 lazy_static = "1.4.0"
@@ -44,6 +44,8 @@ tracing-subscriber = { version = "0.3.17", features = [
 ], optional = true }
 
 [dev-dependencies]
+cairo-lang-runner = "2.0.1"
+cairo-lang-starknet = "2.0.1"
 serde_json = "1.0.97"
 tempfile = "3.6.0"
 
