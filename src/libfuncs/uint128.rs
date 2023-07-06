@@ -201,7 +201,7 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [0, 1], [&[]; 2], location));
+    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [1, 0], [&[]; 2], location));
 
     Ok(())
 }
@@ -221,7 +221,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let arg0 = entry.argument(0)?.into();
+    let arg1 = entry.argument(1)?.into();
 
     let k1 = entry
         .append_operation(arith::constant(
@@ -248,7 +248,7 @@ where
         .append_operation(arith::cmpi(
             context,
             CmpiPredicate::Uge,
-            arg0,
+            arg1,
             min_wide_val,
             location,
         ))
@@ -257,7 +257,7 @@ where
 
     let lsb_bits = entry
         .append_operation(arith::trunci(
-            arg0,
+            arg1,
             IntegerType::new(context, 128).into(),
             location,
         ))
@@ -265,7 +265,7 @@ where
         .into();
 
     let msb_bits = entry
-        .append_operation(arith::shrui(arg0, k128, location))
+        .append_operation(arith::shrui(arg1, k128, location))
         .result(0)?
         .into();
     let msb_bits = entry
@@ -280,7 +280,10 @@ where
     entry.append_operation(helper.cond_br(
         is_wide,
         [1, 0],
-        [&[msb_bits, lsb_bits], &[lsb_bits]],
+        [
+            &[entry.argument(0)?.into(), msb_bits, lsb_bits],
+            &[entry.argument(0)?.into(), lsb_bits],
+        ],
         location,
     ));
     Ok(())
@@ -355,7 +358,7 @@ where
         false,
     );
 
-    let result: Value = entry
+    let result_struct: Value = entry
         .append_operation(
             OperationBuilder::new(op_name, location)
                 .add_operands(&[lhs, rhs])
@@ -368,7 +371,7 @@ where
     let result = entry
         .append_operation(llvm::extract_value(
             context,
-            result,
+            result_struct,
             DenseI64ArrayAttribute::new(context, &[0]),
             values_type,
             location,
@@ -378,7 +381,7 @@ where
     let overflow = entry
         .append_operation(llvm::extract_value(
             context,
-            result,
+            result_struct,
             DenseI64ArrayAttribute::new(context, &[1]),
             IntegerType::new(context, 1).into(),
             location,
@@ -478,10 +481,14 @@ mod test {
         // TODO: Add test program for `u128_guarantee_mul`.
 
         static ref U128_IS_ZERO: (String, Program) = load_cairo! {
+            use zeroable::IsZeroResult;
+
+            extern fn u128_is_zero(a: u128) -> IsZeroResult<u128> implicits() nopanic;
+
             fn run_test(value: u128) -> bool {
-                match value {
-                    0 => true,
-                    _ => false,
+                match u128_is_zero(value) {
+                    IsZeroResult::Zero(_) => true,
+                    IsZeroResult::NonZero(_) => false,
                 }
             }
         };
@@ -565,5 +572,92 @@ mod test {
         assert_eq!(r(max_value, 0), json!([(), [1, [[], u128_is_zero]]]));
         assert_eq!(r(max_value, 1), json!([(), [0, [[max_value, 0u128]]]]));
         assert_eq!(r(max_value, max_value), json!([(), [0, [[1u128, 0u128]]]]));
+    }
+
+    #[test]
+    fn u128_equal() {
+        let r = |lhs, rhs| run_program(&U128_EQUAL, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(0, 0), json!([[1, []]]));
+        assert_eq!(r(0, 1), json!([[0, []]]));
+        assert_eq!(r(1, 0), json!([[0, []]]));
+        assert_eq!(r(1, 1), json!([[1, []]]));
+    }
+
+    #[test]
+    fn u128_from_felt252() {
+        let r = |value| run_program(&U128_FROM_FELT252, "run_test", json!([(), value]));
+
+        let max_u128 = f("340282366920938463463374607431768211455");
+        let max_u128_plus_1 = f("340282366920938463463374607431768211456");
+
+        assert_eq!(r(f("0")), json!([(), [0, 0u128]]));
+        assert_eq!(r(f("1")), json!([(), [0, 1u128]]));
+        assert_eq!(r(max_u128), json!([(), [0, u128::MAX]]));
+        assert_eq!(r(max_u128_plus_1), json!([(), [1, [1u128, 0u128]]]));
+        assert_eq!(
+            r((&*PRIME - 1usize).to_u32_digits().try_into().unwrap()),
+            json!([(), [1, [10633823966279327296825105735305134080u128, 0u128]]])
+        );
+    }
+
+    #[test]
+    fn u128_is_zero() {
+        let r = |value| run_program(&U128_IS_ZERO, "run_test", json!([value]));
+
+        assert_eq!(r(0), json!([[1, []]]));
+        assert_eq!(r(1), json!([[0, []]]));
+    }
+
+    #[test]
+    fn u128_add() {
+        let r = |lhs, rhs| run_program(&U128_ADD, "run_test", json!([(), lhs, rhs]));
+
+        let overflow_error = json!([f("39878429859757942499084499860145094553463")]);
+
+        assert_eq!(r(0u128, 0u128), json!([(), [0, [0u128]]]));
+        assert_eq!(r(0u128, 1u128), json!([(), [0, [1u128]]]));
+        assert_eq!(r(0u128, u128::MAX), json!([(), [0, [u128::MAX]]]));
+
+        assert_eq!(r(1u128, 0u128), json!([(), [0, [1u128]]]));
+        assert_eq!(r(1u128, 1u128), json!([(), [0, [2u128]]]));
+        assert_eq!(r(1u128, u128::MAX), json!([(), [1, [[], overflow_error]]]));
+
+        assert_eq!(r(u128::MAX, 0u128), json!([(), [0, [u128::MAX]]]));
+        assert_eq!(r(u128::MAX, 1u128), json!([(), [0, [[], overflow_error]]]));
+        assert_eq!(
+            r(u128::MAX, u128::MAX),
+            json!([(), [1, [[], overflow_error]]])
+        );
+    }
+
+    #[test]
+    fn u128_sub() {
+        let r = |lhs, rhs| run_program(&U128_SUB, "run_test", json!([(), lhs, rhs]));
+
+        let overflow_error = json!([f("39878429859763533771555484554338820190071")]);
+
+        assert_eq!(r(0u128, 0u128), json!([(), [0, [0u128]]]));
+        assert_eq!(r(0u128, 1u128), json!([(), [1, [[], overflow_error]]]));
+        assert_eq!(r(0u128, u128::MAX), json!([(), [1, [[], overflow_error]]]));
+
+        assert_eq!(r(1u128, 0u128), json!([(), [0, [1u128]]]));
+        assert_eq!(r(1u128, 1u128), json!([(), [0, [0u128]]]));
+        assert_eq!(r(1u128, u128::MAX), json!([(), [1, [[], overflow_error]]]));
+
+        assert_eq!(r(u128::MAX, 0u128), json!([(), [0, [u128::MAX]]]));
+        assert_eq!(r(u128::MAX, 1u128), json!([(), [0, [u128::MAX - 1]]]));
+        assert_eq!(r(u128::MAX, u128::MAX), json!([(), [0, [0u128]]]));
+    }
+
+    #[test]
+    fn u128_to_felt252() {
+        let r = |value| run_program(&U128_TO_FELT252, "run_test", json!([value]));
+
+        let max_u128 = f("340282366920938463463374607431768211455");
+
+        assert_eq!(r(0u128), json!([f("0")]));
+        assert_eq!(r(1u128), json!([f("1")]));
+        assert_eq!(r(u128::MAX), json!([max_u128]));
     }
 }
