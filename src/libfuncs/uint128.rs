@@ -36,6 +36,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -82,6 +83,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `u128_byte_reverse` libfunc.
 pub fn build_byte_reverse<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -112,6 +114,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_const` libfunc.
 pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -143,6 +146,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_safe_divmod` libfunc.
 pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -175,6 +179,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_equal` libfunc.
 pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -206,6 +211,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_from_felt252` libfunc.
 pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -289,6 +295,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -326,6 +333,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_add` and `u128_sub` libfuncs.
 pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -398,6 +406,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_to_felt252` libfunc.
 pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
