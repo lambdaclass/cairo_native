@@ -103,7 +103,7 @@ jobs:
           files: lcov.info
           fail_ci_if_error: true
   test_macos:
-      name: Test (macOS, Apple sillicon)
+      name: Test (macOS, Apple silicon)
       runs-on: [self-hosted, macOS]
       env:
         CARGO_TERM_COLOR: always

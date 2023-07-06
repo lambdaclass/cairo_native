@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 # Configuration.
 ROOT_DIR="$(dirname $(dirname ${0%/*}))"
 MLIR_DIR="$MLIR_SYS_160_PREFIX"
@@ -10,10 +9,10 @@ CAIRO_SRCS=$(find \
     -type f -name "*.cairo")
 IFS=$'\n' read -rd '' -a CAIRO_SRCS <<<"$CAIRO_SRCS"
 
+CAIRO_RUN="${CAIRO_RUN:=cairo-run}"
 COMPILER_CLI="$ROOT_DIR/target/release/sierra2mlir"
 JIT_CLI="$ROOT_DIR/target/release/sierrajit"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
-
 
 # Initial setup.
 if [[ ! -e "$COMPILER_CLI" ]]
@@ -29,7 +28,6 @@ fi
 
 set -e
 mkdir -p "$OUTPUT_DIR"
-
 
 # Benchmarking code.
 run_bench() {
@@ -89,9 +87,9 @@ run_bench() {
 
     hyperfine \
         --shell=none \
-        --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --warmup 3 \
-        "cairo-run --available-gas 18446744073709551615 $base_path.cairo" \
+        --export-markdown "$OUTPUT_DIR/$base_name.md" \
+        "$CAIRO_RUN --available-gas 18446744073709551615 --single-file $base_path.cairo" \
         "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
         "$OUTPUT_DIR/$base_name" \
         "$OUTPUT_DIR/$base_name-march-native" \
