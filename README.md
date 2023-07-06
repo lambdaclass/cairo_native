@@ -85,6 +85,12 @@ $MLIR_SYS_160_PREFIX=/path/to/llvm16  # Required for non-standard LLVM install l
 make bench
 ```
 
+The `bench` target will run the `./scripts/bench-hyperfine.sh` script.
+This script runs hyperfine comands to compare the execution time of programs in the `./programs/benches/` folder.
+Each program is compiled and executed via the execution engine with the `sierrajit` command and via the cairo-vm with the `cairo-run` command provided by the `cairo` codebase.
+The `cairo-run` command should be available in the `$PATH` and ideally compiled with `cargo build --release`.
+If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
+
 ## MLIR Resources
 - https://mlir.llvm.org/docs/Tutorials/
 
