@@ -624,7 +624,7 @@ mod test {
         assert_eq!(r(1u128, u128::MAX), json!([(), [1, [[], overflow_error]]]));
 
         assert_eq!(r(u128::MAX, 0u128), json!([(), [0, [u128::MAX]]]));
-        assert_eq!(r(u128::MAX, 1u128), json!([(), [0, [[], overflow_error]]]));
+        assert_eq!(r(u128::MAX, 1u128), json!([(), [1, [[], overflow_error]]]));
         assert_eq!(
             r(u128::MAX, u128::MAX),
             json!([(), [1, [[], overflow_error]]])
