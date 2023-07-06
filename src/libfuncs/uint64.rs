@@ -202,7 +202,7 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [0, 1], [&[]; 2], location));
+    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [1, 0], [&[]; 2], location));
 
     Ok(())
 }
@@ -260,8 +260,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let lhs: Value = entry.argument(0)?.into();
-    let rhs: Value = entry.argument(1)?.into();
+    let lhs: Value = entry.argument(1)?.into();
+    let rhs: Value = entry.argument(2)?.into();
 
     let op = entry.append_operation(arith::divui(lhs, rhs, location));
 
@@ -269,7 +269,11 @@ where
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
     let result_rem = op.result(0)?.into();
 
-    entry.append_operation(helper.br(0, &[result_div, result_rem], location));
+    entry.append_operation(helper.br(
+        0,
+        &[entry.argument(0)?.into(), result_div, result_rem],
+        location,
+    ));
 
     Ok(())
 }
@@ -366,4 +370,308 @@ where
     block_failure.append_operation(helper.br(1, &[range_check], location));
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        types::felt252::PRIME,
+        utils::test::{load_cairo, run_program},
+    };
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::{BigInt, Sign};
+    use serde_json::json;
+    use std::ops::Neg;
+
+    lazy_static! {
+        static ref U64_OVERFLOWING_ADD: (String, Program) = load_cairo! {
+            fn run_test(lhs: u64, rhs: u64) -> u64 {
+                lhs + rhs
+            }
+        };
+        static ref U64_OVERFLOWING_SUB: (String, Program) = load_cairo! {
+            fn run_test(lhs: u64, rhs: u64) -> u64 {
+                lhs - rhs
+            }
+        };
+        static ref U64_SAFE_DIVMOD: (String, Program) = load_cairo! {
+            fn run_test(lhs: u64, rhs: u64) -> (u64, u64) {
+                let q = lhs / rhs;
+                let r = lhs % rhs;
+
+                (q, r)
+            }
+        };
+        static ref U64_EQUAL: (String, Program) = load_cairo! {
+            fn run_test(lhs: u64, rhs: u64) -> bool {
+                lhs == rhs
+            }
+        };
+        static ref U64_IS_ZERO: (String, Program) = load_cairo! {
+            use zeroable::IsZeroResult;
+
+            extern fn u64_is_zero(a: u64) -> IsZeroResult<u64> implicits() nopanic;
+
+            fn run_test(value: u64) -> bool {
+                match u64_is_zero(value) {
+                    IsZeroResult::Zero(_) => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+        };
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    fn f(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
+    }
+
+    #[test]
+    fn u64_const_min() {
+        let program = load_cairo!(
+            fn run_test() -> u64 {
+                0_u64
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([0]));
+    }
+
+    #[test]
+    fn u64_const_max() {
+        let program = load_cairo!(
+            fn run_test() -> u64 {
+                18446744073709551615_u64
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([18446744073709551615u64]));
+    }
+
+    #[test]
+    fn u64_to_felt252() {
+        let program = load_cairo!(
+            use traits::Into;
+
+            fn run_test() -> felt252 {
+                2_u64.into()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[2, 0, 0, 0, 0, 0, 0, 0]]));
+    }
+
+    #[test]
+    fn u64_from_felt252() {
+        let program = load_cairo!(
+            use traits::TryInto;
+
+            fn run_test() -> (Option<u64>, Option<u64>) {
+                (
+                    18446744073709551615.try_into(),
+                    18446744073709551616.try_into(),
+                )
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(
+            result,
+            json!([null, [[0, 18446744073709551615u64], [1, []]]])
+        );
+    }
+
+    #[test]
+    fn u64_overflowing_add() {
+        fn run<const LHS: u64, const RHS: u64>() -> serde_json::Value {
+            run_program(&U64_OVERFLOWING_ADD, "run_test", json!([(), LHS, RHS]))
+        }
+
+        let add_error = f("155801121779312277930962096923588980599");
+
+        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
+        assert_eq!(run::<0, 1>(), json!([(), [0, [1]]]));
+        assert_eq!(
+            run::<0, 18446744073709551614>(),
+            json!([(), [0, [18446744073709551614u64]]])
+        );
+        assert_eq!(
+            run::<0, 18446744073709551615>(),
+            json!([(), [0, [18446744073709551615u64]]])
+        );
+
+        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
+        assert_eq!(
+            run::<1, 18446744073709551614>(),
+            json!([(), [0, [18446744073709551615u64]]])
+        );
+        assert_eq!(
+            run::<1, 18446744073709551615>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+
+        assert_eq!(
+            run::<18446744073709551614, 0>(),
+            json!([(), [0, [18446744073709551614u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 1>(),
+            json!([(), [0, [18446744073709551615u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 18446744073709551614>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 18446744073709551615>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+
+        assert_eq!(
+            run::<18446744073709551615, 0>(),
+            json!([(), [0, [18446744073709551615u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 1>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 18446744073709551614>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 18446744073709551615>(),
+            json!([(), [1, [[], [add_error]]]])
+        );
+    }
+
+    #[test]
+    fn u64_overflowing_sub() {
+        fn run<const LHS: u64, const RHS: u64>() -> serde_json::Value {
+            run_program(&U64_OVERFLOWING_SUB, "run_test", json!([(), LHS, RHS]))
+        }
+
+        let sub_error = f("155801121784903550401946791117314617207");
+
+        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
+        assert_eq!(run::<0, 1>(), json!([(), [1, [[], [sub_error]]]]));
+        assert_eq!(
+            run::<0, 18446744073709551614>(),
+            json!([(), [1, [[], [sub_error]]]])
+        );
+        assert_eq!(
+            run::<0, 18446744073709551615>(),
+            json!([(), [1, [[], [sub_error]]]])
+        );
+
+        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
+        assert_eq!(run::<1, 1>(), json!([(), [0, [0]]]));
+        assert_eq!(
+            run::<1, 18446744073709551614>(),
+            json!([(), [1, [[], [sub_error]]]])
+        );
+        assert_eq!(
+            run::<1, 18446744073709551615>(),
+            json!([(), [1, [[], [sub_error]]]])
+        );
+
+        assert_eq!(
+            run::<18446744073709551614, 0>(),
+            json!([(), [0, [18446744073709551614u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 1>(),
+            json!([(), [0, [18446744073709551613u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 18446744073709551614>(),
+            json!([(), [0, [0]]])
+        );
+        assert_eq!(
+            run::<18446744073709551614, 18446744073709551615>(),
+            json!([(), [1, [[], [sub_error]]]])
+        );
+
+        assert_eq!(
+            run::<18446744073709551615, 0>(),
+            json!([(), [0, [18446744073709551615u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 1>(),
+            json!([(), [0, [18446744073709551614u64]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 18446744073709551614>(),
+            json!([(), [0, [1]]])
+        );
+        assert_eq!(
+            run::<18446744073709551615, 18446744073709551615>(),
+            json!([(), [0, [0]]])
+        );
+    }
+
+    #[test]
+    fn u64_equal() {
+        let r = |lhs, rhs| run_program(&U64_EQUAL, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(0, 0), json!([[1, []]]));
+        assert_eq!(r(0, 1), json!([[0, []]]));
+        assert_eq!(r(1, 0), json!([[0, []]]));
+        assert_eq!(r(1, 1), json!([[1, []]]));
+    }
+
+    #[test]
+    fn u64_is_zero() {
+        let r = |value| run_program(&U64_IS_ZERO, "run_test", json!([value]));
+
+        assert_eq!(r(0), json!([[1, []]]));
+        assert_eq!(r(1), json!([[0, []]]));
+    }
+
+    #[test]
+    fn u64_safe_divmod() {
+        let r = |lhs, rhs| run_program(&U64_SAFE_DIVMOD, "run_test", json!([(), lhs, rhs]));
+
+        let u64_is_zero = json!([f("8445995464992694320")]);
+
+        assert_eq!(r(0, 0), json!([(), [1, [[], u64_is_zero]]]));
+        assert_eq!(r(0, 1), json!([(), [0, [[0u64, 0u64]]]]));
+        assert_eq!(
+            r(0, 0xFFFFFFFFFFFFFFFFu64),
+            json!([(), [0, [[0u64, 0u64]]]])
+        );
+
+        assert_eq!(r(1, 0), json!([(), [1, [[], u64_is_zero]]]));
+        assert_eq!(r(1, 1), json!([(), [0, [[1u64, 0u64]]]]));
+        assert_eq!(
+            r(1, 0xFFFFFFFFFFFFFFFFu64),
+            json!([(), [0, [[0u64, 1u64]]]])
+        );
+
+        assert_eq!(
+            r(0xFFFFFFFFFFFFFFFFu64, 0),
+            json!([(), [1, [[], u64_is_zero]]])
+        );
+        assert_eq!(
+            r(0xFFFFFFFFFFFFFFFFu64, 1),
+            json!([(), [0, [[0xFFFFFFFFFFFFFFFFu64, 0u64]]]])
+        );
+        assert_eq!(
+            r(0xFFFFFFFFFFFFFFFFu64, 0xFFFFFFFFFFFFFFFFu64),
+            json!([(), [0, [[1u64, 0u64]]]])
+        );
+    }
 }
