@@ -2,6 +2,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
         GenericLibfunc, GenericType,
     },
     ids::ConcreteTypeId,
@@ -122,7 +123,14 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Pedersen(_) => todo!(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::StarkNet(selector) => match selector {
+                StarkNetTypeConcrete::ClassHash(_) => false,
+                StarkNetTypeConcrete::ContractAddress(_) => false,
+                StarkNetTypeConcrete::StorageBaseAddress(_) => false,
+                StarkNetTypeConcrete::StorageAddress(_) => false,
+                StarkNetTypeConcrete::System(_) => false,
+                StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+            },
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
@@ -257,7 +265,45 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Pedersen(_) => todo!(),
                 CoreTypeConcrete::Poseidon(_) => todo!(),
                 CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::StarkNet(_) => todo!(),
+                CoreTypeConcrete::StarkNet(selector) => match selector {
+                    StarkNetTypeConcrete::ClassHash(info) => self::stark_net::deserialize_address(
+                        deserializer,
+                        self.arena,
+                        self.registry,
+                        info,
+                    ),
+                    StarkNetTypeConcrete::ContractAddress(info) => {
+                        self::stark_net::deserialize_address(
+                            deserializer,
+                            self.arena,
+                            self.registry,
+                            info,
+                        )
+                    }
+                    StarkNetTypeConcrete::StorageBaseAddress(info) => {
+                        self::stark_net::deserialize_address(
+                            deserializer,
+                            self.arena,
+                            self.registry,
+                            info,
+                        )
+                    }
+                    StarkNetTypeConcrete::StorageAddress(info) => {
+                        self::stark_net::deserialize_address(
+                            deserializer,
+                            self.arena,
+                            self.registry,
+                            info,
+                        )
+                    }
+                    StarkNetTypeConcrete::System(info) => self::stark_net::deserialize_system(
+                        deserializer,
+                        self.arena,
+                        self.registry,
+                        info,
+                    ),
+                    StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                },
                 CoreTypeConcrete::SegmentArena(_) => todo!(),
                 CoreTypeConcrete::Snapshot(_) => todo!(),
             }
@@ -348,7 +394,24 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Pedersen(_) => todo!(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::StarkNet(selector) => match selector {
+                StarkNetTypeConcrete::ClassHash(info) => unsafe {
+                    self::stark_net::serialize_address(serializer, self.registry, self.ptr, info)
+                },
+                StarkNetTypeConcrete::ContractAddress(info) => unsafe {
+                    self::stark_net::serialize_address(serializer, self.registry, self.ptr, info)
+                },
+                StarkNetTypeConcrete::StorageBaseAddress(info) => unsafe {
+                    self::stark_net::serialize_address(serializer, self.registry, self.ptr, info)
+                },
+                StarkNetTypeConcrete::StorageAddress(info) => unsafe {
+                    self::stark_net::serialize_address(serializer, self.registry, self.ptr, info)
+                },
+                StarkNetTypeConcrete::System(info) => unsafe {
+                    self::stark_net::serialize_system(serializer, self.registry, self.ptr, info)
+                },
+                StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+            },
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
