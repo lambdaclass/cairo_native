@@ -12,22 +12,26 @@ use crate::{
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
-    extensions::{starknet::StarkNetConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        lib_func::SignatureOnlyConcreteLibfunc, starknet::StarkNetConcreteLibfunc, GenericLibfunc,
+        GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     selector: &StarkNetConcreteLibfunc,
 ) -> Result<()>
 where
@@ -51,7 +55,11 @@ where
         StarkNetConcreteLibfunc::StorageAddressFromBase(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressToFelt252(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(info) => {
+            build_storage_address_try_from_felt252(
+                context, registry, entry, location, helper, metadata, info,
+            )
+        }
         StarkNetConcreteLibfunc::EmitEvent(_) => todo!(),
         StarkNetConcreteLibfunc::GetBlockHash(_) => todo!(),
         StarkNetConcreteLibfunc::GetExecutionInfo(_) => todo!(),
@@ -63,4 +71,65 @@ where
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
     }
+}
+
+pub fn build_storage_address_try_from_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let value = entry.argument(1)?.into();
+
+    let k1 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let k251 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(251, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let limit = entry
+        .append_operation(arith::shli(k1, k251, location))
+        .result(0)?
+        .into();
+    let is_in_range = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ult,
+            value,
+            limit,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        is_in_range,
+        [0, 1],
+        [
+            &[entry.argument(0)?.into(), value],
+            &[entry.argument(0)?.into()],
+        ],
+        location,
+    ));
+    Ok(())
 }
