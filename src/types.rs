@@ -4,7 +4,9 @@
 
 use crate::{error::CoreTypeBuilderError, metadata::MetadataStorage, utils::get_integer_layout};
 use cairo_lang_sierra::{
-    extensions::{core::CoreTypeConcrete, GenericLibfunc, GenericType},
+    extensions::{
+        core::CoreTypeConcrete, starknet::StarkNetTypeConcrete, GenericLibfunc, GenericType,
+    },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
@@ -120,7 +122,9 @@ where
             }
             Self::Span(_) => todo!(),
             Self::SquashedFelt252Dict(_) => todo!(),
-            Self::StarkNet(_) => todo!(),
+            Self::StarkNet(selector) => {
+                self::stark_net::build(context, module, registry, metadata, selector)
+            }
             Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
             Self::Uint128(info) => self::uint128::build(context, module, registry, metadata, info),
             Self::Uint128MulGuarantee(_) => todo!(),
@@ -190,7 +194,14 @@ where
             CoreTypeConcrete::Pedersen(_) => todo!(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::StarkNet(info) => match info {
+                StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
+                StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
+                StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
+                StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
+                StarkNetTypeConcrete::System(_) => Layout::new::<()>(),
+                StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+            },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
         })

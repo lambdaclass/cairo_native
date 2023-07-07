@@ -41,7 +41,9 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
-        GasConcreteLibfunc::WithdrawGas(_) => todo!(),
+        GasConcreteLibfunc::WithdrawGas(info) => {
+            build_withdraw_gas(context, registry, entry, location, helper, metadata, info)
+        }
         GasConcreteLibfunc::RedepositGas(_) => todo!(),
         GasConcreteLibfunc::GetAvailableGas(_) => todo!(),
         GasConcreteLibfunc::BuiltinWithdrawGas(info) => {
@@ -51,6 +53,39 @@ where
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+/// Generate MLIR operations for the `withdraw_gas` libfunc.
+pub fn build_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // TODO: Implement libfunc.
+    let op0 = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(1, IntegerType::new(context, 1).into()).into(),
+        location,
+    ));
+
+    entry.append_operation(helper.cond_br(
+        op0.result(0)?.into(),
+        [0, 1],
+        [&[entry.argument(0)?.into(), entry.argument(1)?.into()]; 2],
+        location,
+    ));
+
+    Ok(())
 }
 
 /// Generate MLIR operations for the `withdraw_gas_all` libfunc.
