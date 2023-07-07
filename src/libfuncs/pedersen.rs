@@ -70,11 +70,9 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    {
-        metadata
-            .get_mut::<RuntimeBindingsMeta>()
-            .expect("Runtime library not available.");
-    }
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
 
     let felt252_ty = registry
         .get_type(&info.param_signatures()[1].ty)?
