@@ -55,7 +55,11 @@ where
         StarkNetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(info) => {
+            build_storage_base_address_from_felt252(
+                context, registry, entry, location, helper, metadata, info,
+            )
+        }
         StarkNetConcreteLibfunc::StorageAddressFromBase(info) => build_storage_address_from_base(
             context, registry, entry, location, helper, metadata, info,
         ),
@@ -111,6 +115,67 @@ where
         .into();
 
     entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
+}
+
+pub fn build_storage_base_address_from_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let value = entry.argument(1)?.into();
+
+    let k1 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let k251 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(251, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let limit = entry
+        .append_operation(arith::shli(k1, k251, location))
+        .result(0)?
+        .into();
+    let is_in_range = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ult,
+            value,
+            limit,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        is_in_range,
+        [0, 1],
+        [
+            &[entry.argument(0)?.into(), value],
+            &[entry.argument(0)?.into()],
+        ],
+        location,
+    ));
     Ok(())
 }
 
