@@ -54,7 +54,9 @@ where
         StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressFromBase(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageAddressToFelt252(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageAddressToFelt252(info) => build_storage_address_to_felt252(
+            context, registry, entry, location, helper, metadata, info,
+        ),
         StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(info) => {
             build_storage_address_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
@@ -71,6 +73,25 @@ where
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
     }
+}
+
+pub fn build_storage_address_to_felt252<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    Ok(())
 }
 
 pub fn build_storage_address_try_from_felt252<'ctx, 'this, TType, TLibfunc>(
