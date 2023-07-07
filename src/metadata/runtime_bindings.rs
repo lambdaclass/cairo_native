@@ -9,7 +9,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Block, Identifier, Location, Module, Region, Value,
+        Block, Identifier, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };
@@ -91,7 +91,7 @@ impl RuntimeBindingsMeta {
         lhs_ptr: Value<'c, '_>,
         rhs_ptr: Value<'c, '_>,
         location: Location<'c>,
-    ) -> Result<Value<'c, 'a>>
+    ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
     {
@@ -120,16 +120,13 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        Ok(block
-            .append_operation(func::call(
-                context,
-                FlatSymbolRefAttribute::new(context, "cairo_native__libfunc_pedersen"),
-                &[dst_ptr, lhs_ptr, rhs_ptr],
-                &[],
-                location,
-            ))
-            .result(0)?
-            .into())
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc_pedersen"),
+            &[dst_ptr, lhs_ptr, rhs_ptr],
+            &[],
+            location,
+        )))
     }
 }
 

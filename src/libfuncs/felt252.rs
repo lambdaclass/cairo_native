@@ -277,7 +277,7 @@ where
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use crate::{
         types::felt252::PRIME,
         utils::test::{load_cairo, run_program},
@@ -331,7 +331,7 @@ mod test {
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
+    pub fn f(value: &str) -> [u32; 8] {
         let value = value.parse::<BigInt>().unwrap();
         let value = match value.sign() {
             Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),

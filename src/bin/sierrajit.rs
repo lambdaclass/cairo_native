@@ -117,7 +117,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
+            "cairo_native__libfunc_pedersen",
             cairo_native_runtime::cairo_native__libfunc_pedersen
                 as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
         );
