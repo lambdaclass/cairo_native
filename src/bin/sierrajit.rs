@@ -115,6 +115,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cairo_native_runtime::cairo_native__libfunc__debug__print
                 as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
         );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc_pedersen
+                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
     }
 
     // Initialize arguments and return values.

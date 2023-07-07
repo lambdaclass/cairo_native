@@ -79,6 +79,58 @@ impl RuntimeBindingsMeta {
             .result(0)?
             .into())
     }
+
+    /// Register if necessary, then invoke the `pedersen()` function.
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_pedersen<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        dst_ptr: Value<'c, '_>,
+        lhs_ptr: Value<'c, '_>,
+        rhs_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::LibfuncDebugPrint) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc_pedersen"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block
+            .append_operation(func::call(
+                context,
+                FlatSymbolRefAttribute::new(context, "cairo_native__libfunc_pedersen"),
+                &[dst_ptr, lhs_ptr, rhs_ptr],
+                &[],
+                location,
+            ))
+            .result(0)?
+            .into())
+    }
 }
 
 impl Default for RuntimeBindingsMeta {
