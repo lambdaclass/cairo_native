@@ -233,10 +233,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        libfuncs::felt252::test::f,
-        utils::test::{load_cairo, run_program},
-    };
+    use crate::utils::test::{felt, load_cairo, run_program};
     use serde_json::json;
 
     #[test]
@@ -249,7 +246,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), f("2"), f("4")]));
+        let result = run_program(&program, "run_test", json!([(), felt("2"), felt("4")]));
         assert_eq!(
             result,
             json!([
