@@ -13,16 +13,18 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        lib_func::SignatureOnlyConcreteLibfunc, starknet::StarkNetConcreteLibfunc, GenericLibfunc,
-        GenericType,
+        consts::SignatureAndConstConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
+        starknet::StarkNetConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
+use num_bigint::Sign;
+use std::ops::Neg;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -50,7 +52,9 @@ where
         StarkNetConcreteLibfunc::ContractAddressToFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::StorageRead(_) => todo!(),
         StarkNetConcreteLibfunc::StorageWrite(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageBaseAddressConst(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
+            context, registry, entry, location, helper, metadata, info,
+        ),
         StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressFromBase(_) => todo!(),
         StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => todo!(),
@@ -73,6 +77,39 @@ where
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
     }
+}
+
+pub fn build_storage_base_address_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndConstConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let value = match info.c.sign() {
+        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        _ => info.c.to_biguint().unwrap(),
+    };
+
+    let value = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
 }
 
 pub fn build_storage_address_to_felt252<'ctx, 'this, TType, TLibfunc>(
