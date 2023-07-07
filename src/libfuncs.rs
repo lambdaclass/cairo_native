@@ -171,7 +171,9 @@ where
             Self::Felt252DictEntry(_) => todo!(),
             Self::Pedersen(_) => todo!(),
             Self::Poseidon(_) => todo!(),
-            Self::StarkNet(_) => todo!(),
+            Self::StarkNet(selector) => self::stark_net::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),

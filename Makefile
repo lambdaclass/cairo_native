@@ -11,6 +11,9 @@ endif
 build:
 	cargo build --release --all-features
 
+build-dev:
+	cargo build --profile optimized-dev --all-targets --all-features
+
 check:
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
