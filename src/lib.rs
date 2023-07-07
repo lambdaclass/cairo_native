@@ -19,6 +19,7 @@ pub use self::{compiler::compile, jit_runner::execute};
 
 mod compiler;
 pub mod debug_info;
+pub mod easy;
 pub mod error;
 mod ffi;
 mod jit_runner;
