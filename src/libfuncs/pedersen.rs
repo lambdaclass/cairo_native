@@ -1,6 +1,5 @@
 //! # Pedersen hashing libfuncs
 //!
-//! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -10,11 +9,12 @@ use crate::{
     },
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::get_integer_layout,
 };
 use cairo_lang_sierra::{
     extensions::{
-        lib_func::SignatureOnlyConcreteLibfunc, pedersen::PedersenConcreteLibfunc,
-        structure::StructConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType,
+        lib_func::SignatureOnlyConcreteLibfunc, pedersen::PedersenConcreteLibfunc, ConcreteLibfunc,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -24,10 +24,10 @@ use melior::{
         llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{IntegerAttribute, StringAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Value,
+        Block, Identifier, Location,
     },
     Context,
 };
@@ -79,13 +79,15 @@ where
     let felt252_ty = registry
         .get_type(&info.param_signatures()[1].ty)?
         .build(context, helper, registry, metadata)?;
-    let layout = registry
-        .get_type(&info.param_signatures()[1].ty)?
-        .layout(registry)?;
+
+    let i256_ty = IntegerType::new(context, 256).into();
+    let layout_i256 = get_integer_layout(256);
 
     let pedersen_builtin = entry.argument(0)?.into();
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();
+
+    // We must extend to i256 because bswap must be an even number of bytes.
 
     let op = entry.append_operation(arith::constant(
         context,
@@ -99,13 +101,13 @@ where
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout.align().try_into()?,
+                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
                 )
                 .into(),
             )])
             .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
+            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
             .build(),
     );
     let lhs_ptr = op.result(0)?.into();
@@ -115,13 +117,13 @@ where
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout.align().try_into()?,
+                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
                 )
                 .into(),
             )])
             .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
+            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
             .build(),
     );
     let rhs_ptr = op.result(0)?.into();
@@ -131,34 +133,63 @@ where
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout.align().try_into()?,
+                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
                 )
                 .into(),
             )])
             .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
+            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
             .build(),
     );
     let dst_ptr = op.result(0)?.into();
 
+    let op = entry.append_operation(arith::extui(lhs, i256_ty, location));
+    let lhs_i256 = op.result(0)?.into();
+    let op = entry.append_operation(arith::extui(rhs, i256_ty, location));
+    let rhs_i256 = op.result(0)?.into();
+
+    let op = entry.append_operation(
+        OperationBuilder::new("llvm.call_intrinsic", location)
+            .add_attributes(&[(
+                Identifier::new(context, "intrin"),
+                StringAttribute::new(context, "llvm.bswap").into(),
+            )])
+            .add_operands(&[lhs_i256])
+            .add_results(&[i256_ty])
+            .build(),
+    );
+    let lhs_be = op.result(0)?.into();
+
+    let op = entry.append_operation(
+        OperationBuilder::new("llvm.call_intrinsic", location)
+            .add_attributes(&[(
+                Identifier::new(context, "intrin"),
+                StringAttribute::new(context, "llvm.bswap").into(),
+            )])
+            .add_operands(&[rhs_i256])
+            .add_results(&[i256_ty])
+            .build(),
+    );
+    let rhs_be = op.result(0)?.into();
+
     entry.append_operation(llvm::store(
         context,
-        lhs,
+        lhs_be,
         lhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
+            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
         ))),
     ));
     entry.append_operation(llvm::store(
         context,
-        rhs,
+        rhs_be,
         rhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
+            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
         ))),
     ));
@@ -173,13 +204,28 @@ where
     let op = entry.append_operation(llvm::load(
         context,
         dst_ptr,
-        felt252_ty,
+        i256_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
+            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
         ))),
     ));
+    let result_be = op.result(0)?.into();
+
+    let op = entry.append_operation(
+        OperationBuilder::new("llvm.call_intrinsic", location)
+            .add_attributes(&[(
+                Identifier::new(context, "intrin"),
+                StringAttribute::new(context, "llvm.bswap").into(),
+            )])
+            .add_operands(&[result_be])
+            .add_results(&[i256_ty])
+            .build(),
+    );
+    let result = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::trunci(result, felt252_ty, location));
     let result = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
@@ -195,14 +241,6 @@ mod test {
     };
     use serde_json::json;
 
-    pub fn true_js() -> serde_json::Value {
-        json!([1, []])
-    }
-
-    pub fn false_js() -> serde_json::Value {
-        json!([0, []])
-    }
-
     #[test]
     fn run_pedersen() {
         let program = load_cairo!(
@@ -213,10 +251,22 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), f("1"), f("1")]));
-        assert_eq!(result, json!([f("1")]));
-
-        let result = run_program(&program, "run_test", json!([false_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", json!([(), f("2"), f("4")]));
+        assert_eq!(
+            result,
+            json!([
+                null,
+                [
+                    2073478595,
+                    1527108655,
+                    3447441461_i64,
+                    743507103,
+                    1568220342,
+                    867113658,
+                    318777692,
+                    80792501
+                ]
+            ])
+        );
     }
 }

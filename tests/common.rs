@@ -14,7 +14,10 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
-use cairo_native::{metadata::MetadataStorage, types::felt252::PRIME};
+use cairo_native::{
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    types::felt252::PRIME,
+};
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -116,6 +119,9 @@ pub fn run_native_program(
     let mut module = Module::new(Location::unknown(&context));
 
     let mut metadata = MetadataStorage::new();
+    // Make the runtime library available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -150,6 +156,22 @@ pub fn run_native_program(
         .expect("Could not apply passes to the compiled test program.");
 
     let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+    #[cfg(feature = "with-runtime")]
+    unsafe {
+        engine.register_symbol(
+            "cairo_native__libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc__debug__print
+                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc_pedersen",
+            cairo_native_runtime::cairo_native__libfunc_pedersen
+                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
+    }
+
     cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
         &engine,
         &registry,

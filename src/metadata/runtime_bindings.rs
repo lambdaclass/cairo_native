@@ -103,9 +103,9 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
                         ],
                         &[],
                     )

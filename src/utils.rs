@@ -178,7 +178,7 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::metadata::MetadataStorage;
+    use crate::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
     };
@@ -258,6 +258,9 @@ pub mod test {
         let mut module = Module::new(Location::unknown(&context));
 
         let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
             &module,
@@ -292,6 +295,22 @@ pub mod test {
             .expect("Could not apply passes to the compiled test program.");
 
         let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+        #[cfg(feature = "with-runtime")]
+        unsafe {
+            engine.register_symbol(
+                "cairo_native__libfunc__debug__print",
+                cairo_native_runtime::cairo_native__libfunc__debug__print
+                    as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+            );
+
+            engine.register_symbol(
+                "cairo_native__libfunc_pedersen",
+                cairo_native_runtime::cairo_native__libfunc_pedersen
+                    as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+            );
+        }
+
         crate::execute::<CoreType, CoreLibfunc, _, _>(
             &engine,
             &registry,

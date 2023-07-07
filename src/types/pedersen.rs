@@ -8,10 +8,7 @@ use crate::{
     metadata::MetadataStorage,
 };
 use cairo_lang_sierra::{
-    extensions::{
-        types::{InfoAndTypeConcreteType, InfoOnlyConcreteType},
-        GenericLibfunc, GenericType,
-    },
+    extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
 use melior::{
