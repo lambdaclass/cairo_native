@@ -1,11 +1,9 @@
 mod common;
-use crate::common::{felt, get_result_success, run_native_program, run_vm_program};
+use crate::common::{felt, get_result_success, run_native_program, run_vm_program, GAS};
 use cairo_felt::Felt252;
 use cairo_lang_runner::Arg;
 use common::load_cairo;
 use serde_json::json;
-
-const GAS: usize = usize::MAX;
 
 #[test]
 fn fib() {

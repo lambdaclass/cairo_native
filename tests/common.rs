@@ -1,4 +1,5 @@
 #![allow(unused_macros)]
+#![allow(unused)]
 
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
@@ -36,6 +37,8 @@ macro_rules! load_cairo {
 
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
+
+pub(crate) const GAS: usize = usize::MAX;
 
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
