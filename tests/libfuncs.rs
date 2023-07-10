@@ -1,5 +1,7 @@
 mod common;
-use crate::common::{felt, get_result_success, run_native_program, run_vm_program};
+use crate::common::{
+    casm_variant_to_sierra, felt, get_result_success, run_native_program, run_vm_program,
+};
 use common::load_cairo;
 use pretty_assertions::assert_eq;
 use serde_json::json;
@@ -46,21 +48,24 @@ fn enum_init() {
         result,
         json!([[
             [vm_results[0].parse::<i64>().unwrap(), felt(&vm_results[1])],
-            [vm_results[2].parse::<i64>().unwrap(), felt(&vm_results[3])],
             [
-                vm_results[4].parse::<i64>().unwrap(),
+                casm_variant_to_sierra(vm_results[2].parse::<i64>().unwrap(), 5),
+                felt(&vm_results[3])
+            ],
+            [
+                casm_variant_to_sierra(vm_results[4].parse::<i64>().unwrap(), 5),
                 vm_results[5].parse::<i64>().unwrap()
             ],
             [
-                vm_results[6].parse::<i64>().unwrap(),
+                casm_variant_to_sierra(vm_results[6].parse::<i64>().unwrap(), 5),
                 vm_results[7].parse::<i64>().unwrap()
             ],
             [
-                vm_results[8].parse::<i64>().unwrap(),
+                casm_variant_to_sierra(vm_results[8].parse::<i64>().unwrap(), 5),
                 vm_results[9].parse::<i64>().unwrap()
             ],
             [
-                vm_results[10].parse::<i64>().unwrap(),
+                casm_variant_to_sierra(vm_results[10].parse::<i64>().unwrap(), 5),
                 vm_results[11].parse::<i64>().unwrap()
             ],
         ]])

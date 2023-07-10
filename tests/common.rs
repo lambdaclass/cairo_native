@@ -53,6 +53,11 @@ pub fn felt(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
+/// Converts a casm variant to sierra.
+pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
+    num_variants - 1 - (idx >> 1)
+}
+
 pub fn get_result_success(r: RunResultValue) -> Vec<String> {
     match r {
         RunResultValue::Success(x) => x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
