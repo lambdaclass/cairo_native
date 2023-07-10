@@ -1,4 +1,6 @@
 use crate::common::{felt, get_result_success, load_cairo, run_native_program, run_vm_program};
+use cairo_felt::Felt252;
+use cairo_lang_runner::Arg;
 use serde_json::json;
 
 mod common;
@@ -105,4 +107,33 @@ fn logistic_map() {
 
     let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
     assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
+}
+
+#[test]
+fn pedersen() {
+    let (source, program, runner) = load_cairo! {
+        use hash::pedersen;
+
+        fn run_test(a: felt252, b: felt252) -> felt252 {
+            pedersen(a, b)
+        }
+    };
+
+    let result_vm = run_vm_program(
+        &(source.clone(), program.clone(), runner),
+        "run_test",
+        &[Arg::Value(Felt252::new(2)), Arg::Value(Felt252::new(4))],
+        Some(GAS),
+    )
+    .unwrap();
+
+    let vm_results = get_result_success(result_vm.value);
+    let vm_result = &vm_results[0];
+
+    let result = run_native_program(
+        &(source, program),
+        "run_test",
+        json!([null, felt("2"), felt("4")]),
+    );
+    assert_eq!(result, json!([null, felt(vm_result)]));
 }

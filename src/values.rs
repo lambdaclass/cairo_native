@@ -120,7 +120,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => false,
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(selector) => match selector {
@@ -262,7 +262,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Felt252Dict(_) => todo!(),
                 CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
                 CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-                CoreTypeConcrete::Pedersen(_) => todo!(),
+                CoreTypeConcrete::Pedersen(info) => {
+                    self::pedersen::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Poseidon(_) => todo!(),
                 CoreTypeConcrete::Span(_) => todo!(),
                 CoreTypeConcrete::StarkNet(selector) => match selector {
@@ -391,7 +393,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Pedersen(info) => unsafe {
+                self::pedersen::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(selector) => match selector {

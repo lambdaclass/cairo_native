@@ -277,16 +277,11 @@ where
 }
 
 #[cfg(test)]
-mod test {
-    use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
-    };
+pub(crate) mod test {
+    use crate::utils::test::{felt, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign};
     use serde_json::json;
-    use std::ops::Neg;
 
     lazy_static! {
         static ref FELT252_ADD: (String, Program) = load_cairo! {
@@ -330,99 +325,86 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
-
     #[test]
     fn felt252_add() {
         let r = |lhs, rhs| run_program(&FELT252_ADD, "run_test", json!([lhs, rhs]));
 
-        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("0"), f("1")), json!([f("1")]));
-        assert_eq!(r(f("0"), f("-2")), json!([f("-2")]));
-        assert_eq!(r(f("0"), f("-1")), json!([f("-1")]));
+        assert_eq!(r(felt("0"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("0"), felt("1")), json!([felt("1")]));
+        assert_eq!(r(felt("0"), felt("-2")), json!([felt("-2")]));
+        assert_eq!(r(felt("0"), felt("-1")), json!([felt("-1")]));
 
-        assert_eq!(r(f("1"), f("0")), json!([f("1")]));
-        assert_eq!(r(f("1"), f("1")), json!([f("2")]));
-        assert_eq!(r(f("1"), f("-2")), json!([f("-1")]));
-        assert_eq!(r(f("1"), f("-1")), json!([f("0")]));
+        assert_eq!(r(felt("1"), felt("0")), json!([felt("1")]));
+        assert_eq!(r(felt("1"), felt("1")), json!([felt("2")]));
+        assert_eq!(r(felt("1"), felt("-2")), json!([felt("-1")]));
+        assert_eq!(r(felt("1"), felt("-1")), json!([felt("0")]));
 
-        assert_eq!(r(f("-2"), f("0")), json!([f("-2")]));
-        assert_eq!(r(f("-2"), f("1")), json!([f("-1")]));
-        assert_eq!(r(f("-2"), f("-2")), json!([f("-4")]));
-        assert_eq!(r(f("-2"), f("-1")), json!([f("-3")]));
+        assert_eq!(r(felt("-2"), felt("0")), json!([felt("-2")]));
+        assert_eq!(r(felt("-2"), felt("1")), json!([felt("-1")]));
+        assert_eq!(r(felt("-2"), felt("-2")), json!([felt("-4")]));
+        assert_eq!(r(felt("-2"), felt("-1")), json!([felt("-3")]));
 
-        assert_eq!(r(f("-1"), f("0")), json!([f("-1")]));
-        assert_eq!(r(f("-1"), f("1")), json!([f("0")]));
-        assert_eq!(r(f("-1"), f("-2")), json!([f("-3")]));
-        assert_eq!(r(f("-1"), f("-1")), json!([f("-2")]));
+        assert_eq!(r(felt("-1"), felt("0")), json!([felt("-1")]));
+        assert_eq!(r(felt("-1"), felt("1")), json!([felt("0")]));
+        assert_eq!(r(felt("-1"), felt("-2")), json!([felt("-3")]));
+        assert_eq!(r(felt("-1"), felt("-1")), json!([felt("-2")]));
     }
 
     #[test]
     fn felt252_sub() {
         let r = |lhs, rhs| run_program(&FELT252_SUB, "run_test", json!([lhs, rhs]));
 
-        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("0"), f("1")), json!([f("-1")]));
-        assert_eq!(r(f("0"), f("-2")), json!([f("2")]));
-        assert_eq!(r(f("0"), f("-1")), json!([f("1")]));
+        assert_eq!(r(felt("0"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("0"), felt("1")), json!([felt("-1")]));
+        assert_eq!(r(felt("0"), felt("-2")), json!([felt("2")]));
+        assert_eq!(r(felt("0"), felt("-1")), json!([felt("1")]));
 
-        assert_eq!(r(f("1"), f("0")), json!([f("1")]));
-        assert_eq!(r(f("1"), f("1")), json!([f("0")]));
-        assert_eq!(r(f("1"), f("-2")), json!([f("3")]));
-        assert_eq!(r(f("1"), f("-1")), json!([f("2")]));
+        assert_eq!(r(felt("1"), felt("0")), json!([felt("1")]));
+        assert_eq!(r(felt("1"), felt("1")), json!([felt("0")]));
+        assert_eq!(r(felt("1"), felt("-2")), json!([felt("3")]));
+        assert_eq!(r(felt("1"), felt("-1")), json!([felt("2")]));
 
-        assert_eq!(r(f("-2"), f("0")), json!([f("-2")]));
-        assert_eq!(r(f("-2"), f("1")), json!([f("-3")]));
-        assert_eq!(r(f("-2"), f("-2")), json!([f("0")]));
-        assert_eq!(r(f("-2"), f("-1")), json!([f("-1")]));
+        assert_eq!(r(felt("-2"), felt("0")), json!([felt("-2")]));
+        assert_eq!(r(felt("-2"), felt("1")), json!([felt("-3")]));
+        assert_eq!(r(felt("-2"), felt("-2")), json!([felt("0")]));
+        assert_eq!(r(felt("-2"), felt("-1")), json!([felt("-1")]));
 
-        assert_eq!(r(f("-1"), f("0")), json!([f("-1")]));
-        assert_eq!(r(f("-1"), f("1")), json!([f("-2")]));
-        assert_eq!(r(f("-1"), f("-2")), json!([f("1")]));
-        assert_eq!(r(f("-1"), f("-1")), json!([f("0")]));
+        assert_eq!(r(felt("-1"), felt("0")), json!([felt("-1")]));
+        assert_eq!(r(felt("-1"), felt("1")), json!([felt("-2")]));
+        assert_eq!(r(felt("-1"), felt("-2")), json!([felt("1")]));
+        assert_eq!(r(felt("-1"), felt("-1")), json!([felt("0")]));
     }
 
     #[test]
     fn felt252_mul() {
         let r = |lhs, rhs| run_program(&FELT252_MUL, "run_test", json!([lhs, rhs]));
 
-        assert_eq!(r(f("0"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("0"), f("1")), json!([f("0")]));
-        assert_eq!(r(f("0"), f("-2")), json!([f("0")]));
-        assert_eq!(r(f("0"), f("-1")), json!([f("0")]));
+        assert_eq!(r(felt("0"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("0"), felt("1")), json!([felt("0")]));
+        assert_eq!(r(felt("0"), felt("-2")), json!([felt("0")]));
+        assert_eq!(r(felt("0"), felt("-1")), json!([felt("0")]));
 
-        assert_eq!(r(f("1"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("1"), f("1")), json!([f("1")]));
-        assert_eq!(r(f("1"), f("-2")), json!([f("-2")]));
-        assert_eq!(r(f("1"), f("-1")), json!([f("-1")]));
+        assert_eq!(r(felt("1"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("1"), felt("1")), json!([felt("1")]));
+        assert_eq!(r(felt("1"), felt("-2")), json!([felt("-2")]));
+        assert_eq!(r(felt("1"), felt("-1")), json!([felt("-1")]));
 
-        assert_eq!(r(f("-2"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("-2"), f("1")), json!([f("-2")]));
-        assert_eq!(r(f("-2"), f("-2")), json!([f("4")]));
-        assert_eq!(r(f("-2"), f("-1")), json!([f("2")]));
+        assert_eq!(r(felt("-2"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("-2"), felt("1")), json!([felt("-2")]));
+        assert_eq!(r(felt("-2"), felt("-2")), json!([felt("4")]));
+        assert_eq!(r(felt("-2"), felt("-1")), json!([felt("2")]));
 
-        assert_eq!(r(f("-1"), f("0")), json!([f("0")]));
-        assert_eq!(r(f("-1"), f("1")), json!([f("-1")]));
-        assert_eq!(r(f("-1"), f("-2")), json!([f("2")]));
-        assert_eq!(r(f("-1"), f("-1")), json!([f("1")]));
+        assert_eq!(r(felt("-1"), felt("0")), json!([felt("0")]));
+        assert_eq!(r(felt("-1"), felt("1")), json!([felt("-1")]));
+        assert_eq!(r(felt("-1"), felt("-2")), json!([felt("2")]));
+        assert_eq!(r(felt("-1"), felt("-1")), json!([felt("1")]));
     }
 
     #[test]
     fn felt252_const() {
         assert_eq!(
             run_program(&FELT252_CONST, "run_test", json!([])),
-            json!([[f("0"), f("1"), f("-2"), f("-1")]])
+            json!([[felt("0"), felt("1"), felt("-2"), felt("-1")]])
         );
     }
 
@@ -430,9 +412,9 @@ mod test {
     fn felt252_is_zero() {
         let r = |x| run_program(&FELT252_IS_ZERO, "run_test", json!([x]));
 
-        assert_eq!(r(f("0")), json!([f("1")]));
-        assert_eq!(r(f("1")), json!([f("0")]));
-        assert_eq!(r(f("-2")), json!([f("0")]));
-        assert_eq!(r(f("-1")), json!([f("0")]));
+        assert_eq!(r(felt("0")), json!([felt("1")]));
+        assert_eq!(r(felt("1")), json!([felt("0")]));
+        assert_eq!(r(felt("-2")), json!([felt("0")]));
+        assert_eq!(r(felt("-1")), json!([felt("0")]));
     }
 }
