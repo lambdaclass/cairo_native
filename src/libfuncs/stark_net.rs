@@ -8,8 +8,8 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::{felt252::Felt252, TypeBuilder},
+    metadata::MetadataStorage,
+    types::TypeBuilder,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -131,7 +131,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -327,6 +327,13 @@ mod test {
                 storage_base_address_from_felt252(value)
             }
         };
+        static ref STORAGE_ADDRESS_FROM_BASE: (String, Program) = load_cairo! {
+            use starknet::storage_access::{StorageAddress, StorageBaseAddress, storage_address_from_base};
+
+            fn run_program(value: StorageBaseAddress) -> StorageAddress {
+                storage_address_from_base(value)
+            }
+        };
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.
@@ -366,6 +373,22 @@ mod test {
                 "3618502788666131106986593281521497120414687020801267626233049500247285300992"
             )),
             json!([(), f("0")])
+        );
+    }
+
+    #[test]
+    fn storage_address_from_base() {
+        let r = |value| run_program(&STORAGE_ADDRESS_FROM_BASE, "run_program", json!([value]));
+
+        assert_eq!(r(f("0")), json!([f("0")]));
+        assert_eq!(r(f("1")), json!([f("1")]));
+        assert_eq!(
+            r(f(
+                "106710729501573572985208420194530329073740042555888586719488"
+            )),
+            json!([f(
+                "106710729501573572985208420194530329073740042555888586719488"
+            )])
         );
     }
 }
