@@ -1,7 +1,7 @@
-mod common;
-use crate::common::{felt, get_result_success, run_native_program, run_vm_program};
-use common::load_cairo;
+use crate::common::{felt, get_result_success, load_cairo, run_native_program, run_vm_program};
 use serde_json::json;
+
+mod common;
 
 const GAS: usize = usize::MAX;
 
