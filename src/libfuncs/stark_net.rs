@@ -140,27 +140,12 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let k_prime = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(
-                context,
-                &format!(
-                    "{} : i252",
-                    metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime()
-                ),
-            )
-            .unwrap(),
-            location,
-        ))
-        .result(0)?
-        .into();
     let k_limit = entry
         .append_operation(arith::constant(
             context,
             Attribute::parse(
                 context,
-                "106710729501573572985208420194530329073740042555888586719489 : i252",
+                "3618502788666131106986593281521497120414687020801267626233049500247285300992 : i252",
             )
             .unwrap(),
             location,
@@ -168,12 +153,8 @@ where
         .result(0)?
         .into();
 
-    let delta_value = entry
-        .append_operation(arith::subi(k_prime, entry.argument(1)?.into(), location))
-        .result(0)?
-        .into();
     let limited_value = entry
-        .append_operation(arith::subi(k_limit, delta_value, location))
+        .append_operation(arith::subi(entry.argument(1)?.into(), k_limit, location))
         .result(0)?
         .into();
 
@@ -199,51 +180,6 @@ where
 
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), value], location));
     Ok(())
-
-    // let value = entry.argument(1)?.into();
-
-    // let k1 = entry
-    //     .append_operation(arith::constant(
-    //         context,
-    //         IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
-    //         location,
-    //     ))
-    //     .result(0)?
-    //     .into();
-    // let k251 = entry
-    //     .append_operation(arith::constant(
-    //         context,
-    //         IntegerAttribute::new(251, IntegerType::new(context, 252).into()).into(),
-    //         location,
-    //     ))
-    //     .result(0)?
-    //     .into();
-
-    // let limit = entry
-    //     .append_operation(arith::shli(k1, k251, location))
-    //     .result(0)?
-    //     .into();
-    // let is_in_range = entry
-    //     .append_operation(arith::cmpi(
-    //         context,
-    //         CmpiPredicate::Ult,
-    //         value,
-    //         limit,
-    //         location,
-    //     ))
-    //     .result(0)?
-    //     .into();
-
-    // entry.append_operation(helper.cond_br(
-    //     is_in_range,
-    //     [0, 1],
-    //     [
-    //         &[entry.argument(0)?.into(), value],
-    //         &[entry.argument(0)?.into()],
-    //     ],
-    //     location,
-    // ));
-    // Ok(())
 }
 
 pub fn build_storage_address_from_base<'ctx, 'this, TType, TLibfunc>(
@@ -424,6 +360,12 @@ mod test {
                 (),
                 f("106710729501573572985208420194530329073740042555888586719488")
             ])
+        );
+        assert_eq!(
+            r(f(
+                "3618502788666131106986593281521497120414687020801267626233049500247285300992"
+            )),
+            json!([(), f("0")])
         );
     }
 }
