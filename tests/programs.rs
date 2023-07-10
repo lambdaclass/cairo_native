@@ -4,6 +4,7 @@ use cairo_felt::Felt252;
 use cairo_lang_runner::Arg;
 use common::load_cairo;
 use serde_json::json;
+use pretty_assertions::assert_eq;
 
 #[test]
 fn fib() {
