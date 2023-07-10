@@ -345,6 +345,13 @@ mod test {
                 storage_address_from_base_and_offset(addr, offset)
             }
         };
+        static ref STORAGE_ADDRESS_TO_FELT252: (String, Program) = load_cairo! {
+            use starknet::storage_access::{StorageAddress, storage_address_to_felt252};
+
+            fn run_program(value: StorageAddress) -> felt252 {
+                storage_address_to_felt252(value)
+            }
+        };
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.
@@ -446,6 +453,22 @@ mod test {
             ),
             json!([f(
                 "106710729501573572985208420194530329073740042555888586719743"
+            )])
+        );
+    }
+
+    #[test]
+    fn storage_address_to_felt252() {
+        let r = |value| run_program(&STORAGE_ADDRESS_TO_FELT252, "run_program", json!([value]));
+
+        assert_eq!(r(f("0")), json!([f("0")]));
+        assert_eq!(r(f("1")), json!([f("1")]));
+        assert_eq!(
+            r(f(
+                "106710729501573572985208420194530329073740042555888586719488"
+            ),),
+            json!([f(
+                "106710729501573572985208420194530329073740042555888586719488"
             )])
         );
     }
