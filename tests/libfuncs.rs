@@ -33,17 +33,11 @@ fn enum_init() {
         }
     };
 
-    let result_vm = run_vm_program(
-        &(source.clone(), program.clone(), runner),
-        "run_test",
-        &[],
-        None,
-    )
-    .unwrap();
+    let result_vm = run_vm_program(&(&source, &program, &runner), "run_test", &[], None).unwrap();
 
     let vm_results = get_result_success(result_vm.value);
 
-    let result = run_native_program(&(source, program), "run_test", json!([]));
+    let result = run_native_program(&(&source, &program), "run_test", json!([]));
     assert_eq!(
         result,
         json!([[
@@ -70,4 +64,53 @@ fn enum_init() {
             ],
         ]])
     );
+}
+
+#[test]
+fn enum_match() {
+    let (source, program, runner) = load_cairo! {
+        enum MyEnum {
+            A: felt252,
+            B: u8,
+            C: u16,
+            D: u32,
+            E: u64,
+        }
+
+        fn match_a() -> felt252 {
+            let x = MyEnum::A(5);
+            match x {
+                MyEnum::A(x) => x,
+                MyEnum::B(_) => 0,
+                MyEnum::C(_) => 1,
+                MyEnum::D(_) => 2,
+                MyEnum::E(_) => 3,
+            }
+        }
+
+        fn match_b() -> u8 {
+            let x = MyEnum::B(5_u8);
+            match x {
+                MyEnum::A(_) => 0_u8,
+                MyEnum::B(x) => x,
+                MyEnum::C(_) => 1_u8,
+                MyEnum::D(_) => 2_u8,
+                MyEnum::E(_) => 3_u8,
+            }
+        }
+    };
+
+    let result_vm = run_vm_program(&(&source, &program, &runner), "match_a", &[], None).unwrap();
+
+    let vm_results = get_result_success(result_vm.value);
+
+    let result = run_native_program(&(&source, &program), "match_a", json!([]));
+    assert_eq!(result, json!([felt(&vm_results[0])]));
+
+    let result_vm = run_vm_program(&(&source, &program, &runner), "match_b", &[], None).unwrap();
+
+    let vm_results = get_result_success(result_vm.value);
+
+    let result = run_native_program(&(&source, &program), "match_b", json!([]));
+    assert_eq!(result, json!([vm_results[0].parse::<i64>().unwrap()]));
 }
