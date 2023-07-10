@@ -89,7 +89,7 @@ run_bench() {
         --shell=none \
         --warmup 3 \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
-        "$CAIRO_RUN --available-gas 18446744073709551615 --single-file $base_path.cairo" \
+        "$CAIRO_RUN --available-gas 18446744073709551615 $base_path.cairo" \
         "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
         "$OUTPUT_DIR/$base_name" \
         "$OUTPUT_DIR/$base_name-march-native" \
