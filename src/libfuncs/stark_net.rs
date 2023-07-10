@@ -22,7 +22,7 @@ use melior::{
     dialect::arith::{self, CmpiPredicate},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute,
-        Block, Location,
+        Block, Location, ValueLike,
     },
     Context,
 };
@@ -214,12 +214,16 @@ where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
 {
-    let addr = entry
-        .append_operation(arith::addi(
-            entry.argument(0)?.into(),
+    let offset = entry
+        .append_operation(arith::extui(
             entry.argument(1)?.into(),
+            entry.argument(0)?.r#type(),
             location,
         ))
+        .result(0)?
+        .into();
+    let addr = entry
+        .append_operation(arith::addi(entry.argument(0)?.into(), offset, location))
         .result(0)?
         .into();
 
@@ -334,6 +338,13 @@ mod test {
                 storage_address_from_base(value)
             }
         };
+        static ref STORAGE_ADDRESS_FROM_BASE_AND_OFFSET: (String, Program) = load_cairo! {
+            use starknet::storage_access::{StorageAddress, StorageBaseAddress, storage_address_from_base_and_offset};
+
+            fn run_program(addr: StorageBaseAddress, offset: u8) -> StorageAddress {
+                storage_address_from_base_and_offset(addr, offset)
+            }
+        };
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.
@@ -388,6 +399,53 @@ mod test {
             )),
             json!([f(
                 "106710729501573572985208420194530329073740042555888586719488"
+            )])
+        );
+    }
+
+    #[test]
+    fn storage_address_from_base_and_offset() {
+        let r = |addr, offset| {
+            run_program(
+                &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+                "run_program",
+                json!([addr, offset]),
+            )
+        };
+
+        assert_eq!(r(f("0"), 0u8), json!([f("0")]));
+        assert_eq!(r(f("1"), 0u8), json!([f("1")]));
+        assert_eq!(
+            r(
+                f("106710729501573572985208420194530329073740042555888586719488"),
+                0u8
+            ),
+            json!([f(
+                "106710729501573572985208420194530329073740042555888586719488"
+            )])
+        );
+
+        assert_eq!(r(f("0"), 1u8), json!([f("1")]));
+        assert_eq!(r(f("1"), 1u8), json!([f("2")]));
+        assert_eq!(
+            r(
+                f("106710729501573572985208420194530329073740042555888586719488"),
+                1u8
+            ),
+            json!([f(
+                "106710729501573572985208420194530329073740042555888586719489"
+            )])
+        );
+
+        assert_eq!(r(f("0"), 255u8), json!([f("255")]));
+        assert_eq!(r(f("1"), 255u8), json!([f("256")]));
+        assert_eq!(
+            r(
+                f("106710729501573572985208420194530329073740042555888586719488"),
+                255u8
+            ),
+            json!([f(
+                "106710729501573572985208420194530329073740042555888586719743"
             )])
         );
     }
