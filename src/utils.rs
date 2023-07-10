@@ -178,7 +178,10 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::metadata::MetadataStorage;
+    use crate::{
+        metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+        types::felt252::PRIME,
+    };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
     };
@@ -195,7 +198,8 @@ pub mod test {
         utility::{register_all_dialects, register_all_passes},
         Context, ExecutionEngine,
     };
-    use std::{env::var, fs, path::Path, sync::Arc};
+    use num_bigint::{BigInt, Sign};
+    use std::{env::var, fs, ops::Neg, path::Path, sync::Arc};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -258,6 +262,9 @@ pub mod test {
         let mut module = Module::new(Location::unknown(&context));
 
         let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
             &module,
@@ -292,6 +299,22 @@ pub mod test {
             .expect("Could not apply passes to the compiled test program.");
 
         let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+        #[cfg(feature = "with-runtime")]
+        unsafe {
+            engine.register_symbol(
+                "cairo_native__libfunc__debug__print",
+                cairo_native_runtime::cairo_native__libfunc__debug__print
+                    as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+            );
+
+            engine.register_symbol(
+                "cairo_native__libfunc_pedersen",
+                cairo_native_runtime::cairo_native__libfunc_pedersen
+                    as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+            );
+        }
+
         crate::execute::<CoreType, CoreLibfunc, _, _>(
             &engine,
             &registry,
@@ -305,6 +328,19 @@ pub mod test {
             serde_json::value::Serializer,
         )
         .expect("Test program execution failed.")
+    }
+
+    // Parse numeric string into felt, wrapping negatives around the prime modulo.
+    pub fn felt(value: &str) -> [u32; 8] {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        let mut u32_digits = value.to_u32_digits();
+        u32_digits.resize(8, 0);
+        u32_digits.try_into().unwrap()
     }
 
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.

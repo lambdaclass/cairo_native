@@ -18,8 +18,8 @@ with-runtime = ["cairo-native-runtime"]
 [dependencies]
 bumpalo = "3.13.0"
 cairo-lang-compiler = "2.0.1"
-cairo-lang-diagnostics = "2.0.1"
 cairo-lang-defs = "2.0.1"
+cairo-lang-diagnostics = "2.0.1"
 cairo-lang-filesystem = "2.0.1"
 cairo-lang-lowering = "2.0.1"
 cairo-lang-sierra = "2.0.1"
@@ -44,6 +44,7 @@ tracing-subscriber = { version = "0.3.17", features = [
 ], optional = true }
 
 [dev-dependencies]
+cairo-felt = "0.6.1"
 cairo-lang-runner = "2.0.1"
 cairo-lang-starknet = "2.0.1"
 serde_json = { version = "1.0.97", features = ["arbitrary_precision"] }

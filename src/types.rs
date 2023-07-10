@@ -111,7 +111,9 @@ where
             }
             Self::NonZero(info) => self::non_zero::build(context, module, registry, metadata, info),
             Self::Nullable(_) => todo!(),
-            Self::Pedersen(_) => todo!(),
+            Self::Pedersen(info) => {
+                self::pedersen::build(context, module, registry, metadata, info)
+            }
             Self::Poseidon(_) => todo!(),
             Self::RangeCheck(info) => {
                 self::range_check::build(context, module, registry, metadata, info)
@@ -191,7 +193,7 @@ where
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(info) => match info {
