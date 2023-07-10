@@ -20,10 +20,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute,
-        Block, Location, ValueLike,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Attribute, Block, Location, ValueLike},
     Context,
 };
 use num_bigint::Sign;
@@ -267,25 +264,16 @@ where
 {
     let value = entry.argument(1)?.into();
 
-    let k1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let k251 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(251, IntegerType::new(context, 252).into()).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-
     let limit = entry
-        .append_operation(arith::shli(k1, k251, location))
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(
+                context,
+                "106710729501573572985208420194530329073740042555888586719489 : i252",
+            )
+            .unwrap(),
+            location,
+        ))
         .result(0)?
         .into();
     let is_in_range = entry
@@ -350,6 +338,13 @@ mod test {
 
             fn run_program(value: StorageAddress) -> felt252 {
                 storage_address_to_felt252(value)
+            }
+        };
+        static ref STORAGE_ADDRESS_TRY_FROM_FELT252: (String, Program) = load_cairo! {
+            use starknet::storage_access::{StorageAddress, storage_address_try_from_felt252};
+
+            fn run_program(value: felt252) -> Option<StorageAddress> {
+                storage_address_try_from_felt252(value)
             }
         };
     }
@@ -471,5 +466,32 @@ mod test {
                 "106710729501573572985208420194530329073740042555888586719488"
             )])
         );
+    }
+
+    #[test]
+    fn storage_address_try_from_felt252() {
+        let r = |value| {
+            run_program(
+                &STORAGE_ADDRESS_TRY_FROM_FELT252,
+                "run_program",
+                json!([(), value]),
+            )
+        };
+
+        assert_eq!(r(f("0")), json!([(), [0, f("0")]]));
+        assert_eq!(r(f("1")), json!([(), [0, f("1")]]));
+        assert_eq!(
+            r(f(
+                "106710729501573572985208420194530329073740042555888586719488"
+            ),),
+            json!([
+                (),
+                [
+                    0,
+                    f("106710729501573572985208420194530329073740042555888586719488")
+                ]
+            ])
+        );
+        assert_eq!(r(f("-1"),), json!([(), [1, []]]));
     }
 }
