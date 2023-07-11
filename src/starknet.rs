@@ -104,19 +104,27 @@ mod handler {
     {
         self_ptr: &'a T,
 
-        get_block_hash: extern "C" fn(
+        get_block_hash: unsafe extern "C" fn(
             ret: *mut NativeFelt252,
             ptr: NonNull<T>,
             gas: &mut u64,
             block_number: u64,
         ),
-        deploy: extern "C" fn(
-            ptr: &mut T,
+        get_execution_info: unsafe extern "C" fn(
+            ret: *mut (),
+            ptr: NonNull<T>,
+            gas: &mut u64,
+        ),
+        deploy: unsafe extern "C" fn(
+            ret: *mut (),
+            ptr: NonNull<T>,
+            gas: &mut u64,
             class_hash: &NativeFelt252,
             contract_address_salt: &NativeFelt252,
             calldata: *const *const NativeFelt252,
+            calldata_len: usize,
             deploy_from_zero: bool,
-        ) -> bool,
+        ),
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -127,50 +135,63 @@ mod handler {
             Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
+                get_execution_info: Self::get_execution_info,
                 deploy: Self::deploy,
             }
         }
 
-        extern "C" fn wrap_get_block_hash(
+        unsafe extern "C" fn wrap_get_block_hash(
             ret: *mut NativeFelt252,
             ptr: NonNull<T>,
             gas: &mut u64,
             block_number: u64,
         ) {
-            unsafe {
-                let block = ptr.as_ref().get_block_hash(block_number);
+            let block = ptr.as_ref().get_block_hash(block_number);
 
-                (*ret).copy_from_slice(&block.to_bytes_be());
-            }
+            (*ret).copy_from_slice(&block.to_bytes_be());
+        }
+
+        unsafe extern "C" fn get_execution_info(
+            ret: *mut (),
+            ptr: NonNull<T>,
+            gas: &mut u64,
+            block_number: u64,
+        ) {
+            todo!()
         }
 
         // TODO: change all from_bytes_be to from_bytes_ne when added.
 
-        extern "C" fn deploy(
-            ptr: &mut T,
+        unsafe extern "C" fn deploy(
+            ret: *mut (),
+            ptr: NonNull<T>,
+            gas: &mut u64,
             class_hash: &NativeFelt252,
             contract_address_salt: &NativeFelt252,
             calldata: *const *const NativeFelt252,
             calldata_len: usize,
             deploy_from_zero: bool,
-        ) -> bool {
+        ) {
             let class_hash = Felt252::from_bytes_be(class_hash);
             let contract_address_salt = Felt252::from_bytes_be(contract_address_salt);
 
-            let calldata = unsafe { std::slice::from_raw_parts(calldata, calldata_len) };
+            let calldata = std::slice::from_raw_parts(calldata, calldata_len);
             let calldata_vec: Vec<_> = calldata
                 .iter()
                 .map(|x| Felt252::from_bytes_be(unsafe { &**x }))
                 .collect();
 
-            let result = ptr.deploy(
+            let result = ptr.as_ref().deploy(
                 class_hash,
                 contract_address_salt,
                 &calldata_vec,
                 deploy_from_zero,
             );
 
-            result.is_ok()
+            match result {
+                Ok(_) => todo!(),
+                Err(_) => todo!(),
+            }
         }
     }
 }
