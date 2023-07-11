@@ -334,15 +334,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
-    };
+    use crate::utils::test::{felt, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign};
     use serde_json::json;
-    use std::ops::Neg;
 
     lazy_static! {
         static ref ENUM_INIT: (String, Program) = load_cairo! {
@@ -369,19 +364,37 @@ mod test {
                 )
             }
         };
-    }
+        static ref ENUM_MATCH: (String, Program) = load_cairo! {
+            enum MyEnum {
+                A: felt252,
+                B: u8,
+                C: u16,
+                D: u32,
+                E: u64,
+            }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
+            fn match_a() -> felt252 {
+                let x = MyEnum::A(5);
+                match x {
+                    MyEnum::A(x) => x,
+                    MyEnum::B(_) => 0,
+                    MyEnum::C(_) => 1,
+                    MyEnum::D(_) => 2,
+                    MyEnum::E(_) => 3,
+                }
+            }
+
+            fn match_b() -> u8 {
+                let x = MyEnum::B(5_u8);
+                match x {
+                    MyEnum::A(_) => 0_u8,
+                    MyEnum::B(x) => x,
+                    MyEnum::C(_) => 1_u8,
+                    MyEnum::D(_) => 2_u8,
+                    MyEnum::E(_) => 3_u8,
+                }
+            }
         };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
     }
 
     #[test]
@@ -391,13 +404,22 @@ mod test {
         assert_eq!(
             r(),
             json!([[
-                [0, f("-1")],
-                [0, f("5678")],
+                [0, felt("-1")],
+                [0, felt("5678")],
                 [1, 90u8],
                 [2, 9012u16],
                 [3, 34567890u32],
                 [4, 1234567890123456u64],
             ]])
         );
+    }
+
+    #[test]
+    fn enum_match() {
+        let result_a = run_program(&ENUM_MATCH, "match_a", json!([]));
+        let result_b = run_program(&ENUM_MATCH, "match_b", json!([]));
+
+        assert_eq!(result_a, json!([felt("5")]));
+        assert_eq!(result_b, json!([5]));
     }
 }
