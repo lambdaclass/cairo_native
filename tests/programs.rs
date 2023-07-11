@@ -23,18 +23,13 @@ fn fib() {
 
     };
 
-    let result_vm = run_vm_program(
-        &(source.clone(), program.clone(), runner),
-        "run_test",
-        &[],
-        Some(GAS),
-    )
-    .unwrap();
+    let result_vm =
+        run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
     let vm_results = get_result_success(result_vm.value);
     let vm_result = &vm_results[0];
 
-    let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
+    let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
     assert_eq!(result, json!([null, GAS, [0, [felt(vm_result)]]]));
 }
 
@@ -54,18 +49,13 @@ fn factorial() {
         }
     };
 
-    let result_vm = run_vm_program(
-        &(source.clone(), program.clone(), runner),
-        "run_test",
-        &[],
-        Some(GAS),
-    )
-    .unwrap();
+    let result_vm =
+        run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
     let vm_results = get_result_success(result_vm.value);
     let vm_result = &vm_results[0];
 
-    let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
+    let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
     assert_eq!(result, json!([null, GAS, [0, [felt(vm_result)]]]));
 }
 
@@ -94,18 +84,13 @@ fn logistic_map() {
         }
     };
 
-    let result_vm = run_vm_program(
-        &(source.clone(), program.clone(), runner),
-        "run_test",
-        &[],
-        Some(GAS),
-    )
-    .unwrap();
+    let result_vm =
+        run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
     let vm_results = get_result_success(result_vm.value);
     let fib_result = &vm_results[0];
 
-    let result = run_native_program(&(source, program), "run_test", json!([null, GAS]));
+    let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
     assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
 }
 
@@ -120,7 +105,7 @@ fn pedersen() {
     };
 
     let result_vm = run_vm_program(
-        &(source.clone(), program.clone(), runner),
+        &(&source, &program, &runner),
         "run_test",
         &[Arg::Value(Felt252::new(2)), Arg::Value(Felt252::new(4))],
         Some(GAS),
@@ -131,7 +116,7 @@ fn pedersen() {
     let vm_result = &vm_results[0];
 
     let result = run_native_program(
-        &(source, program),
+        &(&source, &program),
         "run_test",
         json!([null, felt("2"), felt("4")]),
     );

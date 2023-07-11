@@ -1,4 +1,5 @@
 #![allow(unused_macros)]
+#![allow(dead_code)]
 
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
@@ -37,6 +38,8 @@ macro_rules! load_cairo {
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
 
+pub(crate) const GAS: usize = usize::MAX;
+
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
     let value = value.parse::<BigInt>().unwrap();
@@ -48,6 +51,11 @@ pub fn felt(value: &str) -> [u32; 8] {
     let mut u32_digits = value.to_u32_digits();
     u32_digits.resize(8, 0);
     u32_digits.try_into().unwrap()
+}
+
+/// Converts a casm variant to sierra.
+pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
+    num_variants - 1 - (idx >> 1)
 }
 
 pub fn get_result_success(r: RunResultValue) -> Vec<String> {
@@ -97,7 +105,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
 }
 
 pub fn run_native_program(
-    program: &(String, Program),
+    program: &(&str, &Program),
     entry_point: &str,
     args: serde_json::Value,
 ) -> serde_json::Value {
@@ -188,12 +196,12 @@ pub fn run_native_program(
 }
 
 pub fn run_vm_program(
-    program: &(String, Program, SierraCasmRunner),
+    program: &(&str, &Program, &SierraCasmRunner),
     entry_point: &str,
     args: &[Arg],
     gas: Option<usize>,
 ) -> Result<RunResult, RunnerError> {
-    let runner = &program.2;
+    let runner = program.2;
     runner.run_function(
         runner.find_function(entry_point).unwrap(),
         args,

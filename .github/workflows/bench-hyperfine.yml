@@ -1,7 +1,11 @@
 name: Bench
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,7 +46,7 @@ jobs:
       - name: Build project
         run: make build
       - name: Run benchmarks
-        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh
+        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/{factorial_100,fib_1k,map}.cairo
 
       - run: bash .github/scripts/merge-benches.sh
       - uses: peter-evans/find-comment@v2
