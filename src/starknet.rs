@@ -109,6 +109,23 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 mod handler {
     use super::*;
+    use std::{
+        alloc::Layout,
+        mem::{size_of, ManuallyDrop, MaybeUninit},
+        ptr::NonNull,
+    };
+
+    #[repr(C)]
+    struct SyscallResultAbi<T> {
+        tag: u8,
+        payload: SyscallResultPayloadAbi<T>,
+    }
+
+    #[repr(C)]
+    union SyscallResultPayloadAbi<T> {
+        ok: ManuallyDrop<T>,
+        err: (NonNull<Felt252Abi>, u32, u32),
+    }
 
     #[repr(C)]
     struct StarkNetSyscallHandlerCallbacks<'a, T>
@@ -117,7 +134,7 @@ mod handler {
     {
         self_ptr: &'a T,
 
-        get_block_hash: extern "C" fn(ptr: &mut T, block_number: u64),
+        get_block_hash: extern "C" fn(&mut SyscallResultAbi<Felt252Abi>, &mut T, &mut u64, u64),
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -131,9 +148,39 @@ mod handler {
             }
         }
 
-        extern "C" fn wrap_get_block_hash(ptr: &mut T, block_number: u64) {
-            // TODO: Handle result.
-            ptr.get_block_hash(block_number);
+        extern "C" fn wrap_get_block_hash(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            block_number: u64,
+        ) {
+            // TODO: Handle gas.
+            let result = ptr.get_block_hash(block_number);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
+                    },
+                },
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
+                            as *mut Felt252Abi;
+
+                        let len: u32 = e.len().try_into().unwrap();
+                        for (i, val) in e.into_iter().enumerate() {
+                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
+                        }
+
+                        SyscallResultPayloadAbi {
+                            err: (NonNull::new(ptr).unwrap(), len, len),
+                        }
+                    },
+                },
+            };
         }
     }
 }
