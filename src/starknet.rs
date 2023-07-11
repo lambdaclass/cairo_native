@@ -1,16 +1,28 @@
-type SyscallResult<T> = std::result::Result<T, std::convert::Infallible>;
-use cairo_felt_last::Felt252;
+use cairo_felt::Felt252;
 
-type NativeFelt252 = [u8; 32];
-type U256 = [u8; 32];
+type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
-struct ExecutionInfo {}
-struct Secp256k1Point {}
-struct Secp256r1Point {}
+/// Binary representation of a `felt252` (in MLIR).
+#[repr(C, align(8))]
+struct Felt252Abi(pub [u8; 32]);
+/// Binary representation of a `u256` (in MLIR).
+// TODO: This shouldn't need to be public.
+#[repr(C, align(8))]
+pub struct U256(pub [u8; 32]);
 
-trait StarkNetSyscallHandler {
-    fn get_block_hash(&self, block_number: u64) -> Felt252;
-    fn get_execution_info(&self) -> ExecutionInfo;
+pub struct ExecutionInfo {
+    // TODO: Add fields.
+}
+pub struct Secp256k1Point {
+    // TODO: Add fields.
+}
+pub struct Secp256r1Point {
+    // TODO: Add fields.
+}
+
+pub trait StarkNetSyscallHandler {
+    fn get_block_hash(&self, block_number: u64) -> SyscallResult<Felt252>;
+    fn get_execution_info(&self) -> SyscallResult<ExecutionInfo>;
 
     fn deploy(
         &self,
@@ -18,7 +30,7 @@ trait StarkNetSyscallHandler {
         contract_address_salt: Felt252,
         calldata: &[Felt252],
         deploy_from_zero: bool,
-    ) -> SyscallResult<(Felt252, &[Felt252])>;
+    ) -> SyscallResult<(Felt252, Vec<Felt252>)>;
     fn replace_class(&self, class_hash: Felt252) -> SyscallResult<()>;
 
     fn library_call(
@@ -26,13 +38,13 @@ trait StarkNetSyscallHandler {
         class_hash: Felt252,
         function_selector: Felt252,
         calldata: &[Felt252],
-    ) -> &[Felt252];
+    ) -> SyscallResult<Vec<Felt252>>;
     fn call_contract(
         &self,
         address: Felt252,
         entry_point_selector: Felt252,
         calldata: &[Felt252],
-    ) -> &[Felt252];
+    ) -> SyscallResult<Vec<Felt252>>;
 
     fn storage_read(&self, address_domain: u32, address: Felt252) -> SyscallResult<Felt252>;
     fn storage_write(
@@ -43,9 +55,9 @@ trait StarkNetSyscallHandler {
     ) -> SyscallResult<()>;
 
     fn emit_event(&self, keys: &[Felt252], data: &[Felt252]) -> SyscallResult<()>;
-    fn send_message_to_l1(&self, to_address: Felt252, payload: &[Felt252]);
+    fn send_message_to_l1(&self, to_address: Felt252, payload: &[Felt252]) -> SyscallResult<()>;
 
-    fn keccak(&self, input: &[u64]) -> SyscallResult<()>;
+    fn keccak(&self, input: &[u64]) -> SyscallResult<U256>;
 
     // TODO: secp256k1 syscalls
     fn secp256k1_add(
@@ -77,7 +89,8 @@ trait StarkNetSyscallHandler {
     fn secp256r1_mul(&self, p: Secp256k1Point, m: U256) -> SyscallResult<Option<Secp256k1Point>>;
     fn secp256r1_new(&self, x: U256, y: U256) -> SyscallResult<Option<Secp256k1Point>>;
 
-    // TODO: Testing syscalls
+    // Testing syscalls.
+    // TODO: Make them optional. Crash if called but not implemented.
     fn pop_log(&self);
     fn set_account_contract_address(&self, contract_address: Felt252);
     fn set_block_number(&self, block_number: u64);
@@ -93,9 +106,26 @@ trait StarkNetSyscallHandler {
     fn set_version(&self, version: Felt252);
 }
 
+// TODO: Move to the correct place or remove if unused.
 mod handler {
     use super::*;
-    use std::ptr::NonNull;
+    use std::{
+        alloc::Layout,
+        mem::{size_of, ManuallyDrop, MaybeUninit},
+        ptr::NonNull,
+    };
+
+    #[repr(C)]
+    struct SyscallResultAbi<T> {
+        tag: u8,
+        payload: SyscallResultPayloadAbi<T>,
+    }
+
+    #[repr(C)]
+    union SyscallResultPayloadAbi<T> {
+        ok: ManuallyDrop<T>,
+        err: (NonNull<Felt252Abi>, u32, u32),
+    }
 
     #[repr(C)]
     struct StarkNetSyscallHandlerCallbacks<'a, T>
@@ -104,24 +134,24 @@ mod handler {
     {
         self_ptr: &'a T,
 
-        get_block_hash: unsafe extern "C" fn(
-            ret: *mut NativeFelt252,
-            ptr: NonNull<T>,
+        get_block_hash: extern "C" fn(
+            ret: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
             gas: &mut u64,
             block_number: u64,
         ),
-        get_execution_info: unsafe extern "C" fn(
-            ret: *mut (),
-            ptr: NonNull<T>,
+        get_execution_info: extern "C" fn(
+            ret: &mut SyscallResultAbi<ExecutionInfo>,
+            ptr: &mut T,
             gas: &mut u64,
         ),
-        deploy: unsafe extern "C" fn(
-            ret: *mut (),
-            ptr: NonNull<T>,
+        deploy: extern "C" fn(
+            ret: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            ptr: &mut T,
             gas: &mut u64,
-            class_hash: &NativeFelt252,
-            contract_address_salt: &NativeFelt252,
-            calldata: *const *const NativeFelt252,
+            class_hash: &Felt252Abi,
+            contract_address_salt: &Felt252Abi,
+            calldata: &[Felt252Abi],
             calldata_len: usize,
             deploy_from_zero: bool,
         ),
@@ -140,58 +170,87 @@ mod handler {
             }
         }
 
-        unsafe extern "C" fn wrap_get_block_hash(
-            ret: *mut NativeFelt252,
-            ptr: NonNull<T>,
-            gas: &mut u64,
+        extern "C" fn wrap_get_block_hash(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            _gas: &mut u64,
             block_number: u64,
         ) {
-            let block = ptr.as_ref().get_block_hash(block_number);
+            // TODO: Handle gas.
+            let result = ptr.get_block_hash(block_number);
 
-            (*ret).copy_from_slice(&block.to_bytes_be());
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
+                    },
+                },
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
+                            as *mut Felt252Abi;
+
+                        let len: u32 = e.len().try_into().unwrap();
+                        for (i, val) in e.into_iter().enumerate() {
+                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
+                        }
+
+                        SyscallResultPayloadAbi {
+                            err: (NonNull::new(ptr).unwrap(), len, len),
+                        }
+                    },
+                },
+            };
         }
 
-        unsafe extern "C" fn get_execution_info(
-            ret: *mut (),
-            ptr: NonNull<T>,
-            gas: &mut u64,
-            block_number: u64,
+        extern "C" fn get_execution_info(
+            result_ptr: &mut SyscallResultAbi<ExecutionInfo>,
+            ptr: &mut T,
+            _gas: &mut u64,
         ) {
-            todo!()
+            let result = ptr.get_execution_info();
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(x),
+                    },
+                },
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
+                            as *mut Felt252Abi;
+
+                        let len: u32 = e.len().try_into().unwrap();
+                        for (i, val) in e.into_iter().enumerate() {
+                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
+                        }
+
+                        SyscallResultPayloadAbi {
+                            err: (NonNull::new(ptr).unwrap(), len, len),
+                        }
+                    },
+                },
+            };
         }
 
         // TODO: change all from_bytes_be to from_bytes_ne when added.
 
-        unsafe extern "C" fn deploy(
-            ret: *mut (),
-            ptr: NonNull<T>,
+        extern "C" fn deploy(
+            ret: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            ptr: &mut T,
             gas: &mut u64,
-            class_hash: &NativeFelt252,
-            contract_address_salt: &NativeFelt252,
-            calldata: *const *const NativeFelt252,
+            class_hash: &Felt252Abi,
+            contract_address_salt: &Felt252Abi,
+            calldata: &[Felt252Abi],
             calldata_len: usize,
             deploy_from_zero: bool,
         ) {
-            let class_hash = Felt252::from_bytes_be(class_hash);
-            let contract_address_salt = Felt252::from_bytes_be(contract_address_salt);
-
-            let calldata = std::slice::from_raw_parts(calldata, calldata_len);
-            let calldata_vec: Vec<_> = calldata
-                .iter()
-                .map(|x| Felt252::from_bytes_be(unsafe { &**x }))
-                .collect();
-
-            let result = ptr.as_ref().deploy(
-                class_hash,
-                contract_address_salt,
-                &calldata_vec,
-                deploy_from_zero,
-            );
-
-            match result {
-                Ok(_) => todo!(),
-                Err(_) => todo!(),
-            }
+            todo!()
         }
     }
 }
