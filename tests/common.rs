@@ -1,5 +1,5 @@
 #![allow(unused_macros)]
-#![allow(unused)]
+#![allow(dead_code)]
 
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
