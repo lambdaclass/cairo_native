@@ -43,15 +43,21 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
-        StarkNetConcreteLibfunc::CallContract(_) => todo!(),
+        StarkNetConcreteLibfunc::CallContract(info) => {
+            build_call_contract(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ClassHashConst(_) => todo!(),
         StarkNetConcreteLibfunc::ClassHashTryFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ClassHashToFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressConst(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressToFelt252(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageRead(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageWrite(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageRead(info) => {
+            build_storage_read(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::StorageWrite(info) => {
+            build_storage_write(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
             context, registry, entry, location, helper, metadata, info,
         ),
@@ -76,17 +82,87 @@ where
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::EmitEvent(_) => todo!(),
-        StarkNetConcreteLibfunc::GetBlockHash(_) => todo!(),
-        StarkNetConcreteLibfunc::GetExecutionInfo(_) => todo!(),
-        StarkNetConcreteLibfunc::Deploy(_) => todo!(),
-        StarkNetConcreteLibfunc::Keccak(_) => todo!(),
-        StarkNetConcreteLibfunc::LibraryCall(_) => todo!(),
-        StarkNetConcreteLibfunc::ReplaceClass(_) => todo!(),
-        StarkNetConcreteLibfunc::SendMessageToL1(_) => todo!(),
+        StarkNetConcreteLibfunc::EmitEvent(info) => {
+            build_emit_event(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::GetBlockHash(info) => {
+            build_get_block_hash(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
+            build_get_execution_info(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::Deploy(info) => {
+            build_deploy(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::Keccak(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::LibraryCall(info) => {
+            build_library_call(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::ReplaceClass(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::SendMessageToL1(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
     }
+}
+
+pub fn build_call_contract<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_storage_read<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_storage_write<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
 }
 
 pub fn build_storage_base_address_const<'ctx, 'this, TType, TLibfunc>(
@@ -297,6 +373,150 @@ where
         location,
     ));
     Ok(())
+}
+
+pub fn build_emit_event<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_get_block_hash<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_get_execution_info<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_deploy<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_keccak<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_library_call<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_replace_class<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_send_message_to_l1<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
 }
 
 #[cfg(test)]
