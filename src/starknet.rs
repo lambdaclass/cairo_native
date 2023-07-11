@@ -1,6 +1,7 @@
 type SyscallResult<T> = std::result::Result<T, std::convert::Infallible>;
+use cairo_felt_last::Felt252;
 
-type Felt252 = [u8; 32];
+type NativeFelt252 = [u8; 32];
 type U256 = [u8; 32];
 
 struct ExecutionInfo {}
@@ -94,6 +95,7 @@ trait StarkNetSyscallHandler {
 
 mod handler {
     use super::*;
+    use std::ptr::NonNull;
 
     #[repr(C)]
     struct StarkNetSyscallHandlerCallbacks<'a, T>
@@ -102,7 +104,19 @@ mod handler {
     {
         self_ptr: &'a T,
 
-        get_block_hash: extern "C" fn(ptr: &mut T, block_number: u64),
+        get_block_hash: extern "C" fn(
+            ret: *mut NativeFelt252,
+            ptr: NonNull<T>,
+            gas: &mut u64,
+            block_number: u64,
+        ),
+        deploy: extern "C" fn(
+            ptr: &mut T,
+            class_hash: &NativeFelt252,
+            contract_address_salt: &NativeFelt252,
+            calldata: *const *const NativeFelt252,
+            deploy_from_zero: bool,
+        ) -> bool,
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -113,12 +127,50 @@ mod handler {
             Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
+                deploy: Self::deploy,
             }
         }
 
-        extern "C" fn wrap_get_block_hash(ptr: &mut T, block_number: u64) {
-            // TODO: Handle result.
-            ptr.get_block_hash(block_number);
+        extern "C" fn wrap_get_block_hash(
+            ret: *mut NativeFelt252,
+            ptr: NonNull<T>,
+            gas: &mut u64,
+            block_number: u64,
+        ) {
+            unsafe {
+                let block = ptr.as_ref().get_block_hash(block_number);
+
+                (*ret).copy_from_slice(&block.to_bytes_be());
+            }
+        }
+
+        // TODO: change all from_bytes_be to from_bytes_ne when added.
+
+        extern "C" fn deploy(
+            ptr: &mut T,
+            class_hash: &NativeFelt252,
+            contract_address_salt: &NativeFelt252,
+            calldata: *const *const NativeFelt252,
+            calldata_len: usize,
+            deploy_from_zero: bool,
+        ) -> bool {
+            let class_hash = Felt252::from_bytes_be(class_hash);
+            let contract_address_salt = Felt252::from_bytes_be(contract_address_salt);
+
+            let calldata = unsafe { std::slice::from_raw_parts(calldata, calldata_len) };
+            let calldata_vec: Vec<_> = calldata
+                .iter()
+                .map(|x| Felt252::from_bytes_be(unsafe { &**x }))
+                .collect();
+
+            let result = ptr.deploy(
+                class_hash,
+                contract_address_salt,
+                &calldata_vec,
+                deploy_from_zero,
+            );
+
+            result.is_ok()
         }
     }
 }
