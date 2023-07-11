@@ -10,6 +10,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::mlir_asm,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -19,8 +20,14 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
-    ir::{operation::OperationBuilder, r#type::IntegerType, Attribute, Block, Location, ValueLike},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm::{self, LoadStoreOptions},
+    },
+    ir::{
+        attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
+        Attribute, Block, Location, ValueLike,
+    },
     Context,
 };
 use num_bigint::Sign;
@@ -394,10 +401,10 @@ where
 }
 
 pub fn build_get_block_hash<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
     _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
@@ -408,6 +415,65 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let user_data_ptr = entry
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(0)?.into(),
+            DenseI32ArrayAttribute::new(context, &[0]),
+            llvm::r#type::pointer(llvm::r#type::opaque_pointer(context), 0),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let user_data = entry
+        .append_operation(llvm::load(
+            context,
+            user_data_ptr,
+            llvm::r#type::opaque_pointer(context),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    let callback_ptr = entry
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(0)?.into(),
+            DenseI32ArrayAttribute::new(context, &[0]),
+            llvm::r#type::pointer(llvm::r#type::opaque_pointer(context), 0),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let callback = entry
+        .append_operation(
+            OperationBuilder::new("llvm.bitcast", location)
+                .add_operands(&[callback_ptr])
+                .add_results(&[llvm::r#type::pointer(
+                    llvm::r#type::function(
+                        llvm::r#type::void(context),
+                        &[
+                            llvm::r#type::opaque_pointer(context),
+                            IntegerType::new(context, 64).into(),
+                        ],
+                        false,
+                    ),
+                    0,
+                )])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[callback, user_data, entry.argument(1)?.into()])
+            .build(),
+    );
+
     todo!()
 }
 

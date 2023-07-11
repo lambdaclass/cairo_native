@@ -1,15 +1,28 @@
-type SyscallResult<T> = std::result::Result<T, std::convert::Infallible>;
+use cairo_felt::Felt252;
 
-type Felt252 = [u8; 32];
-type U256 = [u8; 32];
+type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
-struct ExecutionInfo {}
-struct Secp256k1Point {}
-struct Secp256r1Point {}
+/// Binary representation of a `felt252` (in MLIR).
+#[repr(C, align(8))]
+struct Felt252Abi(pub [u8; 32]);
+/// Binary representation of a `u256` (in MLIR).
+// TODO: This shouldn't need to be public.
+#[repr(C, align(8))]
+pub struct U256(pub [u8; 32]);
 
-trait StarkNetSyscallHandler {
-    fn get_block_hash(&self, block_number: u64) -> Felt252;
-    fn get_execution_info(&self) -> ExecutionInfo;
+pub struct ExecutionInfo {
+    // TODO: Add fields.
+}
+pub struct Secp256k1Point {
+    // TODO: Add fields.
+}
+pub struct Secp256r1Point {
+    // TODO: Add fields.
+}
+
+pub trait StarkNetSyscallHandler {
+    fn get_block_hash(&self, block_number: u64) -> SyscallResult<Felt252>;
+    fn get_execution_info(&self) -> SyscallResult<ExecutionInfo>;
 
     fn deploy(
         &self,
@@ -17,7 +30,7 @@ trait StarkNetSyscallHandler {
         contract_address_salt: Felt252,
         calldata: &[Felt252],
         deploy_from_zero: bool,
-    ) -> SyscallResult<(Felt252, &[Felt252])>;
+    ) -> SyscallResult<(Felt252, Vec<Felt252>)>;
     fn replace_class(&self, class_hash: Felt252) -> SyscallResult<()>;
 
     fn library_call(
@@ -25,13 +38,13 @@ trait StarkNetSyscallHandler {
         class_hash: Felt252,
         function_selector: Felt252,
         calldata: &[Felt252],
-    ) -> &[Felt252];
+    ) -> SyscallResult<Vec<Felt252>>;
     fn call_contract(
         &self,
         address: Felt252,
         entry_point_selector: Felt252,
         calldata: &[Felt252],
-    ) -> &[Felt252];
+    ) -> SyscallResult<Vec<Felt252>>;
 
     fn storage_read(&self, address_domain: u32, address: Felt252) -> SyscallResult<Felt252>;
     fn storage_write(
@@ -42,9 +55,9 @@ trait StarkNetSyscallHandler {
     ) -> SyscallResult<()>;
 
     fn emit_event(&self, keys: &[Felt252], data: &[Felt252]) -> SyscallResult<()>;
-    fn send_message_to_l1(&self, to_address: Felt252, payload: &[Felt252]);
+    fn send_message_to_l1(&self, to_address: Felt252, payload: &[Felt252]) -> SyscallResult<()>;
 
-    fn keccak(&self, input: &[u64]) -> SyscallResult<()>;
+    fn keccak(&self, input: &[u64]) -> SyscallResult<U256>;
 
     // TODO: secp256k1 syscalls
     fn secp256k1_add(
@@ -76,7 +89,8 @@ trait StarkNetSyscallHandler {
     fn secp256r1_mul(&self, p: Secp256k1Point, m: U256) -> SyscallResult<Option<Secp256k1Point>>;
     fn secp256r1_new(&self, x: U256, y: U256) -> SyscallResult<Option<Secp256k1Point>>;
 
-    // TODO: Testing syscalls
+    // Testing syscalls.
+    // TODO: Make them optional. Crash if called but not implemented.
     fn pop_log(&self);
     fn set_account_contract_address(&self, contract_address: Felt252);
     fn set_block_number(&self, block_number: u64);
@@ -92,6 +106,7 @@ trait StarkNetSyscallHandler {
     fn set_version(&self, version: Felt252);
 }
 
+// TODO: Move to the correct place or remove if unused.
 mod handler {
     use super::*;
 
