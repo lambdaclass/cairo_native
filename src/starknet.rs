@@ -1,5 +1,11 @@
+type SyscallResult<T> = std::result::Result<T, std::convert::Infallible>;
+
 type Felt252 = [u8; 32];
 type U256 = [u8; 32];
+
+struct ExecutionInfo {}
+struct Secp256k1Point {}
+struct Secp256r1Point {}
 
 trait StarkNetSyscallHandler {
     fn get_block_hash(&self, block_number: u64) -> Felt252;
@@ -11,7 +17,7 @@ trait StarkNetSyscallHandler {
         contract_address_salt: Felt252,
         calldata: &[Felt252],
         deploy_from_zero: bool,
-    ) -> SyscallResult<(ContractAddress, &[Felt252])>;
+    ) -> SyscallResult<(Felt252, &[Felt252])>;
     fn replace_class(&self, class_hash: Felt252) -> SyscallResult<()>;
 
     fn library_call(
@@ -84,4 +90,35 @@ trait StarkNetSyscallHandler {
     fn set_signature(&self, signature: &[Felt252]);
     fn set_transaction_hash(&self, transaction_hash: Felt252);
     fn set_version(&self, version: Felt252);
+}
+
+mod handler {
+    use super::*;
+
+    #[repr(C)]
+    struct StarkNetSyscallHandlerCallbacks<'a, T>
+    where
+        T: StarkNetSyscallHandler,
+    {
+        self_ptr: &'a T,
+
+        get_block_hash: extern "C" fn(ptr: &mut T, block_number: u64),
+    }
+
+    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
+    where
+        T: StarkNetSyscallHandler,
+    {
+        pub fn new(handler: &'a T) -> Self {
+            Self {
+                self_ptr: handler,
+                get_block_hash: Self::wrap_get_block_hash,
+            }
+        }
+
+        extern "C" fn wrap_get_block_hash(ptr: &mut T, block_number: u64) {
+            // TODO: Handle result.
+            ptr.get_block_hash(block_number);
+        }
+    }
 }

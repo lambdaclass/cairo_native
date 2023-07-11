@@ -25,6 +25,7 @@ mod ffi;
 mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
+pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
