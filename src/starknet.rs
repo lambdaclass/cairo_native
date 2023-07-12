@@ -193,6 +193,26 @@ pub(crate) mod handler {
             address: &Felt252Abi,
             value: &Felt252Abi,
         ),
+        emit_event: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u64,
+            keys: *const (*const Felt252Abi, u32, u32),
+            data: *const (*const Felt252Abi, u32, u32),
+        ),
+        send_message_to_l1: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u64,
+            to_address: &Felt252Abi,
+            data: *const (*const Felt252Abi, u32, u32),
+        ),
+        keccak: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            input: *const (*const u64, u32, u32),
+        ),
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -210,6 +230,9 @@ pub(crate) mod handler {
                 call_contract: Self::wrap_call_contract,
                 storage_read: Self::wrap_storage_read,
                 storage_write: Self::wrap_storage_write,
+                emit_event: Self::wrap_emit_event,
+                send_message_to_l1: Self::wrap_send_message_to_l1,
+                keccak: Self::wrap_keccak,
             }
         }
 
@@ -456,6 +479,103 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(res) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(()),
+                    },
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_emit_event(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            keys: *const (*const Felt252Abi, u32, u32),
+            data: *const (*const Felt252Abi, u32, u32),
+        ) {
+            // TODO: handle gas
+
+            let keys: Vec<_> = unsafe {
+                let len = (*keys).1 as usize;
+
+                std::slice::from_raw_parts((*keys).0, len)
+            }
+            .iter()
+            .map(|x| Felt252::from_bytes_be(&x.0))
+            .collect();
+
+            let data: Vec<_> = unsafe {
+                let len = (*data).1 as usize;
+
+                std::slice::from_raw_parts((*data).0, len)
+            }
+            .iter()
+            .map(|x| Felt252::from_bytes_be(&x.0))
+            .collect();
+
+            let result = ptr.emit_event(&keys, &data);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(()),
+                    },
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_send_message_to_l1(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            to_address: &Felt252Abi,
+            payload: *const (*const Felt252Abi, u32, u32),
+        ) {
+            // TODO: handle gas
+            let to_address = Felt252::from_bytes_be(&to_address.0);
+            let payload: Vec<_> = unsafe {
+                let len = (*payload).1 as usize;
+
+                std::slice::from_raw_parts((*payload).0, len)
+            }
+            .iter()
+            .map(|x| Felt252::from_bytes_be(&x.0))
+            .collect();
+
+            let result = ptr.send_message_to_l1(to_address, &payload);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(()),
+                    },
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_keccak(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            input: *const (*const u64, u32, u32),
+        ) {
+            // TODO: handle gas
+            let input = unsafe {
+                let len = (*input).1 as usize;
+
+                std::slice::from_raw_parts((*input).0, len)
+            };
+
+            let result = ptr.keccak(input);
+
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
                     tag: 0u8,
                     payload: SyscallResultPayloadAbi {
                         ok: ManuallyDrop::new(()),
