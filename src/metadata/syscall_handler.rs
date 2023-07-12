@@ -1,5 +1,5 @@
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
-use std::{alloc::Layout, marker::PhantomData, ptr::NonNull};
+use std::{alloc::Layout, fmt::Debug, marker::PhantomData, ptr::NonNull};
 
 pub struct SyscallHandlerMeta<'a> {
     handler: NonNull<()>,
@@ -11,7 +11,7 @@ pub struct SyscallHandlerMeta<'a> {
 impl<'a> SyscallHandlerMeta<'a> {
     pub fn new<T>(handler_impl: &'a T) -> Self
     where
-        T: 'a + StarkNetSyscallHandler,
+        T: 'a + Debug + StarkNetSyscallHandler,
     {
         let layout = Layout::new::<StarkNetSyscallHandlerCallbacks<'a, T>>();
         let mut handler = unsafe {
