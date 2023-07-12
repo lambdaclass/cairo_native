@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let program = cairo_lang_compiler::compile_cairo_project_at_path(
-        Path::new("programs/examples/starknet.cairo"),
+        Path::new("programs/examples/hello_starknet.cairo"),
         CompilerConfig {
             replace_ids: true,
             ..Default::default()
@@ -37,12 +37,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entry_point = match program
         .funcs
         .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some("main"))
+        .find(|x| x.id.debug_name.as_deref() == Some("hello_starknet::hello_starknet::main"))
     {
         Some(x) => x,
         None => {
             // TODO: Use a proper error.
-            eprintln!("Entry point `starknet::starknet::main` not found in program.");
+            eprintln!("Entry point `hello_starknet::hello_starknet::main` not found in program.");
             return Ok(());
         }
     };
