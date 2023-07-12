@@ -109,11 +109,7 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 mod handler {
     use super::*;
-    use std::{
-        alloc::Layout,
-        mem::{size_of, ManuallyDrop, MaybeUninit},
-        ptr::NonNull,
-    };
+    use std::{alloc::Layout, mem::ManuallyDrop, ptr::NonNull};
 
     #[repr(C)]
     struct SyscallResultAbi<T> {
