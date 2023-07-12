@@ -177,6 +177,22 @@ pub(crate) mod handler {
             entry_point_selector: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
         ),
+
+        storage_read: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            gas: &mut u64,
+            address_domain: u32,
+            address: &Felt252Abi,
+        ),
+        storage_write: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u64,
+            address_domain: u32,
+            address: &Felt252Abi,
+            value: &Felt252Abi,
+        ),
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -192,6 +208,8 @@ pub(crate) mod handler {
                 replace_class: Self::wrap_replace_class,
                 library_call: Self::wrap_library_call,
                 call_contract: Self::wrap_call_contract,
+                storage_read: Self::wrap_storage_read,
+                storage_write: Self::wrap_storage_write,
             }
         }
 
@@ -204,6 +222,19 @@ pub(crate) mod handler {
             }
 
             (NonNull::new(ptr).unwrap(), len, len)
+        }
+
+        fn wrap_error<E>(e: &[Felt252]) -> SyscallResultAbi<E> {
+            SyscallResultAbi {
+                tag: 1u8,
+                payload: unsafe {
+                    let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+
+                    SyscallResultPayloadAbi {
+                        err: Self::alloc_mlir_array(&data),
+                    }
+                },
+            }
         }
 
         extern "C" fn wrap_get_block_hash(
@@ -222,16 +253,7 @@ pub(crate) mod handler {
                         ok: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
                     },
                 },
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
-                    },
-                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
 
@@ -250,16 +272,7 @@ pub(crate) mod handler {
                         ok: ManuallyDrop::new(x),
                     },
                 },
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
-                    },
-                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
 
@@ -305,16 +318,7 @@ pub(crate) mod handler {
                         },
                     }
                 }
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
-                    },
-                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
 
@@ -335,16 +339,7 @@ pub(crate) mod handler {
                         ok: ManuallyDrop::new(()),
                     },
                 },
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
-                    },
-                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
 
@@ -382,16 +377,7 @@ pub(crate) mod handler {
                         },
                     }
                 }
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
-                    },
-                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
 
@@ -429,16 +415,53 @@ pub(crate) mod handler {
                         },
                     }
                 }
-                Err(e) => SyscallResultAbi {
-                    tag: 1u8,
-                    payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
 
-                        SyscallResultPayloadAbi {
-                            err: Self::alloc_mlir_array(&data),
-                        }
+        extern "C" fn wrap_storage_read(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            address_domain: u32,
+            address: &Felt252Abi,
+        ) {
+            // TODO: Handle gas.
+            let address = Felt252::from_bytes_be(&address.0);
+            let result = ptr.storage_read(address_domain, address);
+
+            *result_ptr = match result {
+                Ok(res) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(Felt252Abi(res.to_le_bytes())),
                     },
                 },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_storage_write(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            address_domain: u32,
+            address: &Felt252Abi,
+            value: &Felt252Abi,
+        ) {
+            // TODO: Handle gas.
+            let address = Felt252::from_bytes_be(&address.0);
+            let value = Felt252::from_bytes_be(&value.0);
+            let result = ptr.storage_write(address_domain, address, value);
+
+            *result_ptr = match result {
+                Ok(res) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(()),
+                    },
+                },
+                Err(e) => Self::wrap_error(&e),
             };
         }
     }
