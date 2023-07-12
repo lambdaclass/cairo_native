@@ -277,7 +277,7 @@ where
 }
 
 #[cfg(test)]
-pub(crate) mod test {
+pub mod test {
     use crate::utils::test::{felt, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
