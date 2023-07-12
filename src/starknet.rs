@@ -3,7 +3,7 @@
 
 use cairo_felt::Felt252;
 
-type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
+pub type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
 /// Binary representation of a `felt252` (in MLIR).
 #[derive(Debug, Clone)]
@@ -114,7 +114,7 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use std::{alloc::Layout, mem::ManuallyDrop, ptr::NonNull};
+    use std::{alloc::Layout, fmt::Debug, mem::ManuallyDrop, ptr::NonNull};
 
     #[repr(C)]
     struct SyscallResultAbi<T> {
@@ -129,6 +129,7 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
+    #[derive(Debug)]
     pub struct StarkNetSyscallHandlerCallbacks<'a, T>
     where
         T: StarkNetSyscallHandler,
@@ -183,8 +184,11 @@ pub(crate) mod handler {
     where
         T: StarkNetSyscallHandler + 'a,
     {
-        pub fn new(handler: &'a T) -> Self {
-            Self {
+        pub fn new(handler: &'a T) -> Self
+        where
+            T: Debug,
+        {
+            dbg!(Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
                 get_execution_info: Self::wrap_get_execution_info,
@@ -192,7 +196,7 @@ pub(crate) mod handler {
                 replace_class: Self::wrap_replace_class,
                 library_call: Self::wrap_library_call,
                 call_contract: Self::wrap_call_contract,
-            }
+            })
         }
 
         unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32) {
