@@ -109,11 +109,7 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 mod handler {
     use super::*;
-    use std::{
-        alloc::Layout,
-        mem::{size_of, ManuallyDrop, MaybeUninit},
-        ptr::NonNull,
-    };
+    use std::{alloc::Layout, mem::ManuallyDrop, ptr::NonNull};
 
     #[repr(C)]
     struct SyscallResultAbi<T> {
@@ -135,24 +131,23 @@ mod handler {
         self_ptr: &'a T,
 
         get_block_hash: extern "C" fn(
-            ret: &mut SyscallResultAbi<Felt252Abi>,
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
             ptr: &mut T,
             gas: &mut u64,
             block_number: u64,
         ),
         get_execution_info: extern "C" fn(
-            ret: &mut SyscallResultAbi<ExecutionInfo>,
+            result_ptr: &mut SyscallResultAbi<ExecutionInfo>,
             ptr: &mut T,
             gas: &mut u64,
         ),
         deploy: extern "C" fn(
-            ret: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
             ptr: &mut T,
             gas: &mut u64,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
-            calldata: &[Felt252Abi],
-            calldata_len: usize,
+            calldata: *const (*const Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ),
     }
@@ -210,6 +205,7 @@ mod handler {
             ptr: &mut T,
             _gas: &mut u64,
         ) {
+            // TODO: handle gas
             let result = ptr.get_execution_info();
 
             *result_ptr = match result {
@@ -241,16 +237,61 @@ mod handler {
         // TODO: change all from_bytes_be to from_bytes_ne when added.
 
         extern "C" fn deploy(
-            ret: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
             ptr: &mut T,
-            gas: &mut u64,
+            _gas: &mut u64,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
-            calldata: &[Felt252Abi],
-            calldata_len: usize,
+            calldata: *const (*const Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ) {
-            todo!()
+            // TODO: handle gas
+            let class_hash = Felt252::from_bytes_be(&class_hash.0);
+            let contract_address_salt = Felt252::from_bytes_be(&contract_address_salt.0);
+
+            let calldata: Vec<_> = unsafe {
+                let len = (*calldata).1 as usize;
+
+                std::slice::from_raw_parts((*calldata).0, len)
+            }
+            .iter()
+            .map(|x| Felt252::from_bytes_be(&x.0))
+            .collect();
+
+            let result = ptr.deploy(
+                class_hash,
+                contract_address_salt,
+                &calldata,
+                deploy_from_zero,
+            );
+
+            *result_ptr = match result {
+                Ok(x) => {
+                    let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    SyscallResultAbi {
+                        tag: 0u8,
+                        payload: SyscallResultPayloadAbi {
+                            ok: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts)),
+                        },
+                    }
+                }
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
+                            as *mut Felt252Abi;
+
+                        let len: u32 = e.len().try_into().unwrap();
+                        for (i, val) in e.into_iter().enumerate() {
+                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
+                        }
+
+                        SyscallResultPayloadAbi {
+                            err: (NonNull::new(ptr).unwrap(), len, len),
+                        }
+                    },
+                },
+            };
         }
     }
 }
