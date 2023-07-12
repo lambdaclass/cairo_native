@@ -208,7 +208,7 @@ pub(crate) mod handler {
             data: *const (*const Felt252Abi, u32, u32),
         ),
         keccak: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<U256>,
             ptr: &mut T,
             _gas: &mut u64,
             input: *const (*const u64, u32, u32),
@@ -478,7 +478,7 @@ pub(crate) mod handler {
             let result = ptr.storage_write(address_domain, address, value);
 
             *result_ptr = match result {
-                Ok(res) => SyscallResultAbi {
+                Ok(_) => SyscallResultAbi {
                     tag: 0u8,
                     payload: SyscallResultPayloadAbi {
                         ok: ManuallyDrop::new(()),
@@ -518,7 +518,7 @@ pub(crate) mod handler {
             let result = ptr.emit_event(&keys, &data);
 
             *result_ptr = match result {
-                Ok(x) => SyscallResultAbi {
+                Ok(_) => SyscallResultAbi {
                     tag: 0u8,
                     payload: SyscallResultPayloadAbi {
                         ok: ManuallyDrop::new(()),
@@ -549,7 +549,7 @@ pub(crate) mod handler {
             let result = ptr.send_message_to_l1(to_address, &payload);
 
             *result_ptr = match result {
-                Ok(x) => SyscallResultAbi {
+                Ok(_) => SyscallResultAbi {
                     tag: 0u8,
                     payload: SyscallResultPayloadAbi {
                         ok: ManuallyDrop::new(()),
@@ -560,7 +560,7 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_keccak(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<U256>,
             ptr: &mut T,
             _gas: &mut u64,
             input: *const (*const u64, u32, u32),
@@ -575,10 +575,10 @@ pub(crate) mod handler {
             let result = ptr.keccak(input);
 
             *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
+                Ok(x) => SyscallResultAbi {
                     tag: 0u8,
                     payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(()),
+                        ok: ManuallyDrop::new(U256(x.0)),
                     },
                 },
                 Err(e) => Self::wrap_error(&e),
