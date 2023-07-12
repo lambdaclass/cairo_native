@@ -15,7 +15,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         consts::SignatureAndConstConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc, GenericLibfunc, GenericType,
+        starknet::StarkNetConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -23,15 +23,18 @@ use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
         llvm::{self, LoadStoreOptions},
+        memref,
     },
     ir::{
-        attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
+        operation::OperationBuilder,
+        r#type::{IntegerType, MemRefType},
         Attribute, Block, Location, ValueLike,
     },
     Context,
 };
 use num_bigint::Sign;
-use std::ops::Neg;
+use std::{alloc::Layout, ops::Neg};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -402,12 +405,12 @@ where
 
 pub fn build_get_block_hash<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -418,7 +421,7 @@ where
     let user_data_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
-            entry.argument(0)?.into(),
+            entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(context, &[0]),
             llvm::r#type::pointer(llvm::r#type::opaque_pointer(context), 0),
             llvm::r#type::opaque_pointer(context),
@@ -440,7 +443,7 @@ where
     let callback_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
-            entry.argument(0)?.into(),
+            entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(context, &[0]),
             llvm::r#type::pointer(llvm::r#type::opaque_pointer(context), 0),
             llvm::r#type::opaque_pointer(context),
@@ -468,13 +471,184 @@ where
         .result(0)?
         .into();
 
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+    let return_ptr = entry
+        .append_operation(memref::alloca(
+            context,
+            MemRefType::new(
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        result_tag_ty,
+                        llvm::r#type::array(
+                            IntegerType::new(context, 8).into(),
+                            (result_layout.size() - 1).try_into()?,
+                        ),
+                    ],
+                    false,
+                ),
+                &[],
+                None,
+                None,
+            ),
+            &[],
+            &[],
+            Some(IntegerAttribute::new(
+                result_layout.align().try_into()?,
+                IntegerType::new(context, 64).into(),
+            )),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let gas_ptr = entry
+        .append_operation(memref::alloca(
+            context,
+            MemRefType::new(IntegerType::new(context, 64).into(), &[], None, None),
+            &[],
+            &[],
+            Some(IntegerAttribute::new(
+                Layout::new::<u32>().align().try_into()?,
+                IntegerType::new(context, 64).into(),
+            )),
+            location,
+        ))
+        .result(0)?
+        .into();
+    entry.append_operation(memref::store(
+        entry.argument(0)?.into(),
+        gas_ptr,
+        &[],
+        location,
+    ));
+
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
-            .add_operands(&[callback, user_data, entry.argument(1)?.into()])
+            .add_operands(&[
+                callback,
+                return_ptr,
+                user_data,
+                gas_ptr,
+                entry.argument(1)?.into(),
+            ])
             .build(),
     );
 
-    todo!()
+    let result = entry
+        .append_operation(memref::load(return_ptr, &[], location))
+        .result(0)?
+        .into();
+    let result_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            IntegerType::new(context, 1).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let result_payload_ok_ptr = entry
+        .append_operation(memref::cast(
+            return_ptr,
+            MemRefType::new(
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        result_tag_ty,
+                        llvm::r#type::array(
+                            IntegerType::new(context, 8).into(),
+                            result_tag_layout
+                                .padding_needed_for(variant_tys[0].1.align())
+                                .try_into()?,
+                        ),
+                        variant_tys[0].0,
+                    ],
+                    false,
+                ),
+                &[],
+                None,
+                None,
+            ),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let result_payload_ok = entry
+        .append_operation(memref::load(result_payload_ok_ptr, &[], location))
+        .result(0)?
+        .into();
+    let result_payload_ok = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result_payload_ok,
+            DenseI64ArrayAttribute::new(context, &[2]),
+            variant_tys[0].0,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let result_payload_err_ptr = entry
+        .append_operation(memref::cast(
+            return_ptr,
+            MemRefType::new(
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        result_tag_ty,
+                        llvm::r#type::array(
+                            IntegerType::new(context, 8).into(),
+                            result_tag_layout
+                                .padding_needed_for(variant_tys[1].1.align())
+                                .try_into()?,
+                        ),
+                        variant_tys[1].0,
+                    ],
+                    false,
+                ),
+                &[],
+                None,
+                None,
+            ),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let result_payload_err = entry
+        .append_operation(memref::load(result_payload_err_ptr, &[], location))
+        .result(0)?
+        .into();
+    let result_payload_ok = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result_payload_ok,
+            DenseI64ArrayAttribute::new(context, &[2]),
+            variant_tys[1].0,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        result_tag,
+        [0, 1],
+        [&[result_payload_ok], &[result_payload_err]],
+        location,
+    ));
+    Ok(())
 }
 
 pub fn build_get_execution_info<'ctx, 'this, TType, TLibfunc>(
