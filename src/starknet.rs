@@ -1,12 +1,17 @@
+#![allow(clippy::type_complexity)]
+#![allow(dead_code)]
+
 use cairo_felt::Felt252;
 
 type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
 /// Binary representation of a `felt252` (in MLIR).
+#[derive(Debug, Clone)]
 #[repr(C, align(8))]
 struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
+#[derive(Debug, Clone)]
 #[repr(C, align(8))]
 pub struct U256(pub [u8; 32]);
 
@@ -142,7 +147,7 @@ mod handler {
             gas: &mut u64,
         ),
         deploy: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
             ptr: &mut T,
             gas: &mut u64,
             class_hash: &Felt252Abi,
@@ -154,7 +159,7 @@ mod handler {
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
     where
-        T: StarkNetSyscallHandler,
+        T: StarkNetSyscallHandler + 'a,
     {
         pub fn new(handler: &'a T) -> Self {
             Self {
@@ -163,6 +168,17 @@ mod handler {
                 get_execution_info: Self::get_execution_info,
                 deploy: Self::deploy,
             }
+        }
+
+        unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32) {
+            let ptr = libc::malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+
+            let len: u32 = data.len().try_into().unwrap();
+            for (i, val) in data.iter().enumerate() {
+                ptr.add(i).write(val.clone());
+            }
+
+            (NonNull::new(ptr).unwrap(), len, len)
         }
 
         extern "C" fn wrap_get_block_hash(
@@ -184,16 +200,10 @@ mod handler {
                 Err(e) => SyscallResultAbi {
                     tag: 1u8,
                     payload: unsafe {
-                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
-                            as *mut Felt252Abi;
-
-                        let len: u32 = e.len().try_into().unwrap();
-                        for (i, val) in e.into_iter().enumerate() {
-                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
-                        }
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
 
                         SyscallResultPayloadAbi {
-                            err: (NonNull::new(ptr).unwrap(), len, len),
+                            err: Self::alloc_mlir_array(&data),
                         }
                     },
                 },
@@ -218,16 +228,10 @@ mod handler {
                 Err(e) => SyscallResultAbi {
                     tag: 1u8,
                     payload: unsafe {
-                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
-                            as *mut Felt252Abi;
-
-                        let len: u32 = e.len().try_into().unwrap();
-                        for (i, val) in e.into_iter().enumerate() {
-                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
-                        }
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
 
                         SyscallResultPayloadAbi {
-                            err: (NonNull::new(ptr).unwrap(), len, len),
+                            err: Self::alloc_mlir_array(&data),
                         }
                     },
                 },
@@ -237,7 +241,7 @@ mod handler {
         // TODO: change all from_bytes_be to from_bytes_ne when added.
 
         extern "C" fn deploy(
-            result_ptr: &mut SyscallResultAbi<(Felt252Abi, Vec<Felt252Abi>)>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
             ptr: &mut T,
             _gas: &mut u64,
             class_hash: &Felt252Abi,
@@ -268,26 +272,21 @@ mod handler {
             *result_ptr = match result {
                 Ok(x) => {
                     let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
                         tag: 0u8,
                         payload: SyscallResultPayloadAbi {
-                            ok: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts)),
+                            ok: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts_ptr)),
                         },
                     }
                 }
                 Err(e) => SyscallResultAbi {
                     tag: 1u8,
                     payload: unsafe {
-                        let ptr = libc::malloc(Layout::array::<Felt252Abi>(e.len()).unwrap().size())
-                            as *mut Felt252Abi;
-
-                        let len: u32 = e.len().try_into().unwrap();
-                        for (i, val) in e.into_iter().enumerate() {
-                            ptr.add(i).write(Felt252Abi(val.to_le_bytes()));
-                        }
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
 
                         SyscallResultPayloadAbi {
-                            err: (NonNull::new(ptr).unwrap(), len, len),
+                            err: Self::alloc_mlir_array(&data),
                         }
                     },
                 },
