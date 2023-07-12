@@ -34,7 +34,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{Module, Type},
     Context,
 };
 
@@ -149,6 +149,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    // builtin
-    Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
+    Ok(llvm::r#type::opaque_pointer(context))
 }

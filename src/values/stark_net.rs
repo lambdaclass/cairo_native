@@ -6,7 +6,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{alloc::Layout, ptr::NonNull};
+use std::ptr::NonNull;
 
 pub unsafe fn deserialize_address<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -50,14 +50,14 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    <() as Deserialize>::deserialize(deserializer)
-        .map(|_| arena.alloc_layout(Layout::new::<()>()).cast())
+    <u64 as Deserialize>::deserialize(deserializer)
+        .map(|x| arena.alloc(NonNull::new(x as *mut ()).unwrap()).cast())
 }
 
 pub unsafe fn serialize_system<TType, TLibfunc, S>(
     serializer: S,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _ptr: NonNull<()>,
+    ptr: NonNull<()>,
     _info: &InfoOnlyConcreteType,
 ) -> Result<S::Ok, S::Error>
 where
@@ -66,5 +66,5 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    <() as Serialize>::serialize(&(), serializer)
+    <u64 as Serialize>::serialize(ptr.cast::<u64>().as_ref(), serializer)
 }
