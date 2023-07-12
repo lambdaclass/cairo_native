@@ -38,7 +38,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let lhs = entry.argument(1)?.into();
-    let rhs = entry.argument(1)?.into();
+    let rhs = entry.argument(2)?.into();
 
     let logical_and = entry
         .append_operation(arith::andi(lhs, rhs, location))
@@ -75,8 +75,10 @@ mod test {
 
     lazy_static! {
         static ref BITWISE: (String, Program) = load_cairo! {
-            fn run_test(x: u128) -> (u128, u128, u128) {
-                bitwise(x)
+            use core::integer::bitwise;
+
+            fn run_test(lhs: u128, rhs: u128) -> (u128, u128, u128) {
+                bitwise(lhs, rhs)
             }
         };
     }
