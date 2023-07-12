@@ -8,6 +8,6 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 
 [dependencies]
 cairo-felt = "0.6.1"
-cairo-lang-runner = "2.0.1"
+cairo-lang-runner = "2.0.2"
 libc = "0.2.146"
 starknet-crypto = "0.6.0"

@@ -10,7 +10,6 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::mlir_asm,
 };
 use cairo_lang_sierra::{
     extensions::{

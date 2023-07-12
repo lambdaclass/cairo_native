@@ -112,7 +112,7 @@ pub trait StarkNetSyscallHandler {
 }
 
 // TODO: Move to the correct place or remove if unused.
-mod handler {
+pub(crate) mod handler {
     use super::*;
     use std::{alloc::Layout, mem::ManuallyDrop, ptr::NonNull};
 
@@ -129,7 +129,7 @@ mod handler {
     }
 
     #[repr(C)]
-    struct StarkNetSyscallHandlerCallbacks<'a, T>
+    pub struct StarkNetSyscallHandlerCallbacks<'a, T>
     where
         T: StarkNetSyscallHandler,
     {
