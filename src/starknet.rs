@@ -155,6 +155,20 @@ mod handler {
             calldata: *const (*const Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ),
+        replace_class: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            class_hash: &Felt252Abi,
+        ),
+        library_call: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            ptr: &mut T,
+            gas: &mut u64,
+            class_hash: &Felt252Abi,
+            function_selector: &Felt252Abi,
+            calldata: *const (*const Felt252Abi, u32, u32),
+        ),
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
@@ -165,8 +179,10 @@ mod handler {
             Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
-                get_execution_info: Self::get_execution_info,
-                deploy: Self::deploy,
+                get_execution_info: Self::wrap_get_execution_info,
+                deploy: Self::wrap_deploy,
+                replace_class: Self::wrap_replace_class,
+                library_call: Self::wrap_library_call,
             }
         }
 
@@ -210,7 +226,7 @@ mod handler {
             };
         }
 
-        extern "C" fn get_execution_info(
+        extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<ExecutionInfo>,
             ptr: &mut T,
             _gas: &mut u64,
@@ -240,7 +256,7 @@ mod handler {
 
         // TODO: change all from_bytes_be to from_bytes_ne when added.
 
-        extern "C" fn deploy(
+        extern "C" fn wrap_deploy(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
             ptr: &mut T,
             _gas: &mut u64,
@@ -277,6 +293,83 @@ mod handler {
                         tag: 0u8,
                         payload: SyscallResultPayloadAbi {
                             ok: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts_ptr)),
+                        },
+                    }
+                }
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+
+                        SyscallResultPayloadAbi {
+                            err: Self::alloc_mlir_array(&data),
+                        }
+                    },
+                },
+            };
+        }
+
+        extern "C" fn wrap_replace_class(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            class_hash: &Felt252Abi,
+        ) {
+            // TODO: Handle gas.
+            let class_hash = Felt252::from_bytes_be(&class_hash.0);
+            let result = ptr.replace_class(class_hash);
+
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    tag: 0u8,
+                    payload: SyscallResultPayloadAbi {
+                        ok: ManuallyDrop::new(()),
+                    },
+                },
+                Err(e) => SyscallResultAbi {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+
+                        SyscallResultPayloadAbi {
+                            err: Self::alloc_mlir_array(&data),
+                        }
+                    },
+                },
+            };
+        }
+
+        extern "C" fn wrap_library_call(
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            ptr: &mut T,
+            _gas: &mut u64,
+            class_hash: &Felt252Abi,
+            function_selector: &Felt252Abi,
+            calldata: *const (*const Felt252Abi, u32, u32),
+        ) {
+            // TODO: handle gas
+            let class_hash = Felt252::from_bytes_be(&class_hash.0);
+            let function_selector = Felt252::from_bytes_be(&function_selector.0);
+
+            let calldata: Vec<_> = unsafe {
+                let len = (*calldata).1 as usize;
+
+                std::slice::from_raw_parts((*calldata).0, len)
+            }
+            .iter()
+            .map(|x| Felt252::from_bytes_be(&x.0))
+            .collect();
+
+            let result = ptr.library_call(class_hash, function_selector, &calldata);
+
+            *result_ptr = match result {
+                Ok(x) => {
+                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
+                    SyscallResultAbi {
+                        tag: 0u8,
+                        payload: SyscallResultPayloadAbi {
+                            ok: ManuallyDrop::new(felts_ptr),
                         },
                     }
                 }
