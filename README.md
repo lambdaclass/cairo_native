@@ -126,7 +126,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [ ] `array_slice`
 - [x] `array_snapshot_pop_back`
 - [x] `array_snapshot_pop_front`
-- [ ] `bitwise`
+- [x] `bitwise`
 - [x] `bool_and_impl`
 - [x] `bool_not_impl`
 - [x] `bool_or_impl`

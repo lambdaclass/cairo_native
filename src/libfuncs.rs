@@ -109,7 +109,9 @@ where
             Self::Array(selector) => self::array::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Bitwise(_) => todo!(),
+            Self::Bitwise(info) => {
+                self::bitwise::build(context, registry, entry, location, helper, metadata, info)
+            }
             Self::BranchAlign(info) => self::branch_align::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
