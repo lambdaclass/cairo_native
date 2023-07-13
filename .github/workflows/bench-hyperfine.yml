@@ -1,9 +1,8 @@
 name: Bench
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
   merge_group:
     types: [checks_requested]
 
@@ -47,22 +46,20 @@ jobs:
         run: make build
       - name: Run benchmarks
         run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/{factorial_100,fib_1k,map}.cairo
+      - name: Create markdown file
+        run: bash .github/scripts/merge-benches.sh
 
-      - run: bash .github/scripts/merge-benches.sh
-      - uses: peter-evans/find-comment@v2
+      - name: Find Bench Comment
+        uses: peter-evans/find-comment@v2
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: Benchmark results using hyperfine
-      - if: steps.fc.outputs.comment-id == ''
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body-path: bench-hyperfine.md
-      - if: steps.fc.outputs.comment-id != ''
+      - name: Create or update bench comment
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body-path: bench-hyperfine.md
+          edit-mode: replace
