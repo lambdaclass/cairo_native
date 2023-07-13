@@ -7,7 +7,7 @@ do
     base_path=$(basename -s .md $path)
 
     echo "## Benchmark for program \`$base_path\`" >> bench-hyperfine.md
-    echo "<details open><summary>Open benchmarks</summary><br>"
+    echo "<details><summary>Open benchmarks</summary><br>"
     cat $path >> bench-hyperfine.md
     echo "</details>"
 done
