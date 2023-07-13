@@ -1,6 +1,7 @@
 //! # Various utilities
 
 use cairo_lang_sierra::ids::FunctionId;
+use melior::ExecutionEngine;
 use std::{alloc::Layout, borrow::Cow, fmt};
 
 /// Generate a function name.
@@ -175,6 +176,29 @@ macro_rules! codegen_ret_extr {
 }
 pub(crate) use codegen_ret_extr;
 
+pub fn register_runtime_symbols(engine: &ExecutionEngine) {
+    #[cfg(feature = "with-runtime")]
+    unsafe {
+        engine.register_symbol(
+            "cairo_native__libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc__debug__print
+                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc_pedersen",
+            cairo_native_runtime::cairo_native__libfunc_pedersen
+                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__alloc_dict",
+            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
+                as *mut (),
+        );
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -300,20 +324,7 @@ pub mod test {
 
         let engine = ExecutionEngine::new(&module, 0, &[], false);
 
-        #[cfg(feature = "with-runtime")]
-        unsafe {
-            engine.register_symbol(
-                "cairo_native__libfunc__debug__print",
-                cairo_native_runtime::cairo_native__libfunc__debug__print
-                    as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-            );
-
-            engine.register_symbol(
-                "cairo_native__libfunc_pedersen",
-                cairo_native_runtime::cairo_native__libfunc_pedersen
-                    as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-            );
-        }
+        register_runtime_symbols(&engine);
 
         crate::execute::<CoreType, CoreLibfunc, _, _>(
             &engine,

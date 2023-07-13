@@ -104,8 +104,12 @@ where
             Self::EcState(_) => todo!(),
             Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
             Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
-            Self::Felt252Dict(_) => todo!(),
-            Self::Felt252DictEntry(_) => todo!(),
+            Self::Felt252Dict(info) => {
+                self::felt252_dict::build(context, module, registry, metadata, info)
+            }
+            Self::Felt252DictEntry(info) => {
+                self::felt252_dict_entry::build(context, module, registry, metadata, info)
+            }
             Self::GasBuiltin(info) => {
                 self::gas_builtin::build(context, module, registry, metadata, info)
             }
@@ -118,12 +122,16 @@ where
             Self::RangeCheck(info) => {
                 self::range_check::build(context, module, registry, metadata, info)
             }
-            Self::SegmentArena(_) => todo!(),
+            Self::SegmentArena(info) => {
+                self::segment_arena::build(context, module, registry, metadata, info)
+            }
             Self::Snapshot(info) => {
                 self::snapshot::build(context, module, registry, metadata, info)
             }
             Self::Span(_) => todo!(),
-            Self::SquashedFelt252Dict(_) => todo!(),
+            Self::SquashedFelt252Dict(info) => {
+                self::squashed_felt252_dict::build(context, module, registry, metadata, info)
+            }
             Self::StarkNet(selector) => {
                 self::stark_net::build(context, module, registry, metadata, selector)
             }
@@ -190,7 +198,7 @@ where
                     }))
                 })?
                 .unwrap_or(Layout::from_size_align(0, 1)?),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => get_integer_layout(64), // ptr
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
             CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),

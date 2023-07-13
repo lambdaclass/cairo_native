@@ -18,6 +18,8 @@ use std::{collections::HashSet, marker::PhantomData};
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
     LibfuncDebugPrint,
+    LibfuncPedersen,
+    AllocDict,
 }
 
 /// Runtime library bindings metadata.
@@ -95,7 +97,7 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::LibfuncDebugPrint) {
+        if self.active_map.insert(RuntimeBinding::LibfuncPedersen) {
             module.body().append_operation(func::func(
                 context,
                 StringAttribute::new(context, "cairo_native__libfunc_pedersen"),
@@ -125,6 +127,46 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__libfunc_pedersen"),
             &[dst_ptr, lhs_ptr, rhs_ptr],
             &[],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `alloc_new_dict()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn alloc_new_dict<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::AllocDict) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__alloc_dict"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[], &[llvm::r#type::opaque_pointer(context)])
+                        .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__alloc_dict"),
+            &[],
+            &[llvm::r#type::opaque_pointer(context)],
             location,
         )))
     }

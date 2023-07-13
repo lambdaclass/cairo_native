@@ -13,7 +13,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
     ProgramParser,
 };
-use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
+use cairo_native::{
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::register_runtime_symbols,
+};
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
@@ -108,20 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
-    #[cfg(feature = "with-runtime")]
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc_pedersen",
-            cairo_native_runtime::cairo_native__libfunc_pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-    }
+    register_runtime_symbols(&engine);
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {

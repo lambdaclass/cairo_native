@@ -3,7 +3,7 @@
 use cairo_felt::Felt252;
 use cairo_lang_runner::short_string::as_cairo_short_string;
 use starknet_crypto::FieldElement;
-use std::{fs::File, io::Write, os::fd::FromRawFd, slice};
+use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 /// Based on `cairo-lang-runner`'s implementation.
 ///
@@ -80,4 +80,54 @@ pub unsafe extern "C" fn cairo_native__libfunc_pedersen(
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_be());
+}
+
+/// Allocates a new dictionary. Internally a rust hashmap: `HashMap<[u8; 32], NonNull<()>`
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
+    let map: Box<HashMap<[u8; 32], NonNull<()>>> = Box::default();
+    Box::into_raw(map) as _
+}
+
+/// Gets a valued mapped to the key, or inserts the provided one and returns it.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_get_or_insert(
+    map: *mut std::ffi::c_void,
+    key: &[u8; 32],
+    value: NonNull<()>,
+) -> NonNull<()> {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<()>>>();
+
+    if let Some(v) = (*ptr).get(key) {
+        *v
+    } else {
+        (*ptr).insert(*key, value);
+        value
+    }
+}
+
+/// Inserts the provided key value
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_insert(
+    map: *mut std::ffi::c_void,
+    key: &[u8; 32],
+    value: NonNull<()>,
+) {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<()>>>();
+    (*ptr).insert(*key, value);
 }
