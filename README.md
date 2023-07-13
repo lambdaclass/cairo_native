@@ -130,7 +130,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `bool_and_impl`
 - [x] `bool_not_impl`
 - [x] `bool_or_impl`
-- [ ] `bool_to_felt252`
+- [x] `bool_to_felt252`
 - [x] `bool_xor_impl`
 - [x] `branch_align`
 - [ ] `call_contract_syscall` (StarkNet)
