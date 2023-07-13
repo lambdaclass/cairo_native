@@ -309,8 +309,8 @@ pub mod test {
             );
 
             engine.register_symbol(
-                "cairo_native__libfunc_pedersen",
-                cairo_native_runtime::cairo_native__libfunc_pedersen
+                "cairo_native__libfunc__pedersen",
+                cairo_native_runtime::cairo_native__libfunc__pedersen
                     as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
             );
         }

@@ -98,7 +98,7 @@ impl RuntimeBindingsMeta {
         if self.active_map.insert(RuntimeBinding::LibfuncDebugPrint) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, "cairo_native__libfunc_pedersen"),
+                StringAttribute::new(context, "cairo_native__libfunc__pedersen"),
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
@@ -122,7 +122,7 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc_pedersen"),
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__pedersen"),
             &[dst_ptr, lhs_ptr, rhs_ptr],
             &[],
             location,

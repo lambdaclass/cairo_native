@@ -63,7 +63,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__libfunc_pedersen(
+pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     dst: *mut u8,
     lhs: *const u8,
     rhs: *const u8,
