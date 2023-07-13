@@ -52,11 +52,57 @@ where
         EcConcreteLibfunc::StateFinalize(_) => todo!(),
         EcConcreteLibfunc::StateInit(_) => todo!(),
         EcConcreteLibfunc::TryNew(_) => todo!(),
-        EcConcreteLibfunc::UnwrapPoint(_) => todo!(),
+        EcConcreteLibfunc::UnwrapPoint(info) => {
+            build_unwrap_point(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::Zero(info) => {
             build_zero(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let x = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[0]),
+            registry
+                .get_type(&info.branch_signatures()[0].vars[0].ty)?
+                .build(context, helper, registry, metadata)?,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            registry
+                .get_type(&info.branch_signatures()[0].vars[1].ty)?
+                .build(context, helper, registry, metadata)?,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[x, y], location));
+    Ok(())
 }
 
 pub fn build_zero<'ctx, 'this, TType, TLibfunc>(
@@ -131,6 +177,13 @@ mod test {
                 ec_point_zero()
             }
         };
+        static ref EC_POINT_UNWRAP: (String, Program) = load_cairo! {
+            use core::{ec::{ec_point_unwrap, EcPoint}, zeroable::NonZero};
+
+            fn run_test(point: NonZero<EcPoint>) -> (felt252, felt252) {
+                ec_point_unwrap(point)
+            }
+        };
     }
 
     #[test]
@@ -139,5 +192,20 @@ mod test {
             run_program(&EC_POINT_ZERO, "run_test", json!([])),
             json!([[felt("0"), felt("0")]]),
         );
+    }
+
+    #[test]
+    fn ec_point_unwrap() {
+        let r = |lhs, rhs| run_program(&EC_POINT_UNWRAP, "run_test", json!([[lhs, rhs]]));
+
+        assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
+        assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("1")]]));
+        assert_eq!(r(felt("0"), felt("-1")), json!([[felt("0"), felt("-1")]]));
+        assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
+        assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("1")]]));
+        assert_eq!(r(felt("1"), felt("-1")), json!([[felt("1"), felt("-1")]]));
+        assert_eq!(r(felt("-1"), felt("0")), json!([[felt("-1"), felt("0")]]));
+        assert_eq!(r(felt("-1"), felt("1")), json!([[felt("-1"), felt("1")]]));
+        assert_eq!(r(felt("-1"), felt("-1")), json!([[felt("-1"), felt("-1")]]));
     }
 }

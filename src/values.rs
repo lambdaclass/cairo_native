@@ -222,7 +222,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 }
                 CoreTypeConcrete::Box(_) => todo!(),
                 CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
+                CoreTypeConcrete::EcPoint(info) => {
+                    self::ec_point::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::EcState(_) => todo!(),
                 CoreTypeConcrete::Felt252(info) => {
                     self::felt252::deserialize(deserializer, self.arena, self.registry, info)
@@ -247,7 +249,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::uint128::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
+                CoreTypeConcrete::NonZero(info) => {
+                    self::non_zero::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::RangeCheck(info) => {
                     self::range_check::deserialize(deserializer, self.arena, self.registry, info)
