@@ -55,7 +55,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: Benchmark results using hyperfine
+          body-includes: Benchmarking
       - name: Create or update bench comment
         uses: peter-evans/create-or-update-comment@v3
         with:
