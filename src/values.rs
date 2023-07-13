@@ -100,7 +100,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => false,
             CoreTypeConcrete::GasBuiltin(_) => false,
@@ -353,7 +353,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             },
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(info) => unsafe {
+                self::ec_point::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::serialize(serializer, self.registry, self.ptr, info)

@@ -100,7 +100,7 @@ where
                 self::builtin_costs::build(context, module, registry, metadata, info)
             }
             Self::EcOp(_) => todo!(),
-            Self::EcPoint(_) => todo!(),
+            Self::EcPoint(info) => self::ec_point::build(context, module, registry, metadata, info),
             Self::EcState(_) => todo!(),
             Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
             Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
@@ -150,7 +150,9 @@ where
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
             CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => {
+                get_integer_layout(252).extend(get_integer_layout(252))?.0
+            }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
