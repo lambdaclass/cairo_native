@@ -8,9 +8,15 @@ do
 
     {
         echo "## Benchmark for program \`$base_path\`"
-        echo "<details><summary>Open benchmarks</summary><br>"
+        echo
+        echo "<details><summary>Open benchmarks</summary>"
+        echo
+        echo "<br>"
+        echo
         cat $path
+        echo
         echo "</details>"
+        echo
     } >> bench-hyperfine.md
 
 done
