@@ -19,8 +19,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
+    ir::{Block, Location},
     Context,
 };
 

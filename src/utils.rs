@@ -2,7 +2,7 @@
 
 use cairo_lang_sierra::ids::FunctionId;
 use melior::ExecutionEngine;
-use std::{alloc::Layout, borrow::Cow, fmt};
+use std::{alloc::Layout, borrow::Cow, fmt, ptr::NonNull};
 
 /// Generate a function name.
 ///
@@ -195,6 +195,23 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             "cairo_native__alloc_dict",
             cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
                 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_get",
+            cairo_native_runtime::cairo_native__dict_get
+                as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_insert",
+            cairo_native_runtime::cairo_native__dict_get
+                as *const fn(
+                    *mut std::ffi::c_void,
+                    &[u8; 32],
+                    NonNull<std::ffi::c_void>,
+                ) -> *mut std::ffi::c_void as *mut (),
         );
     }
 }

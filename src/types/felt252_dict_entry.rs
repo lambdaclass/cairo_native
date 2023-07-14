@@ -35,8 +35,9 @@ where
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            IntegerType::new(context, 252).into(),
-            llvm::r#type::opaque_pointer(context),
+            IntegerType::new(context, 252).into(), // entry key
+            llvm::r#type::opaque_pointer(context), // value ptr
+            llvm::r#type::opaque_pointer(context), // dict ptr
         ],
         false,
     ))

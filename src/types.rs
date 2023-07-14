@@ -142,7 +142,9 @@ where
             Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
             Self::Uint64(info) => self::uint64::build(context, module, registry, metadata, info),
             Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
-            Self::Uninitialized(_) => todo!(),
+            Self::Uninitialized(info) => {
+                self::uninitialized::build(context, module, registry, metadata, info)
+            }
         }
     }
 

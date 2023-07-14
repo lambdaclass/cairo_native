@@ -243,7 +243,7 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictGet) {
+        if self.active_map.insert(RuntimeBinding::DictInsert) {
             module.body().append_operation(func::func(
                 context,
                 StringAttribute::new(context, "cairo_native__dict_insert"),
