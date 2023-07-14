@@ -66,7 +66,9 @@ where
         EcConcreteLibfunc::StateAdd(info) => {
             build_state_add(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::StateAddMul(_) => todo!(),
+        EcConcreteLibfunc::StateAddMul(info) => {
+            build_state_add_mul(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::StateFinalize(_) => todo!(),
         EcConcreteLibfunc::StateInit(info) => {
             build_state_init(context, registry, entry, location, helper, metadata, info)
@@ -456,6 +458,134 @@ where
     Ok(())
 }
 
+pub fn build_state_add_mul<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let felt252_ty = IntegerType::new(context, 252).into();
+    let ec_state_ty = llvm::r#type::r#struct(
+        context,
+        &[felt252_ty, felt252_ty, felt252_ty, felt252_ty],
+        false,
+    );
+    let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
+
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let state_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
+                .build(),
+        )
+        .result(0)?
+        .into();
+    let scalar_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
+                .build(),
+        )
+        .result(0)?
+        .into();
+    let point_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(1)?.into(),
+        state_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(2)?.into(),
+        scalar_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(3)?.into(),
+        point_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .unwrap()
+        .libfunc_ec_state_add_mul(
+            context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
+        )?;
+
+    let state = entry
+        .append_operation(llvm::load(
+            context,
+            state_ptr,
+            ec_state_ty,
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[state], location));
+    todo!()
+}
+
 pub fn build_state_init<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -763,18 +893,34 @@ mod test {
 
         assert_eq!(
             r(
-                felt("3151312365169595090315724863753927489909436624354740709748557281394568342450"),
-                felt("2835232394579952276045648147338966184268723952674536708929458753792035266179"),
-                felt("3151312365169595090315724863753927489909436624354740709748557281394568342450"),
-                felt("2835232394579952276045648147338966184268723952674536708929458753792035266179"),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
                 felt("1234"),
-                felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
+                felt(
+                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
             ),
             json!([[
                 felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
-                felt("2805180267536471620369715068237762638204710971142209985448115065526708105983"),
-                felt("3151312365169595090315724863753927489909436624354740709748557281394568342450"),
-                felt("2835232394579952276045648147338966184268723952674536708929458753792035266179")
+                felt(
+                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                )
             ]])
         );
     }

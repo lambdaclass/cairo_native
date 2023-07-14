@@ -21,6 +21,7 @@ enum RuntimeBinding {
     Pedersen,
     EcPointFromXNz,
     EcStateAdd,
+    EcStateAddMul,
 }
 
 /// Runtime library bindings metadata.
@@ -243,6 +244,63 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
             &[state_ptr, point_ptr],
+            &[],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `ec_state_add_mul()` function.
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_ec_state_add_mul<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        state_ptr: Value<'c, '_>,
+        scalar_ptr: Value<'c, '_>,
+        point_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let felt252_ty = IntegerType::new(context, 252).into();
+        let ec_state_ty = llvm::r#type::r#struct(
+            context,
+            &[felt252_ty, felt252_ty, felt252_ty, felt252_ty],
+            false,
+        );
+        let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
+
+        if self.active_map.insert(RuntimeBinding::EcStateAddMul) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(ec_state_ty, 0),
+                            llvm::r#type::pointer(felt252_ty, 0),
+                            llvm::r#type::pointer(ec_point_ty, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
+            &[state_ptr, scalar_ptr, point_ptr],
             &[],
             location,
         )))
