@@ -50,7 +50,5 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    ptr.cast::<[[u32; 8]; 4]>()
-        .as_ref()
-        .serialize(serializer)
+    ptr.cast::<[[u32; 8]; 4]>().as_ref().serialize(serializer)
 }

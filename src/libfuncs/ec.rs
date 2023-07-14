@@ -8,11 +8,14 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    metadata::{
+        prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+    },
     types::{
         felt252::{register_prime_modulo_meta, Felt252},
         TypeBuilder,
     },
+    utils::get_integer_layout,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -24,13 +27,13 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        llvm::{self, LoadStoreOptions},
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location,
+        Attribute, Block, Identifier, Location,
     },
     Context,
 };
@@ -57,7 +60,9 @@ where
         EcConcreteLibfunc::Neg(info) => {
             build_neg(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::PointFromX(_) => todo!(),
+        EcConcreteLibfunc::PointFromX(info) => {
+            build_point_from_x(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::StateAdd(_) => todo!(),
         EcConcreteLibfunc::StateAddMul(_) => todo!(),
         EcConcreteLibfunc::StateFinalize(_) => todo!(),
@@ -230,6 +235,109 @@ where
         .into();
 
     entry.append_operation(helper.br(0, &[result], location));
+    Ok(())
+}
+
+pub fn build_point_from_x<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let ec_point_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+        ],
+        false,
+    );
+
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    let point = entry
+        .append_operation(llvm::undef(ec_point_ty, location))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            entry.argument(1)?.into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    entry.append_operation(llvm::store(
+        context,
+        point,
+        point_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    let result = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .unwrap()
+        .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)?
+        .result(0)?
+        .into();
+
+    let point = entry
+        .append_operation(llvm::load(
+            context,
+            point_ptr,
+            ec_point_ty,
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        result,
+        [0, 1],
+        [
+            &[entry.argument(0)?.into(), point],
+            &[entry.argument(0)?.into()],
+        ],
+        location,
+    ));
     Ok(())
 }
 
@@ -449,6 +557,13 @@ mod test {
                 ec_neg(point)
             }
         };
+        static ref EC_POINT_FROM_X_NZ: (String, Program) = load_cairo! {
+            use core::ec::{ec_point_from_x, EcPoint};
+
+            fn run_test(x: felt252) -> Option<EcPoint> {
+                ec_point_from_x(x)
+            }
+        };
         static ref EC_STATE_INIT: (String, Program) = load_cairo! {
             use core::ec::{ec_state_init, EcState};
 
@@ -499,6 +614,17 @@ mod test {
         assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("-1")]]));
         assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
         assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("-1")]]));
+    }
+
+    #[test]
+    fn ec_point_from_x() {
+        let r = |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", json!([(), x]));
+
+        assert_eq!(r(felt("0")), json!([(), [1, []]]));
+        assert_eq!(
+            r(felt("1234")),
+            json!([(), [0, [felt("1234"), felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")]]])
+        );
     }
 
     #[test]

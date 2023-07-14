@@ -3,7 +3,8 @@
 use cairo_felt::Felt252;
 use cairo_lang_runner::short_string::as_cairo_short_string;
 use starknet_crypto::FieldElement;
-use std::{fs::File, io::Write, os::fd::FromRawFd, slice};
+use starknet_curve::AffinePoint;
+use std::{fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 /// Based on `cairo-lang-runner`'s implementation.
 ///
@@ -80,4 +81,36 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_be());
+}
+
+/// Compute `ec_point_from_x_nz(x)` and store it.
+///
+/// # Panics
+///
+/// This function will panic if either operand is out of range for a felt.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
+    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+) -> bool {
+    let x = FieldElement::from_bytes_be(&{
+        let mut data = point_ptr.as_ref()[0];
+        data.reverse();
+        data
+    })
+    .unwrap();
+
+    match AffinePoint::from_x(x) {
+        Some(point) => {
+            point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
+            point_ptr.as_mut()[1].reverse();
+
+            true
+        }
+        None => dbg!(false),
+    }
 }
