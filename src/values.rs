@@ -101,7 +101,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => true,
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252(_) => false,
             CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
@@ -225,7 +225,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::EcPoint(info) => {
                     self::ec_point::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::EcState(_) => todo!(),
+                CoreTypeConcrete::EcState(info) => {
+                    self::ec_state::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Felt252(info) => {
                     self::felt252::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -360,7 +362,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::EcPoint(info) => unsafe {
                 self::ec_point::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcState(info) => unsafe {
+                self::ec_state::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::serialize(serializer, self.registry, self.ptr, info)
             },

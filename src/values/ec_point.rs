@@ -25,12 +25,7 @@ where
     D: Deserializer<'de>,
 {
     let ptr = arena
-        .alloc_layout(
-            get_integer_layout(252)
-                .extend(get_integer_layout(252))
-                .unwrap()
-                .0,
-        )
+        .alloc_layout(get_integer_layout(252).repeat(2).unwrap().0)
         .cast();
 
     let data = <[[u32; 8]; 2] as Deserialize>::deserialize(deserializer)?;
@@ -53,7 +48,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    ptr.cast::<([u32; 8], [u32; 8])>()
+    ptr.cast::<[[u32; 8]; 2]>()
         .as_ref()
         .serialize(serializer)
 }

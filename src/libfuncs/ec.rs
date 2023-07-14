@@ -61,7 +61,9 @@ where
         EcConcreteLibfunc::StateAdd(_) => todo!(),
         EcConcreteLibfunc::StateAddMul(_) => todo!(),
         EcConcreteLibfunc::StateFinalize(_) => todo!(),
-        EcConcreteLibfunc::StateInit(_) => todo!(),
+        EcConcreteLibfunc::StateInit(info) => {
+            build_state_init(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::TryNew(_) => todo!(),
         EcConcreteLibfunc::UnwrapPoint(info) => {
             build_unwrap_point(context, registry, entry, location, helper, metadata, info)
@@ -231,6 +233,99 @@ where
     Ok(())
 }
 
+pub fn build_state_init<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let ec_state_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+        ],
+        false,
+    );
+
+    let point = entry
+        .append_operation(llvm::undef(ec_state_ty, location))
+        .result(0)?
+        .into();
+
+    let x = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let y = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            x,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            y,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[2]),
+            x,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[3]),
+            y,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[point], location));
+    Ok(())
+}
+
 pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -354,6 +449,13 @@ mod test {
                 ec_neg(point)
             }
         };
+        static ref EC_STATE_INIT: (String, Program) = load_cairo! {
+            use core::ec::{ec_state_init, EcState};
+
+            fn run_test() -> EcState {
+                ec_state_init()
+            }
+        };
         static ref EC_POINT_UNWRAP: (String, Program) = load_cairo! {
             use core::{ec::{ec_point_unwrap, EcPoint}, zeroable::NonZero};
 
@@ -397,6 +499,27 @@ mod test {
         assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("-1")]]));
         assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
         assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("-1")]]));
+    }
+
+    #[test]
+    fn ec_state_init() {
+        assert_eq!(
+            run_program(&EC_STATE_INIT, "run_test", json!([])),
+            json!([[
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                )
+            ]]),
+        );
     }
 
     #[test]
