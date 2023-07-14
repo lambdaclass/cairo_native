@@ -134,6 +134,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
                 as *mut (),
         );
+
+        engine.register_symbol(
+            "cairo_native__ec__ec_state_add_mul",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
+                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
     }
 
     // Initialize arguments and return values.

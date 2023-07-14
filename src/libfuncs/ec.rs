@@ -69,7 +69,9 @@ where
         EcConcreteLibfunc::StateAddMul(info) => {
             build_state_add_mul(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::StateFinalize(_) => todo!(),
+        EcConcreteLibfunc::StateFinalize(info) => {
+            build_state_finalize(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::StateInit(info) => {
             build_state_init(context, registry, entry, location, helper, metadata, info)
         }
@@ -582,8 +584,116 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[state], location));
-    todo!()
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), state], location));
+    Ok(())
+}
+
+pub fn build_state_finalize<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let ec_point_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+        ],
+        false,
+    );
+
+    let x = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[0]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let zero_x = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[2]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let zero_y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[3]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let x_is_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, x, zero_x, location))
+        .result(0)?
+        .into();
+    let y_is_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, zero_y, location))
+        .result(0)?
+        .into();
+
+    let point_is_zero = entry
+        .append_operation(arith::andi(x_is_zero, y_is_zero, location))
+        .result(0)?
+        .into();
+
+    let point = entry
+        .append_operation(llvm::undef(ec_point_ty, location))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            x,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            y,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(point_is_zero, [1, 0], [&[], &[point]], location));
+    Ok(())
 }
 
 pub fn build_state_init<'ctx, 'this, TType, TLibfunc>(
@@ -818,6 +928,23 @@ mod test {
                 state
             }
         };
+        static ref EC_STATE_ADD_MUL: (String, Program) = load_cairo! {
+            use core::ec::{ec_state_add_mul, EcPoint, EcState};
+            use core::zeroable::NonZero;
+
+            fn run_test(mut state: EcState, scalar: felt252, point: NonZero<EcPoint>) -> EcState {
+                ec_state_add_mul(ref state, scalar, point);
+                state
+            }
+        };
+        static ref EC_STATE_FINALIZE: (String, Program) = load_cairo! {
+            use core::ec::{ec_state_try_finalize_nz, EcPoint, EcState};
+            use core::zeroable::NonZero;
+
+            fn run_test(state: EcState) -> Option<NonZero<EcPoint>> {
+                ec_state_try_finalize_nz(state)
+            }
+        };
         static ref EC_STATE_INIT: (String, Program) = load_cairo! {
             use core::ec::{ec_state_init, EcState};
 
@@ -922,6 +1049,133 @@ mod test {
                     "2835232394579952276045648147338966184268723952674536708929458753792035266179"
                 )
             ]])
+        );
+    }
+
+    #[test]
+    fn ec_state_add_mul() {
+        let r = |state_x, state_y, state_z, state_w, scalar, point_x, point_y| {
+            run_program(
+                &EC_STATE_ADD_MUL,
+                "run_test",
+                json!([
+                    (),
+                    [state_x, state_y, state_z, state_w],
+                    scalar,
+                    [point_x, point_y]
+                ]),
+            )
+        };
+
+        assert_eq!(
+            r(
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt("1"),
+                felt("1234"),
+                felt(
+                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
+            ),
+            json!([(), [
+                felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
+                felt(
+                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                )
+            ]])
+        );
+
+        assert_eq!(
+            r(
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt("2"),
+                felt("1234"),
+                felt(
+                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
+            ),
+            json!([(), [
+                felt("3016674370847061744386893405108272070153695046160622325692702034987910716850"),
+                felt(
+                    "898133181809473419542838028331350248951548889944002871647069130998202992502"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                )
+            ]])
+        );
+    }
+
+    #[test]
+    fn ec_state_finalize() {
+        let r = |x, y, z, w| run_program(&EC_STATE_FINALIZE, "run_test", json!([[x, y, z, w]]));
+
+        assert_eq!(
+            r(
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+            ),
+            json!([[1, []]])
+        );
+        assert_eq!(
+            r(
+                felt(
+                    "763975897824944497806946001227010133599886598340174017198031710397718335159"
+                ),
+                felt(
+                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
+                ),
+                felt(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
+                ),
+                felt(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+                ),
+            ),
+            json!([[0, [
+                felt("1234"),
+                felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
+            ]]])
         );
     }
 

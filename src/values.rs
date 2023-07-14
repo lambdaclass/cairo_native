@@ -99,7 +99,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => false,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252(_) => false,
@@ -221,7 +221,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::bitwise::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
+                CoreTypeConcrete::EcOp(info) => {
+                    self::ec_op::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::EcPoint(info) => {
                     self::ec_point::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -358,7 +360,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::bitwise::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcOp(info) => unsafe {
+                self::ec_op::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::EcPoint(info) => unsafe {
                 self::ec_point::serialize(serializer, self.registry, self.ptr, info)
             },

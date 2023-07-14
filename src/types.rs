@@ -99,7 +99,7 @@ where
             Self::BuiltinCosts(info) => {
                 self::builtin_costs::build(context, module, registry, metadata, info)
             }
-            Self::EcOp(_) => todo!(),
+            Self::EcOp(info) => self::ec_op::build(context, module, registry, metadata, info),
             Self::EcPoint(info) => self::ec_point::build(context, module, registry, metadata, info),
             Self::EcState(info) => self::ec_state::build(context, module, registry, metadata, info),
             Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
@@ -149,7 +149,7 @@ where
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
             CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => Layout::new::<()>(),
             CoreTypeConcrete::EcPoint(_) => get_integer_layout(252).repeat(2)?.0,
             CoreTypeConcrete::EcState(_) => get_integer_layout(252).repeat(4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
