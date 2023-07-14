@@ -13,7 +13,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
@@ -22,18 +22,22 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
-    metadata: &mut MetadataStorage,
-    info: &InfoAndTypeConcreteType,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _metadata: &mut MetadataStorage,
+    _info: &InfoAndTypeConcreteType,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    //let inner = registry.get_type(&info.ty)?;
-    //let layout = inner.layout(registry)?;
-    todo!();
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 252).into(),
+            llvm::r#type::opaque_pointer(context),
+        ],
+        false,
+    ))
 }

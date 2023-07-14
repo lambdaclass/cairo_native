@@ -263,7 +263,14 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::felt252_dict::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+                CoreTypeConcrete::SquashedFelt252Dict(info) => {
+                    self::squashed_felt252_dict::deserialize(
+                        deserializer,
+                        self.arena,
+                        self.registry,
+                        info,
+                    )
+                }
                 CoreTypeConcrete::Pedersen(info) => {
                     self::pedersen::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -394,9 +401,13 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Struct(info) => unsafe {
                 self::r#struct::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(info) => unsafe {
+                self::felt252_dict::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(info) => unsafe {
+                self::squashed_felt252_dict::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Pedersen(info) => unsafe {
                 self::pedersen::serialize(serializer, self.registry, self.ptr, info)
             },

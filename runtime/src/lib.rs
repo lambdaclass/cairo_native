@@ -90,33 +90,31 @@ pub unsafe extern "C" fn cairo_native__libfunc_pedersen(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    let map: Box<HashMap<[u8; 32], NonNull<()>>> = Box::default();
+    let map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
     Box::into_raw(map) as _
 }
 
-/// Gets a valued mapped to the key, or inserts the provided one and returns it.
+/// Gets the value for a given key, the returned pointer is null if not found.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_get_or_insert(
+pub unsafe extern "C" fn cairo_native__dict_get(
     map: *mut std::ffi::c_void,
     key: &[u8; 32],
-    value: NonNull<()>,
-) -> NonNull<()> {
-    let ptr = map.cast::<HashMap<[u8; 32], NonNull<()>>>();
+) -> *mut std::ffi::c_void {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
 
     if let Some(v) = (*ptr).get(key) {
-        *v
+        v.as_ptr()
     } else {
-        (*ptr).insert(*key, value);
-        value
+        std::ptr::null_mut()
     }
 }
 
-/// Inserts the provided key value
+/// Inserts the provided key value. Returning the old one or nullptr if there was none.
 ///
 /// # Safety
 ///
@@ -126,8 +124,14 @@ pub unsafe extern "C" fn cairo_native__dict_get_or_insert(
 pub unsafe extern "C" fn cairo_native__dict_insert(
     map: *mut std::ffi::c_void,
     key: &[u8; 32],
-    value: NonNull<()>,
-) {
-    let ptr = map.cast::<HashMap<[u8; 32], NonNull<()>>>();
-    (*ptr).insert(*key, value);
+    value: NonNull<std::ffi::c_void>,
+) -> *mut std::ffi::c_void {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+    let old_ptr = (*ptr).insert(*key, value);
+
+    if let Some(v) = old_ptr {
+        v.as_ptr()
+    } else {
+        std::ptr::null_mut()
+    }
 }

@@ -75,7 +75,7 @@ where
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let op = runtime_bindings.alloc_new_dict(context, helper, entry, location)?;
+    let op = runtime_bindings.dict_alloc_new(context, helper, entry, location)?;
 
     let dict_ptr = op.result(0)?.into();
 

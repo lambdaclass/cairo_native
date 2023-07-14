@@ -199,8 +199,13 @@ where
                 })?
                 .unwrap_or(Layout::from_size_align(0, 1)?),
             CoreTypeConcrete::Felt252Dict(_) => get_integer_layout(64), // ptr
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => {
+                get_integer_layout(252)
+                    .extend(Layout::new::<*mut ()>())
+                    .unwrap()
+                    .0
+            }
+            CoreTypeConcrete::SquashedFelt252Dict(_) => get_integer_layout(64), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
