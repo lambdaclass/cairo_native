@@ -8,8 +8,11 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    types::{
+        felt252::{register_prime_modulo_meta, Felt252},
+        TypeBuilder,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,8 +28,9 @@ use melior::{
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location,
+        Attribute, Block, Location,
     },
     Context,
 };
@@ -50,7 +54,9 @@ where
         EcConcreteLibfunc::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::Neg(_) => todo!(),
+        EcConcreteLibfunc::Neg(info) => {
+            build_neg(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::PointFromX(_) => todo!(),
         EcConcreteLibfunc::StateAdd(_) => todo!(),
         EcConcreteLibfunc::StateAddMul(_) => todo!(),
@@ -131,6 +137,97 @@ where
         [&[], &[entry.argument(0)?.into()]],
         location,
     ));
+    Ok(())
+}
+
+pub fn build_neg<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let k_prime = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(
+                context,
+                &format!(
+                    "{} : i252",
+                    match metadata.get::<PrimeModuloMeta<Felt252>>() {
+                        Some(x) => x.prime(),
+                        None => {
+                            // Since the `EcPoint` type is external, there is no guarantee that
+                            // `PrimeModuloMeta<Felt252>` will be available.
+                            register_prime_modulo_meta(metadata).prime()
+                        }
+                    }
+                ),
+            )
+            .unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let y_is_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))
+        .result(0)?
+        .into();
+
+    let y_neg = entry
+        .append_operation(arith::subi(k_prime, y, location))
+        .result(0)?
+        .into();
+    let y_neg = entry
+        .append_operation(
+            OperationBuilder::new("arith.select", location)
+                .add_operands(&[y_is_zero, k0, y_neg])
+                .add_results(&[IntegerType::new(context, 252).into()])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    let result = entry
+        .append_operation(llvm::insert_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            y_neg,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
@@ -250,6 +347,13 @@ mod test {
                 ec_point_is_zero(point)
             }
         };
+        static ref EC_NEG: (String, Program) = load_cairo! {
+            use core::ec::{ec_neg, EcPoint};
+
+            fn run_test(point: EcPoint) -> EcPoint {
+                ec_neg(point)
+            }
+        };
         static ref EC_POINT_UNWRAP: (String, Program) = load_cairo! {
             use core::{ec::{ec_point_unwrap, EcPoint}, zeroable::NonZero};
 
@@ -283,6 +387,16 @@ mod test {
             r(felt("1"), felt("1")),
             json!([[1, [felt("1"), felt("1")]]])
         );
+    }
+
+    #[test]
+    fn ec_neg() {
+        let r = |x, y| run_program(&EC_NEG, "run_test", json!([[x, y]]));
+
+        assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
+        assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("-1")]]));
+        assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
+        assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("-1")]]));
     }
 
     #[test]

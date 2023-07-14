@@ -262,6 +262,7 @@ pub mod test {
         let mut module = Module::new(Location::unknown(&context));
 
         let mut metadata = MetadataStorage::new();
+
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 

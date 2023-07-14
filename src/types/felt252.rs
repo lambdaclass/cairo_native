@@ -52,11 +52,15 @@ where
     match metadata.get::<PrimeModuloMeta<Felt252>>() {
         Some(x) => assert_eq!(x.prime(), &*PRIME),
         None => {
-            metadata
-                .insert(PrimeModuloMeta::<Felt252>::new(PRIME.clone()))
-                .unwrap();
+            register_prime_modulo_meta(metadata);
         }
     }
 
     Ok(IntegerType::new(context, 252).into())
+}
+
+pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &mut PrimeModuloMeta<Felt252> {
+    metadata
+        .insert(PrimeModuloMeta::<Felt252>::new(PRIME.clone()))
+        .unwrap()
 }
