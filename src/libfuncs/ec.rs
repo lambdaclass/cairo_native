@@ -19,7 +19,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm,
+    },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -44,7 +47,9 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
-        EcConcreteLibfunc::IsZero(_) => todo!(),
+        EcConcreteLibfunc::IsZero(info) => {
+            build_is_zero(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::Neg(_) => todo!(),
         EcConcreteLibfunc::PointFromX(_) => todo!(),
         EcConcreteLibfunc::StateAdd(_) => todo!(),
@@ -59,6 +64,74 @@ where
             build_zero(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let x = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[0]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 252).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let x_is_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, x, k0, location))
+        .result(0)?
+        .into();
+    let y_is_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))
+        .result(0)?
+        .into();
+
+    let point_is_zero = entry
+        .append_operation(arith::andi(x_is_zero, y_is_zero, location))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        point_is_zero,
+        [0, 1],
+        [&[], &[entry.argument(0)?.into()]],
+        location,
+    ));
+    Ok(())
 }
 
 pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
@@ -170,11 +243,11 @@ mod test {
     use serde_json::json;
 
     lazy_static! {
-        static ref EC_POINT_ZERO: (String, Program) = load_cairo! {
-            use core::ec::{ec_point_zero, EcPoint};
+        static ref EC_POINT_IS_ZERO: (String, Program) = load_cairo! {
+            use core::{ec::{ec_point_is_zero, EcPoint}, zeroable::IsZeroResult};
 
-            fn run_test() -> EcPoint {
-                ec_point_zero()
+            fn run_test(point: EcPoint) -> IsZeroResult<EcPoint> {
+                ec_point_is_zero(point)
             }
         };
         static ref EC_POINT_UNWRAP: (String, Program) = load_cairo! {
@@ -184,19 +257,37 @@ mod test {
                 ec_point_unwrap(point)
             }
         };
+        static ref EC_POINT_ZERO: (String, Program) = load_cairo! {
+            use core::ec::{ec_point_zero, EcPoint};
+
+            fn run_test() -> EcPoint {
+                ec_point_zero()
+            }
+        };
     }
 
     #[test]
-    fn ec_point_zero() {
+    fn ec_point_is_zero() {
+        let r = |x, y| run_program(&EC_POINT_IS_ZERO, "run_test", json!([[x, y]]));
+
+        assert_eq!(r(felt("0"), felt("0")), json!([[0, []]]));
         assert_eq!(
-            run_program(&EC_POINT_ZERO, "run_test", json!([])),
-            json!([[felt("0"), felt("0")]]),
+            r(felt("0"), felt("1")),
+            json!([[1, [felt("0"), felt("1")]]])
+        );
+        assert_eq!(
+            r(felt("1"), felt("0")),
+            json!([[1, [felt("1"), felt("0")]]])
+        );
+        assert_eq!(
+            r(felt("1"), felt("1")),
+            json!([[1, [felt("1"), felt("1")]]])
         );
     }
 
     #[test]
     fn ec_point_unwrap() {
-        let r = |lhs, rhs| run_program(&EC_POINT_UNWRAP, "run_test", json!([[lhs, rhs]]));
+        let r = |x, y| run_program(&EC_POINT_UNWRAP, "run_test", json!([[x, y]]));
 
         assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
         assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("1")]]));
@@ -207,5 +298,13 @@ mod test {
         assert_eq!(r(felt("-1"), felt("0")), json!([[felt("-1"), felt("0")]]));
         assert_eq!(r(felt("-1"), felt("1")), json!([[felt("-1"), felt("1")]]));
         assert_eq!(r(felt("-1"), felt("-1")), json!([[felt("-1"), felt("-1")]]));
+    }
+
+    #[test]
+    fn ec_point_zero() {
+        assert_eq!(
+            run_program(&EC_POINT_ZERO, "run_test", json!([])),
+            json!([[felt("0"), felt("0")]]),
+        );
     }
 }
