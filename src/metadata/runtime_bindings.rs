@@ -20,6 +20,7 @@ enum RuntimeBinding {
     DebugPrint,
     Pedersen,
     EcPointFromXNz,
+    EcStateAdd,
 }
 
 /// Runtime library bindings metadata.
@@ -131,7 +132,7 @@ impl RuntimeBindingsMeta {
         )))
     }
 
-    /// Register if necessary, then invoke the `pedersen()` function.
+    /// Register if necessary, then invoke the `ec_point_from_x_nz()` function.
     pub fn libfunc_ec_point_from_x_nz<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -178,6 +179,71 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_from_x_nz"),
             &[point_ptr],
             &[IntegerType::new(context, 1).into()],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `ec_state_add()` function.
+    pub fn libfunc_ec_state_add<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        state_ptr: Value<'c, '_>,
+        point_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let ec_state_ty = llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, 252).into(),
+                IntegerType::new(context, 252).into(),
+                IntegerType::new(context, 252).into(),
+                IntegerType::new(context, 252).into(),
+            ],
+            false,
+        );
+        let ec_point_ty = llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, 252).into(),
+                IntegerType::new(context, 252).into(),
+            ],
+            false,
+        );
+
+        if self.active_map.insert(RuntimeBinding::EcStateAdd) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(ec_state_ty, 0),
+                            llvm::r#type::pointer(ec_point_ty, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
+            &[state_ptr, point_ptr],
+            &[],
             location,
         )))
     }

@@ -114,3 +114,58 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
         None => dbg!(false),
     }
 }
+
+/// Compute `ec_state_add(state, point)` and store the state back.
+///
+/// # Panics
+///
+/// This function will panic if either operand is out of range for a felt.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
+    mut state_ptr: NonNull<[[u8; 32]; 4]>,
+    point_ptr: NonNull<[[u8; 32]; 2]>,
+) {
+    let mut state = AffinePoint {
+        x: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[0];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        y: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[1];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        infinity: false,
+    };
+    let point = AffinePoint {
+        x: FieldElement::from_bytes_be(&{
+            let mut data = point_ptr.as_ref()[0];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        y: FieldElement::from_bytes_be(&{
+            let mut data = point_ptr.as_ref()[1];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        infinity: false,
+    };
+
+    state += &point;
+
+    state_ptr.as_mut()[0].copy_from_slice(&state.x.to_bytes_be());
+    state_ptr.as_mut()[1].copy_from_slice(&state.y.to_bytes_be());
+
+    state_ptr.as_mut()[0].reverse();
+    state_ptr.as_mut()[1].reverse();
+}

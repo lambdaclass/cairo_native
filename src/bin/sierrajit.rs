@@ -127,6 +127,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
                 as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
         );
+
+        engine.register_symbol(
+            "cairo_native__ec__ec_state_add",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
+                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
     }
 
     // Initialize arguments and return values.
