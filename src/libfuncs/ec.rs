@@ -38,6 +38,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -87,6 +88,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `ec_point_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -155,6 +157,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_neg` libfunc.
 pub fn build_neg<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -246,6 +249,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_point_from_x_nz` libfunc.
 pub fn build_point_from_x<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -349,6 +353,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_state_add` libfunc.
 pub fn build_state_add<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -462,6 +467,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_state_add_mul` libfunc.
 pub fn build_state_add_mul<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -590,6 +596,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_state_try_finalize_nz` libfunc.
 pub fn build_state_finalize<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -687,6 +694,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_state_init` libfunc.
 pub fn build_state_init<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -780,6 +788,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_point_try_new_nz` libfunc.
 pub fn build_try_new<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -874,6 +883,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_point_unwrap` libfunc.
 pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -918,6 +928,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `ec_point_zero` libfunc.
 pub fn build_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -1306,6 +1317,20 @@ mod test {
             json!([[0, [
                 felt("1234"),
                 felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
+            ]]])
+        );
+        assert_eq!(
+            r(
+                felt("1234"),
+                felt(
+                    "-1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
+            ),
+            json!([[0, [
+                felt("1234"),
+                felt(
+                    "-1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
             ]]])
         );
     }
