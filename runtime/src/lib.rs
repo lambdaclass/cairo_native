@@ -90,6 +90,7 @@ pub unsafe extern "C" fn cairo_native__libfunc_pedersen(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
+    println!("new dict");
     let map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
     Box::into_raw(map) as _
 }
@@ -126,6 +127,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
     key: &[u8; 32],
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
+    println!("inserting");
     let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
     let old_ptr = (*ptr).insert(*key, value);
 

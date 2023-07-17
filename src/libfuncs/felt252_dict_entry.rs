@@ -380,8 +380,26 @@ mod test {
             }
         );
 
-        // todo: sigsev if we return the dict and try to serialize it.
         let result = run_program(&program, "run_test", json!([(), (), 0]));
-        assert_eq!(result, json!([null, null, 0, 2]));
+        assert_eq!(result, json!([null, null, 0, 1]));
+    }
+
+    #[ignore = "sigsev"]
+    #[test]
+    fn run_dict_insert_ret_dict() {
+        let program = load_cairo!(
+            use traits::Default;
+            use dict::Felt252DictTrait;
+
+            fn run_test() -> Felt252Dict<u32> {
+                let mut dict: Felt252Dict<u32> = Default::default();
+                dict.insert(2, 1_u32);
+                dict
+            }
+        );
+
+        // todo: sigsev if we return the dict and try to serialize it.
+        let result = run_program(&program, "run_test", json!([()]));
+        assert_eq!(result, json!([null, []]));
     }
 }
