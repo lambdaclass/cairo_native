@@ -72,7 +72,9 @@ where
             info,
             BoolOp::Or,
         ),
-        BoolConcreteLibfunc::ToFelt252(_) => todo!(),
+        BoolConcreteLibfunc::ToFelt252(info) => {
+            build_bool_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -209,9 +211,58 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `unbox` libfunc.
+pub fn build_bool_to_felt252<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let felt252_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)?
+        .build(context, helper, registry, metadata)?;
+
+    let tag_bits = enum_ty
+        .variants()
+        .unwrap()
+        .len()
+        .next_power_of_two()
+        .trailing_zeros();
+    let tag_ty = IntegerType::new(context, tag_bits).into();
+
+    let value = entry.argument(0)?.into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        value,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        tag_ty,
+        location,
+    ));
+    let tag_value = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::extui(tag_value, felt252_ty, location));
+
+    let result = op.result(0)?.into();
+
+    entry.append_operation(helper.br(0, &[result], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::utils::test::{felt, load_cairo, run_program};
     use serde_json::json;
 
     pub fn true_js() -> serde_json::Value {
@@ -305,5 +356,20 @@ mod test {
 
         let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
         assert_eq!(result, json!([false_js()]));
+    }
+
+    #[test]
+    fn bool_to_felt252() {
+        let program = load_cairo!(
+            fn run_test(a: bool) -> felt252 {
+                bool_to_felt252(a)
+            }
+        );
+
+        let result = run_program(&program, "run_test", json!([true_js()]));
+        assert_eq!(result, json!([felt("1")]));
+
+        let result = run_program(&program, "run_test", json!([false_js()]));
+        assert_eq!(result, json!([felt("0")]));
     }
 }
