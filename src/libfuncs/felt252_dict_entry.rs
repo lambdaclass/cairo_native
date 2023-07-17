@@ -31,7 +31,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Value, ValueLike,
+        Block, Identifier, Location, Value, ValueLike,
     },
     Context,
 };
