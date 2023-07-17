@@ -384,7 +384,6 @@ mod test {
         assert_eq!(result, json!([null, null, 0, 1]));
     }
 
-    #[ignore = "sigsev"]
     #[test]
     fn run_dict_insert_ret_dict() {
         let program = load_cairo!(
@@ -398,8 +397,12 @@ mod test {
             }
         );
 
-        // todo: sigsev if we return the dict and try to serialize it.
         let result = run_program(&program, "run_test", json!([()]));
-        assert_eq!(result, json!([null, []]));
+        assert_eq!(
+            result,
+            json!([null, {
+                "2": 1
+            }])
+        );
     }
 }
