@@ -231,3 +231,70 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     state_ptr.as_mut()[0].reverse();
     state_ptr.as_mut()[1].reverse();
 }
+
+/// Compute `ec_state_try_finalize_nz(state)` and store the result.
+///
+/// # Panics
+///
+/// This function will panic if either operand is out of range for a felt.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
+    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: NonNull<[[u8; 32]; 4]>,
+) -> bool {
+    let state = AffinePoint {
+        x: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[0];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        y: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[1];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        infinity: false,
+    };
+    let random = AffinePoint {
+        x: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[2];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        y: FieldElement::from_bytes_be(&{
+            let mut data = state_ptr.as_ref()[3];
+            data.reverse();
+            data
+        })
+        .unwrap(),
+        infinity: false,
+    };
+
+    println!("state  = ({}, {})", state.x, state.y);
+    println!("random = ({}, {})", random.x, random.y);
+
+    if state.x == random.x && state.y == random.y {
+        println!("Point is zero.");
+        false
+    } else {
+        let point = &state - &random;
+
+        println!("Point is ({}, {})", point.x, point.y);
+
+        point_ptr.as_mut()[0].copy_from_slice(&point.x.to_bytes_be());
+        point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
+
+        point_ptr.as_mut()[0].reverse();
+        point_ptr.as_mut()[1].reverse();
+
+        true
+    }
+}

@@ -594,7 +594,7 @@ pub fn build_state_finalize<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -603,96 +603,85 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let ec_point_ty = llvm::r#type::r#struct(
+    let felt252_ty = IntegerType::new(context, 252).into();
+    let ec_state_ty = llvm::r#type::r#struct(
         context,
-        &[
-            IntegerType::new(context, 252).into(),
-            IntegerType::new(context, 252).into(),
-        ],
+        &[felt252_ty, felt252_ty, felt252_ty, felt252_ty],
         false,
     );
+    let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
 
-    let x = entry
-        .append_operation(llvm::extract_value(
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
             context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 252).into(),
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
             location,
         ))
         .result(0)?
         .into();
-    let y = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
+    let point_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+                .build(),
+        )
         .result(0)?
         .into();
-    let zero_x = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let zero_y = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[3]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-
-    let x_is_zero = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, x, zero_x, location))
-        .result(0)?
-        .into();
-    let y_is_zero = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, zero_y, location))
+    let state_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
+                .build(),
+        )
         .result(0)?
         .into();
 
-    let point_is_zero = entry
-        .append_operation(arith::andi(x_is_zero, y_is_zero, location))
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(0)?.into(),
+        state_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    let is_zero = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .unwrap()
+        .libfunc_ec_state_try_finalize_nz(context, helper, entry, point_ptr, state_ptr, location)?
         .result(0)?
         .into();
 
     let point = entry
-        .append_operation(llvm::undef(ec_point_ty, location))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
+        .append_operation(llvm::load(
             context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            x,
+            point_ptr,
+            ec_point_ty,
             location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            y,
-            location,
+            LoadStoreOptions::default(),
         ))
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(point_is_zero, [1, 0], [&[], &[point]], location));
+    entry.append_operation(helper.cond_br(is_zero, [0, 1], [&[point], &[]], location));
     Ok(())
 }
 
@@ -1159,9 +1148,7 @@ mod test {
         );
         assert_eq!(
             r(
-                felt(
-                    "763975897824944497806946001227010133599886598340174017198031710397718335159"
-                ),
+                felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
                 felt(
                     "2805180267536471620369715068237762638204710971142209985448115065526708105983"
                 ),
