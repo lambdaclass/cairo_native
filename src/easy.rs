@@ -204,8 +204,7 @@ where
         engine.register_symbol(
             "cairo_native__libfunc__ec__ec_point_try_new_nz",
             cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
-                as *const fn(*const [[u8; 32]; 2]) -> bool
-                as *mut (),
+                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
         );
     }
 
