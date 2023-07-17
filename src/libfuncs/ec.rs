@@ -75,7 +75,9 @@ where
         EcConcreteLibfunc::StateInit(info) => {
             build_state_init(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::TryNew(_) => todo!(),
+        EcConcreteLibfunc::TryNew(info) => {
+            build_try_new(context, registry, entry, location, helper, metadata, info)
+        }
         EcConcreteLibfunc::UnwrapPoint(info) => {
             build_unwrap_point(context, registry, entry, location, helper, metadata, info)
         }
@@ -778,6 +780,100 @@ where
     Ok(())
 }
 
+pub fn build_try_new<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let ec_point_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 252).into(),
+            IntegerType::new(context, 252).into(),
+        ],
+        false,
+    );
+
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point_ptr = entry
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        get_integer_layout(252).align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    let point = entry
+        .append_operation(llvm::undef(ec_point_ty, location))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            entry.argument(0)?.into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            entry.argument(1)?.into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    entry.append_operation(llvm::store(
+        context,
+        point,
+        point_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    let result = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .unwrap()
+        .libfunc_ec_point_try_new_nz(context, helper, entry, point_ptr, location)?
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(result, [0, 1], [&[point], &[]], location));
+    Ok(())
+}
+
 pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -939,6 +1035,14 @@ mod test {
 
             fn run_test() -> EcState {
                 ec_state_init()
+            }
+        };
+        static ref EC_POINT_TRY_NEW_NZ: (String, Program) = load_cairo! {
+            use core::ec::{ec_point_try_new_nz, EcPoint};
+            use core::zeroable::NonZero;
+
+            fn run_test(x: felt252, y: felt252) -> Option<NonZero<EcPoint>> {
+                ec_point_try_new_nz(x, y)
             }
         };
         static ref EC_POINT_UNWRAP: (String, Program) = load_cairo! {
@@ -1184,6 +1288,25 @@ mod test {
                     "2835232394579952276045648147338966184268723952674536708929458753792035266179"
                 )
             ]]),
+        );
+    }
+
+    #[test]
+    fn ec_point_try_new_nz() {
+        let r = |x, y| run_program(&EC_POINT_TRY_NEW_NZ, "run_test", json!([x, y]));
+
+        assert_eq!(r(felt("0"), felt("0")), json!([[1, []]]));
+        assert_eq!(
+            r(
+                felt("1234"),
+                felt(
+                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
+                )
+            ),
+            json!([[0, [
+                felt("1234"),
+                felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
+            ]]])
         );
     }
 

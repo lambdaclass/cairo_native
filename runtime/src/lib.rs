@@ -111,8 +111,38 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 
             true
         }
-        None => dbg!(false),
+        None => false,
     }
+}
+
+/// Compute `ec_point_try_new_nz(x)`.
+///
+/// # Panics
+///
+/// This function will panic if either operand is out of range for a felt.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
+    point_ptr: NonNull<[[u8; 32]; 2]>,
+) -> bool {
+    let x = FieldElement::from_bytes_be(&{
+        let mut data = point_ptr.as_ref()[0];
+        data.reverse();
+        data
+    })
+    .unwrap();
+    let y = FieldElement::from_bytes_be(&{
+        let mut data = point_ptr.as_ref()[1];
+        data.reverse();
+        data
+    })
+    .unwrap();
+
+    AffinePoint::from_x(x).is_some_and(|point| y == point.y || y == -point.y)
 }
 
 /// Compute `ec_state_add(state, point)` and store the state back.
