@@ -174,7 +174,9 @@ where
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(info) => {
+                registry.get_type(&info.ty)?.layout(registry)?
+            }
             CoreTypeConcrete::Enum(info) => {
                 let tag_layout =
                     get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
@@ -200,14 +202,17 @@ where
                     }))
                 })?
                 .unwrap_or(Layout::from_size_align(0, 1)?),
-            CoreTypeConcrete::Felt252Dict(_) => get_integer_layout(64), // ptr
+            CoreTypeConcrete::Felt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Felt252DictEntry(_) => {
                 get_integer_layout(252)
-                    .extend(Layout::new::<*mut ()>())
+                    .extend(Layout::new::<*mut std::ffi::c_void> > ())
+                    .unwrap()
+                    .0
+                    .extend(Layout::new::<*mut std::ffi::c_void> > ())
                     .unwrap()
                     .0
             }
-            CoreTypeConcrete::SquashedFelt252Dict(_) => get_integer_layout(64), // ptr
+            CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
