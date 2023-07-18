@@ -14,7 +14,6 @@ use num_bigint::Sign;
 use serde::{de, ser::SerializeMap, Deserializer, Serializer};
 use std::alloc::Layout;
 use std::ops::Neg;
-use std::str::FromStr;
 use std::{collections::HashMap, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
@@ -152,7 +151,6 @@ where
         let elem_layout = elem_ty.layout(self.registry).unwrap().pad_to_align();
 
         let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
-        // let mut value_map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
 
         // next key must be called before next_value
 
@@ -178,7 +176,7 @@ where
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    value.as_ptr(),
+                    value.cast::<u8>().as_ptr(),
                     value_malloc_ptr.as_ptr().cast(),
                     elem_layout.size(),
                 );
@@ -187,25 +185,23 @@ where
             value_map.insert(key, value_malloc_ptr);
         }
 
-        //let value_map_ptr = value_map as *mut _;
-
         let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> = self
             .arena
-            .alloc_layout(Layout::new::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>())
+            .alloc_layout(Layout::new::<
+                NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>,
+            >())
             .cast();
 
-        let x: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = self
+        let map_ptr: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = self
             .arena
             .alloc_layout(
                 Layout::new::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>().pad_to_align(),
             )
             .cast();
 
-        // let value_ptr = Box::into_raw(Box::new(value_map));
-
         unsafe {
-            std::ptr::write(x.as_ptr(), value_map);
-            std::ptr::write(target.as_ptr(), x);
+            std::ptr::write(map_ptr.as_ptr(), value_map);
+            std::ptr::write(target.as_ptr(), map_ptr);
         }
 
         Ok(target.cast())
