@@ -22,11 +22,7 @@ where
     D: Deserializer<'de>,
 {
     let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
-
-    let value = u128::deserialize(deserializer)?;
-    let value = (value << 64) | (value >> 64);
-    *ptr.cast::<u128>().as_mut() = value;
-
+    *ptr.cast::<u128>().as_mut() = u128::deserialize(deserializer)?;
     Ok(ptr)
 }
 
@@ -43,7 +39,6 @@ where
     S: Serializer,
 {
     let value = *ptr.cast::<u128>().as_ref();
-    let value = (value << 64) | (value >> 64);
     value.serialize(serializer)
 }
 
@@ -59,7 +54,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
-    let value = *ptr.cast::<u128>().as_ref();
-    let value = (value << 64) | (value >> 64);
-    fmt::Debug::fmt(&value, f)
+    fmt::Debug::fmt(ptr.cast::<u128>().as_ref(), f)
 }
