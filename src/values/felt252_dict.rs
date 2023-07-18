@@ -14,7 +14,6 @@ use num_bigint::Sign;
 use serde::{de, ser::SerializeMap, Deserializer, Serializer};
 use std::alloc::Layout;
 use std::ops::Neg;
-use std::str::FromStr;
 use std::{collections::HashMap, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
