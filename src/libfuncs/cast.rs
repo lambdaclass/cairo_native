@@ -225,7 +225,11 @@ mod test {
     #[test]
     fn downcast() {
         let r = |v8, v16, v32, v64, v128| {
-            run_program(&DOWNCAST, "run_test", json!([(), (), v8, v16, v32, v64, v128]))
+            run_program(
+                &DOWNCAST,
+                "run_test",
+                json!([(), (), v8, v16, v32, v64, v128]),
+            )
         };
 
         assert_eq!(
