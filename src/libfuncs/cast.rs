@@ -20,10 +20,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith::{self, CmpiPredicate},
-        llvm,
-    },
+    dialect::arith::{self, CmpiPredicate},
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
@@ -70,22 +67,38 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let src_ty = registry
+        .get_type(&info.from_ty)?
+        .build(context, helper, registry, metadata)?;
     let dst_ty = registry
         .get_type(&info.to_ty)?
         .build(context, helper, registry, metadata)?;
     assert!(info.from_nbits >= info.to_nbits);
 
     if info.from_nbits == info.to_nbits {
-        entry.append_operation(helper.br(
-            0,
-            &[entry.argument(0)?.into(), entry.argument(1)?.into()],
+        let k0 = entry
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        entry.append_operation(helper.cond_br(
+            k0,
+            [1, 0],
+            [
+                &[entry.argument(0)?.into()],
+                &[entry.argument(0)?.into(), entry.argument(1)?.into()],
+            ],
             location,
         ));
     } else {
         let k1 = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, dst_ty).into(),
+                IntegerAttribute::new(1, src_ty).into(),
                 location,
             ))
             .result(0)?
@@ -94,7 +107,7 @@ where
         let n_bits = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(info.to_nbits.try_into()?, dst_ty).into(),
+                IntegerAttribute::new(info.to_nbits.try_into()?, src_ty).into(),
                 location,
             ))
             .result(0)?
@@ -116,16 +129,16 @@ where
             .into();
 
         let result = entry
-            .append_operation(arith::trunci(max_value_plus_one, dst_ty, location))
+            .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
             .result(0)?
             .into();
 
         entry.append_operation(helper.cond_br(
             is_in_range,
-            [1, 0],
+            [0, 1],
             [
-                &[entry.argument(0)?.into()],
                 &[entry.argument(0)?.into(), result],
+                &[entry.argument(0)?.into()],
             ],
             location,
         ));
@@ -225,22 +238,19 @@ mod test {
     #[test]
     fn downcast() {
         let r = |v8, v16, v32, v64, v128| {
-            run_program(
-                &DOWNCAST,
-                "run_test",
-                json!([(), (), v8, v16, v32, v64, v128]),
-            )
+            run_program(&DOWNCAST, "run_test", json!([(), v8, v16, v32, v64, v128]))
         };
 
         assert_eq!(
-            r(
-                0xFFu8,
-                0xFFFFu16,
-                0xFFFFFFFFu32,
-                0xFFFFFFFFFFFFFFFFu64,
-                0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu128
-            ),
-            json!([(), []])
+            r(u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX),
+            json!([
+                (),
+                [
+                    [[1, []], [1, []], [1, []], [1, []], [0, u8::MAX]],
+                    [[1, []], [1, []], [1, []], [0, u16::MAX]],
+                    [[1, []], [1, []], [0, u16::MAX]],
+                ]
+            ])
         );
     }
 
@@ -250,26 +260,14 @@ mod test {
             run_program(
                 &UPCAST,
                 "run_test",
-                json!([
-                    0xFFu8,
-                    0xFFFFu16,
-                    0xFFFFFFFFu32,
-                    0xFFFFFFFFFFFFFFFFu64,
-                    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu128
-                ])
+                json!([u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX])
             ),
             json!([[
-                [0xFFu8],
-                [0xFFu8, 0xFFFFu16],
-                [0xFFu8, 0xFFFFu16, 0xFFFFFFFFu32],
-                [0xFFu8, 0xFFFFu16, 0xFFFFFFFFu32, 0xFFFFFFFFFFFFFFFFu64],
-                [
-                    0xFFu8,
-                    0xFFFFu16,
-                    0xFFFFFFFFu32,
-                    0xFFFFFFFFFFFFFFFFu64,
-                    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu128
-                ],
+                [u8::MAX],
+                [u8::MAX, u16::MAX],
+                [u8::MAX, u16::MAX, u32::MAX],
+                [u8::MAX, u16::MAX, u32::MAX, u64::MAX],
+                [u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX],
             ]])
         );
     }
