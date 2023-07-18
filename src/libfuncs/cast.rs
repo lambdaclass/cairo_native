@@ -28,6 +28,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -53,6 +54,7 @@ where
     }
 }
 
+/// Generate MLIR operations for the `downcast` libfunc.
 pub fn build_downcast<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -132,6 +134,7 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `upcast` libfunc.
 pub fn build_upcast<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,

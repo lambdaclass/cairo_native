@@ -434,15 +434,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
-    };
+    use crate::utils::test::{felt, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign};
     use serde_json::json;
-    use std::ops::Neg;
 
     lazy_static! {
         static ref U128_BYTE_REVERSE: (String, Program) = load_cairo! {
@@ -525,19 +520,6 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
-
     #[test]
     fn u128_byte_reverse() {
         let r = |value| run_program(&U128_BYTE_REVERSE, "run_test", json!([(), value]));
@@ -567,7 +549,7 @@ mod test {
     fn u128_safe_divmod() {
         let r = |lhs, rhs| run_program(&U128_SAFE_DIVMOD, "run_test", json!([(), lhs, rhs]));
 
-        let u128_is_zero = json!([f("2161814014192570802224")]);
+        let u128_is_zero = json!([felt("2161814014192570802224")]);
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
         assert_eq!(r(0, 0), json!([(), [1, [[], u128_is_zero]]]));
@@ -597,15 +579,15 @@ mod test {
     fn u128_from_felt252() {
         let r = |value| run_program(&U128_FROM_FELT252, "run_test", json!([(), value]));
 
-        let max_u128 = f("340282366920938463463374607431768211455");
-        let max_u128_plus_1 = f("340282366920938463463374607431768211456");
+        let max_u128 = felt("340282366920938463463374607431768211455");
+        let max_u128_plus_1 = felt("340282366920938463463374607431768211456");
 
-        assert_eq!(r(f("0")), json!([(), [0, 0u128]]));
-        assert_eq!(r(f("1")), json!([(), [0, 1u128]]));
+        assert_eq!(r(felt("0")), json!([(), [0, 0u128]]));
+        assert_eq!(r(felt("1")), json!([(), [0, 1u128]]));
         assert_eq!(r(max_u128), json!([(), [0, u128::MAX]]));
         assert_eq!(r(max_u128_plus_1), json!([(), [1, [1u128, 0u128]]]));
         assert_eq!(
-            r(f("-1")),
+            r(felt("-1")),
             json!([(), [1, [10633823966279327296825105735305134080u128, 0u128]]])
         );
     }
@@ -622,7 +604,7 @@ mod test {
     fn u128_add() {
         let r = |lhs, rhs| run_program(&U128_ADD, "run_test", json!([(), lhs, rhs]));
 
-        let overflow_error = json!([f("39878429859757942499084499860145094553463")]);
+        let overflow_error = json!([felt("39878429859757942499084499860145094553463")]);
 
         assert_eq!(r(0u128, 0u128), json!([(), [0, [0u128]]]));
         assert_eq!(r(0u128, 1u128), json!([(), [0, [1u128]]]));
@@ -644,7 +626,7 @@ mod test {
     fn u128_sub() {
         let r = |lhs, rhs| run_program(&U128_SUB, "run_test", json!([(), lhs, rhs]));
 
-        let overflow_error = json!([f("39878429859763533771555484554338820190071")]);
+        let overflow_error = json!([felt("39878429859763533771555484554338820190071")]);
 
         assert_eq!(r(0u128, 0u128), json!([(), [0, [0u128]]]));
         assert_eq!(r(0u128, 1u128), json!([(), [1, [[], overflow_error]]]));
@@ -663,10 +645,10 @@ mod test {
     fn u128_to_felt252() {
         let r = |value| run_program(&U128_TO_FELT252, "run_test", json!([value]));
 
-        let max_u128 = f("340282366920938463463374607431768211455");
+        let max_u128 = felt("340282366920938463463374607431768211455");
 
-        assert_eq!(r(0u128), json!([f("0")]));
-        assert_eq!(r(1u128), json!([f("1")]));
+        assert_eq!(r(0u128), json!([felt("0")]));
+        assert_eq!(r(1u128), json!([felt("1")]));
         assert_eq!(r(u128::MAX), json!([max_u128]));
     }
 }
