@@ -1,4 +1,6 @@
 use super::{ValueBuilder, ValueSerializer};
+use crate::types::felt252::PRIME;
+use crate::values::ValueDeserializer;
 use crate::{types::TypeBuilder, utils::debug_with};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -6,15 +8,20 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use num_bigint::BigInt;
 use num_bigint::BigUint;
-use serde::{ser::SerializeMap, Deserializer, Serializer};
+use num_bigint::Sign;
+use serde::{de, ser::SerializeMap, Deserializer, Serializer};
+use std::alloc::Layout;
+use std::ops::Neg;
+use std::str::FromStr;
 use std::{collections::HashMap, fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
-    _deserializer: D,
-    _arena: &Bump,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
-    _info: &InfoAndTypeConcreteType,
+    deserializer: D,
+    arena: &Bump,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    info: &InfoAndTypeConcreteType,
 ) -> Result<NonNull<()>, D::Error>
 where
     TType: GenericType,
@@ -22,7 +29,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    todo!()
+    deserializer.deserialize_map(Visitor::new(arena, registry, info))
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -57,6 +64,8 @@ where
         )?;
     }
 
+    Box::leak(map); // we must leak to avoid a double free
+
     ser.end()
 }
 
@@ -88,4 +97,117 @@ where
     }
 
     fmt.finish()
+}
+
+struct Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    arena: &'a Bump,
+    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    info: &'a InfoAndTypeConcreteType,
+}
+
+impl<'a, TType, TLibfunc> Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
+{
+    fn new(
+        arena: &'a Bump,
+        registry: &'a ProgramRegistry<TType, TLibfunc>,
+        info: &'a InfoAndTypeConcreteType,
+    ) -> Self {
+        Self {
+            arena,
+            registry,
+            info,
+        }
+    }
+}
+
+impl<'a, 'de, TType, TLibfunc> de::Visitor<'de> for Visitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
+{
+    type Value = NonNull<()>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "A map containing a sequence of key values.")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::MapAccess<'de>,
+    {
+        type ParamDeserializer<'a, TType, TLibfunc> =
+            <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
+
+        let elem_ty = self.registry.get_type(&self.info.ty).unwrap();
+        let elem_layout = elem_ty.layout(self.registry).unwrap().pad_to_align();
+
+        let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
+        // let mut value_map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
+
+        // next key must be called before next_value
+
+        while let Some(key) = map.next_key()? {
+            let key: String = key;
+            let key = key.parse::<BigInt>().unwrap();
+            let key = match key.sign() {
+                Sign::Minus => &*PRIME - key.neg().to_biguint().unwrap(),
+                _ => key.to_biguint().unwrap(),
+            };
+            let mut key = key.to_bytes_le();
+            key.resize(32, 0);
+            let key: [u8; 32] = key.try_into().unwrap();
+
+            let value = map.next_value_seed(ParamDeserializer::<TType, TLibfunc>::new(
+                self.arena,
+                self.registry,
+                elem_ty,
+            ))?;
+
+            let value_malloc_ptr =
+                NonNull::new(unsafe { libc::malloc(dbg!(elem_layout.size())) }).unwrap();
+
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    value.as_ptr(),
+                    value_malloc_ptr.as_ptr().cast(),
+                    elem_layout.size(),
+                );
+            }
+
+            value_map.insert(key, value_malloc_ptr);
+        }
+
+        //let value_map_ptr = value_map as *mut _;
+
+        let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> = self
+            .arena
+            .alloc_layout(Layout::new::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>())
+            .cast();
+
+        let x: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = self
+            .arena
+            .alloc_layout(
+                Layout::new::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>().pad_to_align(),
+            )
+            .cast();
+
+        // let value_ptr = Box::into_raw(Box::new(value_map));
+
+        unsafe {
+            std::ptr::write(x.as_ptr(), value_map);
+            std::ptr::write(target.as_ptr(), x);
+        }
+
+        Ok(target.cast())
+    }
 }
