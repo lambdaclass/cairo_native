@@ -24,6 +24,7 @@ where
     let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
 
     let value = u128::deserialize(deserializer)?;
+    let value = (value << 64) | (value >> 64);
     *ptr.cast::<u128>().as_mut() = value;
 
     Ok(ptr)
@@ -41,7 +42,9 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    ptr.cast::<u128>().as_ref().serialize(serializer)
+    let value = *ptr.cast::<u128>().as_ref();
+    let value = (value << 64) | (value >> 64);
+    value.serialize(serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
@@ -56,5 +59,7 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
-    fmt::Debug::fmt(ptr.cast::<u128>().as_ref(), f)
+    let value = *ptr.cast::<u128>().as_ref();
+    let value = (value << 64) | (value >> 64);
+    fmt::Debug::fmt(&value, f)
 }

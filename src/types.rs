@@ -72,6 +72,11 @@ where
     /// Used in both the compiler and the interface when calling the compiled code.
     fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error>;
 
+    /// If the type is an integer (felt not included) type, return its width in bits.
+    ///
+    /// TODO: How is it used?
+    fn integer_width(&self) -> Option<usize>;
+
     /// If the type is a variant type, return all possible variants.
     ///
     /// TODO: How is it used?
@@ -207,6 +212,17 @@ where
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
         })
+    }
+
+    fn integer_width(&self) -> Option<usize> {
+        match self {
+            Self::Uint8(_) => Some(8),
+            Self::Uint16(_) => Some(16),
+            Self::Uint32(_) => Some(32),
+            Self::Uint64(_) => Some(64),
+            Self::Uint128(_) => Some(128),
+            _ => None,
+        }
     }
 
     fn variants(&self) -> Option<&[ConcreteTypeId]> {
