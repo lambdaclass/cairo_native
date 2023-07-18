@@ -374,7 +374,9 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
+    #[ignore]
     fn test_alignment_compatibility_u128() {
+        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
