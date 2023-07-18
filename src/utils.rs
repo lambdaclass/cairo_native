@@ -176,8 +176,8 @@ macro_rules! codegen_ret_extr {
 }
 pub(crate) use codegen_ret_extr;
 
+#[cfg(feature = "with-runtime")]
 pub fn register_runtime_symbols(engine: &ExecutionEngine) {
-    #[cfg(feature = "with-runtime")]
     unsafe {
         engine.register_symbol(
             "cairo_native__libfunc__debug__print",
@@ -341,6 +341,7 @@ pub mod test {
 
         let engine = ExecutionEngine::new(&module, 0, &[], false);
 
+        #[cfg(feature = "with-runtime")]
         register_runtime_symbols(&engine);
 
         crate::execute::<CoreType, CoreLibfunc, _, _>(

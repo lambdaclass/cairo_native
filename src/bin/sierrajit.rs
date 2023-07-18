@@ -111,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
+    #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
     // Initialize arguments and return values.
