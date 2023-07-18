@@ -1,6 +1,4 @@
 //! # `felt252` dictionary libfuncs
-//!
-//! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{

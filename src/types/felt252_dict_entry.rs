@@ -1,6 +1,15 @@
 //! # `felt252` dictionary entry type
 //!
-//! TODO
+//! The entry type returning when getting a value from a dictionary.
+//!
+//! It is represented as the following struct:
+//!
+//! | Index | Type           | Description                      |
+//! | ----- | -------------- | -----------------------------    |
+//! |   0   | `i252>`        | The entry key.                   |
+//! |   1   | `!llvm.ptr`    | Pointer to the entry value.      |
+//! |   2   | `!llvm.ptr`    | Pointer to the dictionary (rust) |
+//!
 
 use super::TypeBuilder;
 use crate::{

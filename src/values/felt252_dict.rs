@@ -191,7 +191,9 @@ where
 
         let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> = self
             .arena
-            .alloc_layout(Layout::new::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>())
+            .alloc_layout(Layout::new::<
+                NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>,
+            >())
             .cast();
 
         let x: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = self

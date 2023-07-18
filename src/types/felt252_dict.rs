@@ -1,6 +1,9 @@
 //! # `felt252` dictionary type
 //!
-//! TODO
+//! A key value storage for values whose type implement Copy. The key is always a felt.
+//!
+//! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
+//! insert and get elements.
 
 use super::TypeBuilder;
 use crate::{
