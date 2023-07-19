@@ -274,4 +274,19 @@ mod test {
         let result = run_program(&program, "run_test", json!([0]));
         assert_eq!(result, json!([99]));
     }
+
+    #[test]
+    fn run_null_serialize_roundtrip() {
+        let program = load_cairo!(
+            fn run_test(x: Nullable<u8>) -> Nullable<u8> {
+                x
+            }
+        );
+
+        let result = run_program(&program, "run_test", json!([[1, 2]]));
+        assert_eq!(result, json!([[1, 2]]));
+
+        let result = run_program(&program, "run_test", json!([[0]]));
+        assert_eq!(result, json!([[0]]));
+    }
 }
