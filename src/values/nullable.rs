@@ -180,7 +180,7 @@ where
         dbg!(target_ptr);
 
         unsafe {
-            std::ptr::write(target_ptr.as_ptr().cast(), inner_ptr);
+            std::ptr::write(target_ptr.as_ptr().cast(), value);
         }
         dbg!(target_ptr);
         dbg!("end visitor some");
