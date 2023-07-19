@@ -33,49 +33,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    deserializer.deserialize_seq(Visitor::new(arena, registry, info))
-
-    /*
-    let inner_ty = registry.get_type(&info.ty).unwrap();
-    let inner_layout = registry
-        .get_type(&info.ty)
-        .unwrap()
-        .layout(registry)
-        .unwrap();
-    let ptr: NonNull<*mut ()> = arena.alloc_layout(Layout::new::<*mut ()>()).cast();
-
-    type ParamDeserializer<'a, TType, TLibfunc> =
-        <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
-
-    let inner_de = ParamDeserializer::<TType, TLibfunc>::new(arena, registry, inner_ty);
-
-    let seq = deserializer.deserialize_tuple(2, visitor)
-
-    let tag = u8::deserialize(deserializer)?;
-
-    match tag {
-        0 => {
-            // null
-            std::ptr::write(ptr.as_ptr(), null_mut());
-        }
-        1 => {
-            let value = inner_de.deserialize(deserializer)?;
-
-            let inner_ptr: *mut () = unsafe { libc::malloc(inner_layout.size()).cast() };
-
-            std::ptr::write(inner_ptr.cast(), *value.as_ptr());
-
-            std::ptr::copy_nonoverlapping(
-                value.cast::<u8>().as_ptr(),
-                inner_ptr.cast(),
-                inner_layout.size(),
-            );
-        }
-        _ => panic!("invalid tag"),
-    };
-
-    Ok(ptr.cast())
-     */
+    deserializer.deserialize_option(Visitor::new(arena, registry, info))
 }
 
 pub unsafe fn serialize<TType, TLibfunc, S>(
@@ -100,27 +58,23 @@ where
     type ParamSerializer<'a, TType, TLibfunc> =
         <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
 
-    let ptr: NonNull<*mut ()> = ptr.cast();
+    let ptr: NonNull<*mut u8> = ptr.cast();
     dbg!("reached");
     dbg!(ptr);
     let data_ptr = *ptr.as_ptr();
     dbg!("reached 2");
     dbg!(data_ptr);
-    let seq_len: usize = (!data_ptr.is_null()) as usize + 1usize;
 
-    let mut ser = serializer.serialize_seq(Some(seq_len))?;
-
-    ser.serialize_element(&(!data_ptr.is_null() as u8))?;
-
-    if !data_ptr.is_null() {
-        ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
+    if data_ptr.is_null() {
+        serializer.serialize_none()
+    } else {
+        //let param_ser = ParamSerializer::<TType, TLibfunc>::new(data_ptr, registry, inner_ty);
+        serializer.serialize_some(&ParamSerializer::<TType, TLibfunc>::new(
             NonNull::new(data_ptr).unwrap().cast(),
             registry,
             inner_ty,
-        ))?;
+        ))
     }
-
-    ser.end()
 }
 
 struct Visitor<'a, TType, TLibfunc>
@@ -165,9 +119,30 @@ where
         write!(f, "An array of values with the same type.")
     }
 
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_none<E>(self) -> Result<Self::Value, E>
     where
-        A: de::SeqAccess<'de>,
+        E: de::Error,
+    {
+        let inner_ptr: NonNull<*mut u8> = self.arena.alloc_layout(Layout::new::<*mut u8>()).cast();
+        let target_ptr: NonNull<NonNull<*mut u8>> = self
+            .arena
+            .alloc_layout(Layout::new::<NonNull<*mut u8>>())
+            .cast();
+        dbg!(target_ptr);
+
+        unsafe {
+            std::ptr::write::<*mut ()>(inner_ptr.as_ptr().cast(), null_mut());
+            std::ptr::write(target_ptr.as_ptr(), inner_ptr);
+        }
+        dbg!(target_ptr);
+        dbg!("end visitor null");
+
+        Ok(target_ptr.cast())
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
     {
         let inner_ty = self.registry.get_type(&self.info.ty).unwrap();
         let inner_layout = self
@@ -176,49 +151,39 @@ where
             .unwrap()
             .layout(self.registry)
             .unwrap();
-        let mut ptr: *mut () = null_mut();
 
         type ParamDeserializer<'a, TType, TLibfunc> =
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
 
-        let tag: u8 = seq.next_element().unwrap().unwrap();
+        let param_de =
+            ParamDeserializer::<TType, TLibfunc>::new(self.arena, self.registry, inner_ty);
 
-        match dbg!(tag) {
-            0 => {
-                // null
-                // unsafe { std::ptr::write(ptr.as_ptr(), null_mut()) };
-            }
-            1 => {
-                let value = seq
-                    .next_element_seed(ParamDeserializer::<TType, TLibfunc>::new(
-                        self.arena,
-                        self.registry,
-                        inner_ty,
-                    ))?
-                    .unwrap();
+        let value = param_de.deserialize(deserializer)?;
 
-                ptr = unsafe { libc::malloc(inner_layout.size()).cast() };
+        let inner_ptr: NonNull<()> = self.arena.alloc_layout(inner_layout).cast();
+        //let ptr: *mut u8 = unsafe { libc::malloc(inner_layout.size()).cast() };
 
-                unsafe {
-                    // copy to allocated ptr
-                    std::ptr::copy_nonoverlapping(
-                        value.as_ptr().cast::<u8>(),
-                        ptr.cast(),
-                        inner_layout.size(),
-                    );
-                }
-            }
-            _ => panic!("invalid tag"),
-        };
+        unsafe {
+            // copy to allocated ptr
+            std::ptr::copy_nonoverlapping(
+                value.as_ptr().cast::<u8>(),
+                inner_ptr.as_ptr().cast(),
+                inner_layout.size(),
+            );
+            // std::ptr::write(inner_ptr.as_ptr(), ptr);
+        }
 
-        let target_ptr: NonNull<*mut ()> = self.arena.alloc_layout(Layout::new::<*mut ()>()).cast();
+        let target_ptr: NonNull<NonNull<*mut u8>> = self
+            .arena
+            .alloc_layout(Layout::new::<NonNull<*mut u8>>())
+            .cast();
         dbg!(target_ptr);
 
         unsafe {
-            std::ptr::write::<*mut ()>(target_ptr.as_ptr().cast(), ptr);
+            std::ptr::write(target_ptr.as_ptr().cast(), inner_ptr);
         }
         dbg!(target_ptr);
-        dbg!("end visitor");
+        dbg!("end visitor some");
 
         Ok(target_ptr.cast())
     }

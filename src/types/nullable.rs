@@ -25,20 +25,16 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
-    metadata: &mut MetadataStorage,
-    info: &InfoAndTypeConcreteType,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _metadata: &mut MetadataStorage,
+    _info: &InfoAndTypeConcreteType,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    // nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
-    let inner = registry
-        .get_type(&info.ty)?
-        .build(context, module, registry, metadata)?;
-
-    Ok(llvm::r#type::pointer(inner, 0))
+    // nullable is represented as a pointer, like a box, used to check if its null (when it can be null).
+    Ok(llvm::r#type::opaque_pointer(context))
 }

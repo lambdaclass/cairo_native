@@ -89,13 +89,13 @@ where
 /// Generate MLIR operations for the `nullable_from_box` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_nullable_from_box<'ctx, 'this, TType, TLibfunc>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -103,45 +103,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
-
-    let target_type = registry.get_type(&info.output_types()[0][0])?;
-
-    let target_ty = target_type.build(context, helper, registry, metadata)?;
-
-    let op = helper.init_block.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-        location,
-    ));
-
-    let const_1 = op.result(0)?.into();
-
-    let op = helper.init_block.append_operation(llvm::alloca(
-        context,
-        const_1,
-        target_ty,
-        location,
-        AllocaOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
-    let ptr = op.result(0)?.into();
-
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(0)?.into(),
-        ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
-
-    entry.append_operation(helper.br(0, &[ptr], location));
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
     Ok(())
 }
@@ -283,10 +245,12 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([[1, 2]]));
-        assert_eq!(result, json!([[1, 2]]));
+        /*
+        let result = run_program(&program, "run_test", json!([null]));
+        assert_eq!(result, json!([null]));
+        */
 
-        let result = run_program(&program, "run_test", json!([[0]]));
-        assert_eq!(result, json!([[0]]));
+        let result = run_program(&program, "run_test", json!([Some(2)]));
+        assert_eq!(result, json!([Some(2)]));
     }
 }

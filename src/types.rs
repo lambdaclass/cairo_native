@@ -150,7 +150,7 @@ where
                     .0
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
+            CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
