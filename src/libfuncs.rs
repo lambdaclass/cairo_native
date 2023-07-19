@@ -158,7 +158,9 @@ where
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Nullable(_) => todo!(),
+            Self::Nullable(selector) => self::nullable::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::UnwrapNonZero(_) => todo!(),
             Self::UnconditionalJump(info) => self::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,

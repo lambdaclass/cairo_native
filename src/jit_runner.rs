@@ -138,7 +138,7 @@ where
         A: serde::de::SeqAccess<'de>,
     {
         let mut param_ptr_list = Vec::with_capacity(self.params.len());
-        for param_type_id in self.params {
+        for (idx, param_type_id) in self.params.iter().enumerate() {
             let param_ty = self.registry.get_type(param_type_id).unwrap();
 
             type ParamDeserializer<'a, TType, TLibfunc> =
@@ -150,7 +150,18 @@ where
 
             let ptr = seq
                 .next_element_seed::<ParamDeserializer<TType, TLibfunc>>(deserializer)?
-                .unwrap();
+                .unwrap_or_else(|| {
+                    let param_list: Vec<_> = self
+                        .params
+                        .iter()
+                        .map(|x| x.debug_name.as_ref().unwrap().as_str()).collect();
+
+                    panic!(
+                        "Missing input parameter of type '{}' (param index {idx}), required parameters: {:?}",
+                        param_type_id.debug_name.as_ref().unwrap().as_str(),
+                        param_list
+                    );
+                });
 
             param_ptr_list.push(ptr);
         }

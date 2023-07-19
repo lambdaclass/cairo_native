@@ -110,7 +110,9 @@ where
                 self::gas_builtin::build(context, module, registry, metadata, info)
             }
             Self::NonZero(info) => self::non_zero::build(context, module, registry, metadata, info),
-            Self::Nullable(_) => todo!(),
+            Self::Nullable(info) => {
+                self::nullable::build(context, module, registry, metadata, info)
+            }
             Self::Pedersen(info) => {
                 self::pedersen::build(context, module, registry, metadata, info)
             }
@@ -162,7 +164,7 @@ where
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
