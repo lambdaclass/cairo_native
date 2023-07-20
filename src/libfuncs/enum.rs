@@ -109,7 +109,7 @@ where
             ),
             variant_tys[info.index].0,
         ],
-        true,
+        false,
     );
 
     let op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
@@ -302,7 +302,7 @@ where
                 ),
                 payload_ty,
             ],
-            true,
+            false,
         );
 
         let op3 = block.append_operation(
