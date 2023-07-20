@@ -116,7 +116,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 # Tasks, TODOs, Roadmap
 
 ## Implemented Library Functions
-- [ ] `alloc_local`
+- [x] `alloc_local`
 - [x] `array_append`
 - [x] `array_get`
 - [x] `array_len`
@@ -163,10 +163,10 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `felt252_add_const` (4)
 - [x] `felt252_add`
 - [x] `felt252_const`
-- [ ] `felt252_dict_entry_finalize`
-- [ ] `felt252_dict_entry_get`
-- [ ] `felt252_dict_new`
-- [ ] `felt252_dict_squash`
+- [x] `felt252_dict_entry_finalize`
+- [x] `felt252_dict_entry_get`
+- [x] `felt252_dict_new`
+- [x] `felt252_dict_squash`
 - [x] `felt252_div_const` (4)
 - [x] `felt252_div` (4)
 - [x] `felt252_is_zero`
@@ -174,7 +174,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `felt252_mul`
 - [x] `felt252_sub_const` (4)
 - [x] `felt252_sub`
-- [ ] `finalize_locals`
+- [x] `finalize_locals`
 - [x] `function_call`
 - [ ] `get_available_gas`
 - [ ] `get_block_hash_syscall` (StarkNet)
@@ -227,7 +227,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `storage_base_address_from_felt252` (StarkNet)
 - [ ] `storage_read_syscall` (StarkNet)
 - [ ] `storage_write_syscall` (StarkNet)
-- [ ] `store_local`
+- [x] `store_local`
 - [x] `store_temp`
 - [x] `struct_construct`
 - [x] `struct_deconstruct`

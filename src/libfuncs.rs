@@ -173,8 +173,12 @@ where
             Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252Dict(_) => todo!(),
-            Self::Felt252DictEntry(_) => todo!(),
+            Self::Felt252Dict(selector) => self::felt252_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Pedersen(selector) => self::pedersen::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),

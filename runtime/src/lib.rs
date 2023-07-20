@@ -4,7 +4,7 @@ use cairo_felt::Felt252;
 use cairo_lang_runner::short_string::as_cairo_short_string;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
-use std::{fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 /// Based on `cairo-lang-runner`'s implementation.
 ///
@@ -81,6 +81,60 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_be());
+}
+
+/// Allocates a new dictionary. Internally a rust hashmap: `HashMap<[u8; 32], NonNull<()>`
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
+    let map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
+    Box::into_raw(map) as _
+}
+
+/// Gets the value for a given key, the returned pointer is null if not found.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_get(
+    map: *mut std::ffi::c_void,
+    key: &[u8; 32],
+) -> *mut std::ffi::c_void {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+
+    if let Some(v) = (*ptr).get(key) {
+        v.as_ptr()
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
+/// Inserts the provided key value. Returning the old one or nullptr if there was none.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_insert(
+    map: *mut std::ffi::c_void,
+    key: &[u8; 32],
+    value: NonNull<std::ffi::c_void>,
+) -> *mut std::ffi::c_void {
+    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+    let old_ptr = (*ptr).insert(*key, value);
+
+    if let Some(v) = old_ptr {
+        v.as_ptr()
+    } else {
+        std::ptr::null_mut()
+    }
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.

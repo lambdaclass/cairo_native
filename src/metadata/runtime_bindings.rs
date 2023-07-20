@@ -24,6 +24,9 @@ enum RuntimeBinding {
     EcStateAdd,
     EcStateAddMul,
     EcStateTryFinalizeNz,
+    DictNew,
+    DictGet,
+    DictInsert,
 }
 
 /// Runtime library bindings metadata.
@@ -414,6 +417,150 @@ impl RuntimeBindingsMeta {
             ),
             &[point_ptr, state_ptr],
             &[IntegerType::new(context, 1).into()],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_alloc_new()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_alloc_new<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictNew) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__alloc_dict"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[], &[llvm::r#type::opaque_pointer(context)])
+                        .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__alloc_dict"),
+            &[],
+            &[llvm::r#type::opaque_pointer(context)],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_get()` function.
+    ///
+    /// Gets the value for a given key, the returned pointer is null if not found.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_get<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        dict_ptr: Value<'c, 'a>, // ptr to the dict
+        key_ptr: Value<'c, 'a>,  // key must be a ptr to felt252
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictGet) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_get"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                        ],
+                        &[llvm::r#type::opaque_pointer(context)],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
+            &[dict_ptr, key_ptr],
+            &[llvm::r#type::opaque_pointer(context)],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_insert()` function.
+    ///
+    /// Inserts the provided key value. Returning the old one or nullptr if there was none.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_insert<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        dict_ptr: Value<'c, 'a>,  // ptr to the dict
+        key_ptr: Value<'c, 'a>,   // key must be a ptr to felt252
+        value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictInsert) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_insert"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::opaque_pointer(context),
+                        ],
+                        &[llvm::r#type::opaque_pointer(context)],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
+            &[dict_ptr, key_ptr, value_ptr],
+            &[llvm::r#type::opaque_pointer(context)],
             location,
         )))
     }
