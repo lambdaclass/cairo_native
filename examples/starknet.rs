@@ -27,7 +27,7 @@ struct SyscallHandler;
 impl StarkNetSyscallHandler for SyscallHandler {
     fn get_block_hash(&self, block_number: u64) -> SyscallResult<cairo_felt::Felt252> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
-        Ok(todo!())
+        todo!()
     }
 
     fn get_execution_info(&self) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
@@ -325,7 +325,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         engine.register_symbol(
             "cairo_native__libfunc_pedersen",
-            cairo_native_runtime::cairo_native__libfunc_pedersen
+            cairo_native_runtime::cairo_native__libfunc__pedersen
                 as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
         );
     }
