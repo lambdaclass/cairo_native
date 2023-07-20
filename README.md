@@ -145,16 +145,16 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [ ] `downcast`
 - [x] `drop` (3)
 - [x] `dup` (3)
-- [ ] `ec_neg`
-- [ ] `ec_point_from_x_nz`
-- [ ] `ec_point_is_zero`
-- [ ] `ec_point_try_new_nz`
-- [ ] `ec_point_unwrap`
-- [ ] `ec_point_zero`
-- [ ] `ec_state_add_mul`
-- [ ] `ec_state_add`
-- [ ] `ec_state_init`
-- [ ] `ec_state_try_finalize_nz`
+- [x] `ec_neg`
+- [x] `ec_point_from_x_nz`
+- [x] `ec_point_is_zero`
+- [x] `ec_point_try_new_nz`
+- [x] `ec_point_unwrap`
+- [x] `ec_point_zero`
+- [x] `ec_state_add_mul`
+- [x] `ec_state_add`
+- [x] `ec_state_init`
+- [x] `ec_state_try_finalize_nz`
 - [ ] `emit_event_syscall` (StarkNet)
 - [x] `enable_ap_tracking`
 - [x] `enum_init`

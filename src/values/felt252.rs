@@ -1,5 +1,8 @@
 use super::ValueBuilder;
-use crate::types::{felt252::PRIME, TypeBuilder};
+use crate::{
+    types::{felt252::PRIME, TypeBuilder},
+    utils::get_integer_layout,
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
@@ -8,7 +11,7 @@ use cairo_lang_sierra::{
 };
 use num_bigint::BigUint;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{alloc::Layout, fmt, ptr::NonNull};
+use std::{fmt, ptr::NonNull};
 
 pub unsafe fn deserialize<'de, TType, TLibfunc, D>(
     deserializer: D,
@@ -22,9 +25,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    let ptr = arena
-        .alloc_layout(Layout::from_size_align(32, 8).unwrap())
-        .cast();
+    let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
     let data = <[u32; 8] as Deserialize>::deserialize(deserializer)?;
     assert!(BigUint::new(data.to_vec()) < *PRIME);
