@@ -162,7 +162,9 @@ where
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Nullable(_) => todo!(),
+            Self::Nullable(selector) => self::nullable::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),

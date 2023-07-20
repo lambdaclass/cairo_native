@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    dialect::llvm::r#type::opaque_pointer,
     ir::{Module, Type},
     Context,
 };
@@ -31,17 +32,15 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
-    metadata: &mut MetadataStorage,
-    info: &InfoAndTypeConcreteType,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _metadata: &mut MetadataStorage,
+    _info: &InfoAndTypeConcreteType,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    registry
-        .get_type(&info.ty)?
-        .build(context, module, registry, metadata)
+    Ok(opaque_pointer(context))
 }

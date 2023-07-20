@@ -184,9 +184,9 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `jump`
 - [ ] `keccak_syscall` (StarkNet)
 - [ ] `library_call_syscall` (StarkNet)
-- [ ] `match_nullable`
-- [ ] `null`
-- [ ] `nullable_from_box`
+- [x] `match_nullable`
+- [x] `null`
+- [x] `nullable_from_box`
 - [x] `pedersen`
 - [ ] `pop_log` (StarkNet, testing)
 - [ ] `poseidon`
