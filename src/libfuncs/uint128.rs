@@ -25,16 +25,13 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        func, llvm, memref, scf,
+        llvm, scf,
     },
     ir::{
-        attribute::{
-            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
-        },
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
         operation::OperationBuilder,
-        r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, Block, Identifier, Location, Region, Type, Value, ValueLike,
+        r#type::IntegerType,
+        Attribute, Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -941,11 +938,11 @@ mod test {
         assert_eq!(r(0u128), json!([(), 0u64]));
         assert_eq!(r(u128::MAX), json!([(), u64::MAX]));
 
-        for i in 0..128 {
+        for i in 0..u128::BITS {
             let x = 1u128 << i;
             let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            assert_eq!(r(x), json!([(), y]), "sqrt({x})");
+            assert_eq!(r(x), json!([(), y]));
         }
     }
 }
