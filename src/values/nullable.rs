@@ -102,7 +102,7 @@ where
     type Value = NonNull<()>;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "An array of values with the same type.")
+        write!(f, "An optional value.")
     }
 
     fn visit_none<E>(self) -> Result<Self::Value, E>
