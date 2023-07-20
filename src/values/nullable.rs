@@ -61,7 +61,7 @@ where
     let ptr: NonNull<*mut u8> = ptr.cast();
     let data_ptr = *ptr.as_ptr();
 
-    if dbg!(data_ptr.is_null()) {
+    if data_ptr.is_null() {
         serializer.serialize_none()
     } else {
         serializer.serialize_some(&ParamSerializer::<TType, TLibfunc>::new(
@@ -118,15 +118,10 @@ where
     where
         E: de::Error,
     {
-        let inner_ptr: NonNull<*mut u8> = self.arena.alloc_layout(Layout::new::<*mut u8>()).cast();
-        let target_ptr: NonNull<NonNull<*mut u8>> = self
-            .arena
-            .alloc_layout(Layout::new::<NonNull<*mut u8>>())
-            .cast();
+        let target_ptr: NonNull<*mut u8> = self.arena.alloc_layout(Layout::new::<*mut u8>()).cast();
 
         unsafe {
-            std::ptr::write::<*mut ()>(inner_ptr.as_ptr().cast(), null_mut());
-            std::ptr::write(target_ptr.as_ptr(), inner_ptr);
+            std::ptr::write(target_ptr.as_ptr(), null_mut());
         }
 
         Ok(target_ptr.cast())
