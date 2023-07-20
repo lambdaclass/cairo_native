@@ -23,6 +23,9 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 pub fn get_integer_layout(width: u32) -> Layout {
     // TODO: Fix integer layouts properly.
     if width == 252 {
+        #[cfg(target_arch = "x86_64")]
+        return Layout::from_size_align(32, 8).unwrap();
+        #[cfg(not(target_arch = "x86_64"))]
         return Layout::from_size_align(32, 16).unwrap();
     }
 
@@ -37,7 +40,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        Layout::new::<u128>().align_to(16).unwrap()
+        Layout::new::<u128>()
     } else {
         Layout::array::<u64>(width.next_multiple_of(64) as usize >> 6).unwrap()
     }
