@@ -104,9 +104,9 @@ where
             Self::BuiltinCosts(info) => {
                 self::builtin_costs::build(context, module, registry, metadata, info)
             }
-            Self::EcOp(_) => todo!(),
-            Self::EcPoint(_) => todo!(),
-            Self::EcState(_) => todo!(),
+            Self::EcOp(info) => self::ec_op::build(context, module, registry, metadata, info),
+            Self::EcPoint(info) => self::ec_point::build(context, module, registry, metadata, info),
+            Self::EcState(info) => self::ec_state::build(context, module, registry, metadata, info),
             Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
             Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
             Self::Felt252Dict(info) => {
@@ -164,9 +164,9 @@ where
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
             CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => Layout::new::<()>(),
+            CoreTypeConcrete::EcPoint(_) => get_integer_layout(252).repeat(2)?.0,
+            CoreTypeConcrete::EcState(_) => get_integer_layout(252).repeat(4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
