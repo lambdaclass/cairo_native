@@ -330,7 +330,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    println!("######## before");
     let params_input = json!([
         u64::MAX,
         metadata
@@ -339,7 +338,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .as_ptr()
             .addr()
     ]);
-    println!("######## after");
 
     cairo_native::execute(
         &engine,

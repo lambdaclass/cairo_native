@@ -224,7 +224,7 @@ pub(crate) mod handler {
         where
             T: Debug,
         {
-            dbg!(Self {
+            Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
                 get_execution_info: Self::wrap_get_execution_info,
@@ -237,7 +237,7 @@ pub(crate) mod handler {
                 emit_event: Self::wrap_emit_event,
                 send_message_to_l1: Self::wrap_send_message_to_l1,
                 keccak: Self::wrap_keccak,
-            })
+            }
         }
 
         unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32) {
