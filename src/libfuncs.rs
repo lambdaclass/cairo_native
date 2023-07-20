@@ -128,7 +128,9 @@ where
             Self::Dup(info) => {
                 self::dup::build(context, registry, entry, location, helper, metadata, info)
             }
-            Self::Ec(_) => todo!(),
+            Self::Ec(selector) => self::ec::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252(selector) => self::felt252::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -161,7 +163,9 @@ where
             Self::Nullable(selector) => self::nullable::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::UnwrapNonZero(_) => todo!(),
+            Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
             Self::UnconditionalJump(info) => self::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,
             ),

@@ -99,9 +99,9 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => false,
+            CoreTypeConcrete::EcPoint(_) => true,
+            CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252(_) => false,
             CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
@@ -221,9 +221,15 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::bitwise::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
-                CoreTypeConcrete::EcState(_) => todo!(),
+                CoreTypeConcrete::EcOp(info) => {
+                    self::ec_op::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::EcPoint(info) => {
+                    self::ec_point::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::EcState(info) => {
+                    self::ec_state::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Felt252(info) => {
                     self::felt252::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -247,7 +253,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::uint128::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
+                CoreTypeConcrete::NonZero(info) => {
+                    self::non_zero::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Nullable(info) => {
                     self::nullable::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -365,9 +373,15 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::bitwise::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcOp(info) => unsafe {
+                self::ec_op::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::EcPoint(info) => unsafe {
+                self::ec_point::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::EcState(info) => unsafe {
+                self::ec_state::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::serialize(serializer, self.registry, self.ptr, info)
             },
@@ -391,7 +405,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::uint128::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => unsafe {
+                self::non_zero::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Nullable(info) => unsafe {
                 self::nullable::serialize(serializer, self.registry, self.ptr, info)
             },
