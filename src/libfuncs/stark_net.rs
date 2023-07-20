@@ -416,33 +416,16 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // args[0]: gas (builtin)
-    //   *mut u64
-    // args[1]: system (builtin)
-    //   *const StarkNetSyscallHandlerCallbacks<'a, T>
-    // args[2]: block_number (arg)
-    //   u64
-    //
-    // let ptr = (*system).self_ptr;           // *(ptr + 0)
-    // let fn_ptr = (*system).get_block_hash;  // *(ptr + 8)
-    //
-    // call %fn_ptr(%return_ptr, %ptr, %gas_builtin_ptr, %block_number)
-
     // Extract self pointer.
     let ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "rawConstantIndices"),
-                    DenseI32ArrayAttribute::new(context, &[0]).into(),
-                )])
-                .add_operands(&[entry.argument(1)?.into()])
-                .add_results(&[llvm::r#type::pointer(
-                    llvm::r#type::opaque_pointer(context),
-                    0,
-                )])
-                .build(),
-        )
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(1)?.into(),
+            DenseI32ArrayAttribute::new(context, &[0]),
+            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
         .result(0)?
         .into();
     let ptr = entry
@@ -565,28 +548,26 @@ where
         false,
     );
     let fn_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "rawConstantIndices"),
-                    DenseI32ArrayAttribute::new(context, &[1]).into(),
-                )])
-                .add_operands(&[entry.argument(1)?.into()])
-                .add_results(&[llvm::r#type::pointer(fn_ptr_ty, 0)])
-                .build(),
-        )
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(1)?.into(),
+            DenseI32ArrayAttribute::new(context, &[1]),
+            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
         .result(0)?
         .into();
-    // let fn_ptr = entry
-    //     .append_operation(llvm::load(
-    //         context,
-    //         fn_ptr,
-    //         fn_ptr_ty,
-    //         location,
-    //         LoadStoreOptions::default(),
-    //     ))
-    //     .result(0)?
-    //     .into();
+    let fn_ptr = entry
+        .append_operation(llvm::load(
+            context,
+            fn_ptr,
+            llvm::r#type::pointer(fn_ptr_ty, 0),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)

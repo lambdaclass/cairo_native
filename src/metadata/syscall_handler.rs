@@ -1,5 +1,10 @@
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
-use std::{alloc::Layout, fmt::Debug, marker::PhantomData, ptr::NonNull};
+use std::{
+    alloc::Layout,
+    fmt::Debug,
+    marker::PhantomData,
+    ptr::{addr_of, NonNull},
+};
 
 pub struct SyscallHandlerMeta<'a> {
     handler: NonNull<()>,
@@ -32,7 +37,9 @@ impl<'a> SyscallHandlerMeta<'a> {
     }
 
     pub fn as_ptr(&self) -> NonNull<()> {
-        self.handler
+        // TODO: Check and explain why this is correct, its risks (when invoking the JIT engine
+        //   manually, etc...).
+        unsafe { NonNull::new_unchecked(addr_of!(self.handler) as *mut NonNull<()>) }.cast()
     }
 }
 
