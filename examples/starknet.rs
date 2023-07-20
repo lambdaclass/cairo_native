@@ -10,6 +10,7 @@ use cairo_native::{
         runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
     starknet::{StarkNetSyscallHandler, SyscallResult},
+    utils::register_runtime_symbols,
 };
 use melior::{
     dialect::DialectRegistry,
@@ -316,19 +317,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc_pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-    }
+    register_runtime_symbols(&engine);
 
     let params_input = json!([
         u64::MAX,
