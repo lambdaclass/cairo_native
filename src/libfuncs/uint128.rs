@@ -25,13 +25,16 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, scf,
+        func, llvm, memref, scf,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{
+            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
         operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, Location, Region, Value, ValueLike,
+        r#type::{FunctionType, IntegerType, MemRefType},
+        Attribute, Block, Identifier, Location, Region, Type, Value, ValueLike,
     },
     Context,
 };
@@ -562,6 +565,26 @@ where
                                 ))
                                 .result(0)?
                                 .into();
+                            let threshold_is_poison = block
+                                .append_operation(arith::cmpi(
+                                    context,
+                                    CmpiPredicate::Eq,
+                                    block.argument(1)?.into(),
+                                    k128,
+                                    location,
+                                ))
+                                .result(0)?
+                                .into();
+                            let threshold = block
+                                .append_operation(
+                                    OperationBuilder::new("arith.select", location)
+                                        .add_operands(&[threshold_is_poison, k0, threshold])
+                                        .add_results(&[i128_ty])
+                                        .build(),
+                                )
+                                .result(0)?
+                                .into();
+
                             let is_in_range = block
                                 .append_operation(arith::cmpi(
                                     context,
@@ -915,8 +938,8 @@ mod test {
     fn u128_sqrt() {
         let r = |value| run_program(&U128_SQRT, "run_test", json!([(), value]));
 
-        // assert_eq!(r(0u128), json!([(), 0u64]));
-        // assert_eq!(r(u128::MAX), json!([(), u64::MAX]));
+        assert_eq!(r(0u128), json!([(), 0u64]));
+        assert_eq!(r(u128::MAX), json!([(), u64::MAX]));
 
         for i in 0..128 {
             let x = 1u128 << i;

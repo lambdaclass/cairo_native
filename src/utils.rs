@@ -183,7 +183,8 @@ pub mod test {
         types::felt252::PRIME,
     };
     use cairo_lang_compiler::{
-        compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
+        compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
+        project::setup_project, CompilerConfig,
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
@@ -227,6 +228,7 @@ pub mod test {
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
+                    diagnostics_reporter: DiagnosticsReporter::stderr(),
                     replace_ids: true,
                     ..Default::default()
                 },
