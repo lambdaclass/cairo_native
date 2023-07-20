@@ -690,10 +690,10 @@ mod test {
             }
         };
         static ref U32_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u64_sqrt;
+            use core::integer::u32_sqrt;
 
-            fn run_test(value: u64) -> u32 {
-                u64_sqrt(value)
+            fn run_test(value: u32) -> u16 {
+                u32_sqrt(value)
             }
         };
     }
