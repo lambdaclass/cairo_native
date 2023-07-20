@@ -20,7 +20,6 @@ fn fib() {
         fn run_test() -> felt252 {
             fib(0, 1, 10)
         }
-
     };
 
     let result_vm =
