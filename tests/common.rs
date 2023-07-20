@@ -174,9 +174,42 @@ pub fn run_native_program(
         );
 
         engine.register_symbol(
-            "cairo_native__libfunc_pedersen",
-            cairo_native_runtime::cairo_native__libfunc_pedersen
+            "cairo_native__libfunc__pedersen",
+            cairo_native_runtime::cairo_native__libfunc__pedersen
                 as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_point_from_x_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
+                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_add",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
+                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_add_mul",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
+                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
+                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_point_try_new_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
+                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
         );
     }
 

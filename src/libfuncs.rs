@@ -130,7 +130,9 @@ where
             Self::Dup(info) => {
                 self::dup::build(context, registry, entry, location, helper, metadata, info)
             }
-            Self::Ec(_) => todo!(),
+            Self::Ec(selector) => self::ec::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252(selector) => self::felt252::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -161,7 +163,9 @@ where
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Nullable(_) => todo!(),
-            Self::UnwrapNonZero(_) => todo!(),
+            Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
             Self::UnconditionalJump(info) => self::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
@@ -171,8 +175,12 @@ where
             Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252Dict(_) => todo!(),
-            Self::Felt252DictEntry(_) => todo!(),
+            Self::Felt252Dict(selector) => self::felt252_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Pedersen(selector) => self::pedersen::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),

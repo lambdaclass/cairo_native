@@ -99,9 +99,9 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => false,
+            CoreTypeConcrete::EcPoint(_) => true,
+            CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252(_) => false,
             CoreTypeConcrete::GasBuiltin(_) => false,
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
@@ -117,9 +117,9 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => true,
             CoreTypeConcrete::Struct(_) => true,
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => false,
+            CoreTypeConcrete::Felt252DictEntry(_) => true,
+            CoreTypeConcrete::SquashedFelt252Dict(_) => false,
             CoreTypeConcrete::Pedersen(_) => false,
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
@@ -131,7 +131,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
                 StarkNetTypeConcrete::System(_) => false,
                 StarkNetTypeConcrete::Secp256Point(_) => todo!(),
             },
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
     }
@@ -221,9 +221,15 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::bitwise::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
-                CoreTypeConcrete::EcState(_) => todo!(),
+                CoreTypeConcrete::EcOp(info) => {
+                    self::ec_op::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::EcPoint(info) => {
+                    self::ec_point::deserialize(deserializer, self.arena, self.registry, info)
+                }
+                CoreTypeConcrete::EcState(info) => {
+                    self::ec_state::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Felt252(info) => {
                     self::felt252::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -247,7 +253,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::uint128::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
+                CoreTypeConcrete::NonZero(info) => {
+                    self::non_zero::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::RangeCheck(info) => {
                     self::range_check::deserialize(deserializer, self.arena, self.registry, info)
@@ -259,9 +267,18 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Struct(info) => {
                     self::r#struct::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::Felt252Dict(_) => todo!(),
+                CoreTypeConcrete::Felt252Dict(info) => {
+                    self::felt252_dict::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+                CoreTypeConcrete::SquashedFelt252Dict(info) => {
+                    self::squashed_felt252_dict::deserialize(
+                        deserializer,
+                        self.arena,
+                        self.registry,
+                        info,
+                    )
+                }
                 CoreTypeConcrete::Pedersen(info) => {
                     self::pedersen::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -306,7 +323,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     ),
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
-                CoreTypeConcrete::SegmentArena(_) => todo!(),
+                CoreTypeConcrete::SegmentArena(info) => {
+                    self::segment_arena::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Snapshot(_) => todo!(),
             }
         }
@@ -352,9 +371,15 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::bitwise::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcOp(info) => unsafe {
+                self::ec_op::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::EcPoint(info) => unsafe {
+                self::ec_point::serialize(serializer, self.registry, self.ptr, info)
+            },
+            CoreTypeConcrete::EcState(info) => unsafe {
+                self::ec_state::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252(info) => unsafe {
                 self::felt252::serialize(serializer, self.registry, self.ptr, info)
             },
@@ -378,7 +403,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::uint128::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => unsafe {
+                self::non_zero::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(info) => unsafe {
                 self::range_check::serialize(serializer, self.registry, self.ptr, info)
@@ -390,9 +417,13 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Struct(info) => unsafe {
                 self::r#struct::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(info) => unsafe {
+                self::felt252_dict::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(info) => unsafe {
+                self::squashed_felt252_dict::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Pedersen(info) => unsafe {
                 self::pedersen::serialize(serializer, self.registry, self.ptr, info)
             },
@@ -416,7 +447,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 },
                 StarkNetTypeConcrete::Secp256Point(_) => todo!(),
             },
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(info) => unsafe {
+                self::segment_arena::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
     }
