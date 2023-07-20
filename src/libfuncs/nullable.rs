@@ -104,7 +104,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `nullable_from_box` libfunc.
+/// Generate MLIR operations for the `match_nullable` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_match_nullable<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
