@@ -254,9 +254,9 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u16_to_felt252`
 - [x] `u16_try_from_felt252`
 - [ ] `u16_wide_mul`
-- [ ] `u256_is_zero`
-- [ ] `u256_safe_divmod`
-- [ ] `u256_sqrt`
+- [x] `u256_is_zero`
+- [x] `u256_safe_divmod`
+- [x] `u256_sqrt`
 - [x] `u32_const`
 - [x] `u32_eq`
 - [x] `u32_is_zero`
