@@ -19,8 +19,8 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith, cf,
-        llvm::{self, AllocaOptions, LoadStoreOptions},
+        cf,
+        llvm::{self, r#type::opaque_pointer},
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
@@ -62,12 +62,12 @@ where
 #[allow(clippy::too_many_arguments)]
 fn build_null<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -75,11 +75,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let target_ty = registry
-        .get_type(&info.output_types()[0][0])?
-        .build(context, helper, registry, metadata)?;
-
-    let op = entry.append_operation(llvm::nullptr(target_ty, location));
+    let op = entry.append_operation(llvm::nullptr(opaque_pointer(context), location));
 
     entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
 
@@ -125,12 +121,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata)?;
-
     let param_type = registry.get_type(&info.param_signatures()[0].ty)?;
-
     let param_ty = param_type.build(context, helper, registry, metadata)?;
 
     let arg = entry.argument(0)?.into();
@@ -166,19 +157,7 @@ where
 
     block_is_null.append_operation(helper.br(0, &[], location));
 
-    let op = block_is_not_null.append_operation(llvm::load(
-        context,
-        arg,
-        inner_ty,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
-    let value = op.result(0)?.into();
-
-    block_is_not_null.append_operation(helper.br(1, &[value], location));
+    block_is_not_null.append_operation(helper.br(1, &[arg], location));
 
     Ok(())
 }
