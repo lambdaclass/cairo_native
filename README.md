@@ -177,7 +177,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `finalize_locals`
 - [x] `function_call`
 - [ ] `get_available_gas`
-- [ ] `get_block_hash_syscall` (StarkNet)
+- [x] `get_block_hash_syscall` (StarkNet)
 - [x] `get_builtin_costs` (5)
 - [ ] `get_execution_info_syscall` (StarkNet)
 - [x] `into_box` (2)
