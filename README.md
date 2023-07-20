@@ -142,7 +142,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [ ] `contract_address_try_from_felt252` (StarkNet)
 - [ ] `deploy_syscall` (StarkNet)
 - [x] `disable_ap_tracking`
-- [ ] `downcast`
+- [x] `downcast`
 - [x] `drop` (3)
 - [x] `dup` (3)
 - [x] `ec_neg`
