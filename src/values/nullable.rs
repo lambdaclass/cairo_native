@@ -59,16 +59,11 @@ where
         <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
 
     let ptr: NonNull<*mut u8> = ptr.cast();
-    dbg!("reached");
-    dbg!(ptr);
     let data_ptr = *ptr.as_ptr();
-    dbg!("reached 2");
-    dbg!(data_ptr);
 
-    if data_ptr.is_null() {
+    if dbg!(data_ptr.is_null()) {
         serializer.serialize_none()
     } else {
-        //let param_ser = ParamSerializer::<TType, TLibfunc>::new(data_ptr, registry, inner_ty);
         serializer.serialize_some(&ParamSerializer::<TType, TLibfunc>::new(
             NonNull::new(data_ptr).unwrap().cast(),
             registry,
@@ -128,14 +123,11 @@ where
             .arena
             .alloc_layout(Layout::new::<NonNull<*mut u8>>())
             .cast();
-        dbg!(target_ptr);
 
         unsafe {
             std::ptr::write::<*mut ()>(inner_ptr.as_ptr().cast(), null_mut());
             std::ptr::write(target_ptr.as_ptr(), inner_ptr);
         }
-        dbg!(target_ptr);
-        dbg!("end visitor null");
 
         Ok(target_ptr.cast())
     }
@@ -150,7 +142,8 @@ where
             .get_type(&self.info.ty)
             .unwrap()
             .layout(self.registry)
-            .unwrap();
+            .unwrap()
+            .pad_to_align();
 
         type ParamDeserializer<'a, TType, TLibfunc> =
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<'a>;
@@ -161,7 +154,6 @@ where
         let value = param_de.deserialize(deserializer)?;
 
         let inner_ptr: NonNull<()> = self.arena.alloc_layout(inner_layout).cast();
-        //let ptr: *mut u8 = unsafe { libc::malloc(inner_layout.size()).cast() };
 
         unsafe {
             // copy to allocated ptr
@@ -170,20 +162,16 @@ where
                 inner_ptr.as_ptr().cast(),
                 inner_layout.size(),
             );
-            // std::ptr::write(inner_ptr.as_ptr(), ptr);
         }
 
         let target_ptr: NonNull<NonNull<*mut u8>> = self
             .arena
             .alloc_layout(Layout::new::<NonNull<*mut u8>>())
             .cast();
-        dbg!(target_ptr);
 
         unsafe {
-            std::ptr::write(target_ptr.as_ptr().cast(), value);
+            std::ptr::write(target_ptr.as_ptr().cast(), inner_ptr);
         }
-        dbg!(target_ptr);
-        dbg!("end visitor some");
 
         Ok(target_ptr.cast())
     }

@@ -224,10 +224,8 @@ mod test {
             }
         );
 
-        /*
-        let result = run_program(&program, "run_test", json!([null]));
-        assert_eq!(result, json!([null]));
-        */
+        let result = run_program(&program, "run_test", json!([None::<u8>]));
+        assert_eq!(result, json!([None::<u8>]));
 
         let result = run_program(&program, "run_test", json!([Some(2)]));
         assert_eq!(result, json!([Some(2)]));
