@@ -150,7 +150,7 @@ where
 
             let ptr = seq
                 .next_element_seed::<ParamDeserializer<TType, TLibfunc>>(deserializer)?
-                .unwrap();
+                .unwrap_or_else(|| panic!("failed to deserialize next value: {param_type_id:?}, expected params: {:#?}", self.params));
 
             param_ptr_list.push(ptr);
         }
