@@ -104,8 +104,12 @@ where
             Self::EcState(_) => todo!(),
             Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
             Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
-            Self::Felt252Dict(_) => todo!(),
-            Self::Felt252DictEntry(_) => todo!(),
+            Self::Felt252Dict(info) => {
+                self::felt252_dict::build(context, module, registry, metadata, info)
+            }
+            Self::Felt252DictEntry(info) => {
+                self::felt252_dict_entry::build(context, module, registry, metadata, info)
+            }
             Self::GasBuiltin(info) => {
                 self::gas_builtin::build(context, module, registry, metadata, info)
             }
@@ -120,12 +124,16 @@ where
             Self::RangeCheck(info) => {
                 self::range_check::build(context, module, registry, metadata, info)
             }
-            Self::SegmentArena(_) => todo!(),
+            Self::SegmentArena(info) => {
+                self::segment_arena::build(context, module, registry, metadata, info)
+            }
             Self::Snapshot(info) => {
                 self::snapshot::build(context, module, registry, metadata, info)
             }
             Self::Span(_) => todo!(),
-            Self::SquashedFelt252Dict(_) => todo!(),
+            Self::SquashedFelt252Dict(info) => {
+                self::squashed_felt252_dict::build(context, module, registry, metadata, info)
+            }
             Self::StarkNet(selector) => {
                 self::stark_net::build(context, module, registry, metadata, selector)
             }
@@ -136,7 +144,9 @@ where
             Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
             Self::Uint64(info) => self::uint64::build(context, module, registry, metadata, info),
             Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
-            Self::Uninitialized(_) => todo!(),
+            Self::Uninitialized(info) => {
+                self::uninitialized::build(context, module, registry, metadata, info)
+            }
         }
     }
 
@@ -166,7 +176,9 @@ where
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(info) => {
+                registry.get_type(&info.ty)?.layout(registry)?
+            }
             CoreTypeConcrete::Enum(info) => {
                 let tag_layout =
                     get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
@@ -192,9 +204,17 @@ where
                     }))
                 })?
                 .unwrap_or(Layout::from_size_align(0, 1)?),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
+            CoreTypeConcrete::Felt252DictEntry(_) => {
+                get_integer_layout(252)
+                    .extend(Layout::new::<*mut std::ffi::c_void>())
+                    .unwrap()
+                    .0
+                    .extend(Layout::new::<*mut std::ffi::c_void>())
+                    .unwrap()
+                    .0
+            }
+            CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),

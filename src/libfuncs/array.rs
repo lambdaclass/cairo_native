@@ -1,5 +1,7 @@
 //! # Array libfuncs
 
+// TODO: A future possible improvement would be to put the array behind a double pointer and a reference counter, to avoid unnecesary clones.
+
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
@@ -25,7 +27,9 @@ use melior::{
         scf,
     },
     ir::{
-        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
+        },
         operation::OperationBuilder,
         r#type::IntegerType,
         Block, Identifier, Location, Region, Value, ValueLike,
@@ -65,7 +69,9 @@ where
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::Slice(_) => todo!(),
+        ArrayConcreteLibfunc::Slice(info) => {
+            build_slice(context, registry, entry, location, helper, metadata, info)
+        }
         ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
         }
@@ -941,6 +947,185 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `array_slice` libfunc.
+pub fn build_slice<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let array_ty = registry
+        .get_type(&info.param_signatures()[1].ty)?
+        .build(context, helper, registry, metadata)?;
+
+    let elem_concrete_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_concrete_ty.layout(registry)?;
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let range_check = entry.argument(0)?.into();
+    let array_val = entry.argument(1)?.into();
+    let index_val = entry.argument(2)?.into();
+    let length_val = entry.argument(3)?.into();
+
+    let op = entry.append_operation(arith::addi(index_val, length_val, location));
+    let end_val = op.result(0)?.into();
+
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        len_ty,
+        location,
+    ));
+    let len: Value = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Ult,
+        end_val,
+        len,
+        location,
+    ));
+    let is_inbounds = op.result(0)?.into();
+
+    let block_not_oob = helper.append_block(Block::new(&[]));
+    let block_oob = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_inbounds,
+        block_not_oob,
+        block_oob,
+        &[],
+        &[],
+        location,
+    ));
+
+    block_oob.append_operation(helper.br(1, &[range_check], location));
+
+    let op = block_not_oob.append_operation(llvm::extract_value(
+        context,
+        array_val,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        ptr_ty,
+        location,
+    ));
+    let array_ptr = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(
+        OperationBuilder::new("llvm.getelementptr", location)
+            .add_attributes(&[(
+                Identifier::new(context, "rawConstantIndices"),
+                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+            )])
+            .add_operands(&[array_ptr, index_val])
+            .add_results(&[ptr_ty])
+            .build(),
+    );
+    let elem_ptr = op.result(0)?.into();
+
+    let stride = elem_layout.pad_to_align().size();
+
+    let op = block_not_oob.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(stride as i64, IntegerType::new(context, 64).into()).into(),
+        location,
+    ));
+    let stride_val = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(arith::extui(
+        length_val,
+        IntegerType::new(context, 64).into(),
+        location,
+    ));
+    let length_val_64 = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(arith::muli(stride_val, length_val_64, location));
+
+    let bytes_val = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(llvm::nullptr(opaque_pointer(context), location));
+
+    let nullptr = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(ReallocBindingsMeta::realloc(
+        context, nullptr, bytes_val, location,
+    ));
+
+    let new_ptr = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+        location,
+    ));
+    let is_volatile = op.result(0)?.into();
+
+    let op =
+        block_not_oob.append_operation(llvm::bitcast(elem_ptr, opaque_pointer(context), location));
+    let elem_ptr = op.result(0)?.into();
+
+    block_not_oob.append_operation(llvm::call_intrinsic(
+        context,
+        StringAttribute::new(context, "llvm.memcpy.inline"),
+        &[new_ptr, elem_ptr, bytes_val, is_volatile],
+        &[],
+        location,
+    ));
+
+    let op = block_not_oob.append_operation(llvm::undef(array_ty, location));
+    let new_array_value = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(llvm::bitcast(new_ptr, ptr_ty, location));
+    let new_ptr = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(llvm::insert_value(
+        context,
+        new_array_value,
+        DenseI64ArrayAttribute::new(context, &[0]),
+        new_ptr,
+        location,
+    ));
+    let new_array_value = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(llvm::insert_value(
+        context,
+        new_array_value,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        length_val,
+        location,
+    ));
+    let new_array_value = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(llvm::insert_value(
+        context,
+        new_array_value,
+        DenseI64ArrayAttribute::new(context, &[2]),
+        length_val,
+        location,
+    ));
+    let new_array_value = op.result(0)?.into();
+
+    block_not_oob.append_operation(helper.br(0, &[range_check, new_array_value], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::test::{load_cairo, run_program};
@@ -1070,5 +1255,76 @@ mod test {
         let result = run_program(&program, "run_test", json!([]));
 
         assert_eq!(result, json!([4]));
+    }
+
+    #[test]
+    fn run_slice() {
+        let program = load_cairo!(
+            use array::Array;
+            use array::ArrayTrait;
+            use array::SpanTrait;
+            use option::OptionTrait;
+            use box::BoxTrait;
+
+            fn run_test() -> u32 {
+                let mut data: Array<u32> = ArrayTrait::new();
+                data.append(1_u32);
+                data.append(2_u32);
+                data.append(3_u32);
+                data.append(4_u32);
+                let sp = data.span();
+                let slice = sp.slice(1, 2);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                *slice.get(1).unwrap().unbox()
+            }
+
+        );
+        let result = run_program(&program, "run_test", json!([()]));
+
+        assert_eq!(result, json!([null, [0, [3]]]));
+    }
+
+    #[test]
+    fn run_slice_fail() {
+        let program = load_cairo!(
+            use array::Array;
+            use array::ArrayTrait;
+            use array::SpanTrait;
+            use option::OptionTrait;
+            use box::BoxTrait;
+
+            fn run_test() -> u32 {
+                let mut data: Array<u32> = ArrayTrait::new();
+                data.append(1_u32);
+                data.append(2_u32);
+                data.append(3_u32);
+                data.append(4_u32);
+                let sp = data.span();
+                let slice = sp.slice(1, 4); // oob
+                //data.append(5_u32);
+                *slice.get(0).unwrap().unbox()
+            }
+
+        );
+        let result = run_program(&program, "run_test", json!([()]));
+
+        assert_eq!(
+            result,
+            json!([
+                null,
+                [
+                    1,
+                    [
+                        [],
+                        [[1970168947, 1713398383, 1970544751, 1702371439, 4812388, 0, 0, 0]]
+                    ]
+                ]
+            ])
+        );
     }
 }
