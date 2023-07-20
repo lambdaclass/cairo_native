@@ -290,7 +290,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [ ] `u8_wide_mul`
 - [x] `unbox` (2)
 - [x] `unwrap_non_zero`
-- [ ] `upcast`
+- [x] `upcast`
 - [x] `withdraw_gas_all` (5)
 - [x] `withdraw_gas` (5)
 
