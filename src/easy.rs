@@ -2,6 +2,7 @@ use crate::{
     libfuncs::LibfuncBuilder,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::register_runtime_symbols,
     values::ValueBuilder,
 };
 use cairo_lang_sierra::{
@@ -161,13 +162,7 @@ where
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-    }
+    register_runtime_symbols(&engine);
 
     // Execute
     crate::execute::<TType, TLibfunc, D, S>(&engine, &registry, function_id, params, returns)
