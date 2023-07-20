@@ -46,6 +46,79 @@ pub fn get_integer_layout(width: u32) -> Layout {
     }
 }
 
+#[cfg(feature = "with-runtime")]
+pub fn register_runtime_symbols(engine: &ExecutionEngine) {
+    unsafe {
+        engine.register_symbol(
+            "cairo_native__libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc__debug__print
+                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__pedersen",
+            cairo_native_runtime::cairo_native__libfunc__pedersen
+                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_point_from_x_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
+                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_add",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
+                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_add_mul",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
+                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
+                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_point_try_new_nz",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
+                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__alloc_dict",
+            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_get",
+            cairo_native_runtime::cairo_native__dict_get
+                as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_insert",
+            cairo_native_runtime::cairo_native__dict_insert
+                as *const fn(
+                    *mut std::ffi::c_void,
+                    &[u8; 32],
+                    NonNull<std::ffi::c_void>,
+                ) -> *mut std::ffi::c_void as *mut (),
+        );
+    }
+}
+
 /// Return a type that calls a closure when formatted using [Debug](std::fmt::Debug).
 pub fn debug_with<F>(fmt: F) -> impl fmt::Debug
 where
@@ -188,46 +261,6 @@ macro_rules! codegen_ret_extr {
 }
 pub(crate) use codegen_ret_extr;
 
-#[cfg(feature = "with-runtime")]
-pub fn register_runtime_symbols(engine: &ExecutionEngine) {
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc_pedersen",
-            cairo_native_runtime::cairo_native__libfunc_pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__alloc_dict",
-            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_get",
-            cairo_native_runtime::cairo_native__dict_get
-                as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_insert",
-            cairo_native_runtime::cairo_native__dict_insert
-                as *const fn(
-                    *mut std::ffi::c_void,
-                    &[u8; 32],
-                    NonNull<std::ffi::c_void>,
-                ) -> *mut std::ffi::c_void as *mut (),
-        );
-    }
-}
-
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -315,6 +348,7 @@ pub mod test {
         let mut module = Module::new(Location::unknown(&context));
 
         let mut metadata = MetadataStorage::new();
+
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
