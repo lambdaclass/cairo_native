@@ -241,7 +241,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u128_overflowing_add`
 - [x] `u128_overflowing_sub`
 - [x] `u128_safe_divmod`
-- [ ] `u128_sqrt`
+- [x] `u128_sqrt`
 - [x] `u128_to_felt252`
 - [x] `u128s_from_felt252`
 - [x] `u16_const`
@@ -250,7 +250,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u16_overflowing_add`
 - [x] `u16_overflowing_sub`
 - [x] `u16_safe_divmod`
-- [ ] `u16_sqrt`
+- [x] `u16_sqrt`
 - [x] `u16_to_felt252`
 - [x] `u16_try_from_felt252`
 - [ ] `u16_wide_mul`
@@ -263,7 +263,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u32_overflowing_add`
 - [x] `u32_overflowing_sub`
 - [x] `u32_safe_divmod`
-- [ ] `u32_sqrt`
+- [x] `u32_sqrt`
 - [x] `u32_to_felt252`
 - [x] `u32_try_from_felt252`
 - [ ] `u32_wide_mul`
@@ -274,7 +274,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u64_overflowing_add`
 - [x] `u64_overflowing_sub`
 - [x] `u64_safe_divmod`
-- [ ] `u64_sqrt`
+- [x] `u64_sqrt`
 - [x] `u64_to_felt252`
 - [x] `u64_try_from_felt252`
 - [ ] `u64_wide_mul`
@@ -284,7 +284,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u8_overflowing_add`
 - [x] `u8_overflowing_sub`
 - [x] `u8_safe_divmod`
-- [ ] `u8_sqrt`
+- [x] `u8_sqrt`
 - [x] `u8_to_felt252`
 - [x] `u8_try_from_felt252`
 - [ ] `u8_wide_mul`
