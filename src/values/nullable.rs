@@ -4,16 +4,12 @@ use crate::values::ValueDeserializer;
 use crate::values::ValueSerializer;
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::{
-        types::{InfoAndTypeConcreteType, InfoOnlyConcreteType},
-        GenericLibfunc, GenericType,
-    },
+    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
 use serde::{
     de::{self, DeserializeSeed},
-    ser::SerializeSeq,
-    Deserialize, Deserializer, Serialize, Serializer,
+    Deserializer, Serializer,
 };
 use std::{
     alloc::Layout,
@@ -49,11 +45,6 @@ where
     S: Serializer,
 {
     let inner_ty = registry.get_type(&info.ty).unwrap();
-    let inner_layout = registry
-        .get_type(&info.ty)
-        .unwrap()
-        .layout(registry)
-        .unwrap();
 
     type ParamSerializer<'a, TType, TLibfunc> =
         <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
