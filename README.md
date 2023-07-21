@@ -123,7 +123,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `array_new`
 - [x] `array_pop_front_consume`
 - [x] `array_pop_front`
-- [ ] `array_slice`
+- [x] `array_slice`
 - [x] `array_snapshot_pop_back`
 - [x] `array_snapshot_pop_front`
 - [x] `bitwise`
@@ -235,9 +235,9 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u128_byte_reverse`
 - [x] `u128_const`
 - [x] `u128_eq`
-- [ ] `u128_guarantee_mul`
+- [x] `u128_guarantee_mul` (guarantee builtin ignored)
 - [x] `u128_is_zero`
-- [ ] `u128_mul_guarantee_verify`
+- [x] `u128_mul_guarantee_verify` (guarantee builtin ignored)
 - [x] `u128_overflowing_add`
 - [x] `u128_overflowing_sub`
 - [x] `u128_safe_divmod`
@@ -253,7 +253,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u16_sqrt`
 - [x] `u16_to_felt252`
 - [x] `u16_try_from_felt252`
-- [ ] `u16_wide_mul`
+- [x] `u16_wide_mul`
 - [ ] `u256_is_zero`
 - [ ] `u256_safe_divmod`
 - [ ] `u256_sqrt`
@@ -266,7 +266,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u32_sqrt`
 - [x] `u32_to_felt252`
 - [x] `u32_try_from_felt252`
-- [ ] `u32_wide_mul`
+- [x] `u32_wide_mul`
 - [ ] `u512_safe_divmod_by_u256`
 - [x] `u64_const`
 - [x] `u64_eq`
@@ -277,7 +277,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u64_sqrt`
 - [x] `u64_to_felt252`
 - [x] `u64_try_from_felt252`
-- [ ] `u64_wide_mul`
+- [x] `u64_wide_mul`
 - [x] `u8_const`
 - [x] `u8_eq`
 - [x] `u8_is_zero`
@@ -287,7 +287,7 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 - [x] `u8_sqrt`
 - [x] `u8_to_felt252`
 - [x] `u8_try_from_felt252`
-- [ ] `u8_wide_mul`
+- [x] `u8_wide_mul`
 - [x] `unbox` (2)
 - [x] `unwrap_non_zero`
 - [x] `upcast`
