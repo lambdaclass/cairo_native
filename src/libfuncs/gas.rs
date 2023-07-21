@@ -62,8 +62,8 @@ pub fn build_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,

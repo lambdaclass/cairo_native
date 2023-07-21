@@ -170,24 +170,32 @@ where
     register_runtime_symbols(&engine);
 
     // Execute
-    crate::execute::<TType, TLibfunc, D, S>(&engine, &registry, function_id, params, returns)
-        .unwrap_or_else(|e| match &*e {
-            crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                panic!(
-                    "Expected inputs with signature: ({})",
-                    registry
-                        .get_function(function_id)
-                        .unwrap()
-                        .signature
-                        .param_types
-                        .iter()
-                        .map(ToString::to_string)
-                        .intersperse_with(|| ", ".to_string())
-                        .collect::<String>()
-                )
-            }
-            e => panic!("{:?}", e),
-        });
+    crate::execute::<TType, TLibfunc, D, S>(
+        todo!(),
+        &engine,
+        &registry,
+        function_id,
+        params,
+        returns,
+        todo!(),
+    )
+    .unwrap_or_else(|e| match &*e {
+        crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+            panic!(
+                "Expected inputs with signature: ({})",
+                registry
+                    .get_function(function_id)
+                    .unwrap()
+                    .signature
+                    .param_types
+                    .iter()
+                    .map(ToString::to_string)
+                    .intersperse_with(|| ", ".to_string())
+                    .collect::<String>()
+            )
+        }
+        e => panic!("{:?}", e),
+    });
 
     Ok(())
 }

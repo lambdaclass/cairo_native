@@ -5,6 +5,7 @@ use crate::{
         jit_engine::{make_deserializer_error, make_serializer_error, make_type_builder_error},
         JitRunnerError,
     },
+    gas::GasMetadata,
     libfuncs::LibfuncBuilder,
     types::TypeBuilder,
     utils::generate_function_name,
@@ -14,6 +15,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{GenericLibfunc, GenericType},
     ids::{ConcreteTypeId, FunctionId},
+    program::Program,
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;
@@ -34,11 +36,13 @@ use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
 /// [`Serializer`] respectively. This method provides an easy way to process the values while also
 /// not requiring recompilation every time the function's signature changes.
 pub fn execute<'de, TType, TLibfunc, D, S>(
+    program: &Program,
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<TType, TLibfunc>,
     function_id: &FunctionId,
     params: D,
     returns: S,
+    gas_metadata: &GasMetadata,
 ) -> Result<S::Ok, JitRunnerError<'de, TType, TLibfunc, D, S>>
 where
     TType: GenericType,

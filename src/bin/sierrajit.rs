@@ -7,13 +7,21 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::{
+            BuiltinCostWithdrawGasLibfunc, GetAvailableGasLibfunc, RedepositGasLibfunc,
+            WithdrawGasLibfunc,
+        },
+        NamedLibfunc,
+    },
     ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
     ProgramParser,
 };
 use cairo_native::{
+    gas::{GasMetadata, MetadataComputationConfig},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::register_runtime_symbols,
 };
@@ -63,6 +71,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
     };
+
+    // Gas
+    if args.available_gas.is_none()
+        && program.type_declarations.iter().any(|decl| {
+            matches!(
+                decl.long_id.generic_id.0.as_str(),
+                WithdrawGasLibfunc::STR_ID
+                    | BuiltinCostWithdrawGasLibfunc::STR_ID
+                    | RedepositGasLibfunc::STR_ID
+                    | GetAvailableGasLibfunc::STR_ID
+            )
+        })
+    {
+        // todo: better error
+        eprintln!("Program requires gas counter, please provide `--available-gas` argument.");
+        return Ok(());
+    }
+
+    let gas_metadata = GasMetadata::new(
+        &program,
+        MetadataComputationConfig::default(),
+        args.available_gas,
+    );
+
+    let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+
+    if let Some(available_gas) = gas_metadata.available_gas {
+        if available_gas < required_initial_gas {
+            // todo: better error
+            eprintln!("Not enough gas, needs atleast {required_initial_gas}");
+            return Ok(());
+        }
+    }
 
     // Initialize MLIR.
     let context = Context::new();
@@ -125,11 +166,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args.outputs {
         Some(StdioOrPath::Stdio) => {
             cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
+                &program,
                 &engine,
                 &registry,
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(io::stdout()),
+                &gas_metadata,
             )
             .unwrap_or_else(|e| match &*e {
                 cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
@@ -151,11 +194,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(StdioOrPath::Path(path)) => {
             let mut file = File::create(path)?;
             cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
+                &program,
                 &engine,
                 &registry,
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(&mut file),
+                &gas_metadata,
             )
             .unwrap();
             writeln!(file)?;
@@ -212,8 +257,8 @@ struct CmdLine {
     print_outputs: bool,
     //
     // TODO: Uncomment after removing builtins from arguments and returns.
-    // #[clap(short = 'g', long = "available-gas")]
-    // available_gas: Option<usize>,
+    #[clap(short = 'g', long = "available-gas")]
+    available_gas: Option<usize>,
 }
 
 #[derive(Clone, Debug)]

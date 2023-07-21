@@ -51,6 +51,9 @@ serde_json = { version = "1.0.103", features = ["arbitrary_precision"], optional
 tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
 ], optional = true }
+cairo-lang-sierra-gas = "2.0.2"
+cairo-lang-sierra-ap-change = "2.0.2"
+cairo-lang-utils = "2.0.2"
 
 [dev-dependencies]
 cairo-lang-runner = "2.0.2"

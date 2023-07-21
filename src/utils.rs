@@ -395,6 +395,7 @@ pub mod test {
         register_runtime_symbols(&engine);
 
         crate::execute::<CoreType, CoreLibfunc, _, _>(
+            todo!(),
             &engine,
             &registry,
             &program
@@ -405,6 +406,7 @@ pub mod test {
                 .id,
             args,
             serde_json::value::Serializer,
+            todo!(),
         )
         .expect("Test program execution failed.")
     }

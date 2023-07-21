@@ -216,6 +216,7 @@ pub mod debug_info;
 pub mod easy;
 pub mod error;
 mod ffi;
+pub mod gas;
 mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
