@@ -31,8 +31,8 @@ use melior::{
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
-use num_bigint::{BigInt, Sign};
-use std::{env::var, fs, ops::Neg, path::Path, sync::Arc};
+use num_bigint::{BigInt, BigUint, Sign};
+use std::{env::var, fs, ops::Neg, path::Path, str::FromStr, sync::Arc};
 
 macro_rules! load_cairo {
     ( $( $program:tt )+ ) => {
@@ -247,7 +247,18 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => {
+                let vm_value = vm_rets.next().unwrap();
+
+                if let serde_json::Value::Number(n) = native_rets.next().unwrap() {
+                    let mut native_value =
+                        BigUint::from_str(&n.to_string()).unwrap().to_u32_digits();
+                    native_value.resize(8, 0);
+                    assert_eq!(felt(vm_value).as_slice(), native_value.as_slice());
+                } else {
+                    panic!("invalid value")
+                }
+            }
             CoreTypeConcrete::GasBuiltin(_) => {
                 // runner: ignore
                 // native: compare to gas
@@ -396,6 +407,4 @@ pub fn compare_outputs(
             &mut panic_handled,
         );
     }
-
-    todo!()
 }
