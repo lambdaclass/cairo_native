@@ -1,5 +1,6 @@
 #![feature(strict_provenance)]
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -28,7 +29,11 @@ struct SyscallHandler;
 impl StarkNetSyscallHandler for SyscallHandler {
     fn get_block_hash(&self, block_number: u64) -> SyscallResult<cairo_felt::Felt252> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
-        todo!()
+        Ok(dbg!(Felt252::from_bytes_be(b"get_block_hash ok")))
+        // Ok(Felt252::from_bytes_be(&[
+        //     0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22,
+        //     0x11, 0x00,
+        // ]))
     }
 
     fn get_execution_info(&self) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {

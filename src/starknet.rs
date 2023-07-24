@@ -117,6 +117,16 @@ pub(crate) mod handler {
     use super::*;
     use std::{alloc::Layout, fmt::Debug, mem::ManuallyDrop, ptr::NonNull};
 
+    macro_rules! field_offset {
+        ( $ident:path, $field:ident ) => {
+            unsafe {
+                let value_ptr = std::mem::MaybeUninit::<$ident>::uninit().as_ptr();
+                let field_ptr: *const u8 = std::ptr::addr_of!((*value_ptr).$field) as *const u8;
+                field_ptr.offset_from(value_ptr as *const u8) as usize
+            }
+        };
+    }
+
     #[repr(C)]
     struct SyscallResultAbi<T> {
         tag: u8,
@@ -131,10 +141,7 @@ pub(crate) mod handler {
 
     #[repr(C)]
     #[derive(Debug)]
-    pub struct StarkNetSyscallHandlerCallbacks<'a, T>
-    where
-        T: StarkNetSyscallHandler,
-    {
+    pub struct StarkNetSyscallHandlerCallbacks<'a, T> {
         self_ptr: &'a T,
 
         get_block_hash: extern "C" fn(
@@ -215,6 +222,24 @@ pub(crate) mod handler {
             _gas: &mut u64,
             input: *const (*const u64, u32, u32),
         ),
+    }
+
+    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
+    where
+        T: 'a,
+    {
+        // Callback field indices.
+        pub const CALL_CONTRACT: usize = field_offset!(Self, call_contract) >> 3;
+        pub const DEPLOY: usize = field_offset!(Self, deploy) >> 3;
+        pub const EMIT_EVENT: usize = field_offset!(Self, emit_event) >> 3;
+        pub const GET_BLOCK_HASH: usize = field_offset!(Self, get_block_hash) >> 3;
+        pub const GET_EXECUTION_INFO: usize = field_offset!(Self, get_execution_info) >> 3;
+        pub const KECCAK: usize = field_offset!(Self, keccak) >> 3;
+        pub const LIBRARY_CALL: usize = field_offset!(Self, library_call) >> 3;
+        pub const REPLACE_CLASS: usize = field_offset!(Self, replace_class) >> 3;
+        pub const SEND_MESSAGE_TO_L1: usize = field_offset!(Self, send_message_to_l1) >> 3;
+        pub const STORAGE_READ: usize = field_offset!(Self, storage_read) >> 3;
+        pub const STORAGE_WRITE: usize = field_offset!(Self, storage_write) >> 3;
     }
 
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
