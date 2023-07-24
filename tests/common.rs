@@ -357,7 +357,21 @@ pub fn compare_outputs(
                     }
                 }
             }
-            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Struct(info) => {
+                let struct_container = native_rets.next().unwrap().as_array().unwrap();
+                let mut iter = struct_container.iter();
+                for field in &info.members {
+                    check_next_type(
+                        reg.get_type(field).unwrap(),
+                        ignore_gas,
+                        &mut iter,
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                        panic_handled,
+                    );
+                }
+            }
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
