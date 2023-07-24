@@ -8,12 +8,14 @@ pub type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
 /// Binary representation of a `felt252` (in MLIR).
 #[derive(Debug, Clone)]
-#[repr(C, align(8))]
+#[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
+#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(Debug, Clone)]
-#[repr(C, align(8))]
+#[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
+#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 pub struct U256(pub [u8; 32]);
 
 pub struct ExecutionInfo {
@@ -128,15 +130,21 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
-    struct SyscallResultAbi<T> {
-        tag: u8,
-        payload: SyscallResultPayloadAbi<T>,
+    union SyscallResultAbi<T> {
+        ok: ManuallyDrop<SyscallResultAbiOk<T>>,
+        err: ManuallyDrop<SyscallResultAbiErr>,
     }
 
     #[repr(C)]
-    union SyscallResultPayloadAbi<T> {
-        ok: ManuallyDrop<T>,
-        err: (NonNull<Felt252Abi>, u32, u32),
+    struct SyscallResultAbiOk<T> {
+        tag: u8,
+        payload: ManuallyDrop<T>,
+    }
+
+    #[repr(C)]
+    struct SyscallResultAbiErr {
+        tag: u8,
+        payload: (NonNull<Felt252Abi>, u32, u32),
     }
 
     #[repr(C)]
@@ -279,14 +287,13 @@ pub(crate) mod handler {
 
         fn wrap_error<E>(e: &[Felt252]) -> SyscallResultAbi<E> {
             SyscallResultAbi {
-                tag: 1u8,
-                payload: unsafe {
-                    let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
-
-                    SyscallResultPayloadAbi {
-                        err: Self::alloc_mlir_array(&data),
-                    }
-                },
+                err: ManuallyDrop::new(SyscallResultAbiErr {
+                    tag: 1u8,
+                    payload: unsafe {
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                        Self::alloc_mlir_array(&data)
+                    },
+                }),
             }
         }
 
@@ -301,10 +308,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -320,10 +327,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(x),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(x),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -365,10 +372,10 @@ pub(crate) mod handler {
                     let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
-                        tag: 0u8,
-                        payload: SyscallResultPayloadAbi {
-                            ok: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts_ptr)),
-                        },
+                        ok: ManuallyDrop::new(SyscallResultAbiOk {
+                            tag: 0u8,
+                            payload: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts_ptr)),
+                        }),
                     }
                 }
                 Err(e) => Self::wrap_error(&e),
@@ -387,10 +394,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(()),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -424,10 +431,10 @@ pub(crate) mod handler {
                     let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
-                        tag: 0u8,
-                        payload: SyscallResultPayloadAbi {
-                            ok: ManuallyDrop::new(felts_ptr),
-                        },
+                        ok: ManuallyDrop::new(SyscallResultAbiOk {
+                            tag: 0u8,
+                            payload: ManuallyDrop::new(felts_ptr),
+                        }),
                     }
                 }
                 Err(e) => Self::wrap_error(&e),
@@ -462,10 +469,10 @@ pub(crate) mod handler {
                     let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
-                        tag: 0u8,
-                        payload: SyscallResultPayloadAbi {
-                            ok: ManuallyDrop::new(felts_ptr),
-                        },
+                        ok: ManuallyDrop::new(SyscallResultAbiOk {
+                            tag: 0u8,
+                            payload: ManuallyDrop::new(felts_ptr),
+                        }),
                     }
                 }
                 Err(e) => Self::wrap_error(&e),
@@ -485,10 +492,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(res) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(Felt252Abi(res.to_le_bytes())),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(Felt252Abi(res.to_le_bytes())),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -509,10 +516,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(()),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -549,10 +556,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(()),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -580,10 +587,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(()),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
@@ -606,10 +613,10 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
-                    tag: 0u8,
-                    payload: SyscallResultPayloadAbi {
-                        ok: ManuallyDrop::new(U256(x.0)),
-                    },
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(U256(x.0)),
+                    }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
