@@ -22,13 +22,11 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        func,
         llvm::{self, LoadStoreOptions},
     },
     ir::{
         attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, FlatSymbolRefAttribute,
-            IntegerAttribute, TypeAttribute,
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
         },
         operation::OperationBuilder,
         r#type::IntegerType,

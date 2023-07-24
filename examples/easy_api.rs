@@ -27,7 +27,7 @@ fn main() {
     let name = {
         let mut digits = BigUint::from(u32::from_le_bytes(*b"user")).to_u32_digits();
         digits.resize(8, 0);
-        dbg!(digits)
+        digits
     };
 
     compile_and_execute::<CoreType, CoreLibfunc, _, _>(
