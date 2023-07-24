@@ -258,11 +258,49 @@ pub fn compare_outputs(
                 }
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => todo!(),
-            CoreTypeConcrete::Uint16(_) => todo!(),
-            CoreTypeConcrete::Uint32(_) => todo!(),
-            CoreTypeConcrete::Uint64(_) => todo!(),
-            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => {
+                let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: u8 = native_rets
+                    .next()
+                    .unwrap()
+                    .as_u64()
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                assert_eq!(vm_value, native_value)
+            }
+            CoreTypeConcrete::Uint16(_) => {
+                let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: u16 = native_rets
+                    .next()
+                    .unwrap()
+                    .as_u64()
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                assert_eq!(vm_value, native_value)
+            }
+            CoreTypeConcrete::Uint32(_) => {
+                let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: u32 = native_rets
+                    .next()
+                    .unwrap()
+                    .as_u64()
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                assert_eq!(vm_value, native_value)
+            }
+            CoreTypeConcrete::Uint64(_) => {
+                let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: u64 = native_rets.next().unwrap().as_u64().unwrap();
+                assert_eq!(vm_value, native_value)
+            }
+            CoreTypeConcrete::Uint128(_) => {
+                let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: u128 = native_rets.next().unwrap().as_u64().unwrap().into();
+                assert_eq!(vm_value, native_value)
+            }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => todo!(),
