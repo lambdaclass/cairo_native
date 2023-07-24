@@ -35,7 +35,7 @@ fn enum_init() {
 
     let result_vm = run_vm_program(&(&source, &program, &runner), "run_test", &[], None).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
 
     let result = run_native_program(&(&source, &program), "run_test", json!([]));
     assert_eq!(
@@ -102,14 +102,14 @@ fn enum_match() {
 
     let result_vm = run_vm_program(&(&source, &program, &runner), "match_a", &[], None).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
 
     let result = run_native_program(&(&source, &program), "match_a", json!([]));
     assert_eq!(result, json!([felt(&vm_results[0])]));
 
     let result_vm = run_vm_program(&(&source, &program, &runner), "match_b", &[], None).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
 
     let result = run_native_program(&(&source, &program), "match_b", json!([]));
     assert_eq!(result, json!([vm_results[0].parse::<i64>().unwrap()]));

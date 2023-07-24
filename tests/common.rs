@@ -9,7 +9,8 @@ use cairo_lang_runner::{
     Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{core::{CoreLibfunc, CoreType, CoreTypeConcrete}, GenericType, GenericLibfunc},
+    ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
 };
@@ -58,7 +59,7 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
     num_variants - 1 - (idx >> 1)
 }
 
-pub fn get_result_success(r: RunResultValue) -> Vec<String> {
+pub fn get_result_success(r: &RunResultValue) -> Vec<String> {
     match r {
         RunResultValue::Success(x) => x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
         RunResultValue::Panic(_) => panic!(),
@@ -241,4 +242,66 @@ pub fn run_vm_program(
         gas,
         StarknetState::default(),
     )
+}
+
+// Panics if results don't match.
+pub fn compare_outputs(
+    program: &Program,
+    entry_point: &FunctionId,
+    vm_result: &RunResult,
+    native_result: &serde_json::Value,
+    _ignore_gas: bool,
+)
+{
+    let reg: ProgramRegistry<CoreType, CoreLibfunc> = ProgramRegistry::new(program).unwrap();
+
+    let func = reg.get_function(entry_point).unwrap();
+
+    let ret_types = &func.signature.ret_types;
+
+    let mut native_rets = native_result.as_array().expect("should be an array").iter();
+    let mut vm_rets = get_result_success(&vm_result.value).iter();
+
+    for ty in ret_types {
+        let ty = reg.get_type(ty).unwrap();
+
+        match ty {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => todo!(),
+            CoreTypeConcrete::Uint16(_) => todo!(),
+            CoreTypeConcrete::Uint32(_) => todo!(),
+            CoreTypeConcrete::Uint64(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => {
+                // runner: ignore
+                // native: null
+                native_rets.next().unwrap().as_null().expect("should be null");
+            },
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+        }
+    }
+
+    todo!()
 }

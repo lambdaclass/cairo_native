@@ -1,6 +1,7 @@
 use crate::common::{felt, get_result_success, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252;
 use cairo_lang_runner::Arg;
+use common::compare_outputs;
 use serde_json::json;
 
 mod common;
@@ -25,7 +26,7 @@ fn fib() {
     let result_vm =
         run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
@@ -51,7 +52,7 @@ fn factorial() {
     let result_vm =
         run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
@@ -86,7 +87,7 @@ fn logistic_map() {
     let result_vm =
         run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
     let fib_result = &vm_results[0];
 
     let result = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
@@ -111,7 +112,7 @@ fn pedersen() {
     )
     .unwrap();
 
-    let vm_results = get_result_success(result_vm.value);
+    let vm_results = get_result_success(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(
@@ -120,4 +121,34 @@ fn pedersen() {
         json!([null, felt("2"), felt("4")]),
     );
     assert_eq!(result, json!([null, felt(vm_result)]));
+}
+
+#[test]
+fn factorial_compare() {
+    let (source, program, runner) = load_cairo! {
+        fn factorial(value: felt252, n: felt252) -> felt252 {
+            if (n == 1) {
+                value
+            } else {
+                factorial(value * n, n - 1)
+            }
+        }
+
+        fn run_test() -> felt252 {
+            factorial(1, 10)
+        }
+    };
+
+    let result_vm =
+        run_vm_program(&(&source, &program, &runner), "run_test", &[], Some(GAS)).unwrap();
+
+    let result_native = run_native_program(&(&source, &program), "run_test", json!([null, GAS]));
+
+    compare_outputs(
+        &program,
+        &runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+        true,
+    );
 }
