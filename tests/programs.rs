@@ -150,5 +150,6 @@ fn factorial_compare() {
         &result_vm,
         &result_native,
         true,
+        true,
     );
 }

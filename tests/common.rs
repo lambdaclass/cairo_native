@@ -9,8 +9,11 @@ use cairo_lang_runner::{
     Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
-    extensions::{core::{CoreLibfunc, CoreType, CoreTypeConcrete}, GenericType, GenericLibfunc},
-    ids::FunctionId,
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        GenericLibfunc, GenericType,
+    },
+    ids::{ConcreteTypeId, FunctionId},
     program::Program,
     program_registry::ProgramRegistry,
 };
@@ -19,6 +22,7 @@ use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::felt252::PRIME,
+    utils::register_runtime_symbols,
 };
 use melior::{
     dialect::DialectRegistry,
@@ -167,52 +171,7 @@ pub fn run_native_program(
     let engine = ExecutionEngine::new(&module, 0, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_from_x_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
-                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
-                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add_mul",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
-                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_try_new_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
-                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
-        );
-    }
+    register_runtime_symbols(&engine);
 
     cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
         &engine,
@@ -250,9 +209,9 @@ pub fn compare_outputs(
     entry_point: &FunctionId,
     vm_result: &RunResult,
     native_result: &serde_json::Value,
-    _ignore_gas: bool,
-)
-{
+    ignore_gas: bool,
+    has_panic: bool, // whether the function can panic, and thus the outer result enum exists in sierra but not on the vm.
+) {
     let reg: ProgramRegistry<CoreType, CoreLibfunc> = ProgramRegistry::new(program).unwrap();
 
     let func = reg.get_function(entry_point).unwrap();
@@ -260,11 +219,27 @@ pub fn compare_outputs(
     let ret_types = &func.signature.ret_types;
 
     let mut native_rets = native_result.as_array().expect("should be an array").iter();
-    let mut vm_rets = get_result_success(&vm_result.value).iter();
+    let success_val = get_result_success(&vm_result.value);
+    dbg!(&success_val);
+    dbg!(&native_result);
+    let mut vm_rets = success_val.iter();
+    let vm_gas: u64 = vm_result
+        .gas_counter
+        .as_ref()
+        .map(|x| x.to_biguint().try_into().unwrap())
+        .unwrap_or(0);
 
-    for ty in ret_types {
-        let ty = reg.get_type(ty).unwrap();
+    let mut panic_handled = !has_panic;
 
+    fn check_next_type(
+        ty: &CoreTypeConcrete,
+        ignore_gas: bool,
+        native_rets: &mut std::slice::Iter<'_, serde_json::Value>,
+        vm_rets: &mut std::slice::Iter<'_, String>,
+        vm_gas: u64,
+        reg: &ProgramRegistry<CoreType, CoreLibfunc>,
+        panic_handled: &mut bool,
+    ) {
         match ty {
             CoreTypeConcrete::Array(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => todo!(),
@@ -273,7 +248,15 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => todo!(),
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => {
+                // runner: ignore
+                // native: compare to gas
+                let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
+
+                if !ignore_gas {
+                    assert_eq!(vm_gas, gas_val, "gas mismatch");
+                }
+            }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => todo!(),
             CoreTypeConcrete::Uint16(_) => todo!(),
@@ -286,10 +269,56 @@ pub fn compare_outputs(
             CoreTypeConcrete::RangeCheck(_) => {
                 // runner: ignore
                 // native: null
-                native_rets.next().unwrap().as_null().expect("should be null");
-            },
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Enum(info) => {
+                let enum_container = native_rets.next().unwrap().as_array().unwrap();
+                assert_eq!(enum_container.len(), 2);
+                let native_tag = enum_container[0].as_u64().unwrap();
+
+                if *panic_handled {
+                    let vm_tag = vm_rets.next().unwrap();
+                    let vm_tag = casm_variant_to_sierra(
+                        vm_tag.parse::<i64>().unwrap(),
+                        info.variants.len() as i64,
+                    ) as u64;
+                    assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+
+                    let payload = enum_container[1].as_array().unwrap();
+                    check_next_type(
+                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                        ignore_gas,
+                        &mut payload.iter(),
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                        panic_handled,
+                    );
+                } else {
+                    *panic_handled = true;
+
+                    if native_tag == 1 {
+                        // todo: compare errors
+                        todo!()
+                    } else {
+                        let payload = enum_container[1].as_array().unwrap();
+                        check_next_type(
+                            reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                            ignore_gas,
+                            &mut payload.iter(),
+                            vm_rets,
+                            vm_gas,
+                            reg,
+                            panic_handled,
+                        );
+                    }
+                }
+            }
             CoreTypeConcrete::Struct(_) => todo!(),
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
@@ -301,6 +330,19 @@ pub fn compare_outputs(
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
+    }
+
+    for ty in ret_types {
+        let ty = reg.get_type(ty).unwrap();
+        check_next_type(
+            ty,
+            ignore_gas,
+            &mut native_rets,
+            &mut vm_rets,
+            vm_gas,
+            &reg,
+            &mut panic_handled,
+        );
     }
 
     todo!()
