@@ -557,24 +557,34 @@ pub(crate) mod handler {
             keys: *const (*const Felt252Abi, u32, u32),
             data: *const (*const Felt252Abi, u32, u32),
         ) {
-            // TODO: handle gas
+            // TODO: Handle gas.
 
             let keys: Vec<_> = unsafe {
                 let len = (*keys).1 as usize;
-
                 std::slice::from_raw_parts((*keys).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let data: Vec<_> = unsafe {
                 let len = (*data).1 as usize;
-
                 std::slice::from_raw_parts((*data).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let result = ptr.emit_event(&keys, &data);

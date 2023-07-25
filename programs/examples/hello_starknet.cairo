@@ -2,8 +2,9 @@ use core::clone::Clone;
 use core::{
     array::ArrayTrait, debug::PrintTrait, option::OptionTrait,
     starknet::{
-        call_contract_syscall, contract_address_try_from_felt252, get_block_hash_syscall,
-        storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall,
+        call_contract_syscall, contract_address_try_from_felt252, emit_event_syscall,
+        get_block_hash_syscall, storage_address_try_from_felt252, storage_read_syscall,
+        storage_write_syscall,
     }
 };
 
@@ -22,6 +23,27 @@ fn main() {
         Result::Err(e) => {
             'Syscall returned an error:'.print();
             '  call_contract'.print();
+        }
+    }
+
+    match emit_event_syscall(
+        {
+            let mut data = ArrayTrait::<felt252>::new();
+            data.append(1234);
+            data.append(5678);
+            data.span()
+        },
+        {
+            let mut data = ArrayTrait::<felt252>::new();
+            data.append(8765);
+            data.append(4321);
+            data.span()
+        }
+    ) {
+        Result::Ok(_) => {},
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  emit_event'.print();
         }
     }
 

@@ -92,10 +92,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn emit_event(
         &self,
-        _keys: &[cairo_felt::Felt252],
-        _data: &[cairo_felt::Felt252],
+        keys: &[cairo_felt::Felt252],
+        data: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!("emit_event_syscall")
+        println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
+        Ok(())
     }
 
     fn send_message_to_l1(
