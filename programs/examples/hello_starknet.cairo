@@ -1,7 +1,10 @@
 use core::clone::Clone;
 use core::{
     array::ArrayTrait, debug::PrintTrait, option::OptionTrait,
-    starknet::{call_contract_syscall, contract_address_try_from_felt252, get_block_hash_syscall}
+    starknet::{
+        call_contract_syscall, contract_address_try_from_felt252, get_block_hash_syscall,
+        storage_address_try_from_felt252, storage_read_syscall,
+    }
 };
 
 fn main() {
@@ -28,5 +31,13 @@ fn main() {
             'Syscall returned an error:'.print();
             '  get_block_hash'.print();
         },
+    }
+
+    match storage_read_syscall(0, storage_address_try_from_felt252(1234).unwrap()) {
+        Result::Ok(x) => x.print(),
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  storage_read'.print();
+        }
     }
 }

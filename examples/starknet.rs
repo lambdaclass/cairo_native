@@ -73,10 +73,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn storage_read(
         &self,
-        _address_domain: u32,
-        _address: cairo_felt::Felt252,
+        address_domain: u32,
+        address: cairo_felt::Felt252,
     ) -> SyscallResult<cairo_felt::Felt252> {
-        todo!("storage_read_syscall")
+        println!("Called `storage_read({address_domain}, {address})` from MLIR.");
+        Ok(address * &Felt252::new(3))
     }
 
     fn storage_write(
