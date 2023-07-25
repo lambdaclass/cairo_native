@@ -82,11 +82,12 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn storage_write(
         &self,
-        _address_domain: u32,
-        _address: cairo_felt::Felt252,
-        _value: cairo_felt::Felt252,
+        address_domain: u32,
+        address: cairo_felt::Felt252,
+        value: cairo_felt::Felt252,
     ) -> SyscallResult<()> {
-        todo!("storage_write_syscall")
+        println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
+        Ok(())
     }
 
     fn emit_event(

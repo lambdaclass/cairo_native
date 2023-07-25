@@ -3,7 +3,7 @@ use core::{
     array::ArrayTrait, debug::PrintTrait, option::OptionTrait,
     starknet::{
         call_contract_syscall, contract_address_try_from_felt252, get_block_hash_syscall,
-        storage_address_try_from_felt252, storage_read_syscall,
+        storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall,
     }
 };
 
@@ -38,6 +38,14 @@ fn main() {
         Result::Err(e) => {
             'Syscall returned an error:'.print();
             '  storage_read'.print();
+        }
+    }
+
+    match storage_write_syscall(0, storage_address_try_from_felt252(1234).unwrap(), 2345) {
+        Result::Ok(_) => {},
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  storage_write'.print();
         }
     }
 }

@@ -500,7 +500,11 @@ pub(crate) mod handler {
             address: &Felt252Abi,
         ) {
             // TODO: Handle gas.
-            let address = Felt252::from_bytes_be(&address.0);
+            let address = Felt252::from_bytes_be(&{
+                let mut data = address.0;
+                data.reverse();
+                data
+            });
             let result = ptr.storage_read(address_domain, address);
 
             *result_ptr = match result {
@@ -523,8 +527,16 @@ pub(crate) mod handler {
             value: &Felt252Abi,
         ) {
             // TODO: Handle gas.
-            let address = Felt252::from_bytes_be(&address.0);
-            let value = Felt252::from_bytes_be(&value.0);
+            let address = Felt252::from_bytes_be(&{
+                let mut data = address.0;
+                data.reverse();
+                data
+            });
+            let value = Felt252::from_bytes_be(&{
+                let mut data = value.0;
+                data.reverse();
+                data
+            });
             let result = ptr.storage_write(address_domain, address, value);
 
             *result_ptr = match result {
