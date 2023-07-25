@@ -9,11 +9,8 @@ use cairo_lang_runner::{
     Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        GenericLibfunc, GenericType,
-    },
-    ids::{ConcreteTypeId, FunctionId},
+    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
 };
@@ -65,7 +62,7 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
 
 pub fn get_result_success(r: &RunResultValue) -> Vec<String> {
     match r {
-        RunResultValue::Success(x) => x.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+        RunResultValue::Success(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
         RunResultValue::Panic(_) => panic!(),
     }
 }
