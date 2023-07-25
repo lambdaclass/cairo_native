@@ -221,7 +221,7 @@ where
                 StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::System(_) => Layout::new::<()>(),
+                StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
                 StarkNetTypeConcrete::Secp256Point(_) => todo!(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
