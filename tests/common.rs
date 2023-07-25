@@ -29,7 +29,10 @@ use melior::{
     Context, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use std::{env::var, fs, ops::Neg, path::Path, str::FromStr, sync::Arc};
+use proptest::test_runner::TestCaseError;
+use std::{
+    env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
+};
 
 macro_rules! load_cairo {
     ( $( $program:tt )+ ) => {
@@ -45,6 +48,18 @@ pub(crate) const GAS: usize = usize::MAX;
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
     let value = value.parse::<BigInt>().unwrap();
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+pub fn feltn(value: impl Into<BigInt>) -> [u32; 8] {
+    let value: BigInt = value.into();
     let value = match value.sign() {
         Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
         _ => value.to_biguint().unwrap(),
@@ -200,7 +215,7 @@ pub fn run_vm_program(
     )
 }
 
-// Panics if results don't match.
+// left of assert is cairo vm, right cairo native
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
@@ -208,18 +223,22 @@ pub fn compare_outputs(
     native_result: &serde_json::Value,
     ignore_gas: bool,
     has_panic: bool, // whether the function can panic, and thus the outer result enum exists in sierra but not on the vm.
-) {
+) -> Result<(), TestCaseError> {
+    use proptest::prelude::*;
+
     let reg: ProgramRegistry<CoreType, CoreLibfunc> = ProgramRegistry::new(program).unwrap();
 
     let func = reg.get_function(entry_point).unwrap();
 
     let ret_types = &func.signature.ret_types;
 
-    let mut native_rets = native_result.as_array().expect("should be an array").iter();
+    let mut native_rets = native_result
+        .as_array()
+        .expect("should be an array")
+        .iter()
+        .peekable();
     let success_val = get_result_success(&vm_result.value);
-    dbg!(&success_val);
-    dbg!(&native_result);
-    let mut vm_rets = success_val.iter();
+    let mut vm_rets = success_val.iter().peekable();
     let vm_gas: u64 = vm_result
         .gas_counter
         .as_ref()
@@ -231,12 +250,12 @@ pub fn compare_outputs(
     fn check_next_type(
         ty: &CoreTypeConcrete,
         ignore_gas: bool,
-        native_rets: &mut std::slice::Iter<'_, serde_json::Value>,
-        vm_rets: &mut std::slice::Iter<'_, String>,
+        native_rets: &mut Peekable<Iter<'_, serde_json::Value>>,
+        vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u64,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
         panic_handled: &mut bool,
-    ) {
+    ) -> Result<(), TestCaseError> {
         match ty {
             CoreTypeConcrete::Array(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => todo!(),
@@ -245,28 +264,32 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value = vm_rets.next().unwrap();
 
                 if let serde_json::Value::Number(n) = native_rets.next().unwrap() {
-                    let mut native_value =
-                        BigUint::from_str(&n.to_string()).unwrap().to_u32_digits();
-                    native_value.resize(8, 0);
-                    assert_eq!(felt(vm_value).as_slice(), native_value.as_slice());
+                    let native_value = BigUint::from_str(&n.to_string()).unwrap();
+                    let vm_value = BigUint::from_str(vm_value).unwrap();
+                    prop_assert_eq!(vm_value, native_value);
                 } else {
-                    panic!("invalid value")
+                    prop_assert!(false, "invalid value");
                 }
             }
             CoreTypeConcrete::GasBuiltin(_) => {
                 // runner: ignore
                 // native: compare to gas
+                prop_assert!(native_rets.peek().is_some());
                 let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
 
                 if !ignore_gas {
-                    assert_eq!(vm_gas, gas_val, "gas mismatch");
+                    prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
                 }
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u8 = native_rets
                     .next()
@@ -275,9 +298,11 @@ pub fn compare_outputs(
                     .unwrap()
                     .try_into()
                     .unwrap();
-                assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint16(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u16 = native_rets
                     .next()
@@ -286,9 +311,11 @@ pub fn compare_outputs(
                     .unwrap()
                     .try_into()
                     .unwrap();
-                assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint32(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u32 = native_rets
                     .next()
@@ -297,17 +324,21 @@ pub fn compare_outputs(
                     .unwrap()
                     .try_into()
                     .unwrap();
-                assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint64(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u64 = native_rets.next().unwrap().as_u64().unwrap();
-                assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128(_) => {
+                prop_assert!(vm_rets.peek().is_some());
+                prop_assert!(native_rets.peek().is_some());
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u128 = native_rets.next().unwrap().as_u64().unwrap().into();
-                assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
@@ -323,8 +354,9 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
+                prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
-                assert_eq!(enum_container.len(), 2);
+                prop_assert_eq!(enum_container.len(), 2);
                 let native_tag = enum_container[0].as_u64().unwrap();
 
                 if *panic_handled {
@@ -333,18 +365,18 @@ pub fn compare_outputs(
                         vm_tag.parse::<i64>().unwrap(),
                         info.variants.len() as i64,
                     ) as u64;
-                    assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+                    prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
 
                     let payload = enum_container[1].as_array().unwrap();
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),
                         ignore_gas,
-                        &mut payload.iter(),
+                        &mut payload.iter().peekable(),
                         vm_rets,
                         vm_gas,
                         reg,
                         panic_handled,
-                    );
+                    )?;
                 } else {
                     *panic_handled = true;
 
@@ -356,18 +388,18 @@ pub fn compare_outputs(
                         check_next_type(
                             reg.get_type(&info.variants[native_tag as usize]).unwrap(),
                             ignore_gas,
-                            &mut payload.iter(),
+                            &mut payload.iter().peekable(),
                             vm_rets,
                             vm_gas,
                             reg,
                             panic_handled,
-                        );
+                        )?;
                     }
                 }
             }
             CoreTypeConcrete::Struct(info) => {
                 let struct_container = native_rets.next().unwrap().as_array().unwrap();
-                let mut iter = struct_container.iter();
+                let mut iter = struct_container.iter().peekable();
                 for field in &info.members {
                     check_next_type(
                         reg.get_type(field).unwrap(),
@@ -377,7 +409,7 @@ pub fn compare_outputs(
                         vm_gas,
                         reg,
                         panic_handled,
-                    );
+                    )?;
                 }
             }
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
@@ -390,6 +422,8 @@ pub fn compare_outputs(
             CoreTypeConcrete::SegmentArena(_) => todo!(),
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
+
+        Ok(())
     }
 
     for ty in ret_types {
@@ -402,6 +436,8 @@ pub fn compare_outputs(
             vm_gas,
             &reg,
             &mut panic_handled,
-        );
+        )?;
     }
+
+    Ok(())
 }

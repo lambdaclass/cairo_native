@@ -1,9 +1,12 @@
-use crate::common::{felt, get_result_success, load_cairo, run_native_program, run_vm_program};
+use crate::common::{
+    felt, feltn, get_result_success, load_cairo, run_native_program, run_vm_program,
+};
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use common::compare_outputs;
 use lazy_static::lazy_static;
+use proptest::prelude::*;
 use serde_json::json;
 
 mod common;
@@ -134,5 +137,29 @@ fn factorial() {
         &result_native,
         true,
         true,
-    );
+    )
+    .unwrap();
+}
+
+proptest! {
+    #[test]
+    fn factorial_proptest(n in 1..100i32) {
+        let result_vm = run_vm_program(
+            &FACTORIAL,
+            "run_test",
+            &[Arg::Value(Felt252::new(n))],
+            Some(GAS),
+        )
+        .unwrap();
+        let result_native = run_native_program(&FACTORIAL, "run_test", json!([null, GAS, feltn(n)]));
+
+        compare_outputs(
+            &FACTORIAL.1,
+            &FACTORIAL.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+            true,
+            true,
+        )?;
+    }
 }
