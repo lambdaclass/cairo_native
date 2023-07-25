@@ -48,6 +48,7 @@ cairo-felt = "0.6.1"
 cairo-lang-runner = "2.0.2"
 cairo-lang-starknet = "2.0.2"
 pretty_assertions = "1.4.0"
+proptest = "1.2.0"
 serde_json = { version = "1.0.103", features = ["arbitrary_precision"] }
 tempfile = "3.6.0"
 

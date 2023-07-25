@@ -107,7 +107,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
 }
 
 pub fn run_native_program(
-    program: &(&str, &Program),
+    program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: serde_json::Value,
 ) -> serde_json::Value {
@@ -186,12 +186,12 @@ pub fn run_native_program(
 }
 
 pub fn run_vm_program(
-    program: &(&str, &Program, &SierraCasmRunner),
+    program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[Arg],
     gas: Option<usize>,
 ) -> Result<RunResult, RunnerError> {
-    let runner = program.2;
+    let runner = &program.2;
     runner.run_function(
         runner.find_function(entry_point).unwrap(),
         args,
