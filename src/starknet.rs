@@ -450,16 +450,29 @@ pub(crate) mod handler {
             calldata: *const (*const Felt252Abi, u32, u32),
         ) {
             // TODO: handle gas
-            let address = Felt252::from_bytes_be(&address.0);
-            let entry_point_selector = Felt252::from_bytes_be(&entry_point_selector.0);
+            let address = Felt252::from_bytes_be(&{
+                let mut data = address.0;
+                data.reverse();
+                data
+            });
+            let entry_point_selector = Felt252::from_bytes_be(&{
+                let mut data = entry_point_selector.0;
+                data.reverse();
+                data
+            });
 
             let calldata: Vec<_> = unsafe {
                 let len = (*calldata).1 as usize;
-
                 std::slice::from_raw_parts((*calldata).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let result = ptr.call_contract(address, entry_point_selector, &calldata);

@@ -33,7 +33,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn get_execution_info(&self) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
-        todo!()
+        todo!("get_execution_info_syscall")
     }
 
     fn deploy(
@@ -43,11 +43,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _calldata: &[cairo_felt::Felt252],
         _deploy_from_zero: bool,
     ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
-        todo!()
+        todo!("deploy_syscall")
     }
 
     fn replace_class(&self, _class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
-        todo!()
+        todo!("replace_class_syscall")
     }
 
     fn library_call(
@@ -56,16 +56,19 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _function_selector: cairo_felt::Felt252,
         _calldata: &[cairo_felt::Felt252],
     ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-        todo!()
+        todo!("library_call_syscall")
     }
 
     fn call_contract(
         &self,
-        _address: cairo_felt::Felt252,
-        _entry_point_selector: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
+        address: cairo_felt::Felt252,
+        entry_point_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
     ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-        todo!()
+        println!(
+            "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
     }
 
     fn storage_read(
@@ -73,7 +76,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _address_domain: u32,
         _address: cairo_felt::Felt252,
     ) -> SyscallResult<cairo_felt::Felt252> {
-        todo!()
+        todo!("storage_read_syscall")
     }
 
     fn storage_write(
@@ -82,7 +85,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _address: cairo_felt::Felt252,
         _value: cairo_felt::Felt252,
     ) -> SyscallResult<()> {
-        todo!()
+        todo!("storage_write_syscall")
     }
 
     fn emit_event(
@@ -90,7 +93,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _keys: &[cairo_felt::Felt252],
         _data: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!()
+        todo!("emit_event_syscall")
     }
 
     fn send_message_to_l1(
@@ -98,11 +101,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _to_address: cairo_felt::Felt252,
         _payload: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!()
+        todo!("send_message_to_l1_syscall")
     }
 
     fn keccak(&self, _input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
-        todo!()
+        todo!("keccak_syscall")
     }
 
     fn secp256k1_add(
@@ -321,6 +324,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_runtime_symbols(&engine);
 
     let params_input = json!([
+        (),
         u64::MAX,
         metadata
             .get::<SyscallHandlerMeta>()
