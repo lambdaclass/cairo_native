@@ -5,6 +5,8 @@
 A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
 
 ## Implemented Library Functions
+
+Done:
 - [x] `alloc_local`
 - [x] `array_append`
 - [x] `array_get`
@@ -12,7 +14,6 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 - [x] `array_new`
 - [x] `array_pop_front_consume`
 - [x] `array_pop_front`
-- [ ] `array_slice`
 - [x] `array_snapshot_pop_back`
 - [x] `array_snapshot_pop_front`
 - [x] `bitwise`
@@ -22,14 +23,6 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 - [x] `bool_to_felt252`
 - [x] `bool_xor_impl`
 - [x] `branch_align`
-- [ ] `call_contract_syscall` (StarkNet)
-- [ ] `class_hash_const` (StarkNet)
-- [ ] `class_hash_to_felt252` (StarkNet)
-- [ ] `class_hash_try_from_felt252` (StarkNet)
-- [ ] `contract_address_const` (StarkNet)
-- [ ] `contract_address_to_felt252` (StarkNet)
-- [ ] `contract_address_try_from_felt252` (StarkNet)
-- [ ] `deploy_syscall` (StarkNet)
 - [x] `disable_ap_tracking`
 - [x] `downcast`
 - [x] `drop` (3)
@@ -44,11 +37,9 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 - [x] `ec_state_add`
 - [x] `ec_state_init`
 - [x] `ec_state_try_finalize_nz`
-- [ ] `emit_event_syscall` (StarkNet)
 - [x] `enable_ap_tracking`
 - [x] `enum_init`
 - [x] `enum_match`
-- [ ] `enum_snapshot_match`
 - [x] `felt252_add_const` (4)
 - [x] `felt252_add`
 - [x] `felt252_const`
@@ -65,25 +56,100 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 - [x] `felt252_sub`
 - [x] `finalize_locals`
 - [x] `function_call`
-- [ ] `get_available_gas`
-- [ ] `get_block_hash_syscall` (StarkNet)
 - [x] `get_builtin_costs` (5)
-- [ ] `get_execution_info_syscall` (StarkNet)
 - [x] `into_box` (2)
 - [x] `jump`
-- [ ] `keccak_syscall` (StarkNet)
-- [ ] `library_call_syscall` (StarkNet)
 - [x] `match_nullable`
 - [x] `null`
 - [x] `nullable_from_box`
 - [x] `pedersen`
+- [x] `print`
+- [x] `rename`
+- [x] `revoke_ap_tracking` (1)
+- [x] `snapshot_take` (6)
+- [x] `storage_address_from_base_and_offset` (StarkNet)
+- [x] `storage_address_from_base` (StarkNet)
+- [x] `storage_address_to_felt252` (StarkNet)
+- [x] `storage_address_try_from_felt252` (StarkNet)
+- [x] `storage_base_address_const` (StarkNet)
+- [x] `storage_base_address_from_felt252` (StarkNet)
+- [x] `store_local`
+- [x] `store_temp`
+- [x] `struct_construct`
+- [x] `struct_deconstruct`
+- [x] `u128_byte_reverse`
+- [x] `u128_const`
+- [x] `u128_eq`
+- [x] `u128_is_zero`
+- [x] `u128_overflowing_add`
+- [x] `u128_overflowing_sub`
+- [x] `u128_safe_divmod`
+- [x] `u128_sqrt`
+- [x] `u128_to_felt252`
+- [x] `u128s_from_felt252`
+- [x] `u16_const`
+- [x] `u16_eq`
+- [x] `u16_is_zero`
+- [x] `u16_overflowing_add`
+- [x] `u16_overflowing_sub`
+- [x] `u16_safe_divmod`
+- [x] `u16_sqrt`
+- [x] `u16_to_felt252`
+- [x] `u16_try_from_felt252`
+- [x] `u32_const`
+- [x] `u32_eq`
+- [x] `u32_is_zero`
+- [x] `u32_overflowing_add`
+- [x] `u32_overflowing_sub`
+- [x] `u32_safe_divmod`
+- [x] `u32_sqrt`
+- [x] `u32_to_felt252`
+- [x] `u32_try_from_felt252`
+- [x] `u64_const`
+- [x] `u64_eq`
+- [x] `u64_is_zero`
+- [x] `u64_overflowing_add`
+- [x] `u64_overflowing_sub`
+- [x] `u64_safe_divmod`
+- [x] `u64_sqrt`
+- [x] `u64_to_felt252`
+- [x] `u64_try_from_felt252`
+- [x] `u8_const`
+- [x] `u8_eq`
+- [x] `u8_is_zero`
+- [x] `u8_overflowing_add`
+- [x] `u8_overflowing_sub`
+- [x] `u8_safe_divmod`
+- [x] `u8_sqrt`
+- [x] `u8_to_felt252`
+- [x] `u8_try_from_felt252`
+- [x] `unbox` (2)
+- [x] `unwrap_non_zero`
+- [x] `upcast`
+- [x] `withdraw_gas_all` (5)
+- [x] `withdraw_gas` (5)
+
+TODO:
+- [ ] `array_slice`
+- [ ] `call_contract_syscall` (StarkNet)
+- [ ] `class_hash_const` (StarkNet)
+- [ ] `class_hash_to_felt252` (StarkNet)
+- [ ] `class_hash_try_from_felt252` (StarkNet)
+- [ ] `contract_address_const` (StarkNet)
+- [ ] `contract_address_to_felt252` (StarkNet)
+- [ ] `contract_address_try_from_felt252` (StarkNet)
+- [ ] `deploy_syscall` (StarkNet)
+- [ ] `emit_event_syscall` (StarkNet)
+- [ ] `enum_snapshot_match`
+- [ ] `get_available_gas`
+- [ ] `get_block_hash_syscall` (StarkNet)
+- [ ] `get_execution_info_syscall` (StarkNet)
+- [ ] `keccak_syscall` (StarkNet)
+- [ ] `library_call_syscall` (StarkNet)
 - [ ] `pop_log` (StarkNet, testing)
 - [ ] `poseidon`
-- [x] `print`
 - [ ] `redeposit_gas`
-- [x] `rename`
 - [ ] `replace_class_syscall` (StarkNet)
-- [x] `revoke_ap_tracking` (1)
 - [ ] `secp256k1_add_syscall` (StarkNet)
 - [ ] `secp256k1_get_point_from_x_syscall` (StarkNet)
 - [ ] `secp256k1_get_xy_syscall` (StarkNet)
@@ -107,81 +173,20 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 - [ ] `set_signature` (StarkNet, testing)
 - [ ] `set_transaction_hash` (StarkNet, testing)
 - [ ] `set_version` (StarkNet, testing)
-- [x] `snapshot_take` (6)
-- [x] `storage_address_from_base_and_offset` (StarkNet)
-- [x] `storage_address_from_base` (StarkNet)
-- [x] `storage_address_to_felt252` (StarkNet)
-- [x] `storage_address_try_from_felt252` (StarkNet)
-- [x] `storage_base_address_const` (StarkNet)
-- [x] `storage_base_address_from_felt252` (StarkNet)
 - [ ] `storage_read_syscall` (StarkNet)
 - [ ] `storage_write_syscall` (StarkNet)
-- [x] `store_local`
-- [x] `store_temp`
-- [x] `struct_construct`
-- [x] `struct_deconstruct`
 - [ ] `struct_snapshot_deconstruct`
-- [x] `u128_byte_reverse`
-- [x] `u128_const`
-- [x] `u128_eq`
 - [ ] `u128_guarantee_mul`
-- [x] `u128_is_zero`
 - [ ] `u128_mul_guarantee_verify`
-- [x] `u128_overflowing_add`
-- [x] `u128_overflowing_sub`
-- [x] `u128_safe_divmod`
-- [x] `u128_sqrt`
-- [x] `u128_to_felt252`
-- [x] `u128s_from_felt252`
-- [x] `u16_const`
-- [x] `u16_eq`
-- [x] `u16_is_zero`
-- [x] `u16_overflowing_add`
-- [x] `u16_overflowing_sub`
-- [x] `u16_safe_divmod`
-- [x] `u16_sqrt`
-- [x] `u16_to_felt252`
-- [x] `u16_try_from_felt252`
 - [ ] `u16_wide_mul`
 - [ ] `u256_is_zero`
 - [ ] `u256_safe_divmod`
 - [ ] `u256_sqrt`
-- [x] `u32_const`
-- [x] `u32_eq`
-- [x] `u32_is_zero`
-- [x] `u32_overflowing_add`
-- [x] `u32_overflowing_sub`
-- [x] `u32_safe_divmod`
-- [x] `u32_sqrt`
-- [x] `u32_to_felt252`
-- [x] `u32_try_from_felt252`
 - [ ] `u32_wide_mul`
 - [ ] `u512_safe_divmod_by_u256`
-- [x] `u64_const`
-- [x] `u64_eq`
-- [x] `u64_is_zero`
-- [x] `u64_overflowing_add`
-- [x] `u64_overflowing_sub`
-- [x] `u64_safe_divmod`
-- [x] `u64_sqrt`
-- [x] `u64_to_felt252`
-- [x] `u64_try_from_felt252`
 - [ ] `u64_wide_mul`
-- [x] `u8_const`
-- [x] `u8_eq`
-- [x] `u8_is_zero`
-- [x] `u8_overflowing_add`
-- [x] `u8_overflowing_sub`
-- [x] `u8_safe_divmod`
-- [x] `u8_sqrt`
-- [x] `u8_to_felt252`
-- [x] `u8_try_from_felt252`
 - [ ] `u8_wide_mul`
-- [x] `unbox` (2)
-- [x] `unwrap_non_zero`
-- [x] `upcast`
-- [x] `withdraw_gas_all` (5)
-- [x] `withdraw_gas` (5)
+
 
 Footnotes
 1. It is implemented but we're not sure if it has some stuff we don't know of.
@@ -211,6 +216,12 @@ cargo install mdbook mdbook-toc mdbook-mermaid
 ```
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
+
+Install the cairo corelibs to be able to run the **tests** and compile `.cairo` programs to sierra:
+
+```bash
+./scripts/fetch-corelibs.sh
+```
 
 ### Linux
 
@@ -261,7 +272,8 @@ Options:
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo >=1.0](https://github.com/starkware-libs/cairo)
-- LLVM 16
+- Cairo Corelibs
+- LLVM 16 with MLIR
 
 You need to setup some environment variables:
 ```bash
