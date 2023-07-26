@@ -283,7 +283,17 @@ pub fn compare_outputs(
                         prop_assert_eq!(vm_value, native_value);
                     }
                     Value::Array(n) => {
-                        todo!()
+                        let data: Vec<_> = n
+                            .iter()
+                            .map(|x| match x {
+                                Value::Number(n) => n.as_u64().unwrap(),
+                                _ => unreachable!(),
+                            })
+                            .map(|x| x.try_into().unwrap())
+                            .collect();
+                        let native_value = BigUint::from_slice(&data);
+                        let vm_value = BigUint::from_str(vm_value).unwrap();
+                        prop_assert_eq!(vm_value, native_value);
                     }
                     _ => {
                         prop_assert!(false, "invalid felt value type");
@@ -296,10 +306,7 @@ pub fn compare_outputs(
                 prop_assert!(native_rets.peek().is_some());
 
                 // sometimes gas is not returned?
-                let gas_val = dbg!(native_rets.next())
-                    .unwrap()
-                    .as_u64()
-                    .expect("should be u64");
+                let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
 
                 if !ignore_gas {
                     prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
