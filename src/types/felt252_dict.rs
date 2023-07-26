@@ -35,8 +35,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    //let inner = registry.get_type(&info.ty)?;
-    //let layout = inner.layout(registry)?;
-
     Ok(llvm::r#type::opaque_pointer(context))
 }
