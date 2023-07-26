@@ -32,12 +32,8 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
-use proptest::{
-    prelude::Arbitrary,
-    strategy::{SBoxedStrategy, Strategy},
-    test_runner::TestCaseError,
-};
-use serde_json::{Number, Value};
+use proptest::{strategy::Strategy, test_runner::TestCaseError};
+use serde_json::Value;
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
