@@ -148,11 +148,11 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(Felt252::new(10))],
+        &[Arg::Value(Felt252::new(13))],
         Some(GAS),
     )
     .unwrap();
-    let result_native = run_native_program(&FACTORIAL, "run_test", json!([null, GAS, felt("10")]));
+    let result_native = run_native_program(&FACTORIAL, "run_test", json!([null, GAS, felt("13")]));
 
     compare_outputs(
         &FACTORIAL.1,
