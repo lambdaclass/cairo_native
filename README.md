@@ -7,185 +7,185 @@ A compiler to convert Cairo's intermediate representation "Sierra" code to machi
 ## Implemented Library Functions
 
 Done:
-- [x] `alloc_local`
-- [x] `array_append`
-- [x] `array_get`
-- [x] `array_len`
-- [x] `array_new`
-- [x] `array_pop_front_consume`
-- [x] `array_pop_front`
-- [x] `array_snapshot_pop_back`
-- [x] `array_snapshot_pop_front`
-- [x] `bitwise`
-- [x] `bool_and_impl`
-- [x] `bool_not_impl`
-- [x] `bool_or_impl`
-- [x] `bool_to_felt252`
-- [x] `bool_xor_impl`
-- [x] `branch_align`
-- [x] `disable_ap_tracking`
-- [x] `downcast`
-- [x] `drop` (3)
-- [x] `dup` (3)
-- [x] `ec_neg`
-- [x] `ec_point_from_x_nz`
-- [x] `ec_point_is_zero`
-- [x] `ec_point_try_new_nz`
-- [x] `ec_point_unwrap`
-- [x] `ec_point_zero`
-- [x] `ec_state_add_mul`
-- [x] `ec_state_add`
-- [x] `ec_state_init`
-- [x] `ec_state_try_finalize_nz`
-- [x] `enable_ap_tracking`
-- [x] `enum_init`
-- [x] `enum_match`
-- [x] `felt252_add_const` (4)
-- [x] `felt252_add`
-- [x] `felt252_const`
-- [x] `felt252_dict_entry_finalize`
-- [x] `felt252_dict_entry_get`
-- [x] `felt252_dict_new`
-- [x] `felt252_dict_squash`
-- [x] `felt252_div_const` (4)
-- [x] `felt252_div` (4)
-- [x] `felt252_is_zero`
-- [x] `felt252_mul_const` (4)
-- [x] `felt252_mul`
-- [x] `felt252_sub_const` (4)
-- [x] `felt252_sub`
-- [x] `finalize_locals`
-- [x] `function_call`
-- [x] `get_builtin_costs` (5)
-- [x] `into_box` (2)
-- [x] `jump`
-- [x] `match_nullable`
-- [x] `null`
-- [x] `nullable_from_box`
-- [x] `pedersen`
-- [x] `print`
-- [x] `rename`
-- [x] `revoke_ap_tracking` (1)
-- [x] `snapshot_take` (6)
-- [x] `storage_address_from_base_and_offset` (StarkNet)
-- [x] `storage_address_from_base` (StarkNet)
-- [x] `storage_address_to_felt252` (StarkNet)
-- [x] `storage_address_try_from_felt252` (StarkNet)
-- [x] `storage_base_address_const` (StarkNet)
-- [x] `storage_base_address_from_felt252` (StarkNet)
-- [x] `store_local`
-- [x] `store_temp`
-- [x] `struct_construct`
-- [x] `struct_deconstruct`
-- [x] `u128_byte_reverse`
-- [x] `u128_const`
-- [x] `u128_eq`
-- [x] `u128_is_zero`
-- [x] `u128_overflowing_add`
-- [x] `u128_overflowing_sub`
-- [x] `u128_safe_divmod`
-- [x] `u128_sqrt`
-- [x] `u128_to_felt252`
-- [x] `u128s_from_felt252`
-- [x] `u16_const`
-- [x] `u16_eq`
-- [x] `u16_is_zero`
-- [x] `u16_overflowing_add`
-- [x] `u16_overflowing_sub`
-- [x] `u16_safe_divmod`
-- [x] `u16_sqrt`
-- [x] `u16_to_felt252`
-- [x] `u16_try_from_felt252`
-- [x] `u32_const`
-- [x] `u32_eq`
-- [x] `u32_is_zero`
-- [x] `u32_overflowing_add`
-- [x] `u32_overflowing_sub`
-- [x] `u32_safe_divmod`
-- [x] `u32_sqrt`
-- [x] `u32_to_felt252`
-- [x] `u32_try_from_felt252`
-- [x] `u64_const`
-- [x] `u64_eq`
-- [x] `u64_is_zero`
-- [x] `u64_overflowing_add`
-- [x] `u64_overflowing_sub`
-- [x] `u64_safe_divmod`
-- [x] `u64_sqrt`
-- [x] `u64_to_felt252`
-- [x] `u64_try_from_felt252`
-- [x] `u8_const`
-- [x] `u8_eq`
-- [x] `u8_is_zero`
-- [x] `u8_overflowing_add`
-- [x] `u8_overflowing_sub`
-- [x] `u8_safe_divmod`
-- [x] `u8_sqrt`
-- [x] `u8_to_felt252`
-- [x] `u8_try_from_felt252`
-- [x] `unbox` (2)
-- [x] `unwrap_non_zero`
-- [x] `upcast`
-- [x] `withdraw_gas_all` (5)
-- [x] `withdraw_gas` (5)
+1. `alloc_local`
+2. `array_append`
+3. `array_get`
+4. `array_len`
+5. `array_new`
+6. `array_pop_front_consume`
+7. `array_pop_front`
+8. `array_snapshot_pop_back`
+9. `array_snapshot_pop_front`
+10. `bitwise`
+11. `bool_and_impl`
+12. `bool_not_impl`
+13. `bool_or_impl`
+14. `bool_to_felt252`
+15. `bool_xor_impl`
+16. `branch_align`
+17. `disable_ap_tracking`
+18. `downcast`
+19. `drop` (3)
+20. `dup` (3)
+21. `ec_neg`
+22. `ec_point_from_x_nz`
+23. `ec_point_is_zero`
+24. `ec_point_try_new_nz`
+25. `ec_point_unwrap`
+26. `ec_point_zero`
+27. `ec_state_add_mul`
+28. `ec_state_add`
+29. `ec_state_init`
+30. `ec_state_try_finalize_nz`
+31. `enable_ap_tracking`
+32. `enum_init`
+33. `enum_match`
+34. `felt252_add_const` (4)
+35. `felt252_add`
+36. `felt252_const`
+37. `felt252_dict_entry_finalize`
+38. `felt252_dict_entry_get`
+39. `felt252_dict_new`
+40. `felt252_dict_squash`
+41. `felt252_div_const` (4)
+42. `felt252_div` (4)
+43. `felt252_is_zero`
+44. `felt252_mul_const` (4)
+45. `felt252_mul`
+46. `felt252_sub_const` (4)
+47. `felt252_sub`
+48. `finalize_locals`
+49. `function_call`
+50. `get_builtin_costs` (5)
+51. `into_box` (2)
+52. `jump`
+53. `match_nullable`
+54. `null`
+55. `nullable_from_box`
+56. `pedersen`
+57. `print`
+58. `rename`
+59. `revoke_ap_tracking` (1)
+60. `snapshot_take` (6)
+61. `storage_address_from_base_and_offset` (StarkNet)
+62. `storage_address_from_base` (StarkNet)
+63. `storage_address_to_felt252` (StarkNet)
+64. `storage_address_try_from_felt252` (StarkNet)
+65. `storage_base_address_const` (StarkNet)
+66. `storage_base_address_from_felt252` (StarkNet)
+67. `store_local`
+68. `store_temp`
+69. `struct_construct`
+70. `struct_deconstruct`
+71. `u128_byte_reverse`
+72. `u128_const`
+73. `u128_eq`
+74. `u128_is_zero`
+75. `u128_overflowing_add`
+76. `u128_overflowing_sub`
+77. `u128_safe_divmod`
+78. `u128_sqrt`
+79. `u128_to_felt252`
+80. `u128s_from_felt252`
+81. `u16_const`
+82. `u16_eq`
+83. `u16_is_zero`
+84. `u16_overflowing_add`
+85. `u16_overflowing_sub`
+86. `u16_safe_divmod`
+87. `u16_sqrt`
+88. `u16_to_felt252`
+89. `u16_try_from_felt252`
+90. `u32_const`
+91. `u32_eq`
+92. `u32_is_zero`
+93. `u32_overflowing_add`
+94. `u32_overflowing_sub`
+95. `u32_safe_divmod`
+96. `u32_sqrt`
+97. `u32_to_felt252`
+98. `u32_try_from_felt252`
+99. `u64_const`
+100. `u64_eq`
+101. `u64_is_zero`
+102. `u64_overflowing_add`
+103. `u64_overflowing_sub`
+104. `u64_safe_divmod`
+105. `u64_sqrt`
+106. `u64_to_felt252`
+107. `u64_try_from_felt252`
+108. `u8_const`
+109. `u8_eq`
+110. `u8_is_zero`
+111. `u8_overflowing_add`
+112. `u8_overflowing_sub`
+113. `u8_safe_divmod`
+114. `u8_sqrt`
+115. `u8_to_felt252`
+116. `u8_try_from_felt252`
+117. `unbox` (2)
+118. `unwrap_non_zero`
+119. `upcast`
+120. `withdraw_gas_all` (5)
+121. `withdraw_gas` (5)
 
 TODO:
-- [ ] `array_slice`
-- [ ] `call_contract_syscall` (StarkNet)
-- [ ] `class_hash_const` (StarkNet)
-- [ ] `class_hash_to_felt252` (StarkNet)
-- [ ] `class_hash_try_from_felt252` (StarkNet)
-- [ ] `contract_address_const` (StarkNet)
-- [ ] `contract_address_to_felt252` (StarkNet)
-- [ ] `contract_address_try_from_felt252` (StarkNet)
-- [ ] `deploy_syscall` (StarkNet)
-- [ ] `emit_event_syscall` (StarkNet)
-- [ ] `enum_snapshot_match`
-- [ ] `get_available_gas`
-- [ ] `get_block_hash_syscall` (StarkNet)
-- [ ] `get_execution_info_syscall` (StarkNet)
-- [ ] `keccak_syscall` (StarkNet)
-- [ ] `library_call_syscall` (StarkNet)
-- [ ] `pop_log` (StarkNet, testing)
-- [ ] `poseidon`
-- [ ] `redeposit_gas`
-- [ ] `replace_class_syscall` (StarkNet)
-- [ ] `secp256k1_add_syscall` (StarkNet)
-- [ ] `secp256k1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256k1_get_xy_syscall` (StarkNet)
-- [ ] `secp256k1_mul_syscall` (StarkNet)
-- [ ] `secp256k1_new_syscall` (StarkNet)
-- [ ] `secp256r1_add_syscall` (StarkNet)
-- [ ] `secp256r1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256r1_get_xy_syscall` (StarkNet)
-- [ ] `secp256r1_mul_syscall` (StarkNet)
-- [ ] `secp256r1_new_syscall` (StarkNet)
-- [ ] `send_message_to_l1_syscall` (StarkNet)
-- [ ] `set_account_contract_address` (StarkNet, testing)
-- [ ] `set_block_number` (StarkNet, testing)
-- [ ] `set_block_timestamp` (StarkNet, testing)
-- [ ] `set_caller_address` (StarkNet, testing)
-- [ ] `set_chain_id` (StarkNet, testing)
-- [ ] `set_contract_address` (StarkNet, testing)
-- [ ] `set_max_fee` (StarkNet, testing)
-- [ ] `set_nonce` (StarkNet, testing)
-- [ ] `set_sequencer_address` (StarkNet, testing)
-- [ ] `set_signature` (StarkNet, testing)
-- [ ] `set_transaction_hash` (StarkNet, testing)
-- [ ] `set_version` (StarkNet, testing)
-- [ ] `storage_read_syscall` (StarkNet)
-- [ ] `storage_write_syscall` (StarkNet)
-- [ ] `struct_snapshot_deconstruct`
-- [ ] `u128_guarantee_mul`
-- [ ] `u128_mul_guarantee_verify`
-- [ ] `u16_wide_mul`
-- [ ] `u256_is_zero`
-- [ ] `u256_safe_divmod`
-- [ ] `u256_sqrt`
-- [ ] `u32_wide_mul`
-- [ ] `u512_safe_divmod_by_u256`
-- [ ] `u64_wide_mul`
-- [ ] `u8_wide_mul`
+1. `array_slice`
+2. `call_contract_syscall` (StarkNet)
+3. `class_hash_const` (StarkNet)
+4. `class_hash_to_felt252` (StarkNet)
+5. `class_hash_try_from_felt252` (StarkNet)
+6. `contract_address_const` (StarkNet)
+7. `contract_address_to_felt252` (StarkNet)
+8. `contract_address_try_from_felt252` (StarkNet)
+9. `deploy_syscall` (StarkNet)
+10. `emit_event_syscall` (StarkNet)
+11. `enum_snapshot_match`
+12. `get_available_gas`
+13. `get_block_hash_syscall` (StarkNet)
+14. `get_execution_info_syscall` (StarkNet)
+15. `keccak_syscall` (StarkNet)
+16. `library_call_syscall` (StarkNet)
+17. `pop_log` (StarkNet, testing)
+18. `poseidon`
+19. `redeposit_gas`
+20. `replace_class_syscall` (StarkNet)
+21. `secp256k1_add_syscall` (StarkNet)
+22. `secp256k1_get_point_from_x_syscall` (StarkNet)
+23. `secp256k1_get_xy_syscall` (StarkNet)
+24. `secp256k1_mul_syscall` (StarkNet)
+25. `secp256k1_new_syscall` (StarkNet)
+26. `secp256r1_add_syscall` (StarkNet)
+27. `secp256r1_get_point_from_x_syscall` (StarkNet)
+28. `secp256r1_get_xy_syscall` (StarkNet)
+29. `secp256r1_mul_syscall` (StarkNet)
+30. `secp256r1_new_syscall` (StarkNet)
+31. `send_message_to_l1_syscall` (StarkNet)
+32. `set_account_contract_address` (StarkNet, testing)
+33. `set_block_number` (StarkNet, testing)
+34. `set_block_timestamp` (StarkNet, testing)
+35. `set_caller_address` (StarkNet, testing)
+36. `set_chain_id` (StarkNet, testing)
+37. `set_contract_address` (StarkNet, testing)
+38. `set_max_fee` (StarkNet, testing)
+39. `set_nonce` (StarkNet, testing)
+40. `set_sequencer_address` (StarkNet, testing)
+41. `set_signature` (StarkNet, testing)
+42. `set_transaction_hash` (StarkNet, testing)
+43. `set_version` (StarkNet, testing)
+44. `storage_read_syscall` (StarkNet)
+45. `storage_write_syscall` (StarkNet)
+46. `struct_snapshot_deconstruct`
+47. `u128_guarantee_mul`
+48. `u128_mul_guarantee_verify`
+49. `u16_wide_mul`
+50. `u256_is_zero`
+51. `u256_safe_divmod`
+52. `u256_sqrt`
+53. `u32_wide_mul`
+54. `u512_safe_divmod_by_u256`
+55. `u64_wide_mul`
+56. `u8_wide_mul`
 
 
 Footnotes
