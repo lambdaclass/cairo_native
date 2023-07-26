@@ -72,6 +72,11 @@ where
     /// Used in both the compiler and the interface when calling the compiled code.
     fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error>;
 
+    /// If the type is an integer (felt not included) type, return its width in bits.
+    ///
+    /// TODO: How is it used?
+    fn integer_width(&self) -> Option<usize>;
+
     /// If the type is a variant type, return all possible variants.
     ///
     /// TODO: How is it used?
@@ -114,7 +119,9 @@ where
                 self::gas_builtin::build(context, module, registry, metadata, info)
             }
             Self::NonZero(info) => self::non_zero::build(context, module, registry, metadata, info),
-            Self::Nullable(_) => todo!(),
+            Self::Nullable(info) => {
+                self::nullable::build(context, module, registry, metadata, info)
+            }
             Self::Pedersen(info) => {
                 self::pedersen::build(context, module, registry, metadata, info)
             }
@@ -158,7 +165,7 @@ where
                     .0
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Box(info) => registry.get_type(&info.ty)?.layout(registry)?,
+            CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::EcOp(_) => Layout::new::<()>(),
             CoreTypeConcrete::EcPoint(_) => get_integer_layout(252).repeat(2)?.0,
             CoreTypeConcrete::EcState(_) => get_integer_layout(252).repeat(4)?.0,
@@ -172,7 +179,7 @@ where
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uninitialized(info) => {
                 registry.get_type(&info.ty)?.layout(registry)?
@@ -227,6 +234,17 @@ where
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
         })
+    }
+
+    fn integer_width(&self) -> Option<usize> {
+        match self {
+            Self::Uint8(_) => Some(8),
+            Self::Uint16(_) => Some(16),
+            Self::Uint32(_) => Some(32),
+            Self::Uint64(_) => Some(64),
+            Self::Uint128(_) => Some(128),
+            _ => None,
+        }
     }
 
     fn variants(&self) -> Option<&[ConcreteTypeId]> {

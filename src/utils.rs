@@ -269,7 +269,8 @@ pub mod test {
         types::felt252::PRIME,
     };
     use cairo_lang_compiler::{
-        compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
+        compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
+        project::setup_project, CompilerConfig,
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
@@ -313,6 +314,7 @@ pub mod test {
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
+                    diagnostics_reporter: DiagnosticsReporter::stderr(),
                     replace_ids: true,
                     ..Default::default()
                 },
@@ -446,7 +448,8 @@ pub mod test {
     #[test]
     #[ignore]
     fn test_alignment_compatibility_u128() {
-        assert_eq!(get_integer_layout(128).align(), 8);
+        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
+        assert_eq!(get_integer_layout(128).align(), 16);
     }
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.

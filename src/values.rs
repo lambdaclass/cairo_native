@@ -112,7 +112,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Uint128(_) => false,
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => true,
@@ -256,7 +256,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::NonZero(info) => {
                     self::non_zero::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::Nullable(_) => todo!(),
+                CoreTypeConcrete::Nullable(info) => {
+                    self::nullable::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::RangeCheck(info) => {
                     self::range_check::deserialize(deserializer, self.arena, self.registry, info)
                 }
@@ -406,7 +408,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::NonZero(info) => unsafe {
                 self::non_zero::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Nullable(info) => unsafe {
+                self::nullable::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::RangeCheck(info) => unsafe {
                 self::range_check::serialize(serializer, self.registry, self.ptr, info)
             },

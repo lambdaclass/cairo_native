@@ -398,11 +398,15 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
     let array_ty = registry
         .get_type(&info.param_signatures()[1].ty)?
         .build(context, helper, registry, metadata)?;
 
-    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
+    let elem_concrete_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_concrete_ty.layout(registry)?;
     let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
@@ -467,18 +471,55 @@ where
     );
     let elem_ptr = op.result(0)?.into();
 
+    let op =
+        block_not_oob.append_operation(llvm::bitcast(elem_ptr, opaque_pointer(context), location));
+    let elem_ptr = op.result(0)?.into();
+
+    // we need to allocate the elem ptr into another malloc because the array can resize and change ptr.
+    let op = block_not_oob.append_operation(llvm::nullptr(opaque_pointer(context), location));
+    let nullptr = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(
+            elem_layout.pad_to_align().size().try_into()?,
+            IntegerType::new(context, 64).into(),
+        )
+        .into(),
+        location,
+    ));
+    let value_len = op.result(0)?.into();
+
+    let op = block_not_oob.append_operation(ReallocBindingsMeta::realloc(
+        context, nullptr, value_len, location,
+    ));
+
+    let new_elem_ptr = op.result(0)?.into();
+
     let op = block_not_oob.append_operation(llvm::load(
         context,
         elem_ptr,
         elem_ty,
         location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            elem_layout.align().try_into()?,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            elem_layout.align() as i64,
             IntegerType::new(context, 64).into(),
         ))),
     ));
-    let value = op.result(0)?.into();
-    block_not_oob.append_operation(helper.br(0, &[range_check, value], location));
+    let elem_value = op.result(0)?.into();
+
+    block_not_oob.append_operation(llvm::store(
+        context,
+        elem_value,
+        new_elem_ptr,
+        location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            elem_layout.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
+
+    block_not_oob.append_operation(helper.br(0, &[range_check, new_elem_ptr], location));
 
     Ok(())
 }
@@ -499,11 +540,15 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
     let array_ty = registry
         .get_type(&info.param_signatures()[0].ty)?
         .build(context, helper, registry, metadata)?;
 
-    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
+    let elem_concrete_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_concrete_ty.layout(registry)?;
     let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
@@ -586,17 +631,56 @@ where
     );
     let elem_ptr = op.result(0)?.into();
 
+    let op = block_not_empty.append_operation(llvm::bitcast(
+        elem_ptr,
+        opaque_pointer(context),
+        location,
+    ));
+    let elem_ptr = op.result(0)?.into();
+
+    // we need to allocate the elem ptr into another malloc because the array can resize and change ptr.
+    let op = block_not_empty.append_operation(llvm::nullptr(opaque_pointer(context), location));
+    let nullptr = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(
+            elem_layout.pad_to_align().size().try_into()?,
+            IntegerType::new(context, 64).into(),
+        )
+        .into(),
+        location,
+    ));
+    let value_len = op.result(0)?.into();
+
+    let op = block_not_empty.append_operation(ReallocBindingsMeta::realloc(
+        context, nullptr, value_len, location,
+    ));
+
+    let new_elem_ptr = op.result(0)?.into();
+
     let op = block_not_empty.append_operation(llvm::load(
         context,
         elem_ptr,
         elem_ty,
         location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            elem_layout.align().try_into()?,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            elem_layout.align() as i64,
             IntegerType::new(context, 64).into(),
         ))),
     ));
     let elem_value = op.result(0)?.into();
+
+    block_not_empty.append_operation(llvm::store(
+        context,
+        elem_value,
+        new_elem_ptr,
+        location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            elem_layout.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
 
     let op = block_not_empty.append_operation(arith::constant(
         context,
@@ -684,7 +768,7 @@ where
     ));
     let array_val = op.result(0)?.into();
 
-    block_not_empty.append_operation(helper.br(0, &[array_val, elem_value], location));
+    block_not_empty.append_operation(helper.br(0, &[array_val, new_elem_ptr], location));
 
     Ok(())
 }

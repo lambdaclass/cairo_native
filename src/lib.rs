@@ -1,4 +1,6 @@
 //! # Cairo Sierra to MLIR compiler and JIT engine
+//!
+//! TODO: Document common function parameters (context, registry, module...).
 
 #![feature(alloc_layout_extra)]
 #![feature(arc_unwrap_or_clone)]

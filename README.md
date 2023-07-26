@@ -4,6 +4,198 @@
 
 A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
 
+## Implemented Library Functions
+
+Done:
+1. `alloc_local`
+2. `array_append`
+3. `array_get`
+4. `array_len`
+5. `array_new`
+6. `array_pop_front_consume`
+7. `array_pop_front`
+8. `array_snapshot_pop_back`
+9. `array_snapshot_pop_front`
+10. `bitwise`
+11. `bool_and_impl`
+12. `bool_not_impl`
+13. `bool_or_impl`
+14. `bool_to_felt252`
+15. `bool_xor_impl`
+16. `branch_align`
+17. `disable_ap_tracking`
+18. `downcast`
+19. `drop` (3)
+20. `dup` (3)
+21. `ec_neg`
+22. `ec_point_from_x_nz`
+23. `ec_point_is_zero`
+24. `ec_point_try_new_nz`
+25. `ec_point_unwrap`
+26. `ec_point_zero`
+27. `ec_state_add_mul`
+28. `ec_state_add`
+29. `ec_state_init`
+30. `ec_state_try_finalize_nz`
+31. `enable_ap_tracking`
+32. `enum_init`
+33. `enum_match`
+34. `felt252_add_const` (4)
+35. `felt252_add`
+36. `felt252_const`
+37. `felt252_dict_entry_finalize`
+38. `felt252_dict_entry_get`
+39. `felt252_dict_new`
+40. `felt252_dict_squash`
+41. `felt252_div_const` (4)
+42. `felt252_div` (4)
+43. `felt252_is_zero`
+44. `felt252_mul_const` (4)
+45. `felt252_mul`
+46. `felt252_sub_const` (4)
+47. `felt252_sub`
+48. `finalize_locals`
+49. `function_call`
+50. `get_block_hash_syscall` (StarkNet)
+51. `get_builtin_costs` (5)
+52. `into_box` (2)
+53. `jump`
+54. `match_nullable`
+55. `null`
+56. `nullable_from_box`
+57. `pedersen`
+58. `print`
+59. `rename`
+60. `revoke_ap_tracking` (1)
+61. `snapshot_take` (6)
+62. `storage_address_from_base_and_offset` (StarkNet)
+63. `storage_address_from_base` (StarkNet)
+64. `storage_address_to_felt252` (StarkNet)
+65. `storage_address_try_from_felt252` (StarkNet)
+66. `storage_base_address_const` (StarkNet)
+67. `storage_base_address_from_felt252` (StarkNet)
+68. `store_local`
+69. `store_temp`
+70. `struct_construct`
+71. `struct_deconstruct`
+72. `u128_byte_reverse`
+73. `u128_const`
+74. `u128_eq`
+75. `u128_is_zero`
+76. `u128_overflowing_add`
+77. `u128_overflowing_sub`
+78. `u128_safe_divmod`
+79. `u128_sqrt`
+80. `u128_to_felt252`
+81. `u128s_from_felt252`
+82. `u16_const`
+83. `u16_eq`
+84. `u16_is_zero`
+85. `u16_overflowing_add`
+86. `u16_overflowing_sub`
+87. `u16_safe_divmod`
+88. `u16_sqrt`
+89. `u16_to_felt252`
+90. `u16_try_from_felt252`
+91. `u32_const`
+92. `u32_eq`
+93. `u32_is_zero`
+94. `u32_overflowing_add`
+95. `u32_overflowing_sub`
+96. `u32_safe_divmod`
+97. `u32_sqrt`
+98. `u32_to_felt252`
+99. `u32_try_from_felt252`
+100. `u64_const`
+101. `u64_eq`
+102. `u64_is_zero`
+103. `u64_overflowing_add`
+104. `u64_overflowing_sub`
+105. `u64_safe_divmod`
+106. `u64_sqrt`
+107. `u64_to_felt252`
+108. `u64_try_from_felt252`
+109. `u8_const`
+110. `u8_eq`
+111. `u8_is_zero`
+112. `u8_overflowing_add`
+113. `u8_overflowing_sub`
+114. `u8_safe_divmod`
+115. `u8_sqrt`
+116. `u8_to_felt252`
+117. `u8_try_from_felt252`
+118. `unbox` (2)
+119. `unwrap_non_zero`
+120. `upcast`
+121. `withdraw_gas_all` (5)
+122. `withdraw_gas` (5)
+
+TODO:
+1. `array_slice`
+2. `call_contract_syscall` (StarkNet)
+3. `class_hash_const` (StarkNet)
+4. `class_hash_to_felt252` (StarkNet)
+5. `class_hash_try_from_felt252` (StarkNet)
+6. `contract_address_const` (StarkNet)
+7. `contract_address_to_felt252` (StarkNet)
+8. `contract_address_try_from_felt252` (StarkNet)
+9. `deploy_syscall` (StarkNet)
+10. `emit_event_syscall` (StarkNet)
+11. `enum_snapshot_match`
+12. `get_available_gas`
+13. `get_execution_info_syscall` (StarkNet)
+14. `keccak_syscall` (StarkNet)
+15. `library_call_syscall` (StarkNet)
+16. `pop_log` (StarkNet, testing)
+17. `poseidon`
+18. `redeposit_gas`
+19. `replace_class_syscall` (StarkNet)
+20. `secp256k1_add_syscall` (StarkNet)
+21. `secp256k1_get_point_from_x_syscall` (StarkNet)
+22. `secp256k1_get_xy_syscall` (StarkNet)
+23. `secp256k1_mul_syscall` (StarkNet)
+24. `secp256k1_new_syscall` (StarkNet)
+25. `secp256r1_add_syscall` (StarkNet)
+26. `secp256r1_get_point_from_x_syscall` (StarkNet)
+27. `secp256r1_get_xy_syscall` (StarkNet)
+28. `secp256r1_mul_syscall` (StarkNet)
+29. `secp256r1_new_syscall` (StarkNet)
+30. `send_message_to_l1_syscall` (StarkNet)
+31. `set_account_contract_address` (StarkNet, testing)
+32. `set_block_number` (StarkNet, testing)
+33. `set_block_timestamp` (StarkNet, testing)
+34. `set_caller_address` (StarkNet, testing)
+35. `set_chain_id` (StarkNet, testing)
+36. `set_contract_address` (StarkNet, testing)
+37. `set_max_fee` (StarkNet, testing)
+38. `set_nonce` (StarkNet, testing)
+39. `set_sequencer_address` (StarkNet, testing)
+40. `set_signature` (StarkNet, testing)
+41. `set_transaction_hash` (StarkNet, testing)
+42. `set_version` (StarkNet, testing)
+43. `storage_read_syscall` (StarkNet)
+44. `storage_write_syscall` (StarkNet)
+45. `struct_snapshot_deconstruct`
+46. `u128_guarantee_mul`
+47. `u128_mul_guarantee_verify`
+48. `u16_wide_mul`
+59. `u256_is_zero`
+50. `u256_safe_divmod`
+51. `u256_sqrt`
+52. `u32_wide_mul`
+53. `u512_safe_divmod_by_u256`
+54. `u64_wide_mul`
+55. `u8_wide_mul`
+
+
+Footnotes
+1. It is implemented but we're not sure if it has some stuff we don't know of.
+2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
+3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
+4. Not supported by the Cairo to Sierra compiler.
+5. Implemented with a dummy. It doesn't do anything yet.
+6. It is implemented but we're not handling potential issues like lifetimes yet.
+
 ## Documentation
 
 There is an mdbook in the `docs` folder. Build and read it with
@@ -24,6 +216,12 @@ cargo install mdbook mdbook-toc mdbook-mermaid
 ```
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
+
+Install the cairo corelibs to be able to run the **tests** and compile `.cairo` programs to sierra:
+
+```bash
+./scripts/fetch-corelibs.sh
+```
 
 ### Linux
 
@@ -74,7 +272,8 @@ Options:
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo >=1.0](https://github.com/starkware-libs/cairo)
-- LLVM 16
+- Cairo Corelibs
+- LLVM 16 with MLIR
 
 You need to setup some environment variables:
 ```bash
@@ -112,192 +311,3 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 
 ./program
 ```
-
-# Tasks, TODOs, Roadmap
-
-## Implemented Library Functions
-- [x] `alloc_local`
-- [x] `array_append`
-- [x] `array_get`
-- [x] `array_len`
-- [x] `array_new`
-- [x] `array_pop_front_consume`
-- [x] `array_pop_front`
-- [ ] `array_slice`
-- [x] `array_snapshot_pop_back`
-- [x] `array_snapshot_pop_front`
-- [x] `bitwise`
-- [x] `bool_and_impl`
-- [x] `bool_not_impl`
-- [x] `bool_or_impl`
-- [x] `bool_to_felt252`
-- [x] `bool_xor_impl`
-- [x] `branch_align`
-- [ ] `call_contract_syscall` (StarkNet)
-- [ ] `class_hash_const` (StarkNet)
-- [ ] `class_hash_to_felt252` (StarkNet)
-- [ ] `class_hash_try_from_felt252` (StarkNet)
-- [ ] `contract_address_const` (StarkNet)
-- [ ] `contract_address_to_felt252` (StarkNet)
-- [ ] `contract_address_try_from_felt252` (StarkNet)
-- [ ] `deploy_syscall` (StarkNet)
-- [x] `disable_ap_tracking`
-- [ ] `downcast`
-- [x] `drop` (3)
-- [x] `dup` (3)
-- [x] `ec_neg`
-- [x] `ec_point_from_x_nz`
-- [x] `ec_point_is_zero`
-- [x] `ec_point_try_new_nz`
-- [x] `ec_point_unwrap`
-- [x] `ec_point_zero`
-- [x] `ec_state_add_mul`
-- [x] `ec_state_add`
-- [x] `ec_state_init`
-- [x] `ec_state_try_finalize_nz`
-- [ ] `emit_event_syscall` (StarkNet)
-- [x] `enable_ap_tracking`
-- [x] `enum_init`
-- [x] `enum_match`
-- [ ] `enum_snapshot_match`
-- [x] `felt252_add_const` (4)
-- [x] `felt252_add`
-- [x] `felt252_const`
-- [x] `felt252_dict_entry_finalize`
-- [x] `felt252_dict_entry_get`
-- [x] `felt252_dict_new`
-- [x] `felt252_dict_squash`
-- [x] `felt252_div_const` (4)
-- [x] `felt252_div` (4)
-- [x] `felt252_is_zero`
-- [x] `felt252_mul_const` (4)
-- [x] `felt252_mul`
-- [x] `felt252_sub_const` (4)
-- [x] `felt252_sub`
-- [x] `finalize_locals`
-- [x] `function_call`
-- [ ] `get_available_gas`
-- [x] `get_block_hash_syscall` (StarkNet)
-- [x] `get_builtin_costs` (5)
-- [ ] `get_execution_info_syscall` (StarkNet)
-- [x] `into_box` (2)
-- [x] `jump`
-- [ ] `keccak_syscall` (StarkNet)
-- [ ] `library_call_syscall` (StarkNet)
-- [ ] `match_nullable`
-- [ ] `null`
-- [ ] `nullable_from_box`
-- [x] `pedersen`
-- [ ] `pop_log` (StarkNet, testing)
-- [ ] `poseidon`
-- [x] `print`
-- [ ] `redeposit_gas`
-- [x] `rename`
-- [ ] `replace_class_syscall` (StarkNet)
-- [x] `revoke_ap_tracking` (1)
-- [ ] `secp256k1_add_syscall` (StarkNet)
-- [ ] `secp256k1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256k1_get_xy_syscall` (StarkNet)
-- [ ] `secp256k1_mul_syscall` (StarkNet)
-- [ ] `secp256k1_new_syscall` (StarkNet)
-- [ ] `secp256r1_add_syscall` (StarkNet)
-- [ ] `secp256r1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256r1_get_xy_syscall` (StarkNet)
-- [ ] `secp256r1_mul_syscall` (StarkNet)
-- [ ] `secp256r1_new_syscall` (StarkNet)
-- [ ] `send_message_to_l1_syscall` (StarkNet)
-- [ ] `set_account_contract_address` (StarkNet, testing)
-- [ ] `set_block_number` (StarkNet, testing)
-- [ ] `set_block_timestamp` (StarkNet, testing)
-- [ ] `set_caller_address` (StarkNet, testing)
-- [ ] `set_chain_id` (StarkNet, testing)
-- [ ] `set_contract_address` (StarkNet, testing)
-- [ ] `set_max_fee` (StarkNet, testing)
-- [ ] `set_nonce` (StarkNet, testing)
-- [ ] `set_sequencer_address` (StarkNet, testing)
-- [ ] `set_signature` (StarkNet, testing)
-- [ ] `set_transaction_hash` (StarkNet, testing)
-- [ ] `set_version` (StarkNet, testing)
-- [x] `snapshot_take` (6)
-- [x] `storage_address_from_base_and_offset` (StarkNet)
-- [x] `storage_address_from_base` (StarkNet)
-- [x] `storage_address_to_felt252` (StarkNet)
-- [x] `storage_address_try_from_felt252` (StarkNet)
-- [x] `storage_base_address_const` (StarkNet)
-- [x] `storage_base_address_from_felt252` (StarkNet)
-- [ ] `storage_read_syscall` (StarkNet)
-- [ ] `storage_write_syscall` (StarkNet)
-- [x] `store_local`
-- [x] `store_temp`
-- [x] `struct_construct`
-- [x] `struct_deconstruct`
-- [ ] `struct_snapshot_deconstruct`
-- [x] `u128_byte_reverse`
-- [x] `u128_const`
-- [x] `u128_eq`
-- [ ] `u128_guarantee_mul`
-- [x] `u128_is_zero`
-- [ ] `u128_mul_guarantee_verify`
-- [x] `u128_overflowing_add`
-- [x] `u128_overflowing_sub`
-- [x] `u128_safe_divmod`
-- [ ] `u128_sqrt`
-- [x] `u128_to_felt252`
-- [x] `u128s_from_felt252`
-- [x] `u16_const`
-- [x] `u16_eq`
-- [x] `u16_is_zero`
-- [x] `u16_overflowing_add`
-- [x] `u16_overflowing_sub`
-- [x] `u16_safe_divmod`
-- [ ] `u16_sqrt`
-- [x] `u16_to_felt252`
-- [x] `u16_try_from_felt252`
-- [ ] `u16_wide_mul`
-- [ ] `u256_is_zero`
-- [ ] `u256_safe_divmod`
-- [ ] `u256_sqrt`
-- [x] `u32_const`
-- [x] `u32_eq`
-- [x] `u32_is_zero`
-- [x] `u32_overflowing_add`
-- [x] `u32_overflowing_sub`
-- [x] `u32_safe_divmod`
-- [ ] `u32_sqrt`
-- [x] `u32_to_felt252`
-- [x] `u32_try_from_felt252`
-- [ ] `u32_wide_mul`
-- [ ] `u512_safe_divmod_by_u256`
-- [x] `u64_const`
-- [x] `u64_eq`
-- [x] `u64_is_zero`
-- [x] `u64_overflowing_add`
-- [x] `u64_overflowing_sub`
-- [x] `u64_safe_divmod`
-- [ ] `u64_sqrt`
-- [x] `u64_to_felt252`
-- [x] `u64_try_from_felt252`
-- [ ] `u64_wide_mul`
-- [x] `u8_const`
-- [x] `u8_eq`
-- [x] `u8_is_zero`
-- [x] `u8_overflowing_add`
-- [x] `u8_overflowing_sub`
-- [x] `u8_safe_divmod`
-- [ ] `u8_sqrt`
-- [x] `u8_to_felt252`
-- [x] `u8_try_from_felt252`
-- [ ] `u8_wide_mul`
-- [x] `unbox` (2)
-- [ ] `unwrap_non_zero`
-- [ ] `upcast`
-- [x] `withdraw_gas_all` (5)
-- [x] `withdraw_gas` (5)
-
-Footnotes
-1. It is implemented but we're not sure if it has some stuff we don't know of.
-2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
-3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
-4. Not supported by the Cairo to Sierra compiler.
-5. Implemented with a dummy. It doesn't do anything yet.
-6. It is implemented but we're not handling potential issues like lifetimes yet.
