@@ -199,11 +199,13 @@ Footnotes
 ## Documentation
 
 There is an mdbook in the `docs` folder. Build and read it with
+
 ```bash
 make book
 ```
 
 ## Dependencies
+
 - mdbook
 - LLVM 16+ with MLIR
 - Rust
@@ -211,6 +213,7 @@ make book
 ## Setup
 
 Install mdbook and other documentation dependencies:
+
 ```bash
 cargo install mdbook mdbook-toc mdbook-mermaid
 ```
@@ -232,6 +235,7 @@ export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
 ### MacOS
+
 ```bash
 brew install llvm@16
 export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
@@ -270,6 +274,7 @@ Options:
 ## Benchmarking
 
 ### Requirements
+
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo >=1.0](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
@@ -291,6 +296,7 @@ The `cairo-run` command should be available in the `$PATH` and ideally compiled 
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
 ## MLIR Resources
+
 - https://mlir.llvm.org/docs/Tutorials/
 
 ## From MLIR to native binary
