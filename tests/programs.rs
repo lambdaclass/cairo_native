@@ -1,11 +1,12 @@
 use crate::common::{
-    felt, feltn, get_result_success, load_cairo, run_native_program, run_vm_program,
+    any_felt252, felt, feltn, get_result_success, load_cairo, run_native_program, run_vm_program,
 };
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use common::compare_outputs;
 use lazy_static::lazy_static;
+use num_traits::Num;
 use proptest::prelude::*;
 use serde_json::json;
 
@@ -107,7 +108,22 @@ fn pedersen() {
     let result_vm = run_vm_program(
         &PEDERSEN,
         "run_test",
-        &[Arg::Value(Felt252::new(2)), Arg::Value(Felt252::new(4))],
+        &[
+            Arg::Value(
+                Felt252::from_str_radix(
+                    "2163739901324492107409690946633517860331020929182861814098856895601180685",
+                    10,
+                )
+                .unwrap(),
+            ),
+            Arg::Value(
+                Felt252::from_str_radix(
+                    "2392090257937917229310563411601744459500735555884672871108624696010915493156",
+                    10,
+                )
+                .unwrap(),
+            ),
+        ],
         Some(GAS),
     )
     .unwrap();
@@ -115,7 +131,15 @@ fn pedersen() {
     let vm_results = get_result_success(&result_vm.value);
     let vm_result = &vm_results[0];
 
-    let result = run_native_program(&PEDERSEN, "run_test", json!([null, felt("2"), felt("4")]));
+    let result = run_native_program(
+        &PEDERSEN,
+        "run_test",
+        json!([
+            null,
+            felt("2163739901324492107409690946633517860331020929182861814098856895601180685"),
+            felt("2392090257937917229310563411601744459500735555884672871108624696010915493156")
+        ]),
+    );
     assert_eq!(result, json!([null, felt(vm_result)]));
 }
 
@@ -156,6 +180,38 @@ proptest! {
         compare_outputs(
             &FACTORIAL.1,
             &FACTORIAL.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+            true,
+            true,
+        )?;
+    }
+}
+
+proptest! {
+    #[test]
+    fn pedersen_proptest(a in any_felt252(), b in any_felt252()) {
+        let result_vm = run_vm_program(
+            &PEDERSEN,
+            "run_test",
+            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            Some(GAS),
+        )
+        .unwrap();
+
+        let mut a = a.to_biguint().to_u32_digits();
+        a.resize(8, 0);
+        let a: [u32; 8] = a.try_into().unwrap();
+
+        let mut b = b.to_biguint().to_u32_digits();
+        b.resize(8, 0);
+        let b: [u32; 8] = b.try_into().unwrap();
+
+        let result_native = run_native_program(&PEDERSEN, "run_test", json!([null, a, b]));
+
+        compare_outputs(
+            &PEDERSEN.1,
+            &PEDERSEN.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
             true,

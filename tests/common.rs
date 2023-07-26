@@ -1,6 +1,7 @@
 #![allow(unused_macros)]
 #![allow(dead_code)]
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -21,6 +22,7 @@ use cairo_native::{
     types::felt252::PRIME,
     utils::register_runtime_symbols,
 };
+use lambdaworks_math::{field::element::FieldElement, unsigned_integer::element::UnsignedInteger};
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -29,7 +31,13 @@ use melior::{
     Context, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use proptest::test_runner::TestCaseError;
+use num_traits::identities::Zero;
+use proptest::{
+    prelude::Arbitrary,
+    strategy::{SBoxedStrategy, Strategy},
+    test_runner::TestCaseError,
+};
+use serde_json::{Number, Value};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -268,19 +276,30 @@ pub fn compare_outputs(
                 prop_assert!(native_rets.peek().is_some());
                 let vm_value = vm_rets.next().unwrap();
 
-                if let serde_json::Value::Number(n) = native_rets.next().unwrap() {
-                    let native_value = BigUint::from_str(&n.to_string()).unwrap();
-                    let vm_value = BigUint::from_str(vm_value).unwrap();
-                    prop_assert_eq!(vm_value, native_value);
-                } else {
-                    prop_assert!(false, "invalid value");
+                match native_rets.next().unwrap() {
+                    Value::Number(n) => {
+                        let native_value = BigUint::from_str(&n.to_string()).unwrap();
+                        let vm_value = BigUint::from_str(vm_value).unwrap();
+                        prop_assert_eq!(vm_value, native_value);
+                    }
+                    Value::Array(n) => {
+                        todo!()
+                    }
+                    _ => {
+                        prop_assert!(false, "invalid felt value type");
+                    }
                 }
             }
             CoreTypeConcrete::GasBuiltin(_) => {
                 // runner: ignore
                 // native: compare to gas
                 prop_assert!(native_rets.peek().is_some());
-                let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
+
+                // sometimes gas is not returned?
+                let gas_val = dbg!(native_rets.next())
+                    .unwrap()
+                    .as_u64()
+                    .expect("should be u64");
 
                 if !ignore_gas {
                     prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
@@ -415,7 +434,15 @@ pub fn compare_outputs(
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
@@ -440,4 +467,41 @@ pub fn compare_outputs(
     }
 
     Ok(())
+}
+
+pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64); // this is equal to 10633823966279327296825105735305134080
+pub const FIELD_LOW: u128 = 1;
+
+/// Returns a [`Strategy`] that generates any valid Felt252
+pub fn any_felt252() -> impl Strategy<Value = Felt252> {
+    use proptest::prelude::*;
+
+    (0..=FIELD_HIGH)
+        // turn range into `impl Strategy`
+        .prop_map(|x| x)
+        // choose second 128-bit limb capped by first one
+        .prop_flat_map(|high| {
+            let low = if high == FIELD_HIGH {
+                (0..FIELD_LOW).prop_map(|x| x).sboxed()
+            } else {
+                any::<u128>().sboxed()
+            };
+            (Just(high), low)
+        })
+        // turn (u128, u128) into limbs array and then into Felt252
+        .prop_map(|(high, low)| {
+            let limbs = [
+                (high >> 64) as u64,
+                (high & ((1 << 64) - 1)) as u64,
+                (low >> 64) as u64,
+                (low & ((1 << 64) - 1)) as u64,
+            ];
+            FieldElement::new(UnsignedInteger::from_limbs(limbs))
+        })
+        .prop_map(|value| Felt252::from_bytes_be(&value.to_bytes_be()))
+}
+
+/// Returns a [`Strategy`] that generates any nonzero Felt252
+pub fn nonzero_felt252() -> impl Strategy<Value = Felt252> {
+    any_felt252().prop_filter("is zero", |x| !x.is_zero())
 }
