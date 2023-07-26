@@ -182,10 +182,10 @@ TODO:
 47. `u128_guarantee_mul`
 48. `u128_mul_guarantee_verify`
 49. `u16_wide_mul`
-53. `u32_wide_mul`
-54. `u512_safe_divmod_by_u256`
-55. `u64_wide_mul`
-56. `u8_wide_mul`
+50. `u32_wide_mul`
+51. `u512_safe_divmod_by_u256`
+52. `u64_wide_mul`
+53. `u8_wide_mul`
 
 
 Footnotes
