@@ -180,7 +180,7 @@ where
         for (layout, offset, member_ptr) in data {
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    member_ptr.as_ptr().cast::<u8>(),
+                    member_ptr.cast::<u8>().as_ptr(),
                     ptr.map_addr(|addr| addr.unchecked_add(offset))
                         .cast()
                         .as_ptr(),

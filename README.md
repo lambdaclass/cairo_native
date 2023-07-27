@@ -98,6 +98,9 @@ Done:
 1. `u16_to_felt252`
 1. `u16_try_from_felt252`
 1. `u16_wide_mul`
+1. `u256_is_zero`
+1. `u256_safe_divmod`
+1. `u256_sqrt`
 1. `u32_const`
 1. `u32_eq`
 1. `u32_is_zero`
@@ -182,9 +185,6 @@ TODO:
 1. `struct_snapshot_deconstruct`
 1. `u128_guarantee_mul`
 1. `u128_mul_guarantee_verify`
-1. `u256_is_zero`
-1. `u256_safe_divmod`
-1. `u256_sqrt`
 1. `u512_safe_divmod_by_u256`
 
 
