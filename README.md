@@ -14,6 +14,7 @@ Done:
 1. `array_new`
 1. `array_pop_front_consume`
 1. `array_pop_front`
+1. `array_slice`
 1. `array_snapshot_pop_back`
 1. `array_snapshot_pop_front`
 1. `bitwise`
@@ -95,7 +96,9 @@ Done:
 1. `u128_byte_reverse`
 1. `u128_const`
 1. `u128_eq`
+1. `u128_guarantee_mul`
 1. `u128_is_zero`
+1. `u128_mul_guarantee_verify`
 1. `u128_overflowing_add`
 1. `u128_overflowing_sub`
 1. `u128_safe_divmod`
@@ -152,7 +155,6 @@ Done:
 1. `withdraw_gas` (5)
 
 TODO:
-1. `array_slice`
 1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `enum_snapshot_match`
@@ -183,8 +185,6 @@ TODO:
 1. `set_transaction_hash` (StarkNet, testing)
 1. `set_version` (StarkNet, testing)
 1. `struct_snapshot_deconstruct`
-1. `u128_guarantee_mul`
-1. `u128_mul_guarantee_verify`
 1. `u512_safe_divmod_by_u256`
 
 
