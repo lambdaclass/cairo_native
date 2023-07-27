@@ -97,6 +97,7 @@ Done:
 1. `u16_sqrt`
 1. `u16_to_felt252`
 1. `u16_try_from_felt252`
+1. `u16_wide_mul`
 1. `u32_const`
 1. `u32_eq`
 1. `u32_is_zero`
@@ -106,6 +107,7 @@ Done:
 1. `u32_sqrt`
 1. `u32_to_felt252`
 1. `u32_try_from_felt252`
+1. `u32_wide_mul`
 1. `u64_const`
 1. `u64_eq`
 1. `u64_is_zero`
@@ -115,6 +117,7 @@ Done:
 1. `u64_sqrt`
 1. `u64_to_felt252`
 1. `u64_try_from_felt252`
+1. `u64_wide_mul`
 1. `u8_const`
 1. `u8_eq`
 1. `u8_is_zero`
@@ -124,6 +127,7 @@ Done:
 1. `u8_sqrt`
 1. `u8_to_felt252`
 1. `u8_try_from_felt252`
+1. `u8_wide_mul`
 1. `unbox` (2)
 1. `unwrap_non_zero`
 1. `upcast`
@@ -178,14 +182,10 @@ TODO:
 1. `struct_snapshot_deconstruct`
 1. `u128_guarantee_mul`
 1. `u128_mul_guarantee_verify`
-1. `u16_wide_mul`
 1. `u256_is_zero`
 1. `u256_safe_divmod`
 1. `u256_sqrt`
-1. `u32_wide_mul`
 1. `u512_safe_divmod_by_u256`
-1. `u64_wide_mul`
-1. `u8_wide_mul`
 
 
 Footnotes
