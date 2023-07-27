@@ -10,6 +10,7 @@ use crate::{
     },
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
+    starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::TypeBuilder,
     utils::get_integer_layout,
 };
@@ -374,7 +375,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[6]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -818,7 +822,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[7]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -1171,7 +1178,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[8]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -1756,7 +1766,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[9]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -2047,7 +2060,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[1]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -2502,7 +2518,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[3]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -2868,7 +2887,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[11]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -3250,7 +3272,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[5]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -3574,7 +3599,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[4]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
@@ -3930,7 +3958,10 @@ where
         .append_operation(llvm::get_element_ptr(
             context,
             entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[10]),
+            DenseI32ArrayAttribute::new(
+                context,
+                &[StarkNetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?],
+            ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             location,
