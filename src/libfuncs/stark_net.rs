@@ -119,13 +119,13 @@ where
             build_deploy(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::Keccak(info) => {
-            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+            build_keccak(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::LibraryCall(info) => {
             build_library_call(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::ReplaceClass(info) => {
-            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+            build_replace_class(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::SendMessageToL1(info) => {
             build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
