@@ -56,81 +56,82 @@ Done:
 47. `felt252_sub`
 48. `finalize_locals`
 49. `function_call`
-50. `get_builtin_costs` (5)
-51. `into_box` (2)
-52. `jump`
-53. `match_nullable`
-54. `null`
-55. `nullable_from_box`
-56. `pedersen`
-57. `print`
-58. `rename`
-59. `revoke_ap_tracking` (1)
-60. `snapshot_take` (6)
-61. `storage_address_from_base_and_offset` (StarkNet)
-62. `storage_address_from_base` (StarkNet)
-63. `storage_address_to_felt252` (StarkNet)
-64. `storage_address_try_from_felt252` (StarkNet)
-65. `storage_base_address_const` (StarkNet)
-66. `storage_base_address_from_felt252` (StarkNet)
-67. `store_local`
-68. `store_temp`
-69. `struct_construct`
-70. `struct_deconstruct`
-71. `u128_byte_reverse`
-72. `u128_const`
-73. `u128_eq`
-74. `u128_is_zero`
-75. `u128_overflowing_add`
-76. `u128_overflowing_sub`
-77. `u128_safe_divmod`
-78. `u128_sqrt`
-79. `u128_to_felt252`
-80. `u128s_from_felt252`
-81. `u16_const`
-82. `u16_eq`
-83. `u16_is_zero`
-84. `u16_overflowing_add`
-85. `u16_overflowing_sub`
-86. `u16_safe_divmod`
-87. `u16_sqrt`
-88. `u16_to_felt252`
-89. `u16_try_from_felt252`
-90. `u256_is_zero`
-91. `u256_safe_divmod`
-92. `u256_sqrt`
-93. `u32_const`
-94. `u32_eq`
-95. `u32_is_zero`
-96. `u32_overflowing_add`
-97. `u32_overflowing_sub`
-98. `u32_safe_divmod`
-99. `u32_sqrt`
-100. `u32_to_felt252`
-101. `u32_try_from_felt252`
-102. `u64_const`
-103. `u64_eq`
-104. `u64_is_zero`
-105. `u64_overflowing_add`
-106. `u64_overflowing_sub`
-107. `u64_safe_divmod`
-108. `u64_sqrt`
-109. `u64_to_felt252`
-110. `u64_try_from_felt252`
-111. `u8_const`
-112. `u8_eq`
-113. `u8_is_zero`
-114. `u8_overflowing_add`
-115. `u8_overflowing_sub`
-116. `u8_safe_divmod`
-117. `u8_sqrt`
-118. `u8_to_felt252`
-119. `u8_try_from_felt252`
-120. `unbox` (2)
-121. `unwrap_non_zero`
-122. `upcast`
-123. `withdraw_gas_all` (5)
-124. `withdraw_gas` (5)
+50. `get_block_hash_syscall` (StarkNet)
+51. `get_builtin_costs` (5)
+52. `into_box` (2)
+53. `jump`
+54. `match_nullable`
+55. `null`
+56. `nullable_from_box`
+57. `pedersen`
+58. `print`
+59. `rename`
+60. `revoke_ap_tracking` (1)
+61. `snapshot_take` (6)
+62. `storage_address_from_base_and_offset` (StarkNet)
+63. `storage_address_from_base` (StarkNet)
+64. `storage_address_to_felt252` (StarkNet)
+65. `storage_address_try_from_felt252` (StarkNet)
+66. `storage_base_address_const` (StarkNet)
+67. `storage_base_address_from_felt252` (StarkNet)
+68. `store_local`
+69. `store_temp`
+70. `struct_construct`
+71. `struct_deconstruct`
+72. `u128_byte_reverse`
+73. `u128_const`
+74. `u128_eq`
+75. `u128_is_zero`
+76. `u128_overflowing_add`
+77. `u128_overflowing_sub`
+78. `u128_safe_divmod`
+79. `u128_sqrt`
+80. `u128_to_felt252`
+81. `u128s_from_felt252`
+82. `u16_const`
+83. `u16_eq`
+84. `u16_is_zero`
+85. `u16_overflowing_add`
+86. `u16_overflowing_sub`
+87. `u16_safe_divmod`
+88. `u16_sqrt`
+89. `u16_to_felt252`
+90. `u16_try_from_felt252`
+91. `u256_is_zero`
+92. `u256_safe_divmod`
+93. `u256_sqrt`
+94. `u32_const`
+95. `u32_eq`
+96. `u32_is_zero`
+97. `u32_overflowing_add`
+98. `u32_overflowing_sub`
+99. `u32_safe_divmod`
+100. `u32_sqrt`
+101. `u32_to_felt252`
+102. `u32_try_from_felt252`
+103. `u64_const`
+104. `u64_eq`
+105. `u64_is_zero`
+106. `u64_overflowing_add`
+107. `u64_overflowing_sub`
+108. `u64_safe_divmod`
+109. `u64_sqrt`
+110. `u64_to_felt252`
+111. `u64_try_from_felt252`
+112. `u8_const`
+113. `u8_eq`
+114. `u8_is_zero`
+115. `u8_overflowing_add`
+116. `u8_overflowing_sub`
+117. `u8_safe_divmod`
+118. `u8_sqrt`
+119. `u8_to_felt252`
+110. `u8_try_from_felt252`
+121. `unbox` (2)
+122. `unwrap_non_zero`
+123. `upcast`
+124. `withdraw_gas_all` (5)
+125. `withdraw_gas` (5)
 
 TODO:
 1. `array_slice`
@@ -145,47 +146,46 @@ TODO:
 10. `emit_event_syscall` (StarkNet)
 11. `enum_snapshot_match`
 12. `get_available_gas`
-13. `get_block_hash_syscall` (StarkNet)
-14. `get_execution_info_syscall` (StarkNet)
-15. `keccak_syscall` (StarkNet)
-16. `library_call_syscall` (StarkNet)
-17. `pop_log` (StarkNet, testing)
-18. `poseidon`
-19. `redeposit_gas`
-20. `replace_class_syscall` (StarkNet)
-21. `secp256k1_add_syscall` (StarkNet)
-22. `secp256k1_get_point_from_x_syscall` (StarkNet)
-23. `secp256k1_get_xy_syscall` (StarkNet)
-24. `secp256k1_mul_syscall` (StarkNet)
-25. `secp256k1_new_syscall` (StarkNet)
-26. `secp256r1_add_syscall` (StarkNet)
-27. `secp256r1_get_point_from_x_syscall` (StarkNet)
-28. `secp256r1_get_xy_syscall` (StarkNet)
-29. `secp256r1_mul_syscall` (StarkNet)
-30. `secp256r1_new_syscall` (StarkNet)
-31. `send_message_to_l1_syscall` (StarkNet)
-32. `set_account_contract_address` (StarkNet, testing)
-33. `set_block_number` (StarkNet, testing)
-34. `set_block_timestamp` (StarkNet, testing)
-35. `set_caller_address` (StarkNet, testing)
-36. `set_chain_id` (StarkNet, testing)
-37. `set_contract_address` (StarkNet, testing)
-38. `set_max_fee` (StarkNet, testing)
-39. `set_nonce` (StarkNet, testing)
-40. `set_sequencer_address` (StarkNet, testing)
-41. `set_signature` (StarkNet, testing)
-42. `set_transaction_hash` (StarkNet, testing)
-43. `set_version` (StarkNet, testing)
-44. `storage_read_syscall` (StarkNet)
-45. `storage_write_syscall` (StarkNet)
-46. `struct_snapshot_deconstruct`
-47. `u128_guarantee_mul`
-48. `u128_mul_guarantee_verify`
-49. `u16_wide_mul`
-50. `u32_wide_mul`
-51. `u512_safe_divmod_by_u256`
-52. `u64_wide_mul`
-53. `u8_wide_mul`
+13. `get_execution_info_syscall` (StarkNet)
+14. `keccak_syscall` (StarkNet)
+15. `library_call_syscall` (StarkNet)
+16. `pop_log` (StarkNet, testing)
+17. `poseidon`
+18. `redeposit_gas`
+19. `replace_class_syscall` (StarkNet)
+20. `secp256k1_add_syscall` (StarkNet)
+21. `secp256k1_get_point_from_x_syscall` (StarkNet)
+22. `secp256k1_get_xy_syscall` (StarkNet)
+23. `secp256k1_mul_syscall` (StarkNet)
+24. `secp256k1_new_syscall` (StarkNet)
+25. `secp256r1_add_syscall` (StarkNet)
+26. `secp256r1_get_point_from_x_syscall` (StarkNet)
+27. `secp256r1_get_xy_syscall` (StarkNet)
+28. `secp256r1_mul_syscall` (StarkNet)
+29. `secp256r1_new_syscall` (StarkNet)
+30. `send_message_to_l1_syscall` (StarkNet)
+31. `set_account_contract_address` (StarkNet, testing)
+32. `set_block_number` (StarkNet, testing)
+33. `set_block_timestamp` (StarkNet, testing)
+34. `set_caller_address` (StarkNet, testing)
+35. `set_chain_id` (StarkNet, testing)
+36. `set_contract_address` (StarkNet, testing)
+37. `set_max_fee` (StarkNet, testing)
+38. `set_nonce` (StarkNet, testing)
+39. `set_sequencer_address` (StarkNet, testing)
+40. `set_signature` (StarkNet, testing)
+41. `set_transaction_hash` (StarkNet, testing)
+42. `set_version` (StarkNet, testing)
+43. `storage_read_syscall` (StarkNet)
+44. `storage_write_syscall` (StarkNet)
+45. `struct_snapshot_deconstruct`
+46. `u128_guarantee_mul`
+47. `u128_mul_guarantee_verify`
+48. `u16_wide_mul`
+49. `u32_wide_mul`
+50. `u512_safe_divmod_by_u256`
+51. `u64_wide_mul`
+52. `u8_wide_mul`
 
 
 Footnotes

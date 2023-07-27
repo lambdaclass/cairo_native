@@ -18,6 +18,7 @@ use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::felt252::PRIME,
+    utils::register_runtime_symbols,
 };
 use melior::{
     dialect::DialectRegistry,
@@ -166,52 +167,7 @@ pub fn run_native_program(
     let engine = ExecutionEngine::new(&module, 0, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_from_x_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
-                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
-                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add_mul",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
-                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_try_new_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
-                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
-        );
-    }
+    register_runtime_symbols(&engine);
 
     cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
         &engine,
