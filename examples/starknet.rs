@@ -51,8 +51,9 @@ impl StarkNetSyscallHandler for SyscallHandler {
         ))
     }
 
-    fn replace_class(&self, _class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
-        todo!("replace_class_syscall")
+    fn replace_class(&self, class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
+        println!("Called `replace_class({class_hash})` from MLIR.");
+        Ok(())
     }
 
     fn library_call(

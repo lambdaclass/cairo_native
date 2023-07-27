@@ -4,8 +4,8 @@ use core::{
     starknet::{
         call_contract_syscall, class_hash_try_from_felt252, contract_address_try_from_felt252,
         deploy_syscall, emit_event_syscall, get_block_hash_syscall, keccak_syscall,
-        library_call_syscall, storage_address_try_from_felt252, storage_read_syscall,
-        storage_write_syscall,
+        library_call_syscall, replace_class_syscall, storage_address_try_from_felt252,
+        storage_read_syscall, storage_write_syscall,
     }
 };
 
@@ -103,6 +103,14 @@ fn main() {
         }
     ) {
         Result::Ok(x) => x.snapshot.clone().print(),
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  call_contract'.print();
+        }
+    }
+
+    match replace_class_syscall(class_hash_try_from_felt252(1234).unwrap()) {
+        Result::Ok(_) => {},
         Result::Err(e) => {
             'Syscall returned an error:'.print();
             '  call_contract'.print();
