@@ -10,7 +10,7 @@ use cairo_native::{
     metadata::{
         runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
-    starknet::{StarkNetSyscallHandler, SyscallResult, U256},
+    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::register_runtime_symbols,
 };
 use melior::{
@@ -34,7 +34,26 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn get_execution_info(&self) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
-        todo!("get_execution_info_syscall")
+        println!("Called `get_execution_info()` from MLIR.");
+        Ok(ExecutionInfo {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxInfo {
+                version: 4567.into(),
+                account_contract_address: 5678.into(),
+                max_fee: 6789,
+                signature: vec![1248.into(), 2486.into()],
+                transaction_hash: 9876.into(),
+                chain_id: 8765.into(),
+                nonce: 7654.into(),
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
     }
 
     fn deploy(

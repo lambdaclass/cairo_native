@@ -19,11 +19,33 @@ struct Felt252Abi(pub [u8; 32]);
 pub struct U256(pub [u8; 32]);
 
 pub struct ExecutionInfo {
-    // TODO: Add fields.
+    pub block_info: BlockInfo,
+    pub tx_info: TxInfo,
+    pub caller_address: Felt252,
+    pub contract_address: Felt252,
+    pub entry_point_selector: Felt252,
 }
+
+pub struct BlockInfo {
+    pub block_number: u64,
+    pub block_timestamp: u64,
+    pub sequencer_address: Felt252,
+}
+
+pub struct TxInfo {
+    pub version: Felt252,
+    pub account_contract_address: Felt252,
+    pub max_fee: u128,
+    pub signature: Vec<Felt252>,
+    pub transaction_hash: Felt252,
+    pub chain_id: Felt252,
+    pub nonce: Felt252,
+}
+
 pub struct Secp256k1Point {
     // TODO: Add fields.
 }
+
 pub struct Secp256r1Point {
     // TODO: Add fields.
 }
@@ -117,7 +139,12 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use std::{alloc::Layout, fmt::Debug, mem::ManuallyDrop, ptr::NonNull};
+    use std::{
+        alloc::Layout,
+        fmt::Debug,
+        mem::{size_of, ManuallyDrop},
+        ptr::NonNull,
+    };
 
     macro_rules! field_offset {
         ( $ident:path, $field:ident ) => {
@@ -148,6 +175,33 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
+    struct ExecutionInfoAbi {
+        block_info: NonNull<BlockInfoAbi>,
+        tx_info: NonNull<TxInfoAbi>,
+        caller_address: Felt252Abi,
+        contract_address: Felt252Abi,
+        entry_point_selector: Felt252Abi,
+    }
+
+    #[repr(C)]
+    struct BlockInfoAbi {
+        block_number: u64,
+        block_timestamp: u64,
+        sequencer_address: Felt252Abi,
+    }
+
+    #[repr(C)]
+    struct TxInfoAbi {
+        version: Felt252Abi,
+        account_contract_address: Felt252Abi,
+        max_fee: u128,
+        signature: (NonNull<Felt252Abi>, u32, u32),
+        transaction_hash: Felt252Abi,
+        chain_id: Felt252Abi,
+        nonce: Felt252Abi,
+    }
+
+    #[repr(C)]
     #[derive(Debug)]
     pub struct StarkNetSyscallHandlerCallbacks<'a, T> {
         self_ptr: &'a T,
@@ -159,7 +213,7 @@ pub(crate) mod handler {
             block_number: u64,
         ),
         get_execution_info: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<ExecutionInfo>,
+            result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
             gas: &mut u64,
         ),
@@ -318,7 +372,7 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_get_execution_info(
-            result_ptr: &mut SyscallResultAbi<ExecutionInfo>,
+            result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
             _gas: &mut u64,
         ) {
@@ -329,14 +383,61 @@ pub(crate) mod handler {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new(x),
+                        payload: unsafe {
+                            let mut block_info_ptr =
+                                NonNull::new(
+                                    libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
+                                )
+                                .unwrap();
+                            block_info_ptr.as_mut().block_number = x.block_info.block_number;
+                            block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
+                            block_info_ptr.as_mut().sequencer_address =
+                                Felt252Abi(x.block_info.sequencer_address.to_le_bytes());
+
+                            let mut tx_info_ptr = NonNull::new(
+                                libc::malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi,
+                            )
+                            .unwrap();
+                            tx_info_ptr.as_mut().version =
+                                Felt252Abi(x.tx_info.version.to_le_bytes());
+                            tx_info_ptr.as_mut().account_contract_address =
+                                Felt252Abi(x.tx_info.account_contract_address.to_le_bytes());
+                            tx_info_ptr.as_mut().max_fee = x.tx_info.max_fee;
+                            tx_info_ptr.as_mut().signature = Self::alloc_mlir_array(
+                                &x.tx_info
+                                    .signature
+                                    .into_iter()
+                                    .map(|x| Felt252Abi(x.to_le_bytes()))
+                                    .collect::<Vec<_>>(),
+                            );
+                            tx_info_ptr.as_mut().transaction_hash =
+                                Felt252Abi(x.tx_info.transaction_hash.to_le_bytes());
+                            tx_info_ptr.as_mut().chain_id =
+                                Felt252Abi(x.tx_info.chain_id.to_le_bytes());
+                            tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_le_bytes());
+
+                            let mut execution_info_ptr =
+                                NonNull::new(libc::malloc(size_of::<ExecutionInfoAbi>())
+                                    as *mut ExecutionInfoAbi)
+                                .unwrap();
+                            execution_info_ptr.as_mut().block_info = block_info_ptr;
+                            execution_info_ptr.as_mut().tx_info = tx_info_ptr;
+                            execution_info_ptr.as_mut().caller_address =
+                                Felt252Abi(x.caller_address.to_le_bytes());
+                            execution_info_ptr.as_mut().contract_address =
+                                Felt252Abi(x.contract_address.to_le_bytes());
+                            execution_info_ptr.as_mut().entry_point_selector =
+                                Felt252Abi(x.entry_point_selector.to_le_bytes());
+
+                            ManuallyDrop::new(execution_info_ptr)
+                        },
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
             };
         }
 
-        // TODO: change all from_bytes_be to from_bytes_ne when added.
+        // TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
         extern "C" fn wrap_deploy(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,

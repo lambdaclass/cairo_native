@@ -2,8 +2,8 @@ use core::{
     array::ArrayTrait, clone::Clone, debug::PrintTrait, option::OptionTrait,
     starknet::{
         call_contract_syscall, class_hash_try_from_felt252, contract_address_try_from_felt252,
-        deploy_syscall, emit_event_syscall, get_block_hash_syscall, keccak_syscall,
-        library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
+        deploy_syscall, emit_event_syscall, get_block_hash_syscall, get_execution_info_syscall,
+        keccak_syscall, library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
         storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall,
     }
 };
@@ -73,6 +73,13 @@ fn main() {
         Result::Err(e) => {
             'Syscall returned an error:'.print();
             '  get_block_hash'.print();
+        },
+    }
+    match get_execution_info_syscall() {
+        Result::Ok(_) => {},
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  get_execution_info'.print();
         },
     }
 
