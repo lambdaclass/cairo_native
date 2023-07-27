@@ -27,7 +27,7 @@ COPY . /cairo_native/
 
 # Fetch cairo corelibs
 RUN git clone --depth 1 \
-    --branch v1.1.0 \
+    --branch v2.0.1 \
     https://github.com/starkware-libs/cairo.git \
     starkware-cairo
 RUN cp -r starkware-cairo/corelib /cairo_native
