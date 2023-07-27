@@ -425,16 +425,29 @@ pub(crate) mod handler {
             calldata: *const (*const Felt252Abi, u32, u32),
         ) {
             // TODO: handle gas
-            let class_hash = Felt252::from_bytes_be(&class_hash.0);
-            let function_selector = Felt252::from_bytes_be(&function_selector.0);
+            let class_hash = Felt252::from_bytes_be(&{
+                let mut data = class_hash.0;
+                data.reverse();
+                data
+            });
+            let function_selector = Felt252::from_bytes_be(&{
+                let mut data = function_selector.0;
+                data.reverse();
+                data
+            });
 
             let calldata: Vec<_> = unsafe {
                 let len = (*calldata).1 as usize;
-
                 std::slice::from_raw_parts((*calldata).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let result = ptr.library_call(class_hash, function_selector, &calldata);

@@ -57,11 +57,14 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn library_call(
         &self,
-        _class_hash: cairo_felt::Felt252,
-        _function_selector: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
+        class_hash: cairo_felt::Felt252,
+        function_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
     ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-        todo!("library_call_syscall")
+        println!(
+            "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
     }
 
     fn call_contract(

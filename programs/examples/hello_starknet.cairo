@@ -4,7 +4,8 @@ use core::{
     starknet::{
         call_contract_syscall, class_hash_try_from_felt252, contract_address_try_from_felt252,
         deploy_syscall, emit_event_syscall, get_block_hash_syscall, keccak_syscall,
-        storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall,
+        library_call_syscall, storage_address_try_from_felt252, storage_read_syscall,
+        storage_write_syscall,
     }
 };
 
@@ -89,6 +90,23 @@ fn main() {
             'Syscall returned an error:'.print();
             '  keccak'.print();
         },
+    }
+
+    match library_call_syscall(
+        class_hash_try_from_felt252(1234).unwrap(),
+        5678,
+        {
+            let mut data = ArrayTrait::<felt252>::new();
+            data.append(1234);
+            data.append(5678);
+            data.span()
+        }
+    ) {
+        Result::Ok(x) => x.snapshot.clone().print(),
+        Result::Err(e) => {
+            'Syscall returned an error:'.print();
+            '  call_contract'.print();
+        }
     }
 
     match storage_read_syscall(0, storage_address_try_from_felt252(1234).unwrap()) {
