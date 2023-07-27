@@ -36,4 +36,4 @@ RUN rm -rf starkware-cairo/
 # Compile cairo_native
 WORKDIR /cairo_native/
 ENV MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
-RUN cargo +nightly-2023-06-19 build --release
+RUN cargo +nightly-2023-06-19 build --release --all-features
