@@ -14,13 +14,21 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         consts::SignatureAndConstConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc, GenericLibfunc, GenericType,
+        starknet::StarkNetConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
-    ir::{operation::OperationBuilder, r#type::IntegerType, Attribute, Block, Location, ValueLike},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm::{self, LoadStoreOptions},
+    },
+    ir::{
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
+        operation::OperationBuilder,
+        r#type::IntegerType,
+        Attribute, Block, Identifier, Location, ValueLike,
+    },
     Context,
 };
 use num_bigint::Sign;
@@ -43,15 +51,21 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     match selector {
-        StarkNetConcreteLibfunc::CallContract(_) => todo!(),
+        StarkNetConcreteLibfunc::CallContract(info) => {
+            build_call_contract(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ClassHashConst(_) => todo!(),
         StarkNetConcreteLibfunc::ClassHashTryFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ClassHashToFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressConst(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(_) => todo!(),
         StarkNetConcreteLibfunc::ContractAddressToFelt252(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageRead(_) => todo!(),
-        StarkNetConcreteLibfunc::StorageWrite(_) => todo!(),
+        StarkNetConcreteLibfunc::StorageRead(info) => {
+            build_storage_read(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::StorageWrite(info) => {
+            build_storage_write(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
             context, registry, entry, location, helper, metadata, info,
         ),
@@ -76,17 +90,87 @@ where
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::EmitEvent(_) => todo!(),
-        StarkNetConcreteLibfunc::GetBlockHash(_) => todo!(),
-        StarkNetConcreteLibfunc::GetExecutionInfo(_) => todo!(),
-        StarkNetConcreteLibfunc::Deploy(_) => todo!(),
-        StarkNetConcreteLibfunc::Keccak(_) => todo!(),
-        StarkNetConcreteLibfunc::LibraryCall(_) => todo!(),
-        StarkNetConcreteLibfunc::ReplaceClass(_) => todo!(),
-        StarkNetConcreteLibfunc::SendMessageToL1(_) => todo!(),
+        StarkNetConcreteLibfunc::EmitEvent(info) => {
+            build_emit_event(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::GetBlockHash(info) => {
+            build_get_block_hash(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
+            build_get_execution_info(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::Deploy(info) => {
+            build_deploy(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::Keccak(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::LibraryCall(info) => {
+            build_library_call(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::ReplaceClass(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::SendMessageToL1(info) => {
+            build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
     }
+}
+
+pub fn build_call_contract<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_storage_read<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_storage_write<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
 }
 
 pub fn build_storage_base_address_const<'ctx, 'this, TType, TLibfunc>(
@@ -297,6 +381,425 @@ where
         location,
     ));
     Ok(())
+}
+
+pub fn build_emit_event<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_get_block_hash<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // Extract self pointer.
+    let ptr = entry
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(1)?.into(),
+            DenseI32ArrayAttribute::new(context, &[0]),
+            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let ptr = entry
+        .append_operation(llvm::load(
+            context,
+            ptr,
+            llvm::r#type::opaque_pointer(context),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let result_ptr = helper
+        .init_block()
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        result_layout.align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(
+                    llvm::r#type::r#struct(
+                        context,
+                        &[
+                            result_tag_ty,
+                            llvm::r#type::array(
+                                IntegerType::new(context, 8).into(),
+                                (result_layout.size() - 1).try_into()?,
+                            ),
+                        ],
+                        true,
+                    ),
+                    0,
+                )])
+                .build(),
+        )
+        .result(0)?
+        .into();
+
+    // Allocate space and write the current gas.
+    let gas_builtin_ptr = helper
+        .init_block()
+        .append_operation(
+            OperationBuilder::new("llvm.alloca", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "alignment"),
+                    IntegerAttribute::new(
+                        result_layout.align().try_into()?,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                )])
+                .add_operands(&[k1])
+                .add_results(&[llvm::r#type::pointer(
+                    IntegerType::new(context, 64).into(),
+                    0,
+                )])
+                .build(),
+        )
+        .result(0)?
+        .into();
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(0)?.into(),
+        gas_builtin_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    // Extract function pointer.
+    let fn_ptr_ty = llvm::r#type::function(
+        llvm::r#type::void(context),
+        &[
+            llvm::r#type::pointer(
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        result_tag_ty,
+                        llvm::r#type::array(
+                            IntegerType::new(context, 8).into(),
+                            (result_layout.size() - 1).try_into()?,
+                        ),
+                    ],
+                    true,
+                ),
+                0,
+            ),
+            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            IntegerType::new(context, 64).into(),
+        ],
+        false,
+    );
+    let fn_ptr = entry
+        .append_operation(llvm::get_element_ptr(
+            context,
+            entry.argument(1)?.into(),
+            DenseI32ArrayAttribute::new(context, &[1]),
+            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let fn_ptr = entry
+        .append_operation(llvm::load(
+            context,
+            fn_ptr,
+            llvm::r#type::pointer(fn_ptr_ty, 0),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[
+                fn_ptr,
+                result_ptr,
+                ptr,
+                gas_builtin_ptr,
+                entry.argument(2)?.into(),
+            ])
+            .build(),
+    );
+
+    let result = entry
+        .append_operation(llvm::load(
+            context,
+            result_ptr,
+            llvm::r#type::r#struct(
+                context,
+                &[
+                    result_tag_ty,
+                    llvm::r#type::array(
+                        IntegerType::new(context, 8).into(),
+                        (result_layout.size() - 1).try_into()?,
+                    ),
+                ],
+                true,
+            ),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+    let result_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            IntegerType::new(context, 1).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let payload_ok = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    )])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::pointer(variant_tys[0].0, 0)])
+                    .build(),
+            )
+            .result(0)?
+            .into();
+        entry
+            .append_operation(llvm::load(
+                context,
+                ptr,
+                variant_tys[0].0,
+                location,
+                LoadStoreOptions::default(),
+            ))
+            .result(0)?
+            .into()
+    };
+    let payload_err = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    )])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .build(),
+            )
+            .result(0)?
+            .into();
+        entry
+            .append_operation(llvm::load(
+                context,
+                ptr,
+                variant_tys[1].0,
+                location,
+                LoadStoreOptions::default(),
+            ))
+            .result(0)?
+            .into()
+    };
+
+    let remaining_gas = entry
+        .append_operation(llvm::load(
+            context,
+            gas_builtin_ptr,
+            IntegerType::new(context, 64).into(),
+            location,
+            LoadStoreOptions::default(),
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        result_tag,
+        [0, 1],
+        [
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+        ],
+        location,
+    ));
+    Ok(())
+}
+
+pub fn build_get_execution_info<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_deploy<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_keccak<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_library_call<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_replace_class<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
+}
+
+pub fn build_send_message_to_l1<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    todo!()
 }
 
 #[cfg(test)]
