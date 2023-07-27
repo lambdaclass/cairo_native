@@ -10,7 +10,7 @@ use cairo_native::{
     metadata::{
         runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
-    starknet::{StarkNetSyscallHandler, SyscallResult},
+    starknet::{StarkNetSyscallHandler, SyscallResult, U256},
     utils::register_runtime_symbols,
 };
 use melior::{
@@ -112,8 +112,9 @@ impl StarkNetSyscallHandler for SyscallHandler {
         todo!("send_message_to_l1_syscall")
     }
 
-    fn keccak(&self, _input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
-        todo!("keccak_syscall")
+    fn keccak(&self, input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
+        println!("Called `keccak({input:?})` from MLIR.");
+        Ok(U256(Felt252::from(1234567890).to_le_bytes()))
     }
 
     fn secp256k1_add(
