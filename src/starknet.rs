@@ -348,16 +348,29 @@ pub(crate) mod handler {
             deploy_from_zero: bool,
         ) {
             // TODO: handle gas
-            let class_hash = Felt252::from_bytes_be(&class_hash.0);
-            let contract_address_salt = Felt252::from_bytes_be(&contract_address_salt.0);
+            let class_hash = Felt252::from_bytes_be(&{
+                let mut data = class_hash.0;
+                data.reverse();
+                data
+            });
+            let contract_address_salt = Felt252::from_bytes_be(&{
+                let mut data = contract_address_salt.0;
+                data.reverse();
+                data
+            });
 
             let calldata: Vec<_> = unsafe {
                 let len = (*calldata).1 as usize;
-
                 std::slice::from_raw_parts((*calldata).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let result = ptr.deploy(

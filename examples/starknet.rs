@@ -22,6 +22,7 @@ use melior::{
 };
 use serde_json::json;
 use std::{io, path::Path};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug)]
 struct SyscallHandler;
@@ -38,12 +39,16 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn deploy(
         &self,
-        _class_hash: cairo_felt::Felt252,
-        _contract_address_salt: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
-        _deploy_from_zero: bool,
+        class_hash: cairo_felt::Felt252,
+        contract_address_salt: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
+        deploy_from_zero: bool,
     ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
-        todo!("deploy_syscall")
+        println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
+        Ok((
+            class_hash + contract_address_salt,
+            calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+        ))
     }
 
     fn replace_class(&self, _class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
@@ -243,6 +248,13 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Configure logging and error handling.
+    tracing::subscriber::set_global_default(
+        FmtSubscriber::builder()
+            .with_env_filter(EnvFilter::from_default_env())
+            .finish(),
+    )?;
+
     // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
     std::env::set_var(
         "CARGO_MANIFEST_DIR",
