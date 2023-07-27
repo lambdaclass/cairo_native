@@ -401,48 +401,62 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
-                dbg!(&info.info.long_id.generic_args[0]);
+                dbg!(&info.info.long_id.generic_args[1]);
                 prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
                 prop_assert_eq!(enum_container.len(), 2);
                 let native_tag = enum_container[0].as_u64().unwrap();
 
-                match &info.info.long_id.generic_args[0] {
-                    GenericArg::UserType(_) => {
-                        todo!("check if enum is bool and handle it accordingly, tag 0 = true")
-                    }
-                    _ => {
-                        if *panic_handled {
-                            let vm_tag = vm_rets.next().unwrap();
-                            let vm_tag = casm_variant_to_sierra(
-                                vm_tag.parse::<i64>().unwrap(),
-                                info.variants.len() as i64,
-                            ) as u64;
-                            prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+                let mut is_bool = false;
 
-                            check_next_type(
-                                reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                                ignore_gas,
-                                &mut [&enum_container[1]].into_iter(),
-                                vm_rets,
-                                vm_gas,
-                                reg,
-                                panic_handled,
-                            )?;
-                        } else {
-                            *panic_handled = true;
+                if let GenericArg::Type(id) = &info.info.long_id.generic_args[1] {
+                    // TODO: is there a better way to recognize a boolean?
+                    is_bool = id
+                        .debug_name
+                        .as_ref()
+                        .unwrap()
+                        .as_str()
+                        .eq("Tuple<core::bool>");
+                }
 
-                            check_next_type(
-                                reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                                ignore_gas,
-                                &mut [&enum_container[1]].into_iter(),
-                                vm_rets,
-                                vm_gas,
-                                reg,
-                                panic_handled,
-                            )?;
-                        }
-                    }
+                if is_bool {
+                    let vn_val = vm_rets.next().unwrap();
+                    let vn_val = casm_variant_to_sierra(
+                        vn_val.parse::<i64>().unwrap(),
+                        info.variants.len() as i64,
+                    ) as u64
+                        == 1;
+                    let native_val: bool = native_tag == 0; // 0 = true
+                    prop_assert_eq!(vn_val, native_val, "bool value mismatch");
+                } else if *panic_handled {
+                    let vm_tag = vm_rets.next().unwrap();
+                    let vm_tag = casm_variant_to_sierra(
+                        vm_tag.parse::<i64>().unwrap(),
+                        info.variants.len() as i64,
+                    ) as u64;
+                    prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+
+                    check_next_type(
+                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                        ignore_gas,
+                        &mut [&enum_container[1]].into_iter(),
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                        panic_handled,
+                    )?;
+                } else {
+                    *panic_handled = true;
+
+                    check_next_type(
+                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                        ignore_gas,
+                        &mut [&enum_container[1]].into_iter(),
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                        panic_handled,
+                    )?;
                 }
             }
             CoreTypeConcrete::Struct(info) => {
