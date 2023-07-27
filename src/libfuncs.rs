@@ -121,7 +121,9 @@ where
             Self::Box(selector) => self::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Cast(_) => todo!(),
+            Self::Cast(selector) => self::cast::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -155,12 +157,16 @@ where
             Self::Uint128(selector) => self::uint128::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint256(_) => todo!(),
+            Self::Uint256(selector) => self::uint256::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint512(_) => todo!(),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Nullable(_) => todo!(),
+            Self::Nullable(selector) => self::nullable::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),

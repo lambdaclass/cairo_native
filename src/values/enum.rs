@@ -172,10 +172,11 @@ where
 
         unsafe {
             std::ptr::copy_nonoverlapping(
-                payload.as_ptr(),
+                payload.cast::<u8>().as_ptr(),
                 ptr.map_addr(|addr| {
                     addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
                 })
+                .cast()
                 .as_ptr(),
                 variant_layouts[tag_value].size(),
             );

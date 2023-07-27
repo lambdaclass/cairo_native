@@ -165,7 +165,7 @@ where
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    elem.as_ptr(),
+                    elem.cast::<u8>().as_ptr(),
                     NonNull::new_unchecked(ptr)
                         .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
                         .cast()

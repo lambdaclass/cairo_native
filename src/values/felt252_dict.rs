@@ -177,7 +177,7 @@ where
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     value.cast::<u8>().as_ptr(),
-                    value_malloc_ptr.as_ptr().cast(),
+                    value_malloc_ptr.cast().as_ptr(),
                     elem_layout.size(),
                 );
             }
