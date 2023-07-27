@@ -402,7 +402,11 @@ pub(crate) mod handler {
             class_hash: &Felt252Abi,
         ) {
             // TODO: Handle gas.
-            let class_hash = Felt252::from_bytes_be(&class_hash.0);
+            let class_hash = Felt252::from_bytes_be(&{
+                let mut data = class_hash.0;
+                data.reverse();
+                data
+            });
             let result = ptr.replace_class(class_hash);
 
             *result_ptr = match result {
@@ -634,14 +638,23 @@ pub(crate) mod handler {
             payload: *const (*const Felt252Abi, u32, u32),
         ) {
             // TODO: handle gas
-            let to_address = Felt252::from_bytes_be(&to_address.0);
+            let to_address = Felt252::from_bytes_be(&{
+                let mut data = to_address.0;
+                data.reverse();
+                data
+            });
             let payload: Vec<_> = unsafe {
                 let len = (*payload).1 as usize;
-
                 std::slice::from_raw_parts((*payload).0, len)
             }
             .iter()
-            .map(|x| Felt252::from_bytes_be(&x.0))
+            .map(|x| {
+                Felt252::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
             .collect();
 
             let result = ptr.send_message_to_l1(to_address, &payload);

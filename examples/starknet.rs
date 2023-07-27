@@ -110,10 +110,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn send_message_to_l1(
         &self,
-        _to_address: cairo_felt::Felt252,
-        _payload: &[cairo_felt::Felt252],
+        to_address: cairo_felt::Felt252,
+        payload: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!("send_message_to_l1_syscall")
+        println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
+        Ok(())
     }
 
     fn keccak(&self, input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
