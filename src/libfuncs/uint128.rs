@@ -68,11 +68,15 @@ where
         Uint128Concrete::FromFelt252(info) => {
             build_from_felt252(context, registry, entry, location, helper, metadata, info)
         }
-        Uint128Concrete::GuaranteeMul(_) => todo!(),
+        Uint128Concrete::GuaranteeMul(info) => {
+            build_guarantee_mul(context, registry, entry, location, helper, metadata, info)
+        }
         Uint128Concrete::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, metadata, info)
         }
-        Uint128Concrete::MulGuaranteeVerify(_) => todo!(),
+        Uint128Concrete::MulGuaranteeVerify(info) => {
+            build_guarantee_verify(context, registry, entry, location, helper, metadata, info)
+        }
         Uint128Concrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, metadata, info)
         }
@@ -702,6 +706,83 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u128_guarantee_mul` libfunc.
+pub fn build_guarantee_mul<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let lhs: Value = entry.argument(0)?.into();
+    let rhs: Value = entry.argument(1)?.into();
+
+    let origin_type = lhs.r#type();
+
+    let target_type = IntegerType::new(context, 256).into();
+    let guarantee_type = registry
+        .get_type(&info.output_types()[0][2])?
+        .build(context, helper, registry, metadata)?;
+
+    let op = entry.append_operation(arith::extui(lhs, target_type, location));
+    let lhs = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::extui(rhs, target_type, location));
+    let rhs = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::muli(lhs, rhs, location));
+    let result = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::trunci(result, origin_type, location));
+    let result_lo = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(128, target_type).into(),
+        location,
+    ));
+    let const_128 = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::shrui(result, const_128, location));
+    let result_hi = op.result(0)?.into();
+    let op = entry.append_operation(arith::trunci(result_hi, origin_type, location));
+    let result_hi = op.result(0)?.into();
+
+    let op = entry.append_operation(llvm::undef(guarantee_type, location));
+    let guarantee = op.result(0)?.into();
+
+    entry.append_operation(helper.br(0, &[result_hi, result_lo, guarantee], location));
+    Ok(())
+}
+
+/// Generate MLIR operations for the `u128_guarantee_verify` libfunc.
+pub fn build_guarantee_verify<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::test::{felt, load_cairo, run_program};
@@ -779,6 +860,13 @@ mod test {
         static ref U128_SUB: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> u128 {
                 lhs - rhs
+            }
+        };
+
+        static ref U128_WIDEMUL: (String, Program) = load_cairo! {
+            use integer::u128_wide_mul;
+            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
+                u128_wide_mul(lhs, rhs)
             }
         };
 
@@ -944,5 +1032,16 @@ mod test {
 
             assert_eq!(r(x), json!([(), y]));
         }
+    }
+
+    #[test]
+    fn u128_widemul() {
+        let r = |lhs, rhs| run_program(&U128_WIDEMUL, "run_test", json!([(), lhs, rhs]));
+
+        assert_eq!(r(0, 0), json!([null, [0, 0]]));
+        assert_eq!(r(0, 1), json!([null, [0, 0]]));
+        assert_eq!(r(1, 0), json!([null, [0, 0]]));
+        assert_eq!(r(1, 1), json!([null, [0, 1]]));
+        assert_eq!(r(u128::MAX, u128::MAX), json!([null, [u128::MAX - 1, 1]]));
     }
 }

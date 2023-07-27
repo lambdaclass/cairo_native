@@ -76,7 +76,9 @@ where
         UintConcrete::Divmod(info) => {
             build_divmod(context, registry, entry, location, helper, info)
         }
-        UintConcrete::WideMul(_) => todo!(),
+        UintConcrete::WideMul(info) => {
+            build_widemul(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -276,6 +278,41 @@ where
         &[entry.argument(0)?.into(), result_div, result_rem],
         location,
     ));
+    Ok(())
+}
+
+/// Generate MLIR operations for the `u32_widemul` libfunc.
+pub fn build_widemul<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let target_type = registry
+        .get_type(&info.output_types()[0][0])?
+        .build(context, helper, registry, metadata)?;
+    let lhs: Value = entry.argument(0)?.into();
+    let rhs: Value = entry.argument(1)?.into();
+
+    let op = entry.append_operation(arith::extui(lhs, target_type, location));
+    let lhs = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::extui(rhs, target_type, location));
+    let rhs = op.result(0)?.into();
+
+    let op = entry.append_operation(arith::muli(lhs, rhs, location));
+    let result = op.result(0)?.into();
+
+    entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
@@ -696,6 +733,12 @@ mod test {
                 u32_sqrt(value)
             }
         };
+        static ref U32_WIDEMUL: (String, Program) = load_cairo! {
+            use integer::u32_wide_mul;
+            fn run_test(lhs: u32, rhs: u32) -> u64 {
+                u32_wide_mul(lhs, rhs)
+            }
+        };
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.
@@ -892,5 +935,19 @@ mod test {
 
             assert_eq!(r(x), json!([(), y]));
         }
+    }
+
+    #[test]
+    fn u32_widemul() {
+        let r = |lhs, rhs| run_program(&U32_WIDEMUL, "run_test", json!([lhs, rhs]));
+
+        assert_eq!(r(0, 0), json!([0]));
+        assert_eq!(r(0, 1), json!([0]));
+        assert_eq!(r(1, 0), json!([0]));
+        assert_eq!(r(1, 1), json!([1]));
+        assert_eq!(
+            r(u32::MAX, u32::MAX),
+            json!([(u32::MAX as u64 * u32::MAX as u64)])
+        );
     }
 }
