@@ -25,11 +25,11 @@ Done:
 1. `branch_align`
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
+1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
 1. `deploy_syscall` (StarkNet)
 1. `disable_ap_tracking`
-1. `emit_event_syscall` (StarkNet)
 1. `downcast`
 1. `drop` (3)
 1. `dup` (3)
@@ -43,6 +43,7 @@ Done:
 1. `ec_state_add`
 1. `ec_state_init`
 1. `ec_state_try_finalize_nz`
+1. `emit_event_syscall` (StarkNet)
 1. `enable_ap_tracking`
 1. `enum_init`
 1. `enum_match`
@@ -154,7 +155,6 @@ TODO:
 1. `array_slice`
 1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
-1. `contract_address_const` (StarkNet)
 1. `enum_snapshot_match`
 1. `get_available_gas`
 1. `pop_log` (StarkNet, testing)
