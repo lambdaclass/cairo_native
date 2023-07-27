@@ -23,7 +23,13 @@ Done:
 1. `bool_to_felt252`
 1. `bool_xor_impl`
 1. `branch_align`
+1. `call_contract_syscall` (StarkNet)
+1. `class_hash_try_from_felt252` (StarkNet)
+1. `contract_address_to_felt252` (StarkNet)
+1. `contract_address_try_from_felt252` (StarkNet)
+1. `deploy_syscall` (StarkNet)
 1. `disable_ap_tracking`
+1. `emit_event_syscall` (StarkNet)
 1. `downcast`
 1. `drop` (3)
 1. `dup` (3)
@@ -58,15 +64,20 @@ Done:
 1. `function_call`
 1. `get_block_hash_syscall` (StarkNet)
 1. `get_builtin_costs` (5)
+1. `get_execution_info_syscall` (StarkNet)
 1. `into_box` (2)
 1. `jump`
+1. `keccak_syscall` (StarkNet)
+1. `library_call_syscall` (StarkNet)
 1. `match_nullable`
 1. `null`
 1. `nullable_from_box`
 1. `pedersen`
 1. `print`
 1. `rename`
+1. `replace_class_syscall` (StarkNet)
 1. `revoke_ap_tracking` (1)
+1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (6)
 1. `storage_address_from_base_and_offset` (StarkNet)
 1. `storage_address_from_base` (StarkNet)
@@ -74,6 +85,8 @@ Done:
 1. `storage_address_try_from_felt252` (StarkNet)
 1. `storage_base_address_const` (StarkNet)
 1. `storage_base_address_from_felt252` (StarkNet)
+1. `storage_read_syscall` (StarkNet)
+1. `storage_write_syscall` (StarkNet)
 1. `store_local`
 1. `store_temp`
 1. `struct_construct`
@@ -139,24 +152,14 @@ Done:
 
 TODO:
 1. `array_slice`
-1. `call_contract_syscall` (StarkNet)
 1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
-1. `class_hash_try_from_felt252` (StarkNet)
 1. `contract_address_const` (StarkNet)
-1. `contract_address_to_felt252` (StarkNet)
-1. `contract_address_try_from_felt252` (StarkNet)
-1. `deploy_syscall` (StarkNet)
-1. `emit_event_syscall` (StarkNet)
 1. `enum_snapshot_match`
 1. `get_available_gas`
-1. `get_execution_info_syscall` (StarkNet)
-1. `keccak_syscall` (StarkNet)
-1. `library_call_syscall` (StarkNet)
 1. `pop_log` (StarkNet, testing)
 1. `poseidon`
 1. `redeposit_gas`
-1. `replace_class_syscall` (StarkNet)
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
 1. `secp256k1_get_xy_syscall` (StarkNet)
@@ -167,7 +170,6 @@ TODO:
 1. `secp256r1_get_xy_syscall` (StarkNet)
 1. `secp256r1_mul_syscall` (StarkNet)
 1. `secp256r1_new_syscall` (StarkNet)
-1. `send_message_to_l1_syscall` (StarkNet)
 1. `set_account_contract_address` (StarkNet, testing)
 1. `set_block_number` (StarkNet, testing)
 1. `set_block_timestamp` (StarkNet, testing)
@@ -180,8 +182,6 @@ TODO:
 1. `set_signature` (StarkNet, testing)
 1. `set_transaction_hash` (StarkNet, testing)
 1. `set_version` (StarkNet, testing)
-1. `storage_read_syscall` (StarkNet)
-1. `storage_write_syscall` (StarkNet)
 1. `struct_snapshot_deconstruct`
 1. `u128_guarantee_mul`
 1. `u128_mul_guarantee_verify`
