@@ -97,38 +97,42 @@ Done:
 88. `u16_sqrt`
 89. `u16_to_felt252`
 90. `u16_try_from_felt252`
-91. `u32_const`
-92. `u32_eq`
-93. `u32_is_zero`
-94. `u32_overflowing_add`
-95. `u32_overflowing_sub`
-96. `u32_safe_divmod`
-97. `u32_sqrt`
-98. `u32_to_felt252`
-99. `u32_try_from_felt252`
-100. `u64_const`
-101. `u64_eq`
-102. `u64_is_zero`
-103. `u64_overflowing_add`
-104. `u64_overflowing_sub`
-105. `u64_safe_divmod`
-106. `u64_sqrt`
-107. `u64_to_felt252`
-108. `u64_try_from_felt252`
-109. `u8_const`
-110. `u8_eq`
-111. `u8_is_zero`
-112. `u8_overflowing_add`
-113. `u8_overflowing_sub`
-114. `u8_safe_divmod`
-115. `u8_sqrt`
-116. `u8_to_felt252`
-117. `u8_try_from_felt252`
-118. `unbox` (2)
-119. `unwrap_non_zero`
-120. `upcast`
-121. `withdraw_gas_all` (5)
-122. `withdraw_gas` (5)
+91. `u16_wide_mul`
+92. `u32_const`
+93. `u32_eq`
+94. `u32_is_zero`
+95. `u32_overflowing_add`
+96. `u32_overflowing_sub`
+97. `u32_safe_divmod`
+98. `u32_sqrt`
+99. `u32_to_felt252`
+100. `u32_try_from_felt252`
+101. `u32_wide_mul`
+102. `u64_const`
+103. `u64_eq`
+104. `u64_is_zero`
+105. `u64_overflowing_add`
+106. `u64_overflowing_sub`
+107. `u64_safe_divmod`
+108. `u64_sqrt`
+109. `u64_to_felt252`
+110. `u64_try_from_felt252`
+111. `u64_wide_mul`
+112. `u8_const`
+113. `u8_eq`
+114. `u8_is_zero`
+115. `u8_overflowing_add`
+116. `u8_overflowing_sub`
+117. `u8_safe_divmod`
+118. `u8_sqrt`
+119. `u8_to_felt252`
+120. `u8_try_from_felt252`
+121. `u8_wide_mul`
+122. `unbox` (2)
+123. `unwrap_non_zero`
+124. `upcast`
+125. `withdraw_gas_all` (5)
+126. `withdraw_gas` (5)
 
 TODO:
 1. `array_slice`
@@ -178,14 +182,10 @@ TODO:
 45. `struct_snapshot_deconstruct`
 46. `u128_guarantee_mul`
 47. `u128_mul_guarantee_verify`
-48. `u16_wide_mul`
-59. `u256_is_zero`
-50. `u256_safe_divmod`
-51. `u256_sqrt`
-52. `u32_wide_mul`
-53. `u512_safe_divmod_by_u256`
-54. `u64_wide_mul`
-55. `u8_wide_mul`
+48. `u256_is_zero`
+49. `u256_safe_divmod`
+50. `u256_sqrt`
+51. `u512_safe_divmod_by_u256`
 
 
 Footnotes
