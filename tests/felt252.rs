@@ -1,12 +1,8 @@
-use crate::common::{
-    any_felt252, felt, feltn, get_result_success, load_cairo, run_native_program, run_vm_program,
-};
-use cairo_felt::Felt252;
+use crate::common::{any_felt252, feltn, load_cairo, run_native_program, run_vm_program};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use common::compare_outputs;
 use lazy_static::lazy_static;
-use num_traits::Num;
 use proptest::prelude::*;
 use serde_json::json;
 

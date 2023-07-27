@@ -12,7 +12,7 @@ use cairo_lang_runner::{
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
     ids::FunctionId,
-    program::Program,
+    program::{GenericArg, Program},
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
@@ -62,6 +62,7 @@ pub fn felt(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
+/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn feltn(value: impl Into<BigInt>) -> [u32; 8] {
     let value: BigInt = value.into();
     let value = match value.sign() {
@@ -79,10 +80,10 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
     num_variants - 1 - (idx >> 1)
 }
 
-pub fn get_result_success(r: &RunResultValue) -> Vec<String> {
+pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     match r {
         RunResultValue::Success(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
-        RunResultValue::Panic(_) => panic!(),
+        RunResultValue::Panic(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
     }
 }
 
@@ -125,6 +126,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     (module_name.to_string(), program, runner)
 }
 
+/// Runs the program using cairo-native JIT.
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -204,6 +206,7 @@ pub fn run_native_program(
     .expect("Test program execution failed.")
 }
 
+/// Runs the program on the cairo-vm
 pub fn run_vm_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -219,7 +222,15 @@ pub fn run_vm_program(
     )
 }
 
-// left of assert is cairo vm, right cairo native
+/// Given the result of the cairo-vm and cairo-native of the same program, it compares
+/// the results automatically, triggering a proptest assert if there is a mismatch.
+///
+/// For now since we can't reliably detect if a enum is a panic Result introduced invisibly by sierra, we need to
+/// check it ourselves in advance and pass the flag has_panic.
+///
+/// If ignore_gas is not false, it will check whether the resulting gas matches.
+///
+/// Left of report of the assert is the cairo vm result, right side is cairo native
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
@@ -235,14 +246,14 @@ pub fn compare_outputs(
     let func = reg.get_function(entry_point).unwrap();
 
     let ret_types = &func.signature.ret_types;
-
+    dbg!(&native_result);
     let mut native_rets = native_result
         .as_array()
         .expect("should be an array")
         .iter()
         .peekable();
-    let success_val = get_result_success(&vm_result.value);
-    let mut vm_rets = success_val.iter().peekable();
+    let vm_return_vals = get_run_result(&vm_result.value);
+    let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u64 = vm_result
         .gas_counter
         .as_ref()
@@ -251,17 +262,31 @@ pub fn compare_outputs(
 
     let mut panic_handled = !has_panic;
 
-    fn check_next_type(
+    fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
         ignore_gas: bool,
-        native_rets: &mut Peekable<Iter<'_, serde_json::Value>>,
+        native_rets: &mut impl Iterator<Item = &'a Value>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u64,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
         panic_handled: &mut bool,
     ) -> Result<(), TestCaseError> {
+        let mut native_rets = native_rets.into_iter().peekable();
         match ty {
-            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Array(info) => {
+                let array_container = native_rets.next().unwrap().as_array().unwrap();
+                for container in array_container {
+                    check_next_type(
+                        reg.get_type(&info.ty).unwrap(),
+                        ignore_gas,
+                        &mut [container].into_iter(),
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                        panic_handled,
+                    )?;
+                }
+            }
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
@@ -376,57 +401,57 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
+                dbg!(&info.info.long_id.generic_args[0]);
                 prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
                 prop_assert_eq!(enum_container.len(), 2);
                 let native_tag = enum_container[0].as_u64().unwrap();
 
-                if *panic_handled {
-                    let vm_tag = vm_rets.next().unwrap();
-                    let vm_tag = casm_variant_to_sierra(
-                        vm_tag.parse::<i64>().unwrap(),
-                        info.variants.len() as i64,
-                    ) as u64;
-                    prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+                match &info.info.long_id.generic_args[0] {
+                    GenericArg::UserType(_) => {
+                        todo!("check if enum is bool and handle it accordingly, tag 0 = true")
+                    }
+                    _ => {
+                        if *panic_handled {
+                            let vm_tag = vm_rets.next().unwrap();
+                            let vm_tag = casm_variant_to_sierra(
+                                vm_tag.parse::<i64>().unwrap(),
+                                info.variants.len() as i64,
+                            ) as u64;
+                            prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
 
-                    let payload = enum_container[1].as_array().unwrap();
-                    check_next_type(
-                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
-                        &mut payload.iter().peekable(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                        panic_handled,
-                    )?;
-                } else {
-                    *panic_handled = true;
+                            check_next_type(
+                                reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                                ignore_gas,
+                                &mut [&enum_container[1]].into_iter(),
+                                vm_rets,
+                                vm_gas,
+                                reg,
+                                panic_handled,
+                            )?;
+                        } else {
+                            *panic_handled = true;
 
-                    if native_tag == 1 {
-                        // todo: compare errors
-                        todo!()
-                    } else {
-                        let payload = enum_container[1].as_array().unwrap();
-                        check_next_type(
-                            reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                            ignore_gas,
-                            &mut payload.iter().peekable(),
-                            vm_rets,
-                            vm_gas,
-                            reg,
-                            panic_handled,
-                        )?;
+                            check_next_type(
+                                reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                                ignore_gas,
+                                &mut [&enum_container[1]].into_iter(),
+                                vm_rets,
+                                vm_gas,
+                                reg,
+                                panic_handled,
+                            )?;
+                        }
                     }
                 }
             }
             CoreTypeConcrete::Struct(info) => {
                 let struct_container = native_rets.next().unwrap().as_array().unwrap();
-                let mut iter = struct_container.iter().peekable();
-                for field in &info.members {
+                for (field, container) in info.members.iter().zip(struct_container.iter()) {
                     check_next_type(
                         reg.get_type(field).unwrap(),
                         ignore_gas,
-                        &mut iter,
+                        &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
                         reg,

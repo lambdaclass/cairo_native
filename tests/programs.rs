@@ -1,5 +1,5 @@
 use crate::common::{
-    any_felt252, felt, feltn, get_result_success, load_cairo, run_native_program, run_vm_program,
+    any_felt252, felt, feltn, get_run_result, load_cairo, run_native_program, run_vm_program,
 };
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
@@ -79,7 +79,7 @@ fn fib() {
     let result_vm =
         run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(&FIB, "run_test", json!([null, GAS, felt("10")]));
@@ -96,7 +96,7 @@ fn logistic_map() {
     )
     .unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
     let fib_result = &vm_results[0];
 
     let result = run_native_program(&LOGISTIC_MAP, "run_test", json!([null, GAS, felt("1000")]));
@@ -128,7 +128,7 @@ fn pedersen() {
     )
     .unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(
@@ -186,9 +186,7 @@ proptest! {
             true,
         )?;
     }
-}
 
-proptest! {
     #[test]
     fn pedersen_proptest(a in any_felt252(), b in any_felt252()) {
         let result_vm = run_vm_program(

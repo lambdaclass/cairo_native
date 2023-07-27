@@ -1,6 +1,6 @@
 mod common;
 use crate::common::{
-    casm_variant_to_sierra, felt, get_result_success, run_native_program, run_vm_program,
+    casm_variant_to_sierra, felt, get_run_result, run_native_program, run_vm_program,
 };
 use common::load_cairo;
 use pretty_assertions::assert_eq;
@@ -35,7 +35,7 @@ fn enum_init() {
 
     let result_vm = run_vm_program(&enum_init, "run_test", &[], None).unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
 
     let result = run_native_program(&enum_init, "run_test", json!([]));
     assert_eq!(
@@ -102,14 +102,14 @@ fn enum_match() {
 
     let result_vm = run_vm_program(&enum_match, "match_a", &[], None).unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
 
     let result = run_native_program(&enum_match, "match_a", json!([]));
     assert_eq!(result, json!([felt(&vm_results[0])]));
 
     let result_vm = run_vm_program(&enum_match, "match_b", &[], None).unwrap();
 
-    let vm_results = get_result_success(&result_vm.value);
+    let vm_results = get_run_result(&result_vm.value);
 
     let result = run_native_program(&enum_match, "match_b", json!([]));
     assert_eq!(result, json!([vm_results[0].parse::<i64>().unwrap()]));
