@@ -1,7 +1,4 @@
 //! # JIT runner
-//!
-//!
-//!
 
 use crate::{
     error::{
@@ -30,7 +27,8 @@ use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
 /// to builting a different engine every time a function is called and therefore losing all
 /// potential optimizations that are already present.
 ///
-/// The registry is needed to convert the params and return values into and from the JIT ABI.
+/// The registry is needed to convert the params and return values into and from the JIT ABI. Check
+/// out [the values module](crate::values) for more information about the de/serialization process.
 ///
 /// The function's arguments and return values are passed using a [`Deserializer`] and a
 /// [`Serializer`] respectively. This method provides an easy way to process the values while also
