@@ -225,9 +225,6 @@ pub fn run_vm_program(
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
-/// For now since we can't reliably detect if a enum is a panic Result introduced invisibly by sierra, we need to
-/// check it ourselves in advance and pass the flag has_panic.
-///
 /// If ignore_gas is not false, it will check whether the resulting gas matches.
 ///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
@@ -237,7 +234,6 @@ pub fn compare_outputs(
     vm_result: &RunResult,
     native_result: &serde_json::Value,
     ignore_gas: bool,
-    has_panic: bool, // whether the function can panic, and thus the outer result enum exists in sierra but not on the vm.
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
@@ -246,7 +242,6 @@ pub fn compare_outputs(
     let func = reg.get_function(entry_point).unwrap();
 
     let ret_types = &func.signature.ret_types;
-    dbg!(&native_result);
     let mut native_rets = native_result
         .as_array()
         .expect("should be an array")
@@ -260,8 +255,6 @@ pub fn compare_outputs(
         .map(|x| x.to_biguint().try_into().unwrap())
         .unwrap_or(0);
 
-    let mut panic_handled = !has_panic;
-
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
         ignore_gas: bool,
@@ -269,7 +262,6 @@ pub fn compare_outputs(
         vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u64,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
-        panic_handled: &mut bool,
     ) -> Result<(), TestCaseError> {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
@@ -283,7 +275,6 @@ pub fn compare_outputs(
                         vm_rets,
                         vm_gas,
                         reg,
-                        panic_handled,
                     )?;
                 }
             }
@@ -401,7 +392,6 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
-                dbg!(&info.info.long_id.generic_args[1]);
                 prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
                 prop_assert_eq!(enum_container.len(), 2);
@@ -419,6 +409,16 @@ pub fn compare_outputs(
                         .eq("Tuple<core::bool>");
                 }
 
+                let is_panic = match &info.info.long_id.generic_args[0] {
+                    GenericArg::UserType(info) => info
+                        .debug_name
+                        .as_ref()
+                        .unwrap()
+                        .as_str()
+                        .starts_with("core::PanicResult"),
+                    _ => false,
+                };
+
                 if is_bool {
                     let vn_val = vm_rets.next().unwrap();
                     let vn_val = casm_variant_to_sierra(
@@ -428,7 +428,16 @@ pub fn compare_outputs(
                         == 1;
                     let native_val: bool = native_tag == 0; // 0 = true
                     prop_assert_eq!(vn_val, native_val, "bool value mismatch");
-                } else if *panic_handled {
+                } else if is_panic {
+                    check_next_type(
+                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                        ignore_gas,
+                        &mut [&enum_container[1]].into_iter(),
+                        vm_rets,
+                        vm_gas,
+                        reg,
+                    )?;
+                } else {
                     let vm_tag = vm_rets.next().unwrap();
                     let vm_tag = casm_variant_to_sierra(
                         vm_tag.parse::<i64>().unwrap(),
@@ -443,19 +452,6 @@ pub fn compare_outputs(
                         vm_rets,
                         vm_gas,
                         reg,
-                        panic_handled,
-                    )?;
-                } else {
-                    *panic_handled = true;
-
-                    check_next_type(
-                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
-                        &mut [&enum_container[1]].into_iter(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                        panic_handled,
                     )?;
                 }
             }
@@ -469,7 +465,6 @@ pub fn compare_outputs(
                         vm_rets,
                         vm_gas,
                         reg,
-                        panic_handled,
                     )?;
                 }
             }
@@ -497,15 +492,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(
-            ty,
-            ignore_gas,
-            &mut native_rets,
-            &mut vm_rets,
-            vm_gas,
-            &reg,
-            &mut panic_handled,
-        )?;
+        check_next_type(ty, ignore_gas, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
     }
 
     Ok(())

@@ -72,7 +72,6 @@ proptest! {
             &result_vm,
             &result_native,
             true,
-            true,
         )?;
     }
 
@@ -94,7 +93,6 @@ proptest! {
             &result_vm,
             &result_native,
             true,
-            true,
         )?;
     }
 
@@ -115,7 +113,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
             true,
         )?;
     }

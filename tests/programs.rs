@@ -160,7 +160,6 @@ fn factorial() {
         &result_vm,
         &result_native,
         true,
-        true,
     )
     .unwrap();
 }
@@ -182,7 +181,6 @@ proptest! {
             &FACTORIAL.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
             true,
         )?;
     }
@@ -212,7 +210,6 @@ proptest! {
             &PEDERSEN.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
             true,
         )?;
     }
