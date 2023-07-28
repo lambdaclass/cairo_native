@@ -21,7 +21,7 @@ check:
 test:
 	cargo test --profile optimized-dev --all-targets --all-features
 
-proptests:
+proptest:
 	cargo test --profile optimized-dev --all-targets --all-features proptest
 
 coverage:

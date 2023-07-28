@@ -228,7 +228,7 @@ pub fn run_vm_program(
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
-/// If ignore_gas is not false, it will check whether the resulting gas matches.
+/// If ignore_gas is false, it will check whether the resulting gas matches.
 ///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
 pub fn compare_outputs(
@@ -245,14 +245,12 @@ pub fn compare_outputs(
     let func = reg.get_function(entry_point).unwrap();
 
     let ret_types = &func.signature.ret_types;
-    dbg!(&native_result);
     let mut native_rets = native_result
         .as_array()
         .expect("should be an array")
         .iter()
         .peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
-    dbg!(&vm_return_vals);
     let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u64 = vm_result
         .gas_counter
