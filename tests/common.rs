@@ -1,4 +1,6 @@
-#![allow(unused_macros)]
+//! This module contains common code used by all integration tests, which use proptest to compare various outputs based on the inputs
+//! The general idea is to have a test for each libfunc if possible.
+
 #![allow(dead_code)]
 
 use cairo_felt::Felt252;
@@ -38,6 +40,7 @@ use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
 
+#[allow(unused_macros)]
 macro_rules! load_cairo {
     ( $( $program:tt )+ ) => {
         $crate::common::load_cairo_str(stringify!($($program)+))
@@ -242,12 +245,14 @@ pub fn compare_outputs(
     let func = reg.get_function(entry_point).unwrap();
 
     let ret_types = &func.signature.ret_types;
+    dbg!(&native_result);
     let mut native_rets = native_result
         .as_array()
         .expect("should be an array")
         .iter()
         .peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
+    dbg!(&vm_return_vals);
     let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u64 = vm_result
         .gas_counter
