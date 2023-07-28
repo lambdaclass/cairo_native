@@ -1,3 +1,5 @@
+//! # JIT runner
+
 use crate::{
     error::{
         jit_engine::{make_deserializer_error, make_serializer_error, make_type_builder_error},
@@ -18,6 +20,19 @@ use melior::ExecutionEngine;
 use serde::{de::Visitor, ser::SerializeSeq, Deserializer, Serializer};
 use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
 
+/// Execute a function on an engine loaded with a Sierra program.
+///
+/// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
+/// the compiled module. This has been designed this way because it allows engine reusal, as opposed
+/// to building a different engine every time a function is called and therefore losing all
+/// potential optimizations that are already present.
+///
+/// The registry is needed to convert the params and return values into and from the JIT ABI. Check
+/// out [the values module](crate::values) for more information about the de/serialization process.
+///
+/// The function's arguments and return values are passed using a [`Deserializer`] and a
+/// [`Serializer`] respectively. This method provides an easy way to process the values while also
+/// not requiring recompilation every time the function's signature changes.
 pub fn execute<'de, TType, TLibfunc, D, S>(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<TType, TLibfunc>,

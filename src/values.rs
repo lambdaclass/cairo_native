@@ -1,3 +1,5 @@
+//! # JIT params and return values de/serialization
+
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
@@ -41,18 +43,29 @@ pub mod uint64;
 pub mod uint8;
 pub mod uninitialized;
 
+/// The [`ValueBuilder`] trait is implemented any de/serializable value, which is the `TType`
+/// generic.
 pub trait ValueBuilder<TType, TLibfunc>
 where
     TType: GenericType<Concrete = Self>,
     TLibfunc: GenericLibfunc,
 {
+    /// Value deserializer from [serde] into the JIT ABI.
     type Deserializer<'a>: ValueDeserializer<'a, TType, TLibfunc>;
+    /// Value serializer from the JIT ABI into [serde].
     type Serializer<'a>: ValueSerializer<'a, TType, TLibfunc>;
 
+    /// Error type returned from the de/serializers.
     type Error: Error;
 
+    /// Return whether the type is considered complex or simple.
+    ///
+    /// Complex types are always passed by pointer (both as params and return values) and require a
+    /// stack allocation. Examples of complex values include structs and enums, but not felts since
+    /// LLVM considers them integers.
     fn is_complex(&self) -> bool;
 
+    /// Write a representation of the argument in a human-friendly format for debugging.
     unsafe fn debug_fmt(
         &self,
         f: &mut fmt::Formatter,
@@ -62,6 +75,7 @@ where
     ) -> fmt::Result;
 }
 
+/// Deserialize a value from [serde] into the JIT ABI.
 pub trait ValueDeserializer<'a, TType, TLibfunc>
 where
     Self: for<'de> DeserializeSeed<'de, Value = NonNull<()>>,
@@ -75,6 +89,7 @@ where
     ) -> Self;
 }
 
+/// Serialize a value from the JIT ABI into [serde].
 pub trait ValueSerializer<'a, TType, TLibfunc>
 where
     Self: Serialize,
@@ -179,6 +194,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
     }
 }
 
+/// Deserializer for Cairo's [`CoreType`].
 pub struct CoreTypeDeserializer<'a, TType, TLibfunc>
 where
     TType: GenericType,
@@ -334,6 +350,7 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
     }
 }
 
+/// Serializer for Cairo's [`CoreType`].
 pub struct CoreTypeSerializer<'a, TType, TLibfunc>
 where
     TType: GenericType,

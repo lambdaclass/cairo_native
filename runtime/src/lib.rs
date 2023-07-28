@@ -8,7 +8,7 @@ use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::Non
 
 /// Based on `cairo-lang-runner`'s implementation.
 ///
-/// Source: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800
+/// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800>
 ///
 /// # Safety
 ///

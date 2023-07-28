@@ -1,3 +1,49 @@
+//! # Compilation process
+//!
+//! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
+//! will be ran only once, even in tail-recursive functions. All libfuncs are intended to place
+//! their stack-allocating operations there so as to not grow the stack when recursing.
+//!
+//! After the pre-entry block, there is an entry block, which is in charge of preparing the first
+//! statement's arguments and jumping into it. From here on, all the statements's
+//! [builders](crate::libfuncs::LibfuncBuilder) are invoked. Every libfunc builder must end its
+//! execution calling a branch function from the helper, which will generate the operations required
+//! to jump to next statements. This simplifies the branching design, especially when a libfunc has
+//! multiple target branches.
+//!
+//! > Note: Libfunc builders must have a branching operation out into each possible branch, even if
+//!     it's unreachable. This is required to keep the state consistent. More on that later.
+//!
+//! Some statements do require a special landing block. Those are the ones which are the branching
+//! target of more than a single statement. In other words, if a statement can be reached (directly)
+//! from more than a single place, it needs a landing block.
+//!
+//! The landing blocks are in charge of synchronizing the Sierra state. The state is just a
+//! dictionary mapping variable ids to their values. Since the values can come from a single branch,
+//! this landing block is required.
+//!
+//! In order to generate the libfuncs's blocks, all the libfunc's entry blocks are required. That is
+//! why they are generated all beforehand. The order in which they are generated follows a
+//! breadth-first ordering; that is, the compiler uses a [BFS algorithm]. This algorithm should
+//! generate the libfuncs in the same order as they appear in Sierra. As expected, the algorithm
+//! forks the path each time a branching libfunc is found, which dies once a return statement is
+//! detected.
+//!
+//! ## Function nomenclature transforms
+//!
+//! When compiling from Cairo, or from a Sierra source with debug information (the `-r` flag on
+//! `cairo-compile`), those identifiers are the function's exported symbol. However, Sierra programs
+//! are not required to contain that information. In those cases, the
+//! (`generate_function_name`)[generate_function_name] will generate a new symbol name based on its
+//! function id.
+//!
+//! ## Tail-recursive functions
+//!
+//! Part of the tail-recursion handling algorithm is implemented here, but tail-recursive functions
+//! are better explained in (their metadata section)[crate::metadata::tail_recursion].
+//!
+//! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
+
 use crate::{
     debug_info::DebugLocations,
     error::{
@@ -33,10 +79,15 @@ use std::{
     ops::Deref,
 };
 
+/// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
+/// and its landing block (on the left) if required.
+///
+/// The landing block contains also the variable ids that must be present when jumping into it,
+/// otherwise it's a compiler error due to an inconsistent variable state.
 type BlockStorage<'c, 'a> =
     HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>;
 
-/// Run the compiler on a program.
+/// Run the compiler on a program. The compiled program is stored in the MLIR module.
 ///
 /// The generics `TType` and `TLibfunc` contain the information required to generate the MLIR types
 /// and statement operations. Most of the time you'll want to use the default ones, which are
@@ -79,6 +130,12 @@ where
     Ok(())
 }
 
+/// Compile a single Sierra function.
+///
+/// The function accepts a `Function` argument, which provides the function's entry point, signature
+/// and name. Check out [compile](self::compile) for a description of the other arguments.
+///
+/// The [module docs](self) contain more information about the compiliation process.
 fn compile_func<TType, TLibfunc>(
     context: &Context,
     module: &Module,
