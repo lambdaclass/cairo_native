@@ -1,6 +1,6 @@
 //! # Enum-related libfuncs
 //!
-//! Check out [the enum type](crate::types::r#enum) for more information on enum layouts.
+//! Check out [the enum type](crate::types::enum) for more information on enum layouts.
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
