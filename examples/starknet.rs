@@ -1,5 +1,6 @@
 #![feature(strict_provenance)]
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -9,7 +10,7 @@ use cairo_native::{
     metadata::{
         runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
-    starknet::{StarkNetSyscallHandler, SyscallResult},
+    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::register_runtime_symbols,
 };
 use melior::{
@@ -21,6 +22,7 @@ use melior::{
 };
 use serde_json::json;
 use std::{io, path::Path};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug)]
 struct SyscallHandler;
@@ -28,80 +30,115 @@ struct SyscallHandler;
 impl StarkNetSyscallHandler for SyscallHandler {
     fn get_block_hash(&self, block_number: u64) -> SyscallResult<cairo_felt::Felt252> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
-        todo!()
+        Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
     }
 
     fn get_execution_info(&self) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
-        todo!()
+        println!("Called `get_execution_info()` from MLIR.");
+        Ok(ExecutionInfo {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxInfo {
+                version: 4567.into(),
+                account_contract_address: 5678.into(),
+                max_fee: 6789,
+                signature: vec![1248.into(), 2486.into()],
+                transaction_hash: 9876.into(),
+                chain_id: 8765.into(),
+                nonce: 7654.into(),
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
     }
 
     fn deploy(
         &self,
-        _class_hash: cairo_felt::Felt252,
-        _contract_address_salt: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
-        _deploy_from_zero: bool,
+        class_hash: cairo_felt::Felt252,
+        contract_address_salt: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
+        deploy_from_zero: bool,
     ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
-        todo!()
+        println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
+        Ok((
+            class_hash + contract_address_salt,
+            calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+        ))
     }
 
-    fn replace_class(&self, _class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
-        todo!()
+    fn replace_class(&self, class_hash: cairo_felt::Felt252) -> SyscallResult<()> {
+        println!("Called `replace_class({class_hash})` from MLIR.");
+        Ok(())
     }
 
     fn library_call(
         &self,
-        _class_hash: cairo_felt::Felt252,
-        _function_selector: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
+        class_hash: cairo_felt::Felt252,
+        function_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
     ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-        todo!()
+        println!(
+            "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
     }
 
     fn call_contract(
         &self,
-        _address: cairo_felt::Felt252,
-        _entry_point_selector: cairo_felt::Felt252,
-        _calldata: &[cairo_felt::Felt252],
+        address: cairo_felt::Felt252,
+        entry_point_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
     ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-        todo!()
+        println!(
+            "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
     }
 
     fn storage_read(
         &self,
-        _address_domain: u32,
-        _address: cairo_felt::Felt252,
+        address_domain: u32,
+        address: cairo_felt::Felt252,
     ) -> SyscallResult<cairo_felt::Felt252> {
-        todo!()
+        println!("Called `storage_read({address_domain}, {address})` from MLIR.");
+        Ok(address * &Felt252::new(3))
     }
 
     fn storage_write(
         &self,
-        _address_domain: u32,
-        _address: cairo_felt::Felt252,
-        _value: cairo_felt::Felt252,
+        address_domain: u32,
+        address: cairo_felt::Felt252,
+        value: cairo_felt::Felt252,
     ) -> SyscallResult<()> {
-        todo!()
+        println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
+        Ok(())
     }
 
     fn emit_event(
         &self,
-        _keys: &[cairo_felt::Felt252],
-        _data: &[cairo_felt::Felt252],
+        keys: &[cairo_felt::Felt252],
+        data: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!()
+        println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
+        Ok(())
     }
 
     fn send_message_to_l1(
         &self,
-        _to_address: cairo_felt::Felt252,
-        _payload: &[cairo_felt::Felt252],
+        to_address: cairo_felt::Felt252,
+        payload: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
-        todo!()
+        println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
+        Ok(())
     }
 
-    fn keccak(&self, _input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
-        todo!()
+    fn keccak(&self, input: &[u64]) -> SyscallResult<cairo_native::starknet::U256> {
+        println!("Called `keccak({input:?})` from MLIR.");
+        Ok(U256(Felt252::from(1234567890).to_le_bytes()))
     }
 
     fn secp256k1_add(
@@ -236,6 +273,13 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Configure logging and error handling.
+    tracing::subscriber::set_global_default(
+        FmtSubscriber::builder()
+            .with_env_filter(EnvFilter::from_default_env())
+            .finish(),
+    )?;
+
     // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
     std::env::set_var(
         "CARGO_MANIFEST_DIR",
@@ -320,6 +364,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     register_runtime_symbols(&engine);
 
     let params_input = json!([
+        (),
         u64::MAX,
         metadata
             .get::<SyscallHandlerMeta>()
@@ -336,6 +381,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut serde_json::Serializer::pretty(io::stdout()),
     )
     .unwrap();
+    println!();
 
     Ok(())
 }
