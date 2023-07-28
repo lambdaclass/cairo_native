@@ -79,6 +79,11 @@ use std::{
     ops::Deref,
 };
 
+/// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
+/// and its landing block (on the left) if required.
+///
+/// The landing block contains also the variable ids that must be present when jumping into it,
+/// otherwise it's a compiler error due to an inconsistent variable state.
 type BlockStorage<'c, 'a> =
     HashMap<StatementIdx, (Option<(BlockRef<'c, 'a>, Vec<VarId>)>, BlockRef<'c, 'a>)>;
 
