@@ -24,7 +24,7 @@ use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
 ///
 /// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
 /// the compiled module. This has been designed this way because it allows engine reusal, as opposed
-/// to builting a different engine every time a function is called and therefore losing all
+/// to building a different engine every time a function is called and therefore losing all
 /// potential optimizations that are already present.
 ///
 /// The registry is needed to convert the params and return values into and from the JIT ABI. Check
