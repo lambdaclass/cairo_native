@@ -183,7 +183,16 @@
 //! .unwrap();
 //! ```
 //!
-//! TODO: Document common function parameters (context, registry, module...).
+//! ## Common definitions
+//!
+//! Within this project there are lots of functions with the same signature. As their arguments have
+//! all the same meaning, they are documented here:
+//!
+//!   - `context: Context`: The MLIR context.
+//!   - `module: &Module`: The compiled MLIR program.
+//!   - `program: &Program`: The Sierra input program.
+//!   - `registry: &ProgramRegsitry<TType, TLibfunc>`: The registry extracted from the program.
+//!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
 
 #![feature(alloc_layout_extra)]
 #![feature(arc_unwrap_or_clone)]
