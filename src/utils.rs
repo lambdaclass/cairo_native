@@ -188,6 +188,7 @@ macro_rules! mlir_asm {
             // $crate::utils::codegen_signature!( PARAMS $args_ty );
             let builder = $crate::utils::codegen_signature!( RETS builder => $rets_ty );
 
+            #[allow(unused_variables)]
             let op = $block.append_operation(builder.build());
             $( $crate::utils::codegen_ret_extr!(op => $($ret),+) )?
         };
@@ -222,6 +223,7 @@ macro_rules! codegen_signature {
         // TODO: Check operand types.
     };
 
+    ( RETS $builder:ident => () ) => { $builder };
     ( RETS $builder:ident => $ret_ty:expr ) => {
         $builder.add_results(&[$ret_ty])
     };

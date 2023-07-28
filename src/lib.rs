@@ -1,4 +1,6 @@
 //! # Cairo Sierra to MLIR compiler and JIT engine
+//!
+//! TODO: Document common function parameters (context, registry, module...).
 
 #![feature(alloc_layout_extra)]
 #![feature(arc_unwrap_or_clone)]
@@ -25,6 +27,7 @@ mod ffi;
 mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
+pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;

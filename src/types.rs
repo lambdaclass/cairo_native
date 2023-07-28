@@ -144,7 +144,9 @@ where
             }
             Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
             Self::Uint128(info) => self::uint128::build(context, module, registry, metadata, info),
-            Self::Uint128MulGuarantee(_) => todo!(),
+            Self::Uint128MulGuarantee(info) => {
+                self::uint128_mul_guarantee::build(context, module, registry, metadata, info)
+            }
             Self::Uint16(info) => self::uint16::build(context, module, registry, metadata, info),
             Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
             Self::Uint64(info) => self::uint64::build(context, module, registry, metadata, info),
@@ -228,7 +230,7 @@ where
                 StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::System(_) => Layout::new::<()>(),
+                StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
                 StarkNetTypeConcrete::Secp256Point(_) => todo!(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),

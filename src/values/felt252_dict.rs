@@ -172,12 +172,12 @@ where
             ))?;
 
             let value_malloc_ptr =
-                NonNull::new(unsafe { libc::malloc(dbg!(elem_layout.size())) }).unwrap();
+                NonNull::new(unsafe { libc::malloc(elem_layout.size()) }).unwrap();
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     value.cast::<u8>().as_ptr(),
-                    value_malloc_ptr.as_ptr().cast(),
+                    value_malloc_ptr.cast().as_ptr(),
                     elem_layout.size(),
                 );
             }

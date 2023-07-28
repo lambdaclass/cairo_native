@@ -362,16 +362,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         infinity: false,
     };
 
-    println!("state  = ({}, {})", state.x, state.y);
-    println!("random = ({}, {})", random.x, random.y);
-
     if state.x == random.x && state.y == random.y {
-        println!("Point is zero.");
         false
     } else {
         let point = &state - &random;
-
-        println!("Point is ({}, {})", point.x, point.y);
 
         point_ptr.as_mut()[0].copy_from_slice(&point.x.to_bytes_be());
         point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());

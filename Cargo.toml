@@ -17,6 +17,7 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.13.0"
+cairo-felt = "0.6.1"
 cairo-lang-compiler = "2.0.2"
 cairo-lang-defs = "2.0.2"
 cairo-lang-diagnostics = "2.0.2"
@@ -44,7 +45,6 @@ tracing-subscriber = { version = "0.3.17", features = [
 ], optional = true }
 
 [dev-dependencies]
-cairo-felt = "0.6.1"
 cairo-lang-runner = "2.0.2"
 cairo-lang-starknet = "2.0.2"
 lambdaworks-math = "0.1.3"

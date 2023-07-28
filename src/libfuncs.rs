@@ -157,7 +157,9 @@ where
             Self::Uint128(selector) => self::uint128::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint256(_) => todo!(),
+            Self::Uint256(selector) => self::uint256::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Uint512(_) => todo!(),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
@@ -236,9 +238,16 @@ where
     'this: 'ctx,
 {
     pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
-        self.results
-            .into_iter()
-            .map(|x| x.into_iter().map(|x| x.into_inner().unwrap()).collect())
+        self.results.into_iter().enumerate().map(|(branch_idx, x)| {
+            x.into_iter()
+                .enumerate()
+                .map(|(arg_idx, x)| {
+                    x.into_inner().unwrap_or_else(|| {
+                        panic!("Argument #{arg_idx} of branch {branch_idx} doesn't have a value.")
+                    })
+                })
+                .collect()
+        })
     }
 
     /// Return the initialization block.

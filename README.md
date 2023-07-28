@@ -5,183 +5,188 @@
 A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
 
 ## Implemented Library Functions
-- [x] `alloc_local`
-- [x] `array_append`
-- [x] `array_get`
-- [x] `array_len`
-- [x] `array_new`
-- [x] `array_pop_front_consume`
-- [x] `array_pop_front`
-- [ ] `array_slice`
-- [x] `array_snapshot_pop_back`
-- [x] `array_snapshot_pop_front`
-- [x] `bitwise`
-- [x] `bool_and_impl`
-- [x] `bool_not_impl`
-- [x] `bool_or_impl`
-- [x] `bool_to_felt252`
-- [x] `bool_xor_impl`
-- [x] `branch_align`
-- [ ] `call_contract_syscall` (StarkNet)
-- [ ] `class_hash_const` (StarkNet)
-- [ ] `class_hash_to_felt252` (StarkNet)
-- [ ] `class_hash_try_from_felt252` (StarkNet)
-- [ ] `contract_address_const` (StarkNet)
-- [ ] `contract_address_to_felt252` (StarkNet)
-- [ ] `contract_address_try_from_felt252` (StarkNet)
-- [ ] `deploy_syscall` (StarkNet)
-- [x] `disable_ap_tracking`
-- [x] `downcast`
-- [x] `drop` (3)
-- [x] `dup` (3)
-- [x] `ec_neg`
-- [x] `ec_point_from_x_nz`
-- [x] `ec_point_is_zero`
-- [x] `ec_point_try_new_nz`
-- [x] `ec_point_unwrap`
-- [x] `ec_point_zero`
-- [x] `ec_state_add_mul`
-- [x] `ec_state_add`
-- [x] `ec_state_init`
-- [x] `ec_state_try_finalize_nz`
-- [ ] `emit_event_syscall` (StarkNet)
-- [x] `enable_ap_tracking`
-- [x] `enum_init`
-- [x] `enum_match`
-- [ ] `enum_snapshot_match`
-- [x] `felt252_add_const` (4)
-- [x] `felt252_add`
-- [x] `felt252_const`
-- [x] `felt252_dict_entry_finalize`
-- [x] `felt252_dict_entry_get`
-- [x] `felt252_dict_new`
-- [x] `felt252_dict_squash`
-- [x] `felt252_div_const` (4)
-- [x] `felt252_div` (4)
-- [x] `felt252_is_zero`
-- [x] `felt252_mul_const` (4)
-- [x] `felt252_mul`
-- [x] `felt252_sub_const` (4)
-- [x] `felt252_sub`
-- [x] `finalize_locals`
-- [x] `function_call`
-- [ ] `get_available_gas`
-- [ ] `get_block_hash_syscall` (StarkNet)
-- [x] `get_builtin_costs` (5)
-- [ ] `get_execution_info_syscall` (StarkNet)
-- [x] `into_box` (2)
-- [x] `jump`
-- [ ] `keccak_syscall` (StarkNet)
-- [ ] `library_call_syscall` (StarkNet)
-- [x] `match_nullable`
-- [x] `null`
-- [x] `nullable_from_box`
-- [x] `pedersen`
-- [ ] `pop_log` (StarkNet, testing)
-- [ ] `poseidon`
-- [x] `print`
-- [ ] `redeposit_gas`
-- [x] `rename`
-- [ ] `replace_class_syscall` (StarkNet)
-- [x] `revoke_ap_tracking` (1)
-- [ ] `secp256k1_add_syscall` (StarkNet)
-- [ ] `secp256k1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256k1_get_xy_syscall` (StarkNet)
-- [ ] `secp256k1_mul_syscall` (StarkNet)
-- [ ] `secp256k1_new_syscall` (StarkNet)
-- [ ] `secp256r1_add_syscall` (StarkNet)
-- [ ] `secp256r1_get_point_from_x_syscall` (StarkNet)
-- [ ] `secp256r1_get_xy_syscall` (StarkNet)
-- [ ] `secp256r1_mul_syscall` (StarkNet)
-- [ ] `secp256r1_new_syscall` (StarkNet)
-- [ ] `send_message_to_l1_syscall` (StarkNet)
-- [ ] `set_account_contract_address` (StarkNet, testing)
-- [ ] `set_block_number` (StarkNet, testing)
-- [ ] `set_block_timestamp` (StarkNet, testing)
-- [ ] `set_caller_address` (StarkNet, testing)
-- [ ] `set_chain_id` (StarkNet, testing)
-- [ ] `set_contract_address` (StarkNet, testing)
-- [ ] `set_max_fee` (StarkNet, testing)
-- [ ] `set_nonce` (StarkNet, testing)
-- [ ] `set_sequencer_address` (StarkNet, testing)
-- [ ] `set_signature` (StarkNet, testing)
-- [ ] `set_transaction_hash` (StarkNet, testing)
-- [ ] `set_version` (StarkNet, testing)
-- [x] `snapshot_take` (6)
-- [x] `storage_address_from_base_and_offset` (StarkNet)
-- [x] `storage_address_from_base` (StarkNet)
-- [x] `storage_address_to_felt252` (StarkNet)
-- [x] `storage_address_try_from_felt252` (StarkNet)
-- [x] `storage_base_address_const` (StarkNet)
-- [x] `storage_base_address_from_felt252` (StarkNet)
-- [ ] `storage_read_syscall` (StarkNet)
-- [ ] `storage_write_syscall` (StarkNet)
-- [x] `store_local`
-- [x] `store_temp`
-- [x] `struct_construct`
-- [x] `struct_deconstruct`
-- [ ] `struct_snapshot_deconstruct`
-- [x] `u128_byte_reverse`
-- [x] `u128_const`
-- [x] `u128_eq`
-- [ ] `u128_guarantee_mul`
-- [x] `u128_is_zero`
-- [ ] `u128_mul_guarantee_verify`
-- [x] `u128_overflowing_add`
-- [x] `u128_overflowing_sub`
-- [x] `u128_safe_divmod`
-- [x] `u128_sqrt`
-- [x] `u128_to_felt252`
-- [x] `u128s_from_felt252`
-- [x] `u16_const`
-- [x] `u16_eq`
-- [x] `u16_is_zero`
-- [x] `u16_overflowing_add`
-- [x] `u16_overflowing_sub`
-- [x] `u16_safe_divmod`
-- [x] `u16_sqrt`
-- [x] `u16_to_felt252`
-- [x] `u16_try_from_felt252`
-- [ ] `u16_wide_mul`
-- [ ] `u256_is_zero`
-- [ ] `u256_safe_divmod`
-- [ ] `u256_sqrt`
-- [x] `u32_const`
-- [x] `u32_eq`
-- [x] `u32_is_zero`
-- [x] `u32_overflowing_add`
-- [x] `u32_overflowing_sub`
-- [x] `u32_safe_divmod`
-- [x] `u32_sqrt`
-- [x] `u32_to_felt252`
-- [x] `u32_try_from_felt252`
-- [ ] `u32_wide_mul`
-- [ ] `u512_safe_divmod_by_u256`
-- [x] `u64_const`
-- [x] `u64_eq`
-- [x] `u64_is_zero`
-- [x] `u64_overflowing_add`
-- [x] `u64_overflowing_sub`
-- [x] `u64_safe_divmod`
-- [x] `u64_sqrt`
-- [x] `u64_to_felt252`
-- [x] `u64_try_from_felt252`
-- [ ] `u64_wide_mul`
-- [x] `u8_const`
-- [x] `u8_eq`
-- [x] `u8_is_zero`
-- [x] `u8_overflowing_add`
-- [x] `u8_overflowing_sub`
-- [x] `u8_safe_divmod`
-- [x] `u8_sqrt`
-- [x] `u8_to_felt252`
-- [x] `u8_try_from_felt252`
-- [ ] `u8_wide_mul`
-- [x] `unbox` (2)
-- [x] `unwrap_non_zero`
-- [x] `upcast`
-- [x] `withdraw_gas_all` (5)
-- [x] `withdraw_gas` (5)
+
+Done:
+1. `alloc_local`
+1. `array_append`
+1. `array_get`
+1. `array_len`
+1. `array_new`
+1. `array_pop_front_consume`
+1. `array_pop_front`
+1. `array_slice`
+1. `array_snapshot_pop_back`
+1. `array_snapshot_pop_front`
+1. `bitwise`
+1. `bool_and_impl`
+1. `bool_not_impl`
+1. `bool_or_impl`
+1. `bool_to_felt252`
+1. `bool_xor_impl`
+1. `branch_align`
+1. `call_contract_syscall` (StarkNet)
+1. `class_hash_try_from_felt252` (StarkNet)
+1. `contract_address_const` (StarkNet)
+1. `contract_address_to_felt252` (StarkNet)
+1. `contract_address_try_from_felt252` (StarkNet)
+1. `deploy_syscall` (StarkNet)
+1. `disable_ap_tracking`
+1. `downcast`
+1. `drop` (3)
+1. `dup` (3)
+1. `ec_neg`
+1. `ec_point_from_x_nz`
+1. `ec_point_is_zero`
+1. `ec_point_try_new_nz`
+1. `ec_point_unwrap`
+1. `ec_point_zero`
+1. `ec_state_add_mul`
+1. `ec_state_add`
+1. `ec_state_init`
+1. `ec_state_try_finalize_nz`
+1. `emit_event_syscall` (StarkNet)
+1. `enable_ap_tracking`
+1. `enum_init`
+1. `enum_match`
+1. `felt252_add_const` (4)
+1. `felt252_add`
+1. `felt252_const`
+1. `felt252_dict_entry_finalize`
+1. `felt252_dict_entry_get`
+1. `felt252_dict_new`
+1. `felt252_dict_squash`
+1. `felt252_div_const` (4)
+1. `felt252_div` (4)
+1. `felt252_is_zero`
+1. `felt252_mul_const` (4)
+1. `felt252_mul`
+1. `felt252_sub_const` (4)
+1. `felt252_sub`
+1. `finalize_locals`
+1. `function_call`
+1. `get_block_hash_syscall` (StarkNet)
+1. `get_builtin_costs` (5)
+1. `get_execution_info_syscall` (StarkNet)
+1. `into_box` (2)
+1. `jump`
+1. `keccak_syscall` (StarkNet)
+1. `library_call_syscall` (StarkNet)
+1. `match_nullable`
+1. `null`
+1. `nullable_from_box`
+1. `pedersen`
+1. `print`
+1. `rename`
+1. `replace_class_syscall` (StarkNet)
+1. `revoke_ap_tracking` (1)
+1. `send_message_to_l1_syscall` (StarkNet)
+1. `snapshot_take` (6)
+1. `storage_address_from_base_and_offset` (StarkNet)
+1. `storage_address_from_base` (StarkNet)
+1. `storage_address_to_felt252` (StarkNet)
+1. `storage_address_try_from_felt252` (StarkNet)
+1. `storage_base_address_const` (StarkNet)
+1. `storage_base_address_from_felt252` (StarkNet)
+1. `storage_read_syscall` (StarkNet)
+1. `storage_write_syscall` (StarkNet)
+1. `store_local`
+1. `store_temp`
+1. `struct_construct`
+1. `struct_deconstruct`
+1. `u128_byte_reverse`
+1. `u128_const`
+1. `u128_eq`
+1. `u128_guarantee_mul`
+1. `u128_is_zero`
+1. `u128_mul_guarantee_verify`
+1. `u128_overflowing_add`
+1. `u128_overflowing_sub`
+1. `u128_safe_divmod`
+1. `u128_sqrt`
+1. `u128_to_felt252`
+1. `u128s_from_felt252`
+1. `u16_const`
+1. `u16_eq`
+1. `u16_is_zero`
+1. `u16_overflowing_add`
+1. `u16_overflowing_sub`
+1. `u16_safe_divmod`
+1. `u16_sqrt`
+1. `u16_to_felt252`
+1. `u16_try_from_felt252`
+1. `u16_wide_mul`
+1. `u256_is_zero`
+1. `u256_safe_divmod`
+1. `u256_sqrt`
+1. `u32_const`
+1. `u32_eq`
+1. `u32_is_zero`
+1. `u32_overflowing_add`
+1. `u32_overflowing_sub`
+1. `u32_safe_divmod`
+1. `u32_sqrt`
+1. `u32_to_felt252`
+1. `u32_try_from_felt252`
+1. `u32_wide_mul`
+1. `u64_const`
+1. `u64_eq`
+1. `u64_is_zero`
+1. `u64_overflowing_add`
+1. `u64_overflowing_sub`
+1. `u64_safe_divmod`
+1. `u64_sqrt`
+1. `u64_to_felt252`
+1. `u64_try_from_felt252`
+1. `u64_wide_mul`
+1. `u8_const`
+1. `u8_eq`
+1. `u8_is_zero`
+1. `u8_overflowing_add`
+1. `u8_overflowing_sub`
+1. `u8_safe_divmod`
+1. `u8_sqrt`
+1. `u8_to_felt252`
+1. `u8_try_from_felt252`
+1. `u8_wide_mul`
+1. `unbox` (2)
+1. `unwrap_non_zero`
+1. `upcast`
+1. `withdraw_gas_all` (5)
+1. `withdraw_gas` (5)
+
+TODO:
+1. `class_hash_const` (StarkNet)
+1. `class_hash_to_felt252` (StarkNet)
+1. `enum_snapshot_match`
+1. `get_available_gas`
+1. `pop_log` (StarkNet, testing)
+1. `poseidon`
+1. `redeposit_gas`
+1. `secp256k1_add_syscall` (StarkNet)
+1. `secp256k1_get_point_from_x_syscall` (StarkNet)
+1. `secp256k1_get_xy_syscall` (StarkNet)
+1. `secp256k1_mul_syscall` (StarkNet)
+1. `secp256k1_new_syscall` (StarkNet)
+1. `secp256r1_add_syscall` (StarkNet)
+1. `secp256r1_get_point_from_x_syscall` (StarkNet)
+1. `secp256r1_get_xy_syscall` (StarkNet)
+1. `secp256r1_mul_syscall` (StarkNet)
+1. `secp256r1_new_syscall` (StarkNet)
+1. `set_account_contract_address` (StarkNet, testing)
+1. `set_block_number` (StarkNet, testing)
+1. `set_block_timestamp` (StarkNet, testing)
+1. `set_caller_address` (StarkNet, testing)
+1. `set_chain_id` (StarkNet, testing)
+1. `set_contract_address` (StarkNet, testing)
+1. `set_max_fee` (StarkNet, testing)
+1. `set_nonce` (StarkNet, testing)
+1. `set_sequencer_address` (StarkNet, testing)
+1. `set_signature` (StarkNet, testing)
+1. `set_transaction_hash` (StarkNet, testing)
+1. `set_version` (StarkNet, testing)
+1. `struct_snapshot_deconstruct`
+1. `u512_safe_divmod_by_u256`
+
 
 Footnotes
 1. It is implemented but we're not sure if it has some stuff we don't know of.
@@ -194,11 +199,13 @@ Footnotes
 ## Documentation
 
 There is an mdbook in the `docs` folder. Build and read it with
+
 ```bash
 make book
 ```
 
 ## Dependencies
+
 - mdbook
 - LLVM 16+ with MLIR
 - Rust
@@ -206,11 +213,18 @@ make book
 ## Setup
 
 Install mdbook and other documentation dependencies:
+
 ```bash
 cargo install mdbook mdbook-toc mdbook-mermaid
 ```
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
+
+Install the cairo corelibs to be able to run the **tests** and compile `.cairo` programs to sierra:
+
+```bash
+./scripts/fetch-corelibs.sh
+```
 
 ### Linux
 
@@ -221,6 +235,7 @@ export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
 ### MacOS
+
 ```bash
 brew install llvm@16
 export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
@@ -259,9 +274,11 @@ Options:
 ## Benchmarking
 
 ### Requirements
+
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo >=1.0](https://github.com/starkware-libs/cairo)
-- LLVM 16
+- Cairo Corelibs
+- LLVM 16 with MLIR
 
 You need to setup some environment variables:
 ```bash
@@ -279,6 +296,7 @@ The `cairo-run` command should be available in the `$PATH` and ideally compiled 
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
 ## MLIR Resources
+
 - https://mlir.llvm.org/docs/Tutorials/
 
 ## From MLIR to native binary
