@@ -3,7 +3,7 @@ name = "cairo-native"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/lambdaclass/cairo_native/"
+repository = "https://github.com/lambdaclass/cairo_native"
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
 

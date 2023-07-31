@@ -210,7 +210,6 @@ Footnotes on the libfuncs list:
 
 ### Dependencies
 
-- mdbook
 - LLVM 16+ with MLIR
 - Rust
 - Git
@@ -344,7 +343,7 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 ## From MLIR to native binary
 ```bash
 # to mlir with llvm dialect
-cargo r --release --features build-cli --bin sierra2mlir -- program.sierra -o program.mlir
+sierra2mlir program.sierra -o program.mlir
 
 # translate mlir to llvm-ir
 "$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
