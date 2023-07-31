@@ -4,9 +4,14 @@
 
 A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
 
+To get started on how to setup and run cairo-native, click this [link](#gettings-started).
+
 ## Implemented Library Functions
 
-Done:
+
+<details>
+<summary>Implemented libfuncs (click to open)</summary>
+
 1. `alloc_local`
 1. `array_append`
 1. `array_get`
@@ -153,8 +158,11 @@ Done:
 1. `upcast`
 1. `withdraw_gas_all` (5)
 1. `withdraw_gas` (5)
+</details>
 
-TODO:
+<details>
+<summary>Not yet implemented libfuncs (click to open)</summary>
+
 1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `enum_snapshot_match`
@@ -187,8 +195,10 @@ TODO:
 1. `struct_snapshot_deconstruct`
 1. `u512_safe_divmod_by_u256`
 
+</details>
 
-Footnotes
+Footnotes on the libfuncs list:
+
 1. It is implemented but we're not sure if it has some stuff we don't know of.
 2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
 3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
@@ -196,7 +206,7 @@ Footnotes
 5. Implemented with a dummy. It doesn't do anything yet.
 6. It is implemented but we're not handling potential issues like lifetimes yet.
 
-## Gettings Started
+## Getting Started
 
 ### Dependencies
 
@@ -230,6 +240,17 @@ export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
 
 ```bash
 make build
+```
+
+Or with your native CPU Architecture for even more perfomance (usually):
+```bash
+make build-native
+```
+
+- Install `sierra2mlir` and `sierrajit`:
+
+```bash
+make install
 ```
 
 - Build a optimized development version:

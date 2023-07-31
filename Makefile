@@ -1,4 +1,4 @@
-.PHONY: build book build-dev coverage check test bench doc doc-open clean
+.PHONY: build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
 
 #
 # Environment detection.
@@ -16,6 +16,9 @@ endif
 build:
 	cargo build --release --all-features
 
+build-native:
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
+
 build-dev:
 	cargo build --profile optimized-dev --all-targets --all-features
 
@@ -27,7 +30,7 @@ test:
 	cargo test --profile optimized-dev --all-targets --all-features
 
 coverage:
-	cargo llvm-cov --verbose --profile release --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
 
 doc:
 	cargo doc --all-features --no-deps --workspace
@@ -45,7 +48,7 @@ bench-ci:
 	cargo criterion --all-features
 
 install:
-	cargo install --all-features --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
 
 clean:
 	cargo clean

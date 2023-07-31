@@ -2,6 +2,14 @@
 name = "cairo-native"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/lambdaclass/cairo_native/"
+readme = "README.md"
+keywords = ["starknet", "cairo", "compiler", "mlir"]
+
+# Explicitly set the resolver to the default for edition >= 2021
+# https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
+resolver = "2"
 
 [[bin]]
 name = "sierra2mlir"
@@ -57,6 +65,10 @@ cc = "1.0.79"
 [profile.optimized-dev]
 inherits = "dev"
 opt-level = 3
+
+[profile.release]
+lto = true
+codegen-units = 1
 
 [workspace]
 members = ["runtime"]
