@@ -1,3 +1,5 @@
+//! Extracts useful debugging information from cairo programs to make it available to the generated MLIR.
+
 use self::{
     funcs::find_func, libfunc_declarations::find_libfunc_declaration,
     statements::find_all_statements, type_declarations::find_type_declaration,

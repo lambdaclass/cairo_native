@@ -196,37 +196,20 @@ Footnotes
 5. Implemented with a dummy. It doesn't do anything yet.
 6. It is implemented but we're not handling potential issues like lifetimes yet.
 
-## Documentation
+## Gettings Started
 
-There is an mdbook in the `docs` folder. Build and read it with
-
-```bash
-make book
-```
-
-## Dependencies
+### Dependencies
 
 - mdbook
 - LLVM 16+ with MLIR
 - Rust
+- Git
 
-## Setup
-
-Install mdbook and other documentation dependencies:
-
-```bash
-cargo install mdbook mdbook-toc mdbook-mermaid
-```
+### Setup
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
-Install the cairo corelibs to be able to run the **tests** and compile `.cairo` programs to sierra:
-
-```bash
-./scripts/fetch-corelibs.sh
-```
-
-### Linux
+#### Linux
 
 Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm directory:
 
@@ -234,11 +217,49 @@ Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm d
 export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
-### MacOS
+#### MacOS
 
 ```bash
 brew install llvm@16
 export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
+```
+
+### Make commands:
+
+- Build a release version:
+
+```bash
+make build
+```
+
+- Build a optimized development version:
+
+```bash
+make build-dev
+```
+
+- View and open the docs:
+
+```bash
+make doc-open
+```
+
+- Run the tests:
+
+```bash
+make test
+```
+
+- Generate coverage:
+
+```bash
+make coverage
+```
+
+- Run clippy and format checks:
+
+```bash
+make check
 ```
 
 ## CLI Interface
@@ -302,7 +323,7 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 ## From MLIR to native binary
 ```bash
 # to mlir with llvm dialect
-cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o program.mlir
+cargo r --release --features build-cli --bin sierra2mlir -- program.sierra -o program.mlir
 
 # translate mlir to llvm-ir
 "$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
