@@ -1,12 +1,37 @@
-# Cairo Native
-[![test](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml)
-[![mdbook](https://img.shields.io/badge/mdbook-link-blue)](https://lambdaclass.github.io/cairo_native/)
+<div align="center">
 
-A compiler to convert Cairo's intermediate representation "Sierra" code to machine code via MLIR and LLVM.
+### ⚡ Cairo Native ⚡
+
+A compiler to convert Cairo's intermediate representation "Sierra" code <br>
+to machine code via MLIR and LLVM.
+
+[Report Bug](https://github.com/lambdaclass/cairo_native/issues/new) · [Request Feature](https://github.com/lambdaclass/cairo_native/issues/new)
+
+[![rust](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml)
+[![codecov](https://img.shields.io/codecov/c/github/lambdaclass/cairo_native)](https://codecov.io/gh/lambdaclass/cairo_native)
+[![license](https://img.shields.io/github/license/lambdaclass/cairo_native)](/LICENSE)
+[![pr-welcome]](#-contributing)
+
+[pr-welcome]: https://img.shields.io/static/v1?color=orange&label=PRs&style=flat&message=welcome
+[tg-badge]: https://img.shields.io/static/v1?color=green&logo=telegram&label=chat&style=flat&message=join
+
+</div>
+
+To get started on how to setup and run cairo-native check the [getting started](#getting-started) section.
+
+To learn more about MLIR check our [MLIR Resources](#mlir-resources) section.
 
 ## Implemented Library Functions
 
-Done:
+Cairo Native works by leveraging the intermediate representation of Cairo called Sierra.
+Sierra uses a list of builtin functions that implement the language functionality, those are called library functions, short: **libfuncs**.
+Basically every statement in a sierra program is a call to a **libfunc**, thus they are the core of Cairo Native progress towards feature parity.
+
+This is a list of the current progress implementing each **libfunc**.
+
+<details>
+<summary>Implemented libfuncs (click to open)</summary>
+
 1. `alloc_local`
 1. `array_append`
 1. `array_get`
@@ -153,8 +178,11 @@ Done:
 1. `upcast`
 1. `withdraw_gas_all` (5)
 1. `withdraw_gas` (5)
+</details>
 
-TODO:
+<details>
+<summary>Not yet implemented libfuncs (click to open)</summary>
+
 1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `enum_snapshot_match`
@@ -187,8 +215,10 @@ TODO:
 1. `struct_snapshot_deconstruct`
 1. `u512_safe_divmod_by_u256`
 
+</details>
 
-Footnotes
+Footnotes on the libfuncs list:
+
 1. It is implemented but we're not sure if it has some stuff we don't know of.
 2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
 3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
@@ -196,37 +226,20 @@ Footnotes
 5. Implemented with a dummy. It doesn't do anything yet.
 6. It is implemented but we're not handling potential issues like lifetimes yet.
 
-## Documentation
+## Getting Started
 
-There is an mdbook in the `docs` folder. Build and read it with
+### Dependencies
 
-```bash
-make book
-```
+- Linux or macOS (aarch64 included) only for now
+- LLVM 16+ with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
+- Nightly Rust
+- Git
 
-## Dependencies
-
-- mdbook
-- LLVM 16+ with MLIR
-- Rust
-
-## Setup
-
-Install mdbook and other documentation dependencies:
-
-```bash
-cargo install mdbook mdbook-toc mdbook-mermaid
-```
+### Setup
 
 Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
-Install the cairo corelibs to be able to run the **tests** and compile `.cairo` programs to sierra:
-
-```bash
-./scripts/fetch-corelibs.sh
-```
-
-### Linux
+#### Linux
 
 Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm directory:
 
@@ -234,11 +247,60 @@ Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm d
 export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
 ```
 
-### MacOS
+#### MacOS
 
 ```bash
 brew install llvm@16
 export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
+```
+
+### Make commands:
+
+- Build a release version:
+
+```bash
+make build
+```
+
+Or with your native CPU Architecture for even more perfomance (usually):
+```bash
+make build-native
+```
+
+- Install `sierra2mlir` and `sierrajit`:
+
+```bash
+make install
+```
+
+- Build a optimized development version:
+
+```bash
+make build-dev
+```
+
+- View and open the docs:
+
+```bash
+make doc-open
+```
+
+- Run the tests:
+
+```bash
+make test
+```
+
+- Generate coverage:
+
+```bash
+make coverage
+```
+
+- Run clippy and format checks:
+
+```bash
+make check
 ```
 
 ## CLI Interface
@@ -295,14 +357,10 @@ Each program is compiled and executed via the execution engine with the `sierraj
 The `cairo-run` command should be available in the `$PATH` and ideally compiled with `cargo build --release`.
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
-## MLIR Resources
-
-- https://mlir.llvm.org/docs/Tutorials/
-
 ## From MLIR to native binary
 ```bash
 # to mlir with llvm dialect
-cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o program.mlir
+sierra2mlir program.sierra -o program.mlir
 
 # translate mlir to llvm-ir
 "$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
@@ -317,3 +375,76 @@ cargo r --release --features build.cli --bin sierra2mlir -- program.sierra -o pr
 
 ./program
 ```
+
+## MLIR Resources
+
+### Websites
+- [MLIR Homepage](https://mlir.llvm.org/)
+- [MLIR: A Compiler Infrastructure for the End of Moore’s Law](https://arxiv.org/pdf/2002.11054.pdf)
+- [MLIR: Scaling Compiler Infrastructure for Domain Specific Computation](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/85bf23fe88bd5c7ff60365bd0c6882928562cbeb.pdf)
+- MLIR Tutorial
+  - [MLIR Tutorial](https://llvm.org/devmtg/2019-04/slides/Tutorial-AminiVasilacheZinenko-MLIR.pdf)
+  - [MLIR Tutorial](https://users.cs.utah.edu/~mhall/mlir4hpc/pienaar-MLIR-Tutorial.pdf)
+  - [MLIR Tutorial](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
+- [MLIR Language Reference](https://mlir.llvm.org/docs/LangRef/)
+- [MLIR Docs: Defining Dialects](https://mlir.llvm.org/docs/DefiningDialects/)
+- [MLIR Notes](http://lastweek.io/notes/MLIR/)
+- [Compilers and IRs: LLVM IR, SPIR-V, and MLIR](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/) [[HN]](https://news.ycombinator.com/item?id=33387149)
+- [MLIR: Redefining the compiler infrastructure](https://iq.opengenus.org/mlir-compiler-infrastructure/)
+- [Pinch: Implementing a borrow-checked language with MLIR](https://badland.io/pinch.md)
+- [Tensorflow: MLIR](https://www.tensorflow.org/mlir)
+
+#### CUDA & GPU
+- [Wikipedia: PTX](https://en.wikipedia.org/wiki/Parallel_Thread_Execution)
+- [NVidia CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/index.html)
+- [User Guide for NVPTX Back-end](https://llvm.org/docs/NVPTXUsage.html)
+  - [`nvgpu` dialect documentation](https://mlir.llvm.org/docs/Dialects/NVGPU/)
+- [LLVM GPU code with NVPTX](https://wiki.aalto.fi/display/t1065450/LLVM+GPU+code+with+NVPTX)
+- [Stackoverflow: CUDA: compilation of LLVM IR using NVPTX](https://stackoverflow.com/questions/23873113/cuda-compilation-of-llvm-ir-using-nvptx)
+- [Rust CUDA Working Group](https://github.com/rust-cuda/wg)
+- [GPU code generation status: NVidia, OpenCL](https://discourse.llvm.org/t/gpu-code-generation-status-nvidia-opencl/2080/1)
+- [Lowering GPU dialect](https://discourse.llvm.org/t/lowering-gpu-dialect/3609)
+
+#### General LLVM-related
+- [Writing an LLVM backend for the Move language in Rust](https://brson.github.io/2023/03/12/move-on-llvm)
+
+### Video
+- [MLIR Compiler](https://www.youtube.com/MLIRCompiler)
+- [Read a paper: Multi-level Intermediate Representation (MLIR)](https://www.youtube.com/watch?v=6BwqK6E8v3g)
+- [2019 EuroLLVM Developers’ Meeting: T. Shpeisman & C. Lattner “MLIR: Multi-Level Intermediate Repr..”](https://www.youtube.com/watch?v=qzljG6DKgic)
+- [2019 EuroLLVM Developers’ Meeting: Mehdi & Vasilache & Zinenko “Building a Compiler with MLIR”](https://www.youtube.com/watch?v=cyICUIZ56wQ)
+- [2020 LLVM Developers’ Meeting: M. Amini & R. Riddle “MLIR Tutorial”](https://www.youtube.com/watch?v=Y4SvqTtOIDk)
+- [2020 LLVM in HPC Workshop: Keynote: MLIR: an Agile Infrastructure for Building a Compiler Ecosystem](https://www.youtube.com/watch?v=0bxyZDGs-aA)
+- [2021 LLVM Dev Mtg “Representing Concurrency with Graph Regions in MLIR”](https://www.youtube.com/watch?v=Vfk9n3ir_5s)
+- [2022 LLVM Dev Mtg: Paths towards unifying LLVM and MLIR](https://www.youtube.com/watch?v=VbFqA9rvxPs)
+- [2022 LLVM Dev Mtg: VAST: MLIR for program analysis of C/C++](https://www.youtube.com/watch?v=YFqWa4pxXzM)
+- [2022 LLVM Dev Mtg: MLIR for Functional Programming](https://www.youtube.com/watch?v=cyMQbZ0B84Q)
+- [2022 EuroLLVM Dev Mtg “Prototyping a Compiler for Homomorphic Encryption Using MLIR”](https://www.youtube.com/watch?v=QyxiqmO6_qQ)
+- [MLIR-based code generation for GPU tensor cores](https://www.youtube.com/watch?v=3LLzHKeL2hs)
+- [cirgen: MLIR based compiler for zk-STARK circuit generation - Frank Laub (RISC Zero)](https://www.youtube.com/watch?v=TsP14-hI_W0)
+- [Prototyping a compiler for homomorphic encryption using MLIR](https://www.youtube.com/watch?v=F9qXBuSkQFY)
+  - [Slides](https://llvm.org/devmtg/2022-04-03/slides/Prototyping.a.compiler.for.homomorphic.encryption.in.MLIR.pdf)
+
+### Useful code
+- [`femtomc/mlir-sys`](https://github.com/femtomc/mlir-sys) Rust bindings to the MLIR C API.
+- [`raviqqe/melior`](https://github.com/raviqqe/melior)
+  - [Issue #24 Roadmap to v1 for LLVM 15](https://github.com/raviqqe/melior/issues/24)
+- [`edg-l/melior-next`](https://github.com/edg-l/melior-next)
+- [`lambdaclass/llvm-mlir-sys`](https://github.com/lambdaclass/llvm-mlir-sys)
+- [`openxla/iree`](https://github.com/openxla/iree) A retargetable MLIR-based machine learning compiler and runtime toolkit.
+- [`GetFirefly/firefly`](https://github.com/GetFirefly/firefly) An alternative BEAM implementation, designed for WebAssembly.
+- [`zero9178/Pylir`](https://github.com/zero9178/Pylir) An optimizing ahead-of-time Python Compiler.
+  - [Documentation](https://zero9178.github.io/Pylir/)
+- [`plaidml/plaidml`](https://github.com/plaidml/plaidml) PlaidML is a framework for making deep learning work everywhere.
+- [`yn224/mlir-gpu-playground`](https://github.com/yn224/mlir-gpu-playground)
+- [`mmperf/mmperf`](https://github.com/mmperf/mmperf) MatMul Performance Benchmarks for a Single CPU Core comparing both hand engineered and codegen kernels.
+
+### Background
+- [Computation graphs and graph computation](https://breandan.net/2020/06/30/graph-computation/)
+- [High-performance analytics: Why differential dataflow is the next level of query optimisation](https://tably.substack.com/p/high-performance-analytics)
+- [`TimelyDataflow/differential-dataflow`](https://github.com/TimelyDataflow/differential-dataflow/)
+- [Materialize: The Streaming Database You Already Know How to Use](https://materialize.com/)
+- [Chris Lattner: Compilers, LLVM, Swift, TPU, and ML Accelerators | Lex Fridman Podcast #21](https://www.youtube.com/watch?v=yCd3CzGSte8)
+- [Jim Keller: Moore's Law, Microprocessors, and First Principles | Lex Fridman Podcast #70](https://www.youtube.com/watch?v=Nb2tebYAaOA)
+- [Jim Keller: The Future of Computing, AI, Life, and Consciousness | Lex Fridman Podcast #162](https://www.youtube.com/watch?v=G4hL5Om4IJ4&t=2990s)
+- [Building the Software 2 0 Stack (Andrej Karpathy)](https://www.youtube.com/watch?v=y57wwucbXR8)

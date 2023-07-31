@@ -1,3 +1,7 @@
+//! The easy to use API to compile and execute cairo programs using the MLIR JIT.
+//!
+//! Check out the main [`crate`] docs for more information.
+
 use crate::{
     libfuncs::LibfuncBuilder,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -21,6 +25,7 @@ use melior::{
 use serde::{Deserializer, Serializer};
 use std::fmt;
 
+/// The possible errors encountered when calling [`compile_and_execute`]
 pub enum Error<'de, TType, TLibfunc, D, S>
 where
     TType: GenericType,

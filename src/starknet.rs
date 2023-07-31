@@ -1,3 +1,5 @@
+//! Starknet related code for `cairo_native`
+
 #![allow(clippy::needless_pass_by_ref_mut)]
 #![allow(clippy::type_complexity)]
 #![allow(dead_code)]

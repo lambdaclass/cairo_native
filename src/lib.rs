@@ -191,7 +191,7 @@
 //!   - `context: Context`: The MLIR context.
 //!   - `module: &Module`: The compiled MLIR program.
 //!   - `program: &Program`: The Sierra input program.
-//!   - `registry: &ProgramRegsitry<TType, TLibfunc>`: The registry extracted from the program.
+//!   - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted from the program.
 //!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
 
 #![feature(alloc_layout_extra)]

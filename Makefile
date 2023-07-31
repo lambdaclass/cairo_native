@@ -1,4 +1,4 @@
-.PHONY: book build coverage check clean clean-all test bench
+.PHONY: build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
 
 #
 # Environment detection.
@@ -8,8 +8,16 @@ ifeq ($(MLIR_SYS_160_PREFIX),)
   $(error Could not find a suitable LLVM 16 toolchain)
 endif
 
+# If corelibs is not present, fetch it.
+ifeq ($(wildcard ./corelib/.),)
+  $(shell ./scripts/fetch-corelibs.sh)
+endif
+
 build:
 	cargo build --release --all-features
+
+build-native:
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
 
 build-dev:
 	cargo build --profile optimized-dev --all-targets --all-features
@@ -22,7 +30,13 @@ test:
 	cargo test --profile optimized-dev --all-targets --all-features
 
 coverage:
-	cargo llvm-cov --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
+
+doc:
+	cargo doc --all-features --no-deps --workspace
+
+doc-open:
+	cargo doc --all-features --no-deps --workspace --open
 
 book:
 	mdbook serve docs
@@ -33,7 +47,8 @@ bench: build
 bench-ci:
 	cargo criterion --all-features
 
-clean: clean-examples clean-tests clean-bench
+install:
+	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
 
-clean-all: clean
-	-cargo clean
+clean:
+	cargo clean
