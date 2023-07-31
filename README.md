@@ -17,7 +17,7 @@ to machine code via MLIR and LLVM.
 
 </div>
 
-To get started on how to setup and run cairo-native check the [getting started](#gettings-started) section.
+To get started on how to setup and run cairo-native check the [getting started](#getting-started) section.
 
 To learn more about MLIR check our [MLIR Resources](#mlir-resources) section.
 
