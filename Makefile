@@ -44,5 +44,8 @@ bench: build
 bench-ci:
 	cargo criterion --all-features
 
+install:
+	cargo install --all-features --locked --path .
+
 clean:
 	cargo clean
