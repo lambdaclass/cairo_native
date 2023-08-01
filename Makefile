@@ -29,6 +29,9 @@ check:
 test:
 	cargo test --profile optimized-dev --all-targets --all-features
 
+proptest:
+	cargo test --profile optimized-dev --all-targets --all-features proptest
+
 coverage:
 	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
 
