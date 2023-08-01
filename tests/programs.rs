@@ -79,11 +79,17 @@ fn fib() {
     let result_vm =
         run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
 
+    let gas: u64 = result_vm
+        .gas_counter
+        .unwrap()
+        .to_bigint()
+        .try_into()
+        .unwrap();
     let vm_results = get_run_result(&result_vm.value);
     let vm_result = &vm_results[0];
 
     let result = run_native_program(&FIB, "run_test", json!([null, GAS, felt("10")]));
-    assert_eq!(result, json!([null, GAS, [0, [felt(vm_result)]]]));
+    assert_eq!(result, json!([null, gas, [0, [felt(vm_result)]]]));
 }
 
 #[test]
@@ -96,11 +102,17 @@ fn logistic_map() {
     )
     .unwrap();
 
+    let gas: u64 = result_vm
+        .gas_counter
+        .unwrap()
+        .to_bigint()
+        .try_into()
+        .unwrap();
     let vm_results = get_run_result(&result_vm.value);
     let fib_result = &vm_results[0];
 
     let result = run_native_program(&LOGISTIC_MAP, "run_test", json!([null, GAS, felt("1000")]));
-    assert_eq!(result, json!([null, GAS, [0, [felt(fib_result)]]]));
+    assert_eq!(result, json!([null, gas, [0, [felt(fib_result)]]]));
 }
 
 #[test]
@@ -159,7 +171,6 @@ fn factorial() {
         &FACTORIAL.2.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
-        true,
     )
     .unwrap();
 }
@@ -181,7 +192,6 @@ proptest! {
             &FACTORIAL.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 
@@ -210,7 +220,6 @@ proptest! {
             &PEDERSEN.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 }

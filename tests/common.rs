@@ -263,7 +263,6 @@ pub fn compare_outputs(
     entry_point: &FunctionId,
     vm_result: &RunResult,
     native_result: &serde_json::Value,
-    ignore_gas: bool,
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
@@ -287,7 +286,6 @@ pub fn compare_outputs(
 
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
-        ignore_gas: bool,
         native_rets: &mut impl Iterator<Item = &'a Value>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u64,
@@ -300,7 +298,6 @@ pub fn compare_outputs(
                 for container in array_container {
                     check_next_type(
                         reg.get_type(&info.ty).unwrap(),
-                        ignore_gas,
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -349,10 +346,7 @@ pub fn compare_outputs(
 
                 // sometimes gas is not returned?
                 let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
-
-                if !ignore_gas {
-                    prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
-                }
+                prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
@@ -461,7 +455,6 @@ pub fn compare_outputs(
                 } else if is_panic {
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
                         &mut [&enum_container[1]].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -477,7 +470,6 @@ pub fn compare_outputs(
 
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
                         &mut [&enum_container[1]].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -490,7 +482,6 @@ pub fn compare_outputs(
                 for (field, container) in info.members.iter().zip(struct_container.iter()) {
                     check_next_type(
                         reg.get_type(field).unwrap(),
-                        ignore_gas,
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -522,7 +513,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(ty, ignore_gas, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
+        check_next_type(ty, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
     }
 
     Ok(())

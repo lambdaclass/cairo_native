@@ -114,7 +114,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 
@@ -135,7 +134,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 
@@ -156,7 +154,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 
@@ -177,7 +174,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 
@@ -198,7 +194,6 @@ proptest! {
             &program.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
-            true,
         )?;
     }
 }
