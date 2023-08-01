@@ -14,6 +14,7 @@ use std::{
     collections::HashMap,
 };
 
+pub mod gas;
 pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;

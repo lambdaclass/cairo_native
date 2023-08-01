@@ -116,6 +116,9 @@ where
     DeserializeError(D::Error),
     #[error(transparent)]
     SerializeError(S::Error),
+
+    #[error("not enough gas to run, needed '{needed}' had '{have}'")]
+    InsufficientGasError { needed: u64, have: u64 },
 }
 
 impl<'de, TType, TLibfunc, D, S> fmt::Debug for ErrorImpl<'de, TType, TLibfunc, D, S>
@@ -141,6 +144,11 @@ where
                 .finish(),
             Self::DeserializeError(arg0) => f.debug_tuple("DeserializeError").field(arg0).finish(),
             Self::SerializeError(arg0) => f.debug_tuple("SerializeError").field(arg0).finish(),
+            Self::InsufficientGasError { needed, have } => f
+                .debug_struct("InsufficientGasError")
+                .field("needed", needed)
+                .field("have", have)
+                .finish(),
         }
     }
 }
@@ -194,4 +202,19 @@ where
         }
         .into()
     }
+}
+
+pub fn make_insuficient_gas_error<'de, TType, TLibfunc, D, S>(
+    needed: u64,
+    have: u64,
+) -> Error<'de, TType, TLibfunc, D, S>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+    S: Serializer,
+{
+    ErrorImpl::InsufficientGasError { needed, have }.into()
 }

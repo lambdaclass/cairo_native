@@ -379,6 +379,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &entry_point.id,
         params_input,
         &mut serde_json::Serializer::pretty(io::stdout()),
+        None, // TODO: Add gas
     )
     .unwrap();
     println!();

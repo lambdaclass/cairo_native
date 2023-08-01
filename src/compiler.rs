@@ -51,7 +51,7 @@ use crate::{
         CompileError,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
-    metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
+    metadata::{gas::GasMetadata, tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,
 };
@@ -68,6 +68,7 @@ use melior::{
     dialect::{arith::CmpiPredicate, cf, func, index, memref},
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        operation,
         r#type::{FunctionType, MemRefType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },

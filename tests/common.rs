@@ -205,6 +205,7 @@ pub fn run_native_program(
             .id,
         args,
         serde_json::value::Serializer,
+        None, // TODO: pass gas
     )
     .expect("Test program execution failed.")
 }

@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
     ProgramParser,
 };
 use cairo_native::{
-    gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::{GasMetadata, MetadataComputationConfig},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::register_runtime_symbols,
 };
@@ -43,6 +43,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tracing::{debug, error, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -85,25 +86,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     {
         // todo: better error
+        error!("Gas was not provided but it's required to run the program.");
         eprintln!("Program requires gas counter, please provide `--available-gas` argument.");
         return Ok(());
     }
 
-    let gas_metadata = GasMetadata::new(
-        &program,
-        MetadataComputationConfig::default(),
-        args.available_gas,
-    );
+    let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
 
     let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-
-    if let Some(available_gas) = gas_metadata.available_gas {
-        if available_gas < required_initial_gas {
-            // todo: better error
-            eprintln!("Not enough gas, needs atleast {required_initial_gas}");
-            return Ok(());
-        }
-    }
+    info!("Initial required gas: {:?}", required_initial_gas);
 
     // Initialize MLIR.
     let context = Context::new();
@@ -123,6 +114,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+    // Metadata used to insert another metadata on each statement, so withdraw gas can know how much to withdraw.
+    metadata.insert(gas_metadata).unwrap();
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -166,13 +159,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args.outputs {
         Some(StdioOrPath::Stdio) => {
             cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
-                &program,
                 &engine,
                 &registry,
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(io::stdout()),
-                &gas_metadata,
+                required_initial_gas,
             )
             .unwrap_or_else(|e| match &*e {
                 cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
@@ -194,13 +186,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(StdioOrPath::Path(path)) => {
             let mut file = File::create(path)?;
             cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
-                &program,
                 &engine,
                 &registry,
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(&mut file),
-                &gas_metadata,
+                required_initial_gas,
             )
             .unwrap();
             writeln!(file)?;

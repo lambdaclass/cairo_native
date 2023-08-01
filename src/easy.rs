@@ -6,7 +6,7 @@ use crate::{
     libfuncs::LibfuncBuilder,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::register_runtime_symbols,
+    utils,
     values::ValueBuilder,
 };
 use cairo_lang_sierra::{
@@ -167,17 +167,16 @@ where
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
+    utils::register_runtime_symbols(&engine);
 
     // Execute
     crate::execute::<TType, TLibfunc, D, S>(
-        todo!(),
         &engine,
         &registry,
         function_id,
         params,
         returns,
-        todo!(),
+        None, // TODO: pass gas
     )
     .unwrap_or_else(|e| match &*e {
         crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
