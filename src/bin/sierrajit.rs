@@ -7,14 +7,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        gas::{
-            BuiltinCostWithdrawGasLibfunc, GetAvailableGasLibfunc, RedepositGasLibfunc,
-            WithdrawGasLibfunc,
-        },
-        NamedLibfunc,
-    },
+    extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
@@ -43,7 +36,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tracing::{debug, error, info};
+use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -73,29 +66,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Gas
-    if args.available_gas.is_none()
-        && program.type_declarations.iter().any(|decl| {
-            matches!(
-                decl.long_id.generic_id.0.as_str(),
-                WithdrawGasLibfunc::STR_ID
-                    | BuiltinCostWithdrawGasLibfunc::STR_ID
-                    | RedepositGasLibfunc::STR_ID
-                    | GetAvailableGasLibfunc::STR_ID
-            )
-        })
-    {
-        // todo: better error
-        error!("Gas was not provided but it's required to run the program.");
-        eprintln!("Program requires gas counter, please provide `--available-gas` argument.");
-        return Ok(());
-    }
-
-    let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
-
-    let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-    info!("Initial required gas: {:?}", required_initial_gas);
-
     // Initialize MLIR.
     let context = Context::new();
     context.append_dialect_registry(&{
@@ -114,8 +84,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-    // Metadata used to insert another metadata on each statement, so withdraw gas can know how much to withdraw.
-    metadata.insert(gas_metadata).unwrap();
+
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+        info!(
+            "Initial required gas: {}",
+            required_initial_gas.unwrap_or(0)
+        );
+        // Metadata used to insert another metadata on each statement, so withdraw gas can know how much to withdraw.
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -246,10 +234,6 @@ struct CmdLine {
     outputs: Option<StdioOrPath>,
     #[clap(short = 'p', long = "print-outputs")]
     print_outputs: bool,
-    //
-    // TODO: Uncomment after removing builtins from arguments and returns.
-    #[clap(short = 'g', long = "available-gas")]
-    available_gas: Option<usize>,
 }
 
 #[derive(Clone, Debug)]

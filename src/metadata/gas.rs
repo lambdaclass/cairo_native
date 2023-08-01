@@ -13,6 +13,9 @@ pub struct GasMetadata {
     pub gas_info: GasInfo,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct GasCost(pub Option<u64>);
+
 /// Configuration for metadata computation.
 #[derive(Default)]
 pub struct MetadataComputationConfig {
@@ -86,10 +89,11 @@ impl GasMetadata {
         &self,
         idx: StatementIdx,
         cost_type: CostTokenType,
-    ) -> Option<i64> {
+    ) -> Option<u64> {
         self.gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
+            .map(|x| x as u64)
     }
 }

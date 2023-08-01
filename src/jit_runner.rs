@@ -9,7 +9,6 @@ use crate::{
         JitRunnerError,
     },
     libfuncs::LibfuncBuilder,
-    metadata::gas::GasMetadata,
     types::TypeBuilder,
     utils::generate_function_name,
     values::{ValueBuilder, ValueDeserializer, ValueSerializer},
@@ -18,7 +17,6 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{GenericLibfunc, GenericType},
     ids::{ConcreteTypeId, FunctionId},
-    program::Program,
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;

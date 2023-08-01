@@ -51,14 +51,18 @@ use crate::{
         CompileError,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
-    metadata::{gas::GasMetadata, tail_recursion::TailRecursionMeta, MetadataStorage},
+    metadata::{
+        gas::{GasCost, GasMetadata},
+        tail_recursion::TailRecursionMeta,
+        MetadataStorage,
+    },
     types::TypeBuilder,
     utils::generate_function_name,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
-    extensions::{ConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{gas::CostTokenType, ConcreteLibfunc, GenericLibfunc, GenericType},
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
@@ -68,7 +72,6 @@ use melior::{
     dialect::{arith::CmpiPredicate, cf, func, index, memref},
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        operation,
         r#type::{FunctionType, MemRefType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
@@ -207,6 +210,13 @@ where
         function.entry_point,
         (initial_state, BTreeMap::<usize, usize>::new()),
         |statement_idx, (mut state, mut tailrec_state)| {
+            if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
+                let gas_cost =
+                    gas_metadata.get_gas_cost_for_statement(statement_idx, CostTokenType::Const);
+                metadata.remove::<GasCost>();
+                metadata.insert(GasCost(gas_cost));
+            }
+
             let (landing_block, block) = &blocks[&statement_idx];
 
             if let Some((landing_block, _)) = landing_block {
