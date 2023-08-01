@@ -4,7 +4,11 @@
 
 use crate::{
     libfuncs::LibfuncBuilder,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     types::TypeBuilder,
     utils,
     values::ValueBuilder,
@@ -142,6 +146,21 @@ where
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(function_id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
+
     crate::compile(&context, &module, program, &registry, &mut metadata, None)
         .map_err(Error::Compile)?;
 
@@ -176,7 +195,7 @@ where
         function_id,
         params,
         returns,
-        None, // TODO: pass gas
+        required_initial_gas,
     )
     .unwrap_or_else(|e| match &*e {
         crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {

@@ -267,7 +267,11 @@ pub(crate) use codegen_ret_extr;
 pub mod test {
     use super::*;
     use crate::{
-        metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+        metadata::{
+            gas::{GasMetadata, MetadataComputationConfig},
+            runtime_bindings::RuntimeBindingsMeta,
+            MetadataStorage,
+        },
         types::felt252::PRIME,
     };
     use cairo_lang_compiler::{
@@ -340,6 +344,13 @@ pub mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
             .expect("Could not create the test program registry.");
 
+        let entry_point_id = &program
+            .funcs
+            .iter()
+            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+            .expect("Test program entry point not found.")
+            .id;
+
         let context = Context::new();
         context.append_dialect_registry(&{
             let registry = DialectRegistry::new();
@@ -355,6 +366,21 @@ pub mod test {
 
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+        // Gas
+        let required_initial_gas = if program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+        {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
+            metadata.insert(gas_metadata).unwrap();
+            required_initial_gas
+        } else {
+            None
+        };
 
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
@@ -405,7 +431,7 @@ pub mod test {
                 .id,
             args,
             serde_json::value::Serializer,
-            None, // TODO: pass gas
+            required_initial_gas,
         )
         .expect("Test program execution failed.")
     }

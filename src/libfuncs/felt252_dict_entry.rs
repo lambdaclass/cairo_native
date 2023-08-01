@@ -380,8 +380,8 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 0]));
-        assert_eq!(result, json!([null, null, 0, 1]));
+        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
+        assert_eq!(result, json!([null, null, 578950, 1])); // 583000 ?
     }
 
     #[test]

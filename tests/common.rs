@@ -20,7 +20,11 @@ use cairo_lang_sierra::{
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     types::felt252::PRIME,
     utils::register_runtime_symbols,
 };
@@ -141,6 +145,13 @@ pub fn run_native_program(
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
         .expect("Could not create the test program registry.");
 
+    let entry_point_id = &program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+        .expect("Test program entry point not found.")
+        .id;
+
     let context = Context::new();
     context.append_dialect_registry(&{
         let registry = DialectRegistry::new();
@@ -155,6 +166,21 @@ pub fn run_native_program(
     let mut metadata = MetadataStorage::new();
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -205,7 +231,7 @@ pub fn run_native_program(
             .id,
         args,
         serde_json::value::Serializer,
-        None, // TODO: pass gas
+        required_initial_gas,
     )
     .expect("Test program execution failed.")
 }

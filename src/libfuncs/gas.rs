@@ -26,7 +26,7 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute},
         r#type::IntegerType,
-        Block, Location, ValueLike,
+        Attribute, Block, Location, ValueLike,
     },
     Context,
 };
@@ -149,14 +149,11 @@ where
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
     let gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(
-                cost.unwrap_or(0) as i64,
-                IntegerType::new(context, 64).into(),
-            )
-            .into(),
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u64_type)).unwrap(),
             location,
         ))
         .result(0)?
