@@ -177,6 +177,25 @@ fn factorial() {
 
 proptest! {
     #[test]
+    fn fib_proptest(n in 0..100i32) {
+        let result_vm = run_vm_program(
+            &FIB,
+            "run_test",
+            &[Arg::Value(Felt252::new(n))],
+            Some(GAS),
+        )
+        .unwrap();
+        let result_native = run_native_program(&FIB, "run_test", json!([null, GAS, feltn(n)]));
+
+        compare_outputs(
+            &FIB.1,
+            &FIB.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+        )?;
+    }
+
+    #[test]
     fn factorial_proptest(n in 1..100i32) {
         let result_vm = run_vm_program(
             &FACTORIAL,
