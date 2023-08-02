@@ -196,6 +196,25 @@ proptest! {
     }
 
     #[test]
+    fn logistic_map_proptest(n in 100..110i32) {
+        let result_vm = run_vm_program(
+            &LOGISTIC_MAP,
+            "run_test",
+            &[Arg::Value(Felt252::new(n))],
+            Some(GAS),
+        )
+        .unwrap();
+        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", json!([null, GAS, feltn(n)]));
+
+        compare_outputs(
+            &LOGISTIC_MAP.1,
+            &LOGISTIC_MAP.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+        )?;
+    }
+
+    #[test]
     fn factorial_proptest(n in 1..100i32) {
         let result_vm = run_vm_program(
             &FACTORIAL,
