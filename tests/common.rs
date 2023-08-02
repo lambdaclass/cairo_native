@@ -399,7 +399,13 @@ pub fn compare_outputs(
                 prop_assert!(vm_rets.peek().is_some());
                 prop_assert!(native_rets.peek().is_some());
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u128 = native_rets.next().unwrap().as_u64().unwrap().into();
+                let native_value: u128 = match native_rets.next().unwrap() {
+                    Value::Number(n) => n.to_string().parse().unwrap(),
+                    _ => {
+                        prop_assert!(false, "invalid u128 value type");
+                        unreachable!()
+                    }
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
@@ -425,14 +431,18 @@ pub fn compare_outputs(
 
                 if let GenericArg::Type(id) = &info.info.long_id.generic_args[1] {
                     // TODO: is there a better way to recognize a boolean?
-                    is_bool = dbg!(id.debug_name.as_ref())
+                    is_bool = id
+                        .debug_name
+                        .as_ref()
                         .unwrap()
                         .as_str()
                         .eq("Tuple<core::bool>");
                 }
 
                 let is_panic = match &info.info.long_id.generic_args[0] {
-                    GenericArg::UserType(info) => dbg!(info.debug_name.as_ref())
+                    GenericArg::UserType(info) => info
+                        .debug_name
+                        .as_ref()
                         .unwrap()
                         .as_str()
                         .starts_with("core::panics::PanicResult"),
