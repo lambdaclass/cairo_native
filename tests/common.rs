@@ -9,7 +9,7 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::{
-    Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
+    Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -242,9 +242,9 @@ pub fn run_vm_program(
     entry_point: &str,
     args: &[Arg],
     gas: Option<usize>,
-) -> Result<RunResult, RunnerError> {
+) -> Result<RunResultStarknet, RunnerError> {
     let runner = &program.2;
-    runner.run_function(
+    runner.run_function_with_starknet_context(
         runner.find_function(entry_point).unwrap(),
         args,
         gas,
@@ -261,7 +261,7 @@ pub fn run_vm_program(
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
-    vm_result: &RunResult,
+    vm_result: &RunResultStarknet,
     native_result: &serde_json::Value,
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
@@ -514,6 +514,12 @@ pub fn compare_outputs(
                     .expect("should be null");
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
 
         Ok(())

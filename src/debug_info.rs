@@ -8,6 +8,7 @@ use cairo_lang_compiler::db::RootDatabase;
 use cairo_lang_defs::diagnostic_utils::StableLocation;
 use cairo_lang_diagnostics::DiagnosticAdded;
 use cairo_lang_filesystem::{db::FilesGroup, ids::FileLongId};
+use cairo_lang_lowering::ids::LocationId;
 use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId},
     program::{Program, StatementIdx},
@@ -24,7 +25,7 @@ mod type_declarations;
 pub struct DebugInfo {
     pub type_declarations: HashMap<ConcreteTypeId, StableLocation>,
     pub libfunc_declarations: HashMap<ConcreteLibfuncId, StableLocation>,
-    pub statements: HashMap<StatementIdx, StableLocation>,
+    pub statements: HashMap<StatementIdx, LocationId>,
     pub funcs: HashMap<FunctionId, StableLocation>,
 }
 
@@ -103,10 +104,14 @@ impl<'c> DebugLocations<'c> {
         let statements = debug_info
             .statements
             .iter()
-            .map(|(statement_idx, stable_loc)| {
+            .map(|(statement_idx, location_id)| {
                 (
                     *statement_idx,
-                    extract_location_from_stable_loc(context, db, *stable_loc),
+                    extract_location_from_stable_loc(
+                        context,
+                        db,
+                        location_id.get(db).stable_location,
+                    ),
                 )
             })
             .collect();
