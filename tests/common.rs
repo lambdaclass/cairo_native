@@ -425,21 +425,17 @@ pub fn compare_outputs(
 
                 if let GenericArg::Type(id) = &info.info.long_id.generic_args[1] {
                     // TODO: is there a better way to recognize a boolean?
-                    is_bool = id
-                        .debug_name
-                        .as_ref()
+                    is_bool = dbg!(id.debug_name.as_ref())
                         .unwrap()
                         .as_str()
                         .eq("Tuple<core::bool>");
                 }
 
                 let is_panic = match &info.info.long_id.generic_args[0] {
-                    GenericArg::UserType(info) => info
-                        .debug_name
-                        .as_ref()
+                    GenericArg::UserType(info) => dbg!(info.debug_name.as_ref())
                         .unwrap()
                         .as_str()
-                        .starts_with("core::PanicResult"),
+                        .starts_with("core::panics::PanicResult"),
                     _ => false,
                 };
 
