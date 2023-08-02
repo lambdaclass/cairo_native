@@ -504,7 +504,15 @@ pub fn compare_outputs(
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Snapshot(_) => todo!(),
         }
 

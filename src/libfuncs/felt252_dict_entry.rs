@@ -95,7 +95,17 @@ where
     let dict_ptr = entry.argument(0)?.into();
     let key_value = entry.argument(1)?.into();
 
-    let op = entry.append_operation(
+    let const_1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -105,7 +115,7 @@ where
                 )
                 .into(),
             )])
-            .add_operands(&[key_value])
+            .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(key_ty, 0)])
             .build(),
     );
@@ -137,16 +147,6 @@ where
     );
 
     let null_ptr = op.result(0)?.into();
-
-    /*
-    let op = entry.append_operation(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Eq,
-        result_ptr,
-        null_ptr,
-        location,
-    ));
-    */
 
     // need llvm instead of arith to compare pointers
     let op = entry.append_operation(
@@ -319,7 +319,17 @@ where
         ))),
     ));
 
-    let op = entry.append_operation(
+    let const_1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -329,7 +339,7 @@ where
                 )
                 .into(),
             )])
-            .add_operands(&[key_value])
+            .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(key_ty, 0)])
             .build(),
     );
@@ -382,6 +392,23 @@ mod test {
 
         let result = run_program(&program, "run_test", json!([(), (), 600_000]));
         assert_eq!(result, json!([null, null, 578950, 1])); // 583000 ?
+    }
+
+    #[test]
+    fn run_dict_insert_big() {
+        let program = load_cairo!(
+            use traits::Default;
+            use dict::Felt252DictTrait;
+
+            fn run_test() -> u64 {
+                let mut dict: Felt252Dict<u64> = Default::default();
+                dict.insert(200000000, 4_u64);
+                dict.get(200000000)
+            }
+        );
+
+        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
+        assert_eq!(result, json!([null, null, 578950, 4_u64])); // 583000 ?
     }
 
     #[test]
