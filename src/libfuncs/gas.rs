@@ -226,6 +226,7 @@ mod test {
 
     #[test]
     fn run_withdraw_gas() {
+        #[rustfmt::skip]
         let program = load_cairo!(
             use gas::withdraw_gas;
 
@@ -240,7 +241,7 @@ mod test {
                     match withdraw_gas() {
                         Option::Some(()) => {
                             i = i - 1;
-                        }
+                        },
                         Option::None(()) => {
                             break;
                         }
