@@ -284,12 +284,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .finish(),
     )?;
 
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     let program = cairo_lang_sierra::ProgramParser::new()
         .parse(include_str!("../programs/erc20.sierra"))
         .unwrap();
