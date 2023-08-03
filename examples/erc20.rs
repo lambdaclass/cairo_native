@@ -1,10 +1,8 @@
 #![feature(strict_provenance)]
 
 use cairo_felt::Felt252;
-use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
@@ -25,7 +23,7 @@ use melior::{
     Context, ExecutionEngine,
 };
 use serde_json::json;
-use std::{io, path::Path};
+use std::io;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug)]

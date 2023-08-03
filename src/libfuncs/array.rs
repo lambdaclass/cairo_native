@@ -173,7 +173,6 @@ where
     let opaque_ptr_ty = llvm::r#type::opaque_pointer(context);
 
     let elem_concrete_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_concrete_ty.layout(registry)?;
     let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
     let elem_stride = registry
