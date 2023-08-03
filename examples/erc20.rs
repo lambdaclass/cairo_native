@@ -282,8 +282,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .finish(),
     )?;
 
+    let source = std::fs::read_to_string("programs/erc20.sierra").unwrap();
+
     let program = cairo_lang_sierra::ProgramParser::new()
-        .parse(include_str!("../programs/erc20.sierra"))
+        .parse(&source)
         .unwrap();
 
     let entry_point = match program.funcs.iter().find(|x| {
