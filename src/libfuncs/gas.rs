@@ -218,3 +218,39 @@ where
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::{load_cairo, run_program};
+    use serde_json::json;
+
+    #[test]
+    fn run_withdraw_gas() {
+        let program = load_cairo!(
+            use gas::withdraw_gas;
+
+            fn run_test() {
+                let mut i = 10;
+
+                loop {
+                    if i == 0 {
+                        break;
+                    }
+
+                    match withdraw_gas() {
+                        Option::Some(()) => {
+                            i = i - 1;
+                        }
+                        Option::None(()) => {
+                            break;
+                        }
+                    };
+                    i = i - 1;
+                }
+            }
+        );
+
+        let result = run_program(&program, "run_test", json!([null, 60000]));
+        assert_eq!(result, json!([null, 44260, [0, [[]]]]));
+    }
+}
