@@ -29,6 +29,7 @@ use melior::{
     ir::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
         },
         operation::OperationBuilder,
         r#type::IntegerType,
@@ -169,6 +170,11 @@ where
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let opaque_ptr_ty = llvm::r#type::opaque_pointer(context);
+
+    let elem_concrete_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_concrete_ty.layout(registry)?;
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
     let elem_stride = registry
         .get_type(&info.ty)?
@@ -305,13 +311,19 @@ where
 
     let op5 = entry.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[op4.result(1)?.into()])
             .add_operands(&[op1.result(0)?.into()])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_ptr_ty])
             .build(),
     );
     entry.append_operation(llvm::store(
@@ -461,18 +473,20 @@ where
 
     let op = block_not_oob.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[array_ptr, index_val])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_pointer(context)])
             .build(),
     );
-    let elem_ptr = op.result(0)?.into();
-
-    let op =
-        block_not_oob.append_operation(llvm::bitcast(elem_ptr, opaque_pointer(context), location));
     let elem_ptr = op.result(0)?.into();
 
     // we need to allocate the elem ptr into another malloc because the array can resize and change ptr.
@@ -621,21 +635,20 @@ where
     // get the first elem
     let op = block_not_empty.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[array_ptr, const_0])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_pointer(context)])
             .build(),
     );
-    let elem_ptr = op.result(0)?.into();
-
-    let op = block_not_empty.append_operation(llvm::bitcast(
-        elem_ptr,
-        opaque_pointer(context),
-        location,
-    ));
     let elem_ptr = op.result(0)?.into();
 
     // we need to allocate the elem ptr into another malloc because the array can resize and change ptr.
@@ -691,12 +704,18 @@ where
 
     let op = block_not_empty.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[array_ptr, const_1])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_pointer(context)])
             .build(),
     );
     let array_ptr_src = op.result(0)?.into();
@@ -733,13 +752,7 @@ where
     );
     let array_opaque_ptr = op.result(0)?.into();
 
-    let op = block_not_empty.append_operation(
-        OperationBuilder::new("llvm.bitcast", location)
-            .add_operands(&[array_ptr_src])
-            .add_results(&[llvm::r#type::opaque_pointer(context)])
-            .build(),
-    );
-    let array_ptr_src_opaque = op.result(0)?.into();
+    let array_ptr_src_opaque = array_ptr_src;
 
     let op = block_not_empty.append_operation(arith::constant(
         context,
@@ -901,12 +914,18 @@ where
     // get the last elem
     let op = block_not_empty.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[array_ptr, len])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_pointer(context)])
             .build(),
     );
     let elem_ptr = op.result(0)?.into();
@@ -973,6 +992,7 @@ where
 
     let elem_concrete_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_concrete_ty.layout(registry)?;
+    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -1029,12 +1049,18 @@ where
 
     let op = block_not_oob.append_operation(
         OperationBuilder::new("llvm.getelementptr", location)
-            .add_attributes(&[(
-                Identifier::new(context, "rawConstantIndices"),
-                DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
-            )])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "rawConstantIndices"),
+                    DenseI32ArrayAttribute::new(context, &[i32::MIN]).into(),
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(elem_ty).into(),
+                ),
+            ])
             .add_operands(&[array_ptr, index_val])
-            .add_results(&[ptr_ty])
+            .add_results(&[opaque_pointer(context)])
             .build(),
     );
     let elem_ptr = op.result(0)?.into();
@@ -1075,10 +1101,6 @@ where
         location,
     ));
     let is_volatile = op.result(0)?.into();
-
-    let op =
-        block_not_oob.append_operation(llvm::bitcast(elem_ptr, opaque_pointer(context), location));
-    let elem_ptr = op.result(0)?.into();
 
     block_not_oob.append_operation(llvm::call_intrinsic(
         context,
