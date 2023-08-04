@@ -1,0 +1,383 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Enum type"><title>cairo_native::types::enum - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-cb6f1f67f1bcd037.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (474709a9a 2023-08-03)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-6d2c9675f3d09c26.css" data-theme-dark-css="dark-45ceb8f2e522f4d1.css" data-theme-ayu-css="ayu-fd19013d6ce078bf.css" ><script src="../../../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-6d2c9675f3d09c26.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-45ceb8f2e522f4d1.css"><link rel="stylesheet" href="../../../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module enum</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">types</a>::<wbr><a class="mod" href="#">enum</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/types/enum.rs.html#1-543">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="enum-type"><a href="#enum-type">Enum type</a></h2>
+<p>Enumerations are special because they can potentially represent an unlimited amount of things at
+the same time. They are similar to Rust enums since they can contain data along with the
+discriminator.</p>
+<h3 id="layout-1"><a href="#layout-1">Layout</a></h3><div><table><thead><tr><th>Index</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td>0</td><td><code>iN</code></td><td>Discriminant.</td></tr>
+<tr><td>1</td><td>Depends on variants.</td><td>Payload.</td></tr>
+</tbody></table>
+</div>
+<p>As seen in the table above, an enum’s layout is not as simple as concatenating the discriminant
+with the payload.</p>
+<p>The discriminant will have the bit width required to store all possible values. The following
+table contains an example of some number of variants with their discriminant type:</p>
+<div><table><thead><tr><th>Number of variants</th><th>Discriminant type</th><th>ABI (in Rust types)</th></tr></thead><tbody>
+<tr><td>0 or 1</td><td><code>i0</code></td><td><code>()</code></td></tr>
+<tr><td>2</td><td><code>i1</code></td><td><code>u8</code></td></tr>
+<tr><td>2 or 3</td><td><code>i2</code></td><td><code>u8</code></td></tr>
+<tr><td>4, 5, 6 or 7</td><td><code>i3</code></td><td><code>u8</code></td></tr>
+<tr><td>8 to 15</td><td><code>i4</code></td><td><code>u8</code></td></tr>
+<tr><td>128 to 255</td><td><code>i8</code></td><td><code>u8</code></td></tr>
+<tr><td>256 to 511</td><td><code>i9</code></td><td><code>u16</code></td></tr>
+<tr><td>32768 to 65535</td><td><code>i16</code></td><td><code>u16</code></td></tr>
+<tr><td>65536 to 131071</td><td><code>i17</code></td><td><code>u32</code></td></tr>
+</tbody></table>
+</div>
+<p>In Rust, the number of bits and bytes required can be obtained using the following formula:</p>
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+ <semantics>
+  <mtable>
+   <mtr>
+    <mtd>
+     <mrow>
+      <msub>
+       <mi>n</mi>
+       <mi mathvariant="italic">bits</mi>
+      </msub>
+      <mo stretchy="false">=</mo>
+      <mrow>
+       <mo fence="true" form="prefix" stretchy="true">{</mo>
+       <mrow>
+        <mtable>
+         <mtr>
+          <mtd>
+           <mn>0</mn>
+          </mtd>
+          <mtd>
+           <mtext>if</mtext>
+          </mtd>
+          <mtd>
+           <mrow>
+            <msub>
+             <mi>n</mi>
+             <mi mathvariant="italic">variants</mi>
+            </msub>
+            <mo stretchy="false">=</mo>
+            <mn>0</mn>
+           </mrow>
+          </mtd>
+         </mtr>
+         <mtr>
+          <mtd>
+           <mrow>
+            <mo fence="true" form="prefix" stretchy="true">⌈</mo>
+            <mrow>
+             <mrow>
+              <msub>
+               <mi>log</mi>
+               <mn>2</mn>
+              </msub>
+              <msub>
+               <mi>n</mi>
+               <mi mathvariant="italic">variants</mi>
+              </msub>
+             </mrow>
+            </mrow>
+            <mo fence="true" form="postfix" stretchy="true">⌉</mo>
+           </mrow>
+          </mtd>
+          <mtd>
+           <mtext>if</mtext>
+          </mtd>
+          <mtd>
+           <mrow>
+            <msub>
+             <mi>n</mi>
+             <mi mathvariant="italic">variants</mi>
+            </msub>
+            <mo stretchy="false">≠</mo>
+            <mn>0</mn>
+           </mrow>
+          </mtd>
+         </mtr>
+        </mtable>
+       </mrow>
+      </mrow>
+     </mrow>
+    </mtd>
+   </mtr>
+   <mtr>
+    <mtd>
+     <mrow>
+      <msub>
+       <mi>n</mi>
+       <mi mathvariant="italic">bytes</mi>
+      </msub>
+      <mo stretchy="false">=</mo>
+      <mrow>
+       <mo fence="true" form="prefix" stretchy="true">⌈</mo>
+       <mrow>
+        <mfrac>
+         <msub>
+          <mi>n</mi>
+          <mi mathvariant="italic">bits</mi>
+         </msub>
+         <mn>8</mn>
+        </mfrac>
+       </mrow>
+       <mo fence="true" form="postfix" stretchy="true">⌉</mo>
+      </mrow>
+     </mrow>
+    </mtd>
+   </mtr>
+  </mtable>
+ </semantics>
+</math>
+<p>The payload will then be appended to the discriminant after applying its alignment rules. This
+will cause unused space between the tag and the payload in most cases. As an example, the
+following enum will have the layouts described in the table below.</p>
+<div class="example-wrap"><pre class="language-cairo"><code>enum MyEnum {
+    U8: u8,
+    U16: u16,
+    U32: u32,
+    U64: u64,
+    Felt: felt252,
+}
+</code></pre></div><table>
+    <thead>
+        <tr>
+            <th colspan="6"><code>MyEnum::U8</code></th>
+        </tr>
+        <tr>
+            <th>Index</th>
+            <th>Type</th>
+            <th>ABI (in Rust types)</th>
+            <th>Alignment</th>
+            <th>Size</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>0</td>
+            <td><code>i3</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Discriminant.</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><code>i8</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Payload.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 38]</code></td>
+            <td>1</td>
+            <td>38</td>
+            <td>Padding.</td>
+        </tr>
+    </tbody>
+</table>
+<table>
+    <thead>
+        <tr>
+            <th colspan="6"><code>MyEnum::U16</code></th>
+        </tr>
+        <tr>
+            <th>Index</th>
+            <th>Type</th>
+            <th>ABI (in Rust types)</th>
+            <th>Alignment</th>
+            <th>Size</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>0</td>
+            <td><code>i3</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Discriminant.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 1]</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Padding.</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><code>i16</code></td>
+            <td><code>u16</code></td>
+            <td>2</td>
+            <td>2</td>
+            <td>Payload.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 36]</code></td>
+            <td>1</td>
+            <td>36</td>
+            <td>Padding.</td>
+        </tr>
+    </tbody>
+</table>
+<table>
+    <thead>
+        <tr>
+            <th colspan="6"><code>MyEnum::U32</code></th>
+        </tr>
+        <tr>
+            <th>Index</th>
+            <th>Type</th>
+            <th>ABI (in Rust types)</th>
+            <th>Alignment</th>
+            <th>Size</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>0</td>
+            <td><code>i3</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Discriminant.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 3]</code></td>
+            <td>1</td>
+            <td>3</td>
+            <td>Padding.</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><code>i32</code></td>
+            <td><code>u32</code></td>
+            <td>4</td>
+            <td>4</td>
+            <td>Payload.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 32]</code></td>
+            <td>1</td>
+            <td>32</td>
+            <td>Padding.</td>
+        </tr>
+    </tbody>
+</table>
+<table>
+    <thead>
+        <tr>
+            <th colspan="6"><code>MyEnum::U64</code></th>
+        </tr>
+        <tr>
+            <th>Index</th>
+            <th>Type</th>
+            <th>ABI (in Rust types)</th>
+            <th>Alignment</th>
+            <th>Size</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>0</td>
+            <td><code>i3</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Discriminant.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 7]</code></td>
+            <td>1</td>
+            <td>7</td>
+            <td>Padding.</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><code>i64</code></td>
+            <td><code>u64</code></td>
+            <td>8</td>
+            <td>8</td>
+            <td>Payload.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 24]</code></td>
+            <td>1</td>
+            <td>24</td>
+            <td>Padding.</td>
+        </tr>
+    </tbody>
+</table>
+<table>
+    <thead>
+        <tr>
+            <th colspan="6"><code>MyEnum</code></th>
+        </tr>
+        <tr>
+            <th>Index</th>
+            <th>Type</th>
+            <th>ABI (in Rust types)</th>
+            <th>Alignment</th>
+            <th>Size</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>0</td>
+            <td><code>i3</code></td>
+            <td><code>u8</code></td>
+            <td>1</td>
+            <td>1</td>
+            <td>Discriminant.</td>
+        </tr>
+        <tr>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td><code>[u8; 7]</code></td>
+            <td>1</td>
+            <td>7</td>
+            <td>Padding.</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><code>i252</code></td>
+            <td><code>[u64; 4]</code></td>
+            <td>8</td>
+            <td>32</td>
+            <td>Payload.</td>
+        </tr>
+    </tbody>
+</table>
+<p>As seen above, while the discriminant is always at the same offset, the payloads don’t necessary
+have the same offset between all variants. It depends on the payload’s alignment.</p>
+<p>In reality, the first variant will have a zero-sized padding between the discriminant and the
+payload to keep everything consistent and the padding will have its own index, shifting every
+index below it by one. However all that’s been ignored for documenting purposes.</p>
+<p>An MLIR type cannot be an enumeration (it doesn’t exist), therefore a variant or a buffer has to
+be used. Using a buffer as a dummy payload has been discarded because it doesn’t keep the enum’s
+alignment information. To keep that info, the first variant with the biggest alignment is used
+as the default payload.</p>
+<p>Using the info stated above, we can infer that the example enum will have the following type by
+default:</p>
+<div><table><thead><tr><th>Index</th><th>Type</th><th>ABI (in Rust types)</th><th>Alignment</th><th>Size</th><th>Description</th></tr></thead><tbody>
+<tr><td>0</td><td><code>i3</code></td><td><code>u8</code></td><td>1</td><td>1</td><td>Discriminant.</td></tr>
+<tr><td>N/A</td><td>N/A</td><td><code>[u8; 7]</code></td><td>1</td><td>7</td><td>Padding.</td></tr>
+<tr><td>1</td><td><code>i64</code></td><td><code>u64</code></td><td>8</td><td>8</td><td>Payload.</td></tr>
+<tr><td>N/A</td><td>N/A</td><td><code>[u8; 24]</code></td><td>1</td><td>24</td><td>Padding.</td></tr>
+</tbody></table>
+</div></div></details><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.build.html" title="fn cairo_native::types::enum::build">build</a></div><div class="desc docblock-short">Build the MLIR type.</div></li><li><div class="item-name"><a class="fn" href="fn.get_layout_for_variants.html" title="fn cairo_native::types::enum::get_layout_for_variants">get_layout_for_variants</a></div><div class="desc docblock-short">Extract layout for the default enum representation, itsdiscriminant and all its payloads.</div></li><li><div class="item-name"><a class="fn" href="fn.get_type_for_variants.html" title="fn cairo_native::types::enum::get_type_for_variants">get_type_for_variants</a></div><div class="desc docblock-short">Extract the type and layout for the default enum representation, its discriminant and all its
+payloads.</div></li></ul><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.TypeLayout.html" title="type cairo_native::types::enum::TypeLayout">TypeLayout</a></div><div class="desc docblock-short">An MLIR type with its memory layout.</div></li></ul></section></div></main></body></html>

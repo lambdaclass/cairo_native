@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["attribute",""],["block",""],["context",""],["dialects",""],["identifier",""],["llvm_string",""],["location",""],["mlir_type",""],["module",""],["operation",""],["registry",""]]};
