@@ -148,6 +148,12 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             },
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 
@@ -345,6 +351,12 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                     self::segment_arena::deserialize(deserializer, self.arena, self.registry, info)
                 }
                 CoreTypeConcrete::Snapshot(_) => todo!(),
+                CoreTypeConcrete::Sint8(_) => todo!(),
+                CoreTypeConcrete::Sint16(_) => todo!(),
+                CoreTypeConcrete::Sint32(_) => todo!(),
+                CoreTypeConcrete::Sint64(_) => todo!(),
+                CoreTypeConcrete::Sint128(_) => todo!(),
+                CoreTypeConcrete::Bytes31(_) => todo!(),
             }
         }
     }
@@ -472,6 +484,12 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
                 self::segment_arena::serialize(serializer, self.registry, self.ptr, info)
             },
             CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 }

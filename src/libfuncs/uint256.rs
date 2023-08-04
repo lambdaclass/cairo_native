@@ -13,8 +13,8 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        int::unsigned256::Uint256Concrete, lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc,
-        GenericType,
+        int::unsigned256::Uint256Concrete, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -64,12 +64,12 @@ where
 /// Generate MLIR operations for the `u256_safe_divmod` libfunc.
 pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -79,6 +79,10 @@ where
 {
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
+
+    let guarantee_type = registry
+        .get_type(&info.output_types()[0][3])?
+        .build(context, helper, registry, metadata)?;
 
     let lhs_struct: Value = entry.argument(1)?.into();
     let rhs_struct: Value = entry.argument(2)?.into();
@@ -258,9 +262,12 @@ where
         .result(0)?
         .into();
 
+    let op = entry.append_operation(llvm::undef(guarantee_type, location));
+    let guarantee = op.result(0)?.into();
+
     entry.append_operation(helper.br(
         0,
-        &[entry.argument(0)?.into(), result_div, result_rem],
+        &[entry.argument(0)?.into(), result_div, result_rem, guarantee],
         location,
     ));
     Ok(())

@@ -1,7 +1,4 @@
-use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use cairo_native::easy::compile_and_execute;
-use num_bigint::BigUint;
+use cairo_native::easy::{compile_and_execute, felt252_short_str};
 use serde_json::json;
 use std::{io::stdout, path::Path};
 
@@ -15,29 +12,12 @@ fn main() {
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
-    let program = cairo_lang_compiler::compile_cairo_project_at_path(
+    let name = felt252_short_str("user");
+
+    // Compile and execute the given sierra program, with the inputs and outputs serialized using JSON.
+    compile_and_execute(
         Path::new("programs/examples/hello.cairo"),
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let name = {
-        let mut digits = BigUint::from(u32::from_le_bytes(*b"user")).to_u32_digits();
-        digits.resize(8, 0);
-        digits
-    };
-
-    compile_and_execute::<CoreType, CoreLibfunc, _, _>(
-        &program,
-        &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some("hello::hello::greet"))
-            .unwrap()
-            .id,
+        "hello::hello::greet",
         json!([name]),
         &mut serde_json::Serializer::new(stdout()),
     )

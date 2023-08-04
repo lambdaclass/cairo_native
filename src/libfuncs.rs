@@ -109,9 +109,6 @@ where
             Self::Array(selector) => self::array::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Bitwise(info) => {
-                self::bitwise::build(context, registry, entry, location, helper, metadata, info)
-            }
             Self::BranchAlign(info) => self::branch_align::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
@@ -198,6 +195,12 @@ where
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
+            CoreConcreteLibfunc::Sint8(_) => todo!(),
+            CoreConcreteLibfunc::Sint16(_) => todo!(),
+            CoreConcreteLibfunc::Sint32(_) => todo!(),
+            CoreConcreteLibfunc::Sint64(_) => todo!(),
+            CoreConcreteLibfunc::Sint128(_) => todo!(),
+            CoreConcreteLibfunc::Bytes31(_) => todo!(),
         }
     }
 

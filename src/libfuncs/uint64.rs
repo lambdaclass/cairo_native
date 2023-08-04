@@ -12,11 +12,8 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         int::{
-            unsigned::{
-                Uint64Concrete, Uint64Traits, UintConcrete, UintConstConcreteLibfunc,
-                UintOperationConcreteLibfunc,
-            },
-            IntOperator,
+            unsigned::{Uint64Concrete, Uint64Traits, UintConcrete, UintOperationConcreteLibfunc},
+            IntConstConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc, GenericLibfunc, GenericType,
@@ -79,6 +76,9 @@ where
         UintConcrete::WideMul(info) => {
             build_widemul(context, registry, entry, location, helper, metadata, info)
         }
+        UintConcrete::Bitwise(info) => {
+            super::bitwise::build(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -90,7 +90,7 @@ pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &UintConstConcreteLibfunc<Uint64Traits>,
+    info: &IntConstConcreteLibfunc<Uint64Traits>,
 ) -> Result<()>
 where
     TType: GenericType,
