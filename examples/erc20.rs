@@ -1,12 +1,13 @@
 #![feature(strict_provenance)]
 
 use cairo_felt::Felt252;
+use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
-    easy::felt252_bigint,
+    easy::{felt252_bigint, felt252_short_str},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -23,6 +24,7 @@ use melior::{
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
+use num_bigint::{BigInt, BigUint};
 use serde_json::json;
 use std::io;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -407,25 +409,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .as_ptr()
             .addr(),
+        // The amount of params change depending on the contract function called
         // Struct<Span<Array<felt>>>
         [
             // Span<Array<felt>>
             [
                 // contract state
-                felt252_bigint(1),
-                felt252_bigint(2),
-                felt252_bigint(3),
-                felt252_bigint(4),
-                felt252_bigint(5),
-                felt252_bigint(6),
-                felt252_bigint(7),
-                felt252_bigint(8),
-                felt252_bigint(9),
-                felt252_bigint(11),
-                felt252_bigint(12),
-                felt252_bigint(13),
-                felt252_bigint(14),
-                felt252_bigint(15),
+
+                // name
+                felt252_short_str("name"),   // name
+                felt252_short_str("symbol"), // symbol
+                felt252_bigint(0),           // decimals
+                felt252_bigint(i64::MAX),    // initial supply
+                felt252_bigint(4),           // contract address
+                felt252_bigint(6),           // ??
             ]
         ]
     ]);
@@ -440,6 +437,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .unwrap();
     println!();
+
+    // Useful code to print a short felt string returned from the json, in case it panics
+    /*
+    let data = vec![
+        1919251315, 543253604, 1751457840, 1953439860, 1768846368, 809115757, 1163019058, 0,
+    ];
+
+    let value = Felt252::new(BigUint::new(data));
+
+    if let Some(shortstring) = as_cairo_short_string(&value) {
+        println!("[DEBUG]\t{shortstring: <31}\t(raw: {})", value.to_bigint())
+    }
+    */
 
     Ok(())
 }
