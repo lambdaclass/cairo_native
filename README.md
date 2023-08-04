@@ -343,7 +343,7 @@ Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, 
 such as `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them but `GasBuiltin` can simply be
 passed as `null`.
 
-If the wrong inputs are passed, an error is reporting showing the needed inputs. You can also check the needed inputs by
+If the wrong inputs are passed, an error reports the needed inputs. You can also check the needed inputs by
 compiling the program to sierra and checking the arguments of the entry point you chose, it will look like:
 
 ```
@@ -352,7 +352,7 @@ example::example::main@0([0]: Pedersen, [1]: felt252, [2]: felt252) -> (Pedersen
 
 Here in this case, we take the pedersen builtin and 2 felts. so we would pass the json:
 
-```
+```json
 [null, [1,0,0,0,0,0,0,0],  [2,0,0,0,0,0,0,0]]
 ```
 
