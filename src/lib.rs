@@ -17,9 +17,6 @@
 //! testing and prototyping, but it's **NOT intended** to be anything more than that.
 //!
 //! ```
-//! # use cairo_lang_compiler::CompilerConfig;
-//! # use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-//! # use num_bigint::BigUint;
 //! # use serde_json::json;
 //! # use std::{io::stdout, path::Path};
 //! #
@@ -32,31 +29,13 @@
 //! # #[cfg(not(feature = "with-runtime"))]
 //! # compile_error!("This example requires the `with-runtime` feature to be active.");
 //! #
-//! # let program = cairo_lang_compiler::compile_cairo_project_at_path(
-//! #     Path::new("programs/examples/hello.cairo"),
-//! #     CompilerConfig {
-//! #         replace_ids: true,
-//! #         ..Default::default()
-//! #     },
-//! # )
-//! # .unwrap();
-//! #
-//! # let name = {
-//! #     let mut digits = BigUint::from(u32::from_le_bytes(*b"user")).to_u32_digits();
-//! #     digits.resize(8, 0);
-//! #     digits
-//! # };
-//! #
+//! let name = cairo_native::easy::felt252_short_str("user");
+//!
 //! // The easy API requires only the program, the entry point and the de/serializers.
-//! cairo_native::easy::compile_and_execute::<CoreType, CoreLibfunc, _, _>(
-//!     &program,
-//!     &program
-//!         .funcs
-//!         .iter()
-//!         .find(|x| x.id.debug_name.as_deref() == Some("hello::hello::greet"))
-//!         .unwrap()
-//!         .id,
-//!     json!([[1919251317, 0, 0, 0, 0, 0, 0, 0]]),
+//! cairo_native::easy::compile_and_execute(
+//!     Path::new("programs/examples/hello.cairo"),
+//!     "hello::hello::greet",
+//!     json!([name]),
 //!     &mut serde_json::Serializer::new(stdout()),
 //! )
 //! .unwrap();

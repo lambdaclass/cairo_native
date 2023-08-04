@@ -251,7 +251,7 @@ where
     Ok(())
 }
 
-// Parse numeric string into felt, wrapping negatives around the prime modulo.
+// Parse a numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt252_str(value: &str) -> [u32; 8] {
     let value = value
         .parse::<BigInt>()
@@ -266,7 +266,7 @@ pub fn felt252_str(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
-/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
+/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
     let value: BigInt = value.into();
     let value = match value.sign() {
@@ -279,7 +279,7 @@ pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
-// Parse a short felt string into felt, wrapping negatives around the prime modulo.
+/// Parse a short string into a felt that can be used in the cairo-native input.
 pub fn felt252_short_str(value: &str) -> [u32; 8] {
     let values: Vec<_> = value
         .chars()
