@@ -30,7 +30,7 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserializer, Serializer};
-use std::{fmt, ops::Neg, path::Path};
+use std::{fmt, ops::Neg, path::Path, sync::Arc};
 
 /// The possible errors encountered when calling [`compile_and_execute`]
 pub enum Error<'de, TType, TLibfunc, D, S>
@@ -126,14 +126,31 @@ where
     S: Serializer,
 {
     // Compile the cairo program to sierra.
-    let program = &cairo_lang_compiler::compile_cairo_project_at_path(
-        program,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let program = &if program
+        .extension()
+        .map(|x| {
+            x.to_ascii_lowercase()
+                .to_string_lossy()
+                .eq_ignore_ascii_case("cairo")
+        })
+        .unwrap_or(false)
+    {
+        cairo_lang_compiler::compile_cairo_project_at_path(
+            program,
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    } else {
+        let source = std::fs::read_to_string(program).unwrap();
+        Arc::new(
+            cairo_lang_sierra::ProgramParser::new()
+                .parse(&source)
+                .unwrap(),
+        )
+    };
 
     let function_id = &program
         .funcs

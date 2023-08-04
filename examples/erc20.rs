@@ -275,6 +275,15 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
+    std::env::set_var(
+        "CARGO_MANIFEST_DIR",
+        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+    );
+
+    #[cfg(not(feature = "with-runtime"))]
+    compile_error!("This example requires the `with-runtime` feature to be active.");
+
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
@@ -386,25 +395,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
      */
 
     let params_input = json!([
-        null,     // pedersen
-        null,     // range check
-        u64::MAX, // gas
+        // pedersen
+        null,
+        // range check
+        null,
+        // gas
+        u64::MAX,
+        // system
         metadata
             .get::<SyscallHandlerMeta>()
             .unwrap()
             .as_ptr()
-            .addr(), // system
+            .addr(),
+        // Struct<Span<Array<felt>>>
         [
-            // contract state
-            [1, 0, 0, 0, 0, 0, 0, 0],
-            [2, 0, 0, 0, 0, 0, 0, 0],
-            [3, 0, 0, 0, 0, 0, 0, 0],
-            [4, 0, 0, 0, 0, 0, 0, 0],
-            [5, 0, 0, 0, 0, 0, 0, 0],
-            [6, 0, 0, 0, 0, 0, 0, 0],
-            [7, 0, 0, 0, 0, 0, 0, 0],
-            [8, 0, 0, 0, 0, 0, 0, 0],
-            [9, 0, 0, 0, 0, 0, 0, 0],
+            // Span<Array<felt>>
+            [
+                // contract state
+                [1, 0, 0, 0, 0, 0, 0, 0],
+                [2, 0, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 0, 0, 0, 0],
+                [4, 0, 0, 0, 0, 0, 0, 0],
+                [5, 0, 0, 0, 0, 0, 0, 0],
+                [6, 0, 0, 0, 0, 0, 0, 0],
+                [7, 0, 0, 0, 0, 0, 0, 0],
+                [8, 0, 0, 0, 0, 0, 0, 0],
+                [9, 0, 0, 0, 0, 0, 0, 0],
+            ]
         ]
     ]);
 
