@@ -6,6 +6,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
+    easy::felt252_bigint,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -378,7 +379,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    /*
+    /* possible entry points:
     erc20::erc20::erc_20::__external::get_name@0([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::get_symbol@122([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::get_decimals@244([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
@@ -391,7 +392,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     erc20::erc20::erc_20::__external::increase_allowance@1360([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::decrease_allowance@1531([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__constructor::constructor@1702([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-
      */
 
     let params_input = json!([
@@ -412,15 +412,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Span<Array<felt>>
             [
                 // contract state
-                [1, 0, 0, 0, 0, 0, 0, 0],
-                [2, 0, 0, 0, 0, 0, 0, 0],
-                [3, 0, 0, 0, 0, 0, 0, 0],
-                [4, 0, 0, 0, 0, 0, 0, 0],
-                [5, 0, 0, 0, 0, 0, 0, 0],
-                [6, 0, 0, 0, 0, 0, 0, 0],
-                [7, 0, 0, 0, 0, 0, 0, 0],
-                [8, 0, 0, 0, 0, 0, 0, 0],
-                [9, 0, 0, 0, 0, 0, 0, 0],
+                felt252_bigint(1),
+                felt252_bigint(2),
+                felt252_bigint(3),
+                felt252_bigint(4),
+                felt252_bigint(5),
+                felt252_bigint(6),
+                felt252_bigint(7),
+                felt252_bigint(8),
+                felt252_bigint(9),
+                felt252_bigint(11),
+                felt252_bigint(12),
+                felt252_bigint(13),
+                felt252_bigint(14),
+                felt252_bigint(15),
             ]
         ]
     ]);
