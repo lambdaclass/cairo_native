@@ -333,6 +333,67 @@ Options:
   -h, --help                           Print help
 ```
 
+# Easy API example
+
+This is an example using the "easy" API that requires the least setup to get running, it allows
+you to compile and execute a program using the JIT. The inputs and outputs in this case are
+serialized using serde_json (so the format is JSON).
+
+Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, even the implicits (builtins)
+such as `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them but `GasBuiltin` can simply be
+passed as `null`.
+
+If the wrong inputs are passed, an error is reporting showing the needed inputs. You can also check the needed inputs by
+compiling the program to sierra and checking the arguments of the entry point you chose, it will look like:
+
+```
+example::example::main@0([0]: Pedersen, [1]: felt252, [2]: felt252) -> (Pedersen, felt252);
+```
+
+Here in this case, we take the pedersen builtin and 2 felts. so we would pass the json:
+
+```
+[null, [1,0,0,0,0,0,0,0],  [2,0,0,0,0,0,0,0]]
+```
+
+The first null is the pedersen builtin, in cairo-native most builtins but `GasBuiltin` are not used at all, so `null` works.
+
+The 2 felts are encoded as a array of u32 of length 8. In little endian order.
+You can use the functions provided on the `cairo_native::easy` module `felt252_str`, `felt252_bigint` and `felt252_short_str`
+to encode felts to this format easily.
+
+
+Example code:
+
+```rust
+use cairo_native::easy::{compile_and_execute, felt252_short_str};
+use serde_json::json;
+use std::{io::stdout, path::Path};
+
+fn main() {
+    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
+    std::env::set_var(
+        "CARGO_MANIFEST_DIR",
+        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+    );
+
+    #[cfg(not(feature = "with-runtime"))]
+    compile_error!("This example requires the `with-runtime` feature to be active.");
+
+    let name = felt252_short_str("user");
+
+    // Compile and execute the given sierra program, with the inputs and outputs serialized using JSON.
+    compile_and_execute(
+        Path::new("programs/examples/hello.cairo"),
+        "hello::hello::greet",
+        json!([name]),
+        &mut serde_json::Serializer::new(stdout()),
+    )
+    .unwrap();
+    println!();
+}
+```
+
 ## Benchmarking
 
 ### Requirements

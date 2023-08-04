@@ -20,6 +20,7 @@ name = "sierrajit"
 required-features = ["build-cli"]
 
 [features]
+default = ["build-cli", "with-runtime"]
 build-cli = ["clap", "serde_json", "tracing-subscriber"]
 with-runtime = ["cairo-native-runtime"]
 
