@@ -342,7 +342,7 @@ Options:
   -h, --help                           Print help
 ```
 
-# Easy API example
+# API usage example
 
 This is an example using the "easy" API that requires the least setup to get running, it allows
 you to compile and execute a program using the JIT. The inputs and outputs in this case are
