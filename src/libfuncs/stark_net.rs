@@ -482,16 +482,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -961,16 +967,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -1318,16 +1330,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -1905,16 +1923,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -2198,16 +2222,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -2484,16 +2514,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -2936,16 +2972,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -3287,16 +3329,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -3680,16 +3728,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -3999,16 +4053,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
@@ -4365,16 +4425,22 @@ where
         let ptr = entry
             .append_operation(
                 OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[(
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    )])
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(variant_tys[1].0).into(),
+                        ),
+                    ])
                     .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::pointer(variant_tys[1].0, 0)])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             )
             .result(0)?
