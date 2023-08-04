@@ -1,7 +1,6 @@
 #![feature(strict_provenance)]
 
 use cairo_felt::Felt252;
-use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
@@ -24,7 +23,6 @@ use melior::{
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
-use num_bigint::{BigInt, BigUint};
 use serde_json::json;
 use std::io;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
