@@ -9,14 +9,16 @@ use crate::{
         runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
     utils,
     values::ValueBuilder,
 };
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
-    ids::FunctionId,
-    program::Program,
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        GenericLibfunc, GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -26,8 +28,9 @@ use melior::{
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
+use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserializer, Serializer};
-use std::fmt;
+use std::{fmt, ops::Neg, path::Path};
 
 /// The possible errors encountered when calling [`compile_and_execute`]
 pub enum Error<'de, TType, TLibfunc, D, S>
@@ -112,20 +115,33 @@ where
 /// For short programs this function may suffice, but as the program grows the other interface is
 /// preferred since there is some stuff that should be cached, such as the MLIR context and the
 /// execution engines for programs that will be run multiple times.
-pub fn compile_and_execute<'de, TType, TLibfunc, D, S>(
-    program: &Program,
-    function_id: &FunctionId,
+pub fn compile_and_execute<'de, D, S>(
+    program: &Path,
+    entry_point: &str,
     params: D,
     returns: S,
-) -> Result<(), Error<'de, TType, TLibfunc, D, S>>
+) -> Result<(), Box<Error<'de, CoreType, CoreLibfunc, D, S>>>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
     S: Serializer,
 {
+    // Compile the cairo program to sierra.
+    let program = &cairo_lang_compiler::compile_cairo_project_at_path(
+        program,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let function_id = &program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
+        .unwrap()
+        .id;
+
     // Initialize MLIR.
     let context = Context::new();
     context.append_dialect_registry(&{
@@ -140,8 +156,8 @@ where
     // Compile the program.
     let mut module = Module::new(Location::unknown(&context));
     let mut metadata = MetadataStorage::new();
-    let registry =
-        ProgramRegistry::<TType, TLibfunc>::new(program).map_err(|e| Error::Compile(e.into()))?;
+    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
+        .map_err(|e| Error::Compile(e.into()))?;
 
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
@@ -189,7 +205,7 @@ where
     utils::register_runtime_symbols(&engine);
 
     // Execute
-    crate::execute::<TType, TLibfunc, D, S>(
+    crate::execute::<CoreType, CoreLibfunc, D, S>(
         &engine,
         &registry,
         function_id,
@@ -216,4 +232,45 @@ where
     });
 
     Ok(())
+}
+
+// Parse numeric string into felt, wrapping negatives around the prime modulo.
+pub fn felt252_str(value: &str) -> [u32; 8] {
+    let value = value
+        .parse::<BigInt>()
+        .expect("value must be a digit number");
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
+pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+    let value: BigInt = value.into();
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+// Parse a short felt string into felt, wrapping negatives around the prime modulo.
+pub fn felt252_short_str(value: &str) -> [u32; 8] {
+    let values: Vec<_> = value
+        .chars()
+        .filter(|&c| c.is_ascii())
+        .map(|c| c as u8)
+        .collect();
+
+    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
+    digits.resize(8, 0);
+    digits.try_into().unwrap()
 }
