@@ -251,7 +251,7 @@ where
     Ok(())
 }
 
-// Parse a numeric string into felt, wrapping negatives around the prime modulo.
+/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt252_str(value: &str) -> [u32; 8] {
     let value = value
         .parse::<BigInt>()
