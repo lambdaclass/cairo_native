@@ -1,4 +1,4 @@
-.PHONY: build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
 
 #
 # Environment detection.
@@ -12,6 +12,23 @@ endif
 ifeq ($(wildcard ./corelib/.),)
   $(shell ./scripts/fetch-corelibs.sh)
 endif
+
+usage:
+	@echo "Usage:"
+	@echo "    build:        Builds the cairo-native library and binaries."
+	@echo "    build-native: Builds cairo-native with the target-cpu=native rust flag."
+	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
+	@echo "    check:        Checks format and lints."
+	@echo "    test:         Runs standard tests."
+	@echo "    proptest:     Runs property tests."
+	@echo "    coverage:     Computes test coverage."
+	@echo "    doc:          Builds documentation."
+	@echo "    doc-open:     Opens documentation."
+	@echo "    book:         Builds and serves the documentation book."
+	@echo "    bench:        Runs the hyperfine benchmark script."
+	@echo "    bench-ci:     Runs the criterion benchmarks for CI."
+	@echo "    install:      Invokes cargo to install cairo-native."
+	@echo "    clean:        Cleans the built artifacts."
 
 build:
 	cargo build --release --all-features
