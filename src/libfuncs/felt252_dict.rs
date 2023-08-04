@@ -87,7 +87,7 @@ pub fn build_squash<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    _metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -126,8 +126,8 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 0]));
-        assert_eq!(result, json!([null, null, 0, []]));
+        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
+        assert_eq!(result, json!([null, null, 590090, []]));
     }
 
     #[test]
@@ -141,8 +141,8 @@ mod test {
                 dict.get(2)
             }
         );
-        let result = run_program(&program, "run_test", json!([(), (), 0]));
-        assert_eq!(result, json!([null, null, 0, 1]));
+        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
+        assert_eq!(result, json!([null, null, 578950, 1]));
     }
     #[test]
     fn run_dict_insert_ret_dict() {

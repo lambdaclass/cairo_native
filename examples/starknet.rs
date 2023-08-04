@@ -8,7 +8,10 @@ use cairo_lang_sierra::{
 };
 use cairo_native::{
     metadata::{
-        runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        syscall_handler::SyscallHandlerMeta,
+        MetadataStorage,
     },
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::register_runtime_symbols,
@@ -332,6 +335,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .insert(SyscallHandlerMeta::new(&SyscallHandler))
         .unwrap();
 
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
+
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -379,6 +397,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &entry_point.id,
         params_input,
         &mut serde_json::Serializer::pretty(io::stdout()),
+        required_initial_gas,
     )
     .unwrap();
     println!();

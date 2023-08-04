@@ -154,6 +154,12 @@ where
             Self::Uninitialized(info) => {
                 self::uninitialized::build(context, module, registry, metadata, info)
             }
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 
@@ -235,6 +241,12 @@ where
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
+            CoreTypeConcrete::Sint8(_) => get_integer_layout(8),
+            CoreTypeConcrete::Sint16(_) => get_integer_layout(16),
+            CoreTypeConcrete::Sint32(_) => get_integer_layout(32),
+            CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
+            CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         })
     }
 

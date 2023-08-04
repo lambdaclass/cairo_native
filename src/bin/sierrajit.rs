@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
     ProgramParser,
 };
 use cairo_native::{
+    metadata::gas::{GasMetadata, MetadataComputationConfig},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::register_runtime_symbols,
 };
@@ -35,6 +36,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -83,6 +85,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+        info!(
+            "Initial required gas: {}",
+            required_initial_gas.unwrap_or(0)
+        );
+        // Metadata used to insert another metadata on each statement, so withdraw gas can know how much to withdraw.
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
+
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -130,6 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(io::stdout()),
+                required_initial_gas,
             )
             .unwrap_or_else(|e| match &*e {
                 cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
@@ -156,6 +179,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &entry_point.id,
                 &mut params,
                 &mut serde_json::Serializer::pretty(&mut file),
+                required_initial_gas,
             )
             .unwrap();
             writeln!(file)?;
@@ -210,10 +234,6 @@ struct CmdLine {
     outputs: Option<StdioOrPath>,
     #[clap(short = 'p', long = "print-outputs")]
     print_outputs: bool,
-    //
-    // TODO: Uncomment after removing builtins from arguments and returns.
-    // #[clap(short = 'g', long = "available-gas")]
-    // available_gas: Option<usize>,
 }
 
 #[derive(Clone, Debug)]

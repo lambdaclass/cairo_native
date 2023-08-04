@@ -8,7 +8,7 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::MetadataStorage,
+    metadata::{gas::GasCost, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -19,8 +19,15 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm,
+    },
+    ir::{
+        attribute::{IntegerAttribute, StringAttribute},
+        r#type::IntegerType,
+        Attribute, Block, Location, ValueLike,
+    },
     Context,
 };
 
@@ -62,7 +69,7 @@ pub fn build_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -71,17 +78,50 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Implement libfunc.
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 1).into()).into(),
-        location,
-    ));
+    let range_check = entry.argument(0)?.into();
+    let current_gas = entry.argument(1)?.into();
+
+    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+
+    let gas_cost_val = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(
+                cost.unwrap_or(0) as i64,
+                IntegerType::new(context, 64).into(),
+            )
+            .into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let is_enough = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Uge,
+            current_gas,
+            gas_cost_val,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let resulting_gas = entry
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[current_gas, gas_cost_val],
+            &[gas_cost_val.r#type()],
+            location,
+        ))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.cond_br(
-        op0.result(0)?.into(),
+        is_enough,
         [0, 1],
-        [&[entry.argument(0)?.into(), entry.argument(1)?.into()]; 2],
+        [&[range_check, resulting_gas]; 2],
         location,
     ));
 
@@ -95,7 +135,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -104,17 +144,47 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Implement libfunc.
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 1).into()).into(),
-        location,
-    ));
+    let range_check = entry.argument(0)?.into();
+    let current_gas = entry.argument(1)?.into();
+
+    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+    let gas_cost_val = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u64_type)).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let is_enough = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Uge,
+            current_gas,
+            gas_cost_val,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let resulting_gas = entry
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[current_gas, gas_cost_val],
+            &[gas_cost_val.r#type()],
+            location,
+        ))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.cond_br(
-        op0.result(0)?.into(),
+        is_enough,
         [0, 1],
-        [&[entry.argument(0)?.into(), entry.argument(1)?.into()]; 2],
+        [&[range_check, resulting_gas]; 2],
         location,
     ));
 
@@ -147,4 +217,41 @@ where
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::{load_cairo, run_program};
+    use serde_json::json;
+
+    #[test]
+    fn run_withdraw_gas() {
+        #[rustfmt::skip]
+        let program = load_cairo!(
+            use gas::withdraw_gas;
+
+            fn run_test() {
+                let mut i = 10;
+
+                loop {
+                    if i == 0 {
+                        break;
+                    }
+
+                    match withdraw_gas() {
+                        Option::Some(()) => {
+                            i = i - 1;
+                        },
+                        Option::None(()) => {
+                            break;
+                        }
+                    };
+                    i = i - 1;
+                }
+            }
+        );
+
+        let result = run_program(&program, "run_test", json!([null, 60000]));
+        assert_eq!(result, json!([null, 44260, [0, [[]]]]));
+    }
 }

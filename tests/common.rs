@@ -9,7 +9,7 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::{
-    Arg, RunResult, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
+    Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -20,7 +20,11 @@ use cairo_lang_sierra::{
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     types::felt252::PRIME,
     utils::register_runtime_symbols,
 };
@@ -141,6 +145,13 @@ pub fn run_native_program(
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
         .expect("Could not create the test program registry.");
 
+    let entry_point_id = &program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+        .expect("Test program entry point not found.")
+        .id;
+
     let context = Context::new();
     context.append_dialect_registry(&{
         let registry = DialectRegistry::new();
@@ -155,6 +166,21 @@ pub fn run_native_program(
     let mut metadata = MetadataStorage::new();
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -205,6 +231,7 @@ pub fn run_native_program(
             .id,
         args,
         serde_json::value::Serializer,
+        required_initial_gas,
     )
     .expect("Test program execution failed.")
 }
@@ -215,9 +242,9 @@ pub fn run_vm_program(
     entry_point: &str,
     args: &[Arg],
     gas: Option<usize>,
-) -> Result<RunResult, RunnerError> {
+) -> Result<RunResultStarknet, RunnerError> {
     let runner = &program.2;
-    runner.run_function(
+    runner.run_function_with_starknet_context(
         runner.find_function(entry_point).unwrap(),
         args,
         gas,
@@ -234,9 +261,8 @@ pub fn run_vm_program(
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
-    vm_result: &RunResult,
+    vm_result: &RunResultStarknet,
     native_result: &serde_json::Value,
-    ignore_gas: bool,
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
@@ -260,7 +286,6 @@ pub fn compare_outputs(
 
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
-        ignore_gas: bool,
         native_rets: &mut impl Iterator<Item = &'a Value>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u64,
@@ -273,7 +298,6 @@ pub fn compare_outputs(
                 for container in array_container {
                     check_next_type(
                         reg.get_type(&info.ty).unwrap(),
-                        ignore_gas,
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -322,10 +346,7 @@ pub fn compare_outputs(
 
                 // sometimes gas is not returned?
                 let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
-
-                if !ignore_gas {
-                    prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
-                }
+                prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
@@ -378,7 +399,13 @@ pub fn compare_outputs(
                 prop_assert!(vm_rets.peek().is_some());
                 prop_assert!(native_rets.peek().is_some());
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u128 = native_rets.next().unwrap().as_u64().unwrap().into();
+                let native_value: u128 = match native_rets.next().unwrap() {
+                    Value::Number(n) => n.to_string().parse().unwrap(),
+                    _ => {
+                        prop_assert!(false, "invalid u128 value type");
+                        unreachable!()
+                    }
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
@@ -418,7 +445,7 @@ pub fn compare_outputs(
                         .as_ref()
                         .unwrap()
                         .as_str()
-                        .starts_with("core::PanicResult"),
+                        .starts_with("core::panics::PanicResult"),
                     _ => false,
                 };
 
@@ -434,7 +461,6 @@ pub fn compare_outputs(
                 } else if is_panic {
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
                         &mut [&enum_container[1]].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -450,7 +476,6 @@ pub fn compare_outputs(
 
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        ignore_gas,
                         &mut [&enum_container[1]].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -463,7 +488,6 @@ pub fn compare_outputs(
                 for (field, container) in info.members.iter().zip(struct_container.iter()) {
                     check_next_type(
                         reg.get_type(field).unwrap(),
-                        ignore_gas,
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -486,8 +510,22 @@ pub fn compare_outputs(
             CoreTypeConcrete::Poseidon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
 
         Ok(())
@@ -495,7 +533,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(ty, ignore_gas, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
+        check_next_type(ty, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
     }
 
     Ok(())

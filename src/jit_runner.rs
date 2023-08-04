@@ -2,7 +2,10 @@
 
 use crate::{
     error::{
-        jit_engine::{make_deserializer_error, make_serializer_error, make_type_builder_error},
+        jit_engine::{
+            make_deserializer_error, make_insuficient_gas_error, make_serializer_error,
+            make_type_builder_error,
+        },
         JitRunnerError,
     },
     libfuncs::LibfuncBuilder,
@@ -39,6 +42,7 @@ pub fn execute<'de, TType, TLibfunc, D, S>(
     function_id: &FunctionId,
     params: D,
     returns: S,
+    required_initial_gas: Option<u64>,
 ) -> Result<S::Ok, JitRunnerError<'de, TType, TLibfunc, D, S>>
 where
     TType: GenericType,
@@ -58,6 +62,30 @@ where
             params: &entry_point.signature.param_types,
         })
         .map_err(make_deserializer_error)?;
+
+    // If program has a required initial gas, check if a gas builting exists
+    // and check if the passed gas was enough, if so, deduct the required gas before execution.
+    if let Some(required_initial_gas) = required_initial_gas {
+        for (id, param) in entry_point.signature.param_types.iter().zip(params.iter()) {
+            if id.debug_name.as_deref() == Some("GasBuiltin") {
+                let gas_builtin = unsafe { *param.cast::<u64>().as_ptr() };
+
+                if gas_builtin < required_initial_gas {
+                    return Err(make_insuficient_gas_error(
+                        required_initial_gas,
+                        gas_builtin,
+                    ));
+                }
+
+                let starting_gas = gas_builtin - required_initial_gas;
+
+                unsafe {
+                    // update gas with the starting gas
+                    param.cast::<u64>().as_ptr().write(starting_gas);
+                }
+            }
+        }
+    }
 
     let mut complex_results = entry_point.signature.ret_types.len() > 1;
     let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(

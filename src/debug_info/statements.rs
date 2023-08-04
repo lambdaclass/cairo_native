@@ -1,8 +1,7 @@
 use cairo_lang_compiler::db::RootDatabase;
-use cairo_lang_defs::diagnostic_utils::{StableLocation, StableLocationOption};
 use cairo_lang_diagnostics::DiagnosticAdded;
 use cairo_lang_lowering::{
-    db::LoweringGroup, FlatLowered, Statement as LoweringStatement, Variable,
+    db::LoweringGroup, ids::LocationId, FlatLowered, Statement as LoweringStatement, Variable,
 };
 use cairo_lang_sierra::{
     ids::ConcreteLibfuncId,
@@ -20,7 +19,7 @@ pub fn find_all_statements(
     db: &RootDatabase,
     contains_libfunc: impl Fn(&ConcreteLibfuncId) -> bool,
     program: &Program,
-) -> Result<HashMap<StatementIdx, StableLocation>, DiagnosticAdded> {
+) -> Result<HashMap<StatementIdx, LocationId>, DiagnosticAdded> {
     program
         .funcs
         .iter()
@@ -39,7 +38,7 @@ fn find_statement_locations(
     contains_libfunc: &impl Fn(&ConcreteLibfuncId) -> bool,
     function: &Function,
     statements: &[Statement],
-) -> Result<HashMap<StatementIdx, StableLocation>, DiagnosticAdded> {
+) -> Result<HashMap<StatementIdx, LocationId>, DiagnosticAdded> {
     let function_id = db.lookup_intern_sierra_function(function.id.clone());
     let function_impl = db.function_with_body_sierra(function_id.body(db)?.unwrap())?;
 
@@ -93,7 +92,7 @@ fn map_sierra_to_pre_sierra_statements<'a>(
 fn remap_sierra_statements_to_locations(
     sierra_to_pre_sierra_mappings: HashMap<StatementIdx, &GenStatement<LabelId>>,
     flat_lowered: &FlatLowered,
-) -> HashMap<StatementIdx, StableLocation> {
+) -> HashMap<StatementIdx, LocationId> {
     let sierra_to_pre_sierra_mappings = sierra_to_pre_sierra_mappings
         .into_iter()
         .map(|(k, v)| (k.0, v))
@@ -107,30 +106,23 @@ fn remap_sierra_statements_to_locations(
     sierra_to_pre_sierra_mappings
         .into_iter()
         .zip(lowering_iter)
-        .filter_map(|((statement_idx, _lhs_statement), rhs_statement)| {
-            locate_statement(&flat_lowered.variables, rhs_statement)
-                .map(|location| (StatementIdx(statement_idx), location))
+        .map(|((statement_idx, _lhs_statement), rhs_statement)| {
+            (
+                StatementIdx(statement_idx),
+                locate_statement(&flat_lowered.variables, rhs_statement),
+            )
         })
         .collect()
 }
 
-fn locate_statement(
-    variables: &Arena<Variable>,
-    statement: &LoweringStatement,
-) -> Option<StableLocation> {
+fn locate_statement(variables: &Arena<Variable>, statement: &LoweringStatement) -> LocationId {
     match statement {
-        LoweringStatement::Literal(x) => match variables[x.output].location {
-            StableLocationOption::None => None,
-            StableLocationOption::Some(x) => Some(x),
-        },
-        LoweringStatement::Call(x) => match x.location {
-            StableLocationOption::None => None,
-            StableLocationOption::Some(x) => Some(x),
-        },
-        LoweringStatement::StructConstruct(_) => None,
-        LoweringStatement::StructDestructure(_) => None,
-        LoweringStatement::EnumConstruct(_) => None,
-        LoweringStatement::Snapshot(_) => None,
-        LoweringStatement::Desnap(_) => None,
+        LoweringStatement::Literal(x) => variables[x.output].location,
+        LoweringStatement::Call(x) => x.location,
+        LoweringStatement::StructConstruct(x) => variables[x.output].location,
+        LoweringStatement::StructDestructure(x) => x.input.location,
+        LoweringStatement::EnumConstruct(x) => variables[x.output].location,
+        LoweringStatement::Snapshot(x) => variables[x.output_snapshot].location,
+        LoweringStatement::Desnap(x) => variables[x.output].location,
     }
 }

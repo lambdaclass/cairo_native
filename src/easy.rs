@@ -4,9 +4,13 @@
 
 use crate::{
     libfuncs::LibfuncBuilder,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     types::TypeBuilder,
-    utils::register_runtime_symbols,
+    utils,
     values::ValueBuilder,
 };
 use cairo_lang_sierra::{
@@ -142,6 +146,21 @@ where
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
+    // Gas
+    let required_initial_gas = if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(function_id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    };
+
     crate::compile(&context, &module, program, &registry, &mut metadata, None)
         .map_err(Error::Compile)?;
 
@@ -167,27 +186,34 @@ where
     let engine = ExecutionEngine::new(&module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
+    utils::register_runtime_symbols(&engine);
 
     // Execute
-    crate::execute::<TType, TLibfunc, D, S>(&engine, &registry, function_id, params, returns)
-        .unwrap_or_else(|e| match &*e {
-            crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                panic!(
-                    "Expected inputs with signature: ({})",
-                    registry
-                        .get_function(function_id)
-                        .unwrap()
-                        .signature
-                        .param_types
-                        .iter()
-                        .map(ToString::to_string)
-                        .intersperse_with(|| ", ".to_string())
-                        .collect::<String>()
-                )
-            }
-            e => panic!("{:?}", e),
-        });
+    crate::execute::<TType, TLibfunc, D, S>(
+        &engine,
+        &registry,
+        function_id,
+        params,
+        returns,
+        required_initial_gas,
+    )
+    .unwrap_or_else(|e| match &*e {
+        crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+            panic!(
+                "Expected inputs with signature: ({})",
+                registry
+                    .get_function(function_id)
+                    .unwrap()
+                    .signature
+                    .param_types
+                    .iter()
+                    .map(ToString::to_string)
+                    .intersperse_with(|| ", ".to_string())
+                    .collect::<String>()
+            )
+        }
+        e => panic!("{:?}", e),
+    });
 
     Ok(())
 }
