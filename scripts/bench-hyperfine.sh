@@ -10,8 +10,8 @@ CAIRO_SRCS=$(find \
 IFS=$'\n' read -rd '' -a CAIRO_SRCS <<<"$CAIRO_SRCS"
 
 CAIRO_RUN="${CAIRO_RUN:=cairo-run}"
-COMPILER_CLI="$ROOT_DIR/target/release/sierra2mlir"
-JIT_CLI="$ROOT_DIR/target/release/sierrajit"
+COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-dump"
+JIT_CLI="$ROOT_DIR/target/release/cairo-native-run"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
 
 # Initial setup.

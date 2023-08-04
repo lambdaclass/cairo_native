@@ -276,7 +276,7 @@ Or with your native CPU Architecture for even more perfomance (usually):
 make build-native
 ```
 
-- Install `sierra2mlir` and `sierrajit`:
+- Install the `cairo-native-dump` and `cairo-native-run` commands:
 
 ```bash
 make install
@@ -314,9 +314,9 @@ make check
 
 ## Command Line Interface
 
-sierra2mlir:
+`cairo-native-dump`:
 ```
-Usage: sierra2mlir [OPTIONS] <INPUT>
+Usage: cairo-native-dump [OPTIONS] <INPUT>
 
 Arguments:
   <INPUT>
@@ -326,9 +326,9 @@ Options:
   -h, --help             Print help
 ```
 
-sierrajit:
+`cairo-native-run`:
 ```
-Usage: sierrajit [OPTIONS] <INPUT> <ENTRY_POINT>
+Usage: cairo-native-run [OPTIONS] <INPUT> <ENTRY_POINT>
 
 Arguments:
   <INPUT>

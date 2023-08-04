@@ -12,11 +12,11 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 resolver = "2"
 
 [[bin]]
-name = "sierra2mlir"
+name = "cairo-native-dump"
 required-features = ["build-cli"]
 
 [[bin]]
-name = "sierrajit"
+name = "cairo-native-run"
 required-features = ["build-cli"]
 
 [features]
