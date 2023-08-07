@@ -27,13 +27,13 @@ with-runtime = ["cairo-native-runtime"]
 [dependencies]
 bumpalo = "3.13"
 cairo-felt = "0.8.5"
-cairo-lang-compiler = "2.1.0-rc4"
-cairo-lang-defs = "2.1.0-rc4"
-cairo-lang-diagnostics = "2.1.0-rc4"
-cairo-lang-filesystem = "2.1.0-rc4"
-cairo-lang-lowering = "2.1.0-rc4"
-cairo-lang-sierra = "2.1.0-rc4"
-cairo-lang-sierra-generator = "2.1.0-rc4"
+cairo-lang-compiler = "2.1.0"
+cairo-lang-defs = "2.1.0"
+cairo-lang-diagnostics = "2.1.0"
+cairo-lang-filesystem = "2.1.0"
+cairo-lang-lowering = "2.1.0"
+cairo-lang-sierra = "2.1.0"
+cairo-lang-sierra-generator = "2.1.0"
 id-arena = "2.2"
 itertools = "0.11"
 lazy_static = "1.4"
@@ -52,13 +52,13 @@ serde_json = { version = "1.0", features = ["arbitrary_precision"], optional = t
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
-cairo-lang-sierra-gas = "2.1.0-rc4"
-cairo-lang-sierra-ap-change = "2.1.0-rc4"
-cairo-lang-utils = "2.1.0-rc4"
+cairo-lang-sierra-gas = "2.1.0"
+cairo-lang-sierra-ap-change = "2.1.0"
+cairo-lang-utils = "2.1.0"
 
 [dev-dependencies]
-cairo-lang-runner = "2.1.0-rc4"
-cairo-lang-starknet = "2.1.0-rc4"
+cairo-lang-runner = "2.1.0"
+cairo-lang-starknet = "2.1.0"
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions = "1.4"
