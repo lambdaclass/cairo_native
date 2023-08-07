@@ -83,7 +83,7 @@ Each libfunc takes input variables and outputs some other variables. Note that i
 A libfunc usually works with a `type`, such as `felt252`. The compiler needs to have information on this type, such as its layout and size.
 This is defined in `src/types.rs` and `src/types/{typename}.rs`.
 
-On each `src/types/{typename}.rs` such as ``src/types/felt252.rs` you will find a `build` function, this has all the necessary arguments
+On each `src/types/{typename}.rs` such as `src/types/felt252.rs` you will find a `build` function, this has all the necessary arguments
 to generate the proper type and return a MLIR type, such as `IntegerType::new(context, 252)` (a 252 bit integer).
 
 In `src/types.rs` we need to declare the type layout, for example the felt252 would have the layout returned by `get_integer_layout(252)`.
