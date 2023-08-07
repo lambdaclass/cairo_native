@@ -7,6 +7,6 @@ curl https://raw.githubusercontent.com/starkware-libs/cairo/b4e049a13b62dc493ac3
 
 cargo run --profile=optimized-dev \
     --features=build-cli,with-runtime \
-    --bin=sierra2mlir -- erc20.sierra
+    --bin="cairo-native-dump" -- erc20.sierra
 
 rm erc20.sierra
