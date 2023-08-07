@@ -30,7 +30,7 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserializer, Serializer};
-use std::{fmt, ops::Neg, path::Path};
+use std::{fmt, ops::Neg, path::Path, sync::Arc};
 
 /// The possible errors encountered when calling [`compile_and_execute`]
 pub enum Error<'de, TType, TLibfunc, D, S>
@@ -126,14 +126,31 @@ where
     S: Serializer,
 {
     // Compile the cairo program to sierra.
-    let program = &cairo_lang_compiler::compile_cairo_project_at_path(
-        program,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let program = &if program
+        .extension()
+        .map(|x| {
+            x.to_ascii_lowercase()
+                .to_string_lossy()
+                .eq_ignore_ascii_case("cairo")
+        })
+        .unwrap_or(false)
+    {
+        cairo_lang_compiler::compile_cairo_project_at_path(
+            program,
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    } else {
+        let source = std::fs::read_to_string(program).unwrap();
+        Arc::new(
+            cairo_lang_sierra::ProgramParser::new()
+                .parse(&source)
+                .unwrap(),
+        )
+    };
 
     let function_id = &program
         .funcs
@@ -234,7 +251,7 @@ where
     Ok(())
 }
 
-// Parse numeric string into felt, wrapping negatives around the prime modulo.
+/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt252_str(value: &str) -> [u32; 8] {
     let value = value
         .parse::<BigInt>()
@@ -249,7 +266,7 @@ pub fn felt252_str(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
-/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
+/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
     let value: BigInt = value.into();
     let value = match value.sign() {
@@ -262,7 +279,7 @@ pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
-// Parse a short felt string into felt, wrapping negatives around the prime modulo.
+/// Parse a short string into a felt that can be used in the cairo-native input.
 pub fn felt252_short_str(value: &str) -> [u32; 8] {
     let values: Vec<_> = value
         .chars()

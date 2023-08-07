@@ -1153,6 +1153,20 @@ mod test {
     use serde_json::json;
 
     #[test]
+    fn run_roundtrip() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test(x: Array<u32>) -> Array<u32> {
+                x
+            }
+        );
+        let result = run_program(&program, "run_test", json!([[1, 2]]));
+
+        assert_eq!(result, json!([[1, 2]]));
+    }
+
+    #[test]
     fn run_append() {
         let program = load_cairo!(
             use array::ArrayTrait;

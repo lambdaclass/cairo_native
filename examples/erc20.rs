@@ -6,6 +6,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
+    easy::{felt252_bigint, felt252_short_str},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -275,6 +276,15 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
+    std::env::set_var(
+        "CARGO_MANIFEST_DIR",
+        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+    );
+
+    #[cfg(not(feature = "with-runtime"))]
+    compile_error!("This example requires the `with-runtime` feature to be active.");
+
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
@@ -369,7 +379,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    /*
+    /* possible entry points:
     erc20::erc20::erc_20::__external::get_name@0([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::get_symbol@122([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::get_decimals@244([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
@@ -382,29 +392,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     erc20::erc20::erc_20::__external::increase_allowance@1360([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__external::decrease_allowance@1531([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
     erc20::erc20::erc_20::__constructor::constructor@1702([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-
      */
 
     let params_input = json!([
-        null,     // pedersen
-        null,     // range check
-        u64::MAX, // gas
+        // pedersen
+        null,
+        // range check
+        null,
+        // gas
+        u64::MAX,
+        // system
         metadata
             .get::<SyscallHandlerMeta>()
             .unwrap()
             .as_ptr()
-            .addr(), // system
+            .addr(),
+        // The amount of params change depending on the contract function called
+        // Struct<Span<Array<felt>>>
         [
-            // contract state
-            [1, 0, 0, 0, 0, 0, 0, 0],
-            [2, 0, 0, 0, 0, 0, 0, 0],
-            [3, 0, 0, 0, 0, 0, 0, 0],
-            [4, 0, 0, 0, 0, 0, 0, 0],
-            [5, 0, 0, 0, 0, 0, 0, 0],
-            [6, 0, 0, 0, 0, 0, 0, 0],
-            [7, 0, 0, 0, 0, 0, 0, 0],
-            [8, 0, 0, 0, 0, 0, 0, 0],
-            [9, 0, 0, 0, 0, 0, 0, 0],
+            // Span<Array<felt>>
+            [
+                // contract state
+
+                // name
+                felt252_short_str("name"),   // name
+                felt252_short_str("symbol"), // symbol
+                felt252_bigint(0),           // decimals
+                felt252_bigint(i64::MAX),    // initial supply
+                felt252_bigint(4),           // contract address
+                felt252_bigint(6),           // ??
+            ]
         ]
     ]);
 
@@ -418,6 +435,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .unwrap();
     println!();
+
+    // Useful code to print a short felt string returned from the json, in case it panics
+    /*
+    let data = vec![
+        1919251315, 543253604, 1751457840, 1953439860, 1768846368, 809115757, 1163019058, 0,
+    ];
+
+    let value = Felt252::new(BigUint::new(data));
+
+    if let Some(shortstring) = as_cairo_short_string(&value) {
+        println!("[DEBUG]\t{shortstring: <31}\t(raw: {})", value.to_bigint())
+    }
+    */
 
     Ok(())
 }

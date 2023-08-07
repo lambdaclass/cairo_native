@@ -203,8 +203,7 @@ where
                 .map_addr(|addr| addr.unchecked_add(offset))
                 .cast()
                 .as_mut() = cap;
+            Ok(target.cast())
         }
-
-        todo!()
     }
 }
