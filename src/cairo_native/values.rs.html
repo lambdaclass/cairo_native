@@ -493,6 +493,10 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 </span><span class="kw">use </span>bumpalo::Bump;
@@ -642,7 +646,7 @@
                 StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             },
             CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -845,7 +849,9 @@
                 CoreTypeConcrete::SegmentArena(info) =&gt; {
                     <span class="self">self</span>::segment_arena::deserialize(deserializer, <span class="self">self</span>.arena, <span class="self">self</span>.registry, info)
                 }
-                CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Snapshot(info) =&gt; {
+                    <span class="self">self</span>::snapshot::deserialize(deserializer, <span class="self">self</span>.arena, <span class="self">self</span>.registry, info)
+                }
                 CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -978,7 +984,9 @@
             CoreTypeConcrete::SegmentArena(info) =&gt; <span class="kw">unsafe </span>{
                 <span class="self">self</span>::segment_arena::serialize(serializer, <span class="self">self</span>.registry, <span class="self">self</span>.ptr, info)
             },
-            CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Snapshot(info) =&gt; <span class="kw">unsafe </span>{
+                <span class="self">self</span>::snapshot::serialize(serializer, <span class="self">self</span>.registry, <span class="self">self</span>.ptr, info)
+            },
             CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),

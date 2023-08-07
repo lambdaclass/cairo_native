@@ -274,6 +274,23 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The easy to use API to compile and execute cairo programs using the MLIR JIT.
 //!
 //! Check out the main [`crate`] docs for more information.
@@ -306,7 +323,7 @@
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
 <span class="kw">use </span>serde::{Deserializer, Serializer};
-<span class="kw">use </span>std::{fmt, ops::Neg, path::Path};
+<span class="kw">use </span>std::{fmt, ops::Neg, path::Path, sync::Arc};
 
 <span class="doccomment">/// The possible errors encountered when calling [`compile_and_execute`]
 </span><span class="kw">pub enum </span>Error&lt;<span class="lifetime">&#39;de</span>, TType, TLibfunc, D, S&gt;
@@ -402,14 +419,31 @@
     S: Serializer,
 {
     <span class="comment">// Compile the cairo program to sierra.
-    </span><span class="kw">let </span>program = <span class="kw-2">&amp;</span>cairo_lang_compiler::compile_cairo_project_at_path(
-        program,
-        CompilerConfig {
-            replace_ids: <span class="bool-val">true</span>,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    </span><span class="kw">let </span>program = <span class="kw-2">&amp;</span><span class="kw">if </span>program
+        .extension()
+        .map(|x| {
+            x.to_ascii_lowercase()
+                .to_string_lossy()
+                .eq_ignore_ascii_case(<span class="string">&quot;cairo&quot;</span>)
+        })
+        .unwrap_or(<span class="bool-val">false</span>)
+    {
+        cairo_lang_compiler::compile_cairo_project_at_path(
+            program,
+            CompilerConfig {
+                replace_ids: <span class="bool-val">true</span>,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>source = std::fs::read_to_string(program).unwrap();
+        Arc::new(
+            cairo_lang_sierra::ProgramParser::new()
+                .parse(<span class="kw-2">&amp;</span>source)
+                .unwrap(),
+        )
+    };
 
     <span class="kw">let </span>function_id = <span class="kw-2">&amp;</span>program
         .funcs
@@ -510,7 +544,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="comment">// Parse numeric string into felt, wrapping negatives around the prime modulo.
+<span class="doccomment">/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
 </span><span class="kw">pub fn </span>felt252_str(value: <span class="kw-2">&amp;</span>str) -&gt; [u32; <span class="number">8</span>] {
     <span class="kw">let </span>value = value
         .parse::&lt;BigInt&gt;()
@@ -525,7 +559,7 @@
     u32_digits.try_into().unwrap()
 }
 
-<span class="doccomment">/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
+<span class="doccomment">/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
 </span><span class="kw">pub fn </span>felt252_bigint(value: <span class="kw">impl </span>Into&lt;BigInt&gt;) -&gt; [u32; <span class="number">8</span>] {
     <span class="kw">let </span>value: BigInt = value.into();
     <span class="kw">let </span>value = <span class="kw">match </span>value.sign() {
@@ -538,7 +572,7 @@
     u32_digits.try_into().unwrap()
 }
 
-<span class="comment">// Parse a short felt string into felt, wrapping negatives around the prime modulo.
+<span class="doccomment">/// Parse a short string into a felt that can be used in the cairo-native input.
 </span><span class="kw">pub fn </span>felt252_short_str(value: <span class="kw-2">&amp;</span>str) -&gt; [u32; <span class="number">8</span>] {
     <span class="kw">let </span>values: Vec&lt;<span class="kw">_</span>&gt; = value
         .chars()

@@ -207,7 +207,6 @@
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ValueBuilder;
 <span class="kw">use crate</span>::{
     types::TypeBuilder,
@@ -413,9 +412,8 @@
                 .map_addr(|addr| addr.unchecked_add(offset))
                 .cast()
                 .as_mut() = cap;
+            <span class="prelude-val">Ok</span>(target.cast())
         }
-
-        <span class="macro">todo!</span>()
     }
 }
 </code></pre></div></section></main></body></html>

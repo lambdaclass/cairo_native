@@ -202,27 +202,6 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
@@ -242,9 +221,6 @@
 //! testing and prototyping, but it&#39;s **NOT intended** to be anything more than that.
 //!
 //! ```
-//! # use cairo_lang_compiler::CompilerConfig;
-//! # use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-//! # use num_bigint::BigUint;
 //! # use serde_json::json;
 //! # use std::{io::stdout, path::Path};
 //! #
@@ -257,31 +233,13 @@
 //! # #[cfg(not(feature = &quot;with-runtime&quot;))]
 //! # compile_error!(&quot;This example requires the `with-runtime` feature to be active.&quot;);
 //! #
-//! # let program = cairo_lang_compiler::compile_cairo_project_at_path(
-//! #     Path::new(&quot;programs/examples/hello.cairo&quot;),
-//! #     CompilerConfig {
-//! #         replace_ids: true,
-//! #         ..Default::default()
-//! #     },
-//! # )
-//! # .unwrap();
-//! #
-//! # let name = {
-//! #     let mut digits = BigUint::from(u32::from_le_bytes(*b&quot;user&quot;)).to_u32_digits();
-//! #     digits.resize(8, 0);
-//! #     digits
-//! # };
-//! #
+//! let name = cairo_native::easy::felt252_short_str(&quot;user&quot;);
+//!
 //! // The easy API requires only the program, the entry point and the de/serializers.
-//! cairo_native::easy::compile_and_execute::&lt;CoreType, CoreLibfunc, _, _&gt;(
-//!     &amp;program,
-//!     &amp;program
-//!         .funcs
-//!         .iter()
-//!         .find(|x| x.id.debug_name.as_deref() == Some(&quot;hello::hello::greet&quot;))
-//!         .unwrap()
-//!         .id,
-//!     json!([[1919251317, 0, 0, 0, 0, 0, 0, 0]]),
+//! cairo_native::easy::compile_and_execute(
+//!     Path::new(&quot;programs/examples/hello.cairo&quot;),
+//!     &quot;hello::hello::greet&quot;,
+//!     json!([name]),
 //!     &amp;mut serde_json::Serializer::new(stdout()),
 //! )
 //! .unwrap();
