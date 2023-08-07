@@ -4,8 +4,8 @@
     params: D,
     returns: S
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;<a class="enum" href="enum.Error.html" title="enum cairo_native::easy::Error">Error</a>&lt;'de, CoreType, CoreLibfunc, D, S&gt;&gt;&gt;<span class="where fmt-newline">where
-    D: <a class="trait" href="https://docs.rs/serde/1.0.181/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,
-    S: <a class="trait" href="https://docs.rs/serde/1.0.181/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer">Serializer</a>,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Shortcut to compile and execute a program.</p>
+    D: <a class="trait" href="https://docs.rs/serde/1.0.183/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,
+    S: <a class="trait" href="https://docs.rs/serde/1.0.183/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer">Serializer</a>,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Shortcut to compile and execute a program.</p>
 <p>For short programs this function may suffice, but as the program grows the other interface is
 preferred since there is some stuff that should be cached, such as the MLIR context and the
 execution engines for programs that will be run multiple times.</p>
