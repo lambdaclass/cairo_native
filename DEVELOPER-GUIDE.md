@@ -89,7 +89,7 @@ to generate the proper type and return a MLIR type, such as `IntegerType::new(co
 In `src/types.rs` we need to declare the type layout, for example the felt252 would have the layout returned by `get_integer_layout(252)`.
 A type that doesn't have size would be `Layout::new::<()>()`, or if the type is a pointer like box: `Layout::new::<*mut ()>()`
 
-When adding a type, we also need to add the **serialization** and **deserialization** functionality, so we can use with the JIT runner.
+When adding a type, we also need to add the **serialization** and **deserialization** functionality, so we can use it with the JIT runner.
 
 You can find this functionality under `src/values.rs` and `src/values/{typename}.rs`. As you can see, the project is quite organized if you have a feel of its layout.
 
