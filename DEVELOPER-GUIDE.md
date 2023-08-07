@@ -1,6 +1,6 @@
 # Cairo Native Development Guide
 
-This is a guide to get you started into being a full fledge Cairo Native developer!
+This is a guide to get you started into being a Cairo Native developer!
 
 Here you will learn about the code layout, MLIR and more.
 
