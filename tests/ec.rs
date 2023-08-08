@@ -54,13 +54,31 @@ fn ec_point_zero() {
 
 #[ignore = "TODO: possible bug in ec_point_from_x_nz"]
 #[test]
-fn ec_point_from_x() {
+fn ec_point_from_x_big() {
     let x = Felt252::new(
         BigUint::from_str(
             "10503791839462130483045092717244804953879649418761481950933471772092536173",
         )
         .unwrap(),
     );
+    let program = &EC_POINT_FROM_X;
+    let result_vm =
+        run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
+    let result_native =
+        run_native_program(program, "run_test", json!([null, feltn(x.to_bigint())]));
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn ec_point_from_x_small() {
+    let x = Felt252::new(BigUint::from_str("1234").unwrap());
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
@@ -87,7 +105,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", json!([null, feltn(a.to_bigint()), feltn(b.to_bigint())]));
+        let result_native = run_native_program(program, "run_test", json!([feltn(a.to_bigint()), feltn(b.to_bigint())]));
 
         compare_outputs(
             &program.1,
