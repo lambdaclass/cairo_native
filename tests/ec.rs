@@ -67,9 +67,6 @@ fn ec_point_from_x() {
     let result_native =
         run_native_program(program, "run_test", json!([null, feltn(x.to_bigint())]));
 
-    dbg!(&result_native);
-    dbg!(&result_vm.value);
-
     compare_outputs(
         &program.1,
         &program.2.find_function("run_test").unwrap().id,
