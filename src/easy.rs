@@ -10,7 +10,7 @@ use crate::{
         MetadataStorage,
     },
     types::{felt252::PRIME, TypeBuilder},
-    utils,
+    utils::{self, register_runtime_symbols},
     values::ValueBuilder,
 };
 use cairo_lang_compiler::CompilerConfig;
@@ -19,6 +19,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         GenericLibfunc, GenericType,
     },
+    program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -290,4 +291,104 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
     digits.resize(8, 0);
     digits.try_into().unwrap()
+}
+
+/// Returns the given entry point.
+pub fn find_entry_point<'a>(
+    program: &'a Program,
+    entry_point: &str,
+) -> Option<&'a GenFunction<StatementIdx>> {
+    program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
+}
+
+/// Creates all the structures needed to compile and create the JIT engine.
+#[allow(clippy::type_complexity)]
+pub fn create_compiler(
+    program: &Program,
+) -> Result<
+    (
+        Context,
+        Module,
+        ProgramRegistry<CoreType, CoreLibfunc>,
+        MetadataStorage,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    // Initialize MLIR.
+    let context = Context::new();
+    context.append_dialect_registry(&{
+        let registry = DialectRegistry::new();
+        register_all_dialects(&registry);
+        registry
+    });
+    context.load_all_available_dialects();
+
+    register_all_passes();
+
+    // Compile the program.
+    let module = Module::new(Location::unknown(&context));
+    let mut metadata = MetadataStorage::new();
+    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
+
+    // Make the runtime library available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    Ok((context, module, registry, metadata))
+}
+
+/// Creates the execution engine, with all symbols registered.
+pub fn create_engine(module: &Module) -> ExecutionEngine {
+    // Create the JIT engine.
+    let engine = ExecutionEngine::new(module, 3, &[], false);
+
+    #[cfg(feature = "with-runtime")]
+    register_runtime_symbols(&engine);
+
+    engine
+}
+
+/// Returns the required initial gas, also inserts de Gas metadata if needed.
+pub fn get_required_initial_gas(
+    program: &Program,
+    metadata: &mut MetadataStorage,
+    entry_point: &GenFunction<StatementIdx>,
+) -> Option<u64> {
+    if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    }
+}
+
+/// Runs the needed MLIR passes on the module to execute with the JIT.
+pub fn run_passes(
+    context: &Context,
+    module: &mut Module,
+) -> std::result::Result<(), melior::Error> {
+    // Lower to LLVM.
+    let pass_manager = PassManager::new(context);
+    pass_manager.enable_verifier(true);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+
+    pass_manager.run(module)
 }

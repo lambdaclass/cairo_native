@@ -2,26 +2,13 @@
 
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program_registry::ProgramRegistry,
-};
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_native::{
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        syscall_handler::SyscallHandlerMeta,
-        MetadataStorage,
+    easy::{
+        create_compiler, create_engine, find_entry_point, get_required_initial_gas, run_passes,
     },
+    metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::register_runtime_symbols,
-};
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
 };
 use serde_json::json;
 use std::{io, path::Path};
@@ -298,37 +285,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .unwrap();
 
-    let entry_point = match program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some("hello_starknet::hello_starknet::main"))
-    {
-        Some(x) => x,
-        None => {
-            // TODO: Use a proper error.
-            eprintln!("Entry point `hello_starknet::hello_starknet::main` not found in program.");
-            return Ok(());
-        }
-    };
+    let entry_point = find_entry_point(&program, "hello_starknet::hello_starknet::main").unwrap();
 
     // Initialize MLIR.
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-
-    register_all_passes();
-
-    // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+    let (context, mut module, registry, mut metadata) = create_compiler(&program).unwrap();
 
     // Make the Starknet syscall handler available.
     metadata
@@ -336,19 +296,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     // Gas
-    let required_initial_gas = if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
-
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    };
+    let required_initial_gas = get_required_initial_gas(&program, &mut metadata, entry_point);
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -360,26 +308,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Lower to LLVM.
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager.run(&mut module)?;
+    run_passes(&context, &mut module).unwrap();
 
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(&module, 3, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
+    let engine = create_engine(&module);
 
     let params_input = json!([
         (),
