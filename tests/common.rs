@@ -308,7 +308,46 @@ pub fn compare_outputs(
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(info) => {
+                // struct with 2 felts
+                let mut struct_container = native_rets
+                    .next()
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .peekable();
+
+                for _ in 0..2 {
+                    prop_assert!(vm_rets.peek().is_some());
+                    prop_assert!(struct_container.peek().is_some());
+                    let vm_value = vm_rets.next().unwrap();
+
+                    match struct_container.next().unwrap() {
+                        Value::Number(n) => {
+                            let native_value = BigUint::from_str(&n.to_string()).unwrap();
+                            let vm_value = BigUint::from_str(vm_value).unwrap();
+                            prop_assert_eq!(vm_value, native_value);
+                        }
+                        Value::Array(n) => {
+                            let data: Vec<_> = n
+                                .iter()
+                                .map(|x| match x {
+                                    Value::Number(n) => n.as_u64().unwrap(),
+                                    _ => unreachable!(),
+                                })
+                                .map(|x| x.try_into().unwrap())
+                                .collect();
+                            let native_value = BigUint::from_slice(&data);
+                            let vm_value = BigUint::from_str(vm_value).unwrap();
+                            prop_assert_eq!(vm_value, native_value);
+                        }
+                        _ => {
+                            prop_assert!(false, "invalid felt value type");
+                        }
+                    }
+                }
+            }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
                 prop_assert!(vm_rets.peek().is_some());
