@@ -291,6 +291,107 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The easy to use API to compile and execute cairo programs using the MLIR JIT.
 //!
 //! Check out the main [`crate`] docs for more information.
@@ -303,7 +404,7 @@
         MetadataStorage,
     },
     types::{felt252::PRIME, TypeBuilder},
-    utils,
+    utils::{<span class="self">self</span>, register_runtime_symbols},
     values::ValueBuilder,
 };
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
@@ -312,6 +413,7 @@
         core::{CoreLibfunc, CoreType},
         GenericLibfunc, GenericType,
     },
+    program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -583,5 +685,105 @@
     <span class="kw">let </span><span class="kw-2">mut </span>digits = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>values).to_u32_digits();
     digits.resize(<span class="number">8</span>, <span class="number">0</span>);
     digits.try_into().unwrap()
+}
+
+<span class="doccomment">/// Returns the given entry point.
+</span><span class="kw">pub fn </span>find_entry_point&lt;<span class="lifetime">&#39;a</span>&gt;(
+    program: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Program,
+    entry_point: <span class="kw-2">&amp;</span>str,
+) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>GenFunction&lt;StatementIdx&gt;&gt; {
+    program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == <span class="prelude-val">Some</span>(entry_point))
+}
+
+<span class="doccomment">/// Creates all the structures needed to compile and create the JIT engine.
+</span><span class="attr">#[allow(clippy::type_complexity)]
+</span><span class="kw">pub fn </span>create_compiler(
+    program: <span class="kw-2">&amp;</span>Program,
+) -&gt; <span class="prelude-ty">Result</span>&lt;
+    (
+        Context,
+        Module,
+        ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+        MetadataStorage,
+    ),
+    Box&lt;<span class="kw">dyn </span>std::error::Error&gt;,
+&gt; {
+    <span class="comment">// Initialize MLIR.
+    </span><span class="kw">let </span>context = Context::new();
+    context.append_dialect_registry(<span class="kw-2">&amp;</span>{
+        <span class="kw">let </span>registry = DialectRegistry::new();
+        register_all_dialects(<span class="kw-2">&amp;</span>registry);
+        registry
+    });
+    context.load_all_available_dialects();
+
+    register_all_passes();
+
+    <span class="comment">// Compile the program.
+    </span><span class="kw">let </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span>context));
+    <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
+    <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(program)<span class="question-mark">?</span>;
+
+    <span class="comment">// Make the runtime library available.
+    </span>metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    <span class="prelude-val">Ok</span>((context, module, registry, metadata))
+}
+
+<span class="doccomment">/// Creates the execution engine, with all symbols registered.
+</span><span class="kw">pub fn </span>create_engine(module: <span class="kw-2">&amp;</span>Module) -&gt; ExecutionEngine {
+    <span class="comment">// Create the JIT engine.
+    </span><span class="kw">let </span>engine = ExecutionEngine::new(module, <span class="number">3</span>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;with-runtime&quot;</span>)]
+    </span>register_runtime_symbols(<span class="kw-2">&amp;</span>engine);
+
+    engine
+}
+
+<span class="doccomment">/// Returns the required initial gas, also inserts de Gas metadata if needed.
+</span><span class="kw">pub fn </span>get_required_initial_gas(
+    program: <span class="kw-2">&amp;</span>Program,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    entry_point: <span class="kw-2">&amp;</span>GenFunction&lt;StatementIdx&gt;,
+) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    <span class="kw">if </span>program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.<span class="number">0</span>.as_str() == <span class="string">&quot;GasBuiltin&quot;</span>)
+    {
+        <span class="kw">let </span>gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        <span class="kw">let </span>required_initial_gas = { gas_metadata.get_initial_required_gas(<span class="kw-2">&amp;</span>entry_point.id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>}
+}
+
+<span class="doccomment">/// Runs the needed MLIR passes on the module to execute with the JIT.
+</span><span class="kw">pub fn </span>run_passes(
+    context: <span class="kw-2">&amp;</span>Context,
+    module: <span class="kw-2">&amp;mut </span>Module,
+) -&gt; std::result::Result&lt;(), melior::Error&gt; {
+    <span class="comment">// Lower to LLVM.
+    </span><span class="kw">let </span>pass_manager = PassManager::new(context);
+    pass_manager.enable_verifier(<span class="bool-val">true</span>);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+
+    pass_manager.run(module)
 }
 </code></pre></div></section></main></body></html>
