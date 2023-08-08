@@ -308,7 +308,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::Bitwise(_) => todo!(),
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(info) => {
+            CoreTypeConcrete::EcPoint(_) => {
                 // struct with 2 felts
                 let mut struct_container = native_rets
                     .next()
@@ -506,12 +506,18 @@ pub fn compare_outputs(
                         reg,
                     )?;
                 } else {
-                    let vm_tag = vm_rets.next().unwrap();
-                    let vm_tag = casm_variant_to_sierra(
-                        vm_tag.parse::<i64>().unwrap(),
-                        info.variants.len() as i64,
-                    ) as u64;
-                    prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+                    let vm_tag = {
+                        let vm_tag = vm_rets.next().unwrap();
+                        if info.variants.len() > 2 {
+                            casm_variant_to_sierra(
+                                vm_tag.parse::<i64>().unwrap(),
+                                info.variants.len() as i64,
+                            ) as u64
+                        } else {
+                            vm_tag.parse().unwrap()
+                        }
+                    };
+                    prop_assert_eq!(vm_tag, native_tag, "non panic enum tag mismatch");
 
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),

@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
 use melior::ExecutionEngine;
 use serde::{de::Visitor, ser::SerializeSeq, Deserializer, Serializer};
 use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
+use tracing::debug;
 
 /// Execute a function on an engine loaded with a Sierra program.
 ///
@@ -55,6 +56,11 @@ where
     let arena = Bump::new();
 
     let entry_point = registry.get_function(function_id)?;
+    debug!(
+        "executing entry_point with the following required parameters: {:?}",
+        entry_point.signature.param_types
+    );
+
     let params = params
         .deserialize_seq(ArgsVisitor {
             arena: &arena,
