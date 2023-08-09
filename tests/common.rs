@@ -468,14 +468,8 @@ pub fn compare_outputs(
 
                 let mut is_bool = false;
 
-                if let GenericArg::Type(id) = &info.info.long_id.generic_args[1] {
-                    // TODO: is there a better way to recognize a boolean?
-                    is_bool = id
-                        .debug_name
-                        .as_ref()
-                        .unwrap()
-                        .as_str()
-                        .eq("Tuple<core::bool>");
+                if let GenericArg::UserType(id) = &info.info.long_id.generic_args[0] {
+                    is_bool = id.debug_name.as_ref().unwrap().as_str().eq("core::bool");
                 }
 
                 let is_panic = match &info.info.long_id.generic_args[0] {
@@ -489,13 +483,8 @@ pub fn compare_outputs(
                 };
 
                 if is_bool {
-                    let vn_val = vm_rets.next().unwrap();
-                    let vn_val = casm_variant_to_sierra(
-                        vn_val.parse::<i64>().unwrap(),
-                        info.variants.len() as i64,
-                    ) as u64
-                        == 1;
-                    let native_val: bool = native_tag == 0; // 0 = true
+                    let vn_val = vm_rets.next().unwrap() == "1";
+                    let native_val: bool = native_tag == 1; // 1 = true
                     prop_assert_eq!(vn_val, native_val, "bool value mismatch");
                 } else if is_panic {
                     check_next_type(
