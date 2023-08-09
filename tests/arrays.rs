@@ -4,10 +4,8 @@ use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use common::compare_outputs;
 use lazy_static::lazy_static;
-use num_bigint::BigUint;
 use proptest::prelude::*;
 use serde_json::json;
-use std::str::FromStr;
 
 mod common;
 
