@@ -27,6 +27,26 @@ lazy_static! {
             numbers.append(value);
             numbers.append(value);
             numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
+            numbers.append(value);
             *numbers.at(idx.try_into().unwrap())
         }
     };
@@ -55,7 +75,7 @@ fn array_get_test() {
 
 proptest! {
     #[test]
-    fn array_get_test_proptest(value in any_felt252(), idx in 0..7) {
+    fn array_get_test_proptest(value in any_felt252(), idx in 0..26) {
         let program = &ARRAY_GET;
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(value.clone()),

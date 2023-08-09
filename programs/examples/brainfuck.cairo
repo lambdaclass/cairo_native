@@ -43,8 +43,6 @@ fn run_program(program: @Array<u8>, input: Option<Span<u8>>) {
         if pc >= program.len() {
             break ();
         }
-        'loop'.print();
-        pc.print();
 
         let op_code = *program[pc];
         if op_code == '>' {
