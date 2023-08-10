@@ -39,7 +39,7 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -122,6 +122,40 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     .unwrap();
 
     let module_name = program_file.path().with_extension("");
+    let module_name = module_name.file_name().unwrap().to_str().unwrap();
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+
+    let runner =
+        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+
+    (module_name.to_string(), program, runner)
+}
+
+pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
+    let program_file = Path::new(program_path);
+
+    let mut db = RootDatabase::default();
+    init_dev_corelib(
+        &mut db,
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+    );
+    let main_crate_ids = setup_project(&mut db, program_file).unwrap();
+    let program = Arc::try_unwrap(
+        compile_prepared_db(
+            &mut db,
+            main_crate_ids.clone(),
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let module_name = program_file.with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };
@@ -252,6 +286,46 @@ pub fn run_vm_program(
     )
 }
 
+pub fn compare_inputless_program(program_path: &str) {
+    let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
+    let program = &program;
+
+    let entry_point = program
+        .2
+        .find_function("main")
+        .expect("function main not found");
+
+    let native_inputs: Vec<_> = entry_point
+        .params
+        .iter()
+        .map(
+            |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
+                "GasBuiltin" => {
+                    json!(u64::MAX)
+                }
+                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" => {
+                    json!(null)
+                }
+                x => {
+                    unimplemented!("unhandled input type: {:?}", x);
+                }
+            },
+        )
+        .collect();
+
+    let result_vm = run_vm_program(program, "main", &[], Some(GAS)).unwrap();
+
+    let result_native = run_native_program(program, "main", json!(native_inputs));
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error");
+}
+
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
@@ -266,9 +340,12 @@ pub fn compare_outputs(
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
-    let reg: ProgramRegistry<CoreType, CoreLibfunc> = ProgramRegistry::new(program).unwrap();
+    let reg: ProgramRegistry<CoreType, CoreLibfunc> =
+        ProgramRegistry::new(program).expect("program registry should be created");
 
-    let func = reg.get_function(entry_point).unwrap();
+    let func = reg
+        .get_function(entry_point)
+        .expect("entry point should exist");
 
     let ret_types = &func.signature.ret_types;
     let mut native_rets = native_result
@@ -294,10 +371,14 @@ pub fn compare_outputs(
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
-                let array_container = native_rets.next().unwrap().as_array().unwrap();
+                let array_container = native_rets
+                    .next()
+                    .expect("native should have next value")
+                    .as_array()
+                    .expect("should be array like");
                 for container in array_container {
                     check_next_type(
-                        reg.get_type(&info.ty).unwrap(),
+                        reg.get_type(&info.ty).expect("type should exist"),
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -305,7 +386,15 @@ pub fn compare_outputs(
                     )?;
                 }
             }
-            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => {
