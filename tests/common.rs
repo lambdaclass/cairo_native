@@ -7,6 +7,7 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
+use cairo_lang_diagnostics::ToOption;
 use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::{
     Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
@@ -17,8 +18,14 @@ use cairo_lang_sierra::{
     program::{GenericArg, Program},
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_lang_sierra_generator::{db::SierraGenGroup, replace_ids::DebugReplacer};
+use cairo_lang_starknet::{
+    contract::{find_contracts, get_contracts_info},
+    contract_class::{
+        compile_contract_in_prepared_db, extract_semantic_entrypoints, SemanticEntryPoints,
+    },
+    plugin::StarkNetPlugin, allowed_libfuncs::BUILTIN_ALL_LIBFUNCS_LIST,
+};
 use cairo_native::{
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -28,6 +35,7 @@ use cairo_native::{
     types::felt252::PRIME,
     utils::register_runtime_symbols,
 };
+use itertools::chain;
 use lambdaworks_math::{field::element::FieldElement, unsigned_integer::element::UnsignedInteger};
 use melior::{
     dialect::DialectRegistry,
@@ -122,6 +130,96 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     .unwrap();
 
     let module_name = program_file.path().with_extension("");
+    let module_name = module_name.file_name().unwrap().to_str().unwrap();
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+
+    let runner =
+        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+
+    (module_name.to_string(), program, runner)
+}
+
+pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
+    let program_file = Path::new(program_path);
+
+
+    let mut db = RootDatabase::default();
+    init_dev_corelib(
+        &mut db,
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+    );
+    let main_crate_ids = setup_project(&mut db, program_file).unwrap();
+    let program = Arc::try_unwrap(
+        compile_prepared_db(
+            &mut db,
+            main_crate_ids.clone(),
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let module_name = program_file.with_extension("");
+    let module_name = module_name.file_name().unwrap().to_str().unwrap();
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+
+    let runner =
+        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+
+    (module_name.to_string(), program, runner)
+}
+
+// TODO: fix this
+// load a starknet contract from path
+pub fn load_starknet_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
+    let program_file = Path::new(program_path);
+
+    let mut db = RootDatabase::builder()
+        .with_semantic_plugin(Arc::new(StarkNetPlugin::default()))
+        .build()
+        .unwrap();
+    init_dev_corelib(
+        &mut db,
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+    );
+    let main_crate_ids = setup_project(&mut db, program_file).unwrap();
+
+    let _contract_class = compile_contract_in_prepared_db(
+        &db,
+        None,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            allowed_libfuncs_list_name: Some(BUILTIN_ALL_LIBFUNCS_LIST.to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let contracts = find_contracts(&db, &main_crate_ids);
+    let contract = &contracts[0];
+
+    let SemanticEntryPoints {
+        external,
+        l1_handler,
+        constructor,
+    } = extract_semantic_entrypoints(&db, contract).unwrap();
+
+    let program = (*db.get_sierra_program_for_functions(
+        chain!(&external, &l1_handler, &constructor)
+            .cloned()
+            .collect(),
+    )
+    .to_option()
+    .unwrap()).clone();
+    let module_name = program_file.with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };

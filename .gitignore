@@ -21,3 +21,6 @@ corelib
 
 .env
 .vscode/
+
+# needed for the test, remove when we can use cairo directly.
+!tests/erc20.sierra
