@@ -439,15 +439,18 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value = vm_rets.next().unwrap();
 
                 match native_rets.next().unwrap() {
                     Value::Number(n) => {
                         let native_value = BigUint::from_str(&n.to_string()).unwrap();
                         let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value);
+                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                     }
                     Value::Array(n) => {
                         let data: Vec<_> = n
@@ -460,7 +463,7 @@ pub fn compare_outputs(
                             .collect();
                         let native_value = BigUint::from_slice(&data);
                         let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value);
+                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                     }
                     _ => {
                         prop_assert!(false, "invalid felt value type");
@@ -478,8 +481,11 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u8 = native_rets
                     .next()
@@ -491,8 +497,11 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint16(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u16 = native_rets
                     .next()
@@ -504,8 +513,11 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint32(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u32 = native_rets
                     .next()
@@ -517,15 +529,21 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint64(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u64 = native_rets.next().unwrap().as_u64().unwrap();
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u128 = match native_rets.next().unwrap() {
                     Value::Number(n) => n.to_string().parse().unwrap(),
@@ -550,6 +568,16 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
+                // cairo-vm fills with 0 before the variant value based on the variant with most values, if they are a tuple
+                /*
+                   enum MyEnum {
+                       A: felt252,
+                       B: (felt252, felt252, felt252),
+                   }
+
+                   will produce [0, 0, A_value] for the variant A in cairo-vm, because B is a tuple of 3 elements.
+                   0 is a filler.
+                */
                 prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
                 prop_assert_eq!(enum_container.len(), 2);
@@ -596,6 +624,36 @@ pub fn compare_outputs(
                         }
                     };
                     prop_assert_eq!(vm_tag, native_tag, "non panic enum tag mismatch");
+
+                    let mut max_tuple_count = 0;
+                    let mut this_variant_count = 0;
+
+                    // check if a variant is a tuple, we need to skip cairo-vm values if the current
+                    // variant has less element count than the biggest tuple.
+                    for (i, x) in info.variants.iter().enumerate() {
+                        let debug_name = x.debug_name.as_deref().unwrap();
+                        let current_count = if debug_name.starts_with("Tuple<") {
+                            let tuple_type = reg.get_type(x).unwrap();
+                            if let CoreTypeConcrete::Struct(tuple_type) = tuple_type {
+                                max_tuple_count = max_tuple_count.max(tuple_type.members.len());
+                                tuple_type.members.len()
+                            } else {
+                                unreachable!("a tuple type should be a struct");
+                            }
+                        } else {
+                            max_tuple_count = max_tuple_count.max(1);
+                            1
+                        };
+
+                        if i as u64 == native_tag {
+                            this_variant_count = current_count;
+                        }
+                    }
+
+                    // can't use skip because changes the iterator type and it's lazy.
+                    for _ in 0..(max_tuple_count - this_variant_count) {
+                        vm_rets.next().expect("should have filler value");
+                    }
 
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),

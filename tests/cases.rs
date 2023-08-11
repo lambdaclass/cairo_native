@@ -20,7 +20,7 @@ mod common;
 #[test_case("tests/cases/poseidon.cairo" => ignore["not implemented yet"])]
 // enums
 // TODO: compare error: Fail(Reason("assertion failed: `(left == right)` \n  left: `0`,\n right: `10` at tests/common.rs:453"))
-#[test_case("tests/cases/enums/enum_init.cairo" => ignore["enum bug?"])]
+#[test_case("tests/cases/enums/enum_init.cairo")]
 #[test_case("tests/cases/enums/single_value.cairo")]
 // returns
 #[test_case("tests/cases/returns/enums.cairo")]
