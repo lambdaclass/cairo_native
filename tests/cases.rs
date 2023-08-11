@@ -41,7 +41,7 @@ mod common;
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
-#[test_case("tests/cases/structs/enum_member.cairo" => ignore["TODO: fails"])]
+#[test_case("tests/cases/structs/enum_member.cairo")]
 #[test_case("tests/cases/structs/nested.cairo")]
 // gas
 #[test_case("tests/cases/gas/available_gas.cairo" => ignore["unimplemented"])]

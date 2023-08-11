@@ -628,22 +628,19 @@ pub fn compare_outputs(
                     let mut max_tuple_count = 0;
                     let mut this_variant_count = 0;
 
-                    // check if a variant is a tuple, we need to skip cairo-vm values if the current
-                    // variant has less element count than the biggest tuple.
+                    // check if a variant is a struct, we need to skip cairo-vm values if the current
+                    // variant has less elements count than the biggest struct field count.
                     for (i, x) in info.variants.iter().enumerate() {
-                        let debug_name = x.debug_name.as_deref().unwrap();
-                        let current_count = if debug_name.starts_with("Tuple<") {
-                            let tuple_type = reg.get_type(x).unwrap();
-                            if let CoreTypeConcrete::Struct(tuple_type) = tuple_type {
-                                max_tuple_count = max_tuple_count.max(tuple_type.members.len());
-                                tuple_type.members.len()
+                        let variant_type = reg.get_type(x).unwrap();
+
+                        let current_count =
+                            if let CoreTypeConcrete::Struct(struct_type) = variant_type {
+                                max_tuple_count = max_tuple_count.max(struct_type.members.len());
+                                struct_type.members.len()
                             } else {
-                                unreachable!("a tuple type should be a struct");
-                            }
-                        } else {
-                            max_tuple_count = max_tuple_count.max(1);
-                            1
-                        };
+                                max_tuple_count = max_tuple_count.max(1);
+                                1
+                            };
 
                         if i as u64 == native_tag {
                             this_variant_count = current_count;
