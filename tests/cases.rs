@@ -64,6 +64,6 @@ mod common;
 #[test_case("tests/cases/array/slice.cairo" => ignore["TODO: fails"])]
 // nullable
 #[test_case("tests/cases/nullable/test_nullable.cairo" => ignore["unimplemented"])]
-fn felt252_tests(program_path: &str) {
+fn test_cases(program_path: &str) {
     compare_inputless_program(program_path)
 }
