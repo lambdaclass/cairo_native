@@ -31,11 +31,11 @@ mod common;
 // uint
 #[test_case("tests/cases/uint/compare.cairo")]
 #[test_case("tests/cases/uint/consts.cairo")]
-#[test_case("tests/cases/uint/downcasts.cairo" => ignore["TODO: fails"])]
+#[test_case("tests/cases/uint/downcasts.cairo")]
 #[test_case("tests/cases/uint/safe_divmod.cairo" => ignore["TODO: cairo program is outdated"])]
 #[test_case("tests/cases/uint/uint_addition.cairo")]
 #[test_case("tests/cases/uint/uint_subtraction.cairo")]
-#[test_case("tests/cases/uint/uint_try_from_felt.cairo" => ignore["TODO: fails"])]
+#[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]
 // structs
