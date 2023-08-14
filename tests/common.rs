@@ -39,7 +39,7 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -122,6 +122,40 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     .unwrap();
 
     let module_name = program_file.path().with_extension("");
+    let module_name = module_name.file_name().unwrap().to_str().unwrap();
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+
+    let runner =
+        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+
+    (module_name.to_string(), program, runner)
+}
+
+pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
+    let program_file = Path::new(program_path);
+
+    let mut db = RootDatabase::default();
+    init_dev_corelib(
+        &mut db,
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+    );
+    let main_crate_ids = setup_project(&mut db, program_file).unwrap();
+    let program = Arc::try_unwrap(
+        compile_prepared_db(
+            &mut db,
+            main_crate_ids.clone(),
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let module_name = program_file.with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };
@@ -252,6 +286,46 @@ pub fn run_vm_program(
     )
 }
 
+pub fn compare_inputless_program(program_path: &str) {
+    let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
+    let program = &program;
+
+    let entry_point = program
+        .2
+        .find_function("main")
+        .expect("function main not found");
+
+    let native_inputs: Vec<_> = entry_point
+        .params
+        .iter()
+        .map(
+            |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
+                "GasBuiltin" => {
+                    json!(u64::MAX)
+                }
+                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" => {
+                    json!(null)
+                }
+                x => {
+                    unimplemented!("unhandled input type: {:?}", x);
+                }
+            },
+        )
+        .collect();
+
+    let result_vm = run_vm_program(program, "main", &[], Some(GAS)).unwrap();
+
+    let result_native = run_native_program(program, "main", json!(native_inputs));
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error");
+}
+
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
@@ -266,9 +340,12 @@ pub fn compare_outputs(
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
-    let reg: ProgramRegistry<CoreType, CoreLibfunc> = ProgramRegistry::new(program).unwrap();
+    let reg: ProgramRegistry<CoreType, CoreLibfunc> =
+        ProgramRegistry::new(program).expect("program registry should be created");
 
-    let func = reg.get_function(entry_point).unwrap();
+    let func = reg
+        .get_function(entry_point)
+        .expect("entry point should exist");
 
     let ret_types = &func.signature.ret_types;
     let mut native_rets = native_result
@@ -294,10 +371,14 @@ pub fn compare_outputs(
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
-                let array_container = native_rets.next().unwrap().as_array().unwrap();
+                let array_container = native_rets
+                    .next()
+                    .expect("native should have next value")
+                    .as_array()
+                    .expect("should be array like");
                 for container in array_container {
                     check_next_type(
-                        reg.get_type(&info.ty).unwrap(),
+                        reg.get_type(&info.ty).expect("type should exist"),
                         &mut [container].into_iter(),
                         vm_rets,
                         vm_gas,
@@ -305,21 +386,71 @@ pub fn compare_outputs(
                     )?;
                 }
             }
-            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => {
+                // struct with 2 felts
+                let mut struct_container = native_rets
+                    .next()
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .peekable();
+
+                for _ in 0..2 {
+                    prop_assert!(vm_rets.peek().is_some());
+                    prop_assert!(struct_container.peek().is_some());
+                    let vm_value = vm_rets.next().unwrap();
+
+                    match struct_container.next().unwrap() {
+                        Value::Number(n) => {
+                            let native_value = BigUint::from_str(&n.to_string()).unwrap();
+                            let vm_value = BigUint::from_str(vm_value).unwrap();
+                            prop_assert_eq!(vm_value, native_value);
+                        }
+                        Value::Array(n) => {
+                            let data: Vec<_> = n
+                                .iter()
+                                .map(|x| match x {
+                                    Value::Number(n) => n.as_u64().unwrap(),
+                                    _ => unreachable!(),
+                                })
+                                .map(|x| x.try_into().unwrap())
+                                .collect();
+                            let native_value = BigUint::from_slice(&data);
+                            let vm_value = BigUint::from_str(vm_value).unwrap();
+                            prop_assert_eq!(vm_value, native_value);
+                        }
+                        _ => {
+                            prop_assert!(false, "invalid felt value type");
+                        }
+                    }
+                }
+            }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value = vm_rets.next().unwrap();
 
                 match native_rets.next().unwrap() {
                     Value::Number(n) => {
                         let native_value = BigUint::from_str(&n.to_string()).unwrap();
                         let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value);
+                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                     }
                     Value::Array(n) => {
                         let data: Vec<_> = n
@@ -332,7 +463,7 @@ pub fn compare_outputs(
                             .collect();
                         let native_value = BigUint::from_slice(&data);
                         let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value);
+                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                     }
                     _ => {
                         prop_assert!(false, "invalid felt value type");
@@ -350,8 +481,11 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u8 = native_rets
                     .next()
@@ -363,8 +497,11 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint16(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u16 = native_rets
                     .next()
@@ -376,8 +513,11 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint32(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u32 = native_rets
                     .next()
@@ -389,15 +529,21 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint64(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u64 = native_rets.next().unwrap().as_u64().unwrap();
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128(_) => {
-                prop_assert!(vm_rets.peek().is_some());
-                prop_assert!(native_rets.peek().is_some());
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
                 let native_value: u128 = match native_rets.next().unwrap() {
                     Value::Number(n) => n.to_string().parse().unwrap(),
@@ -422,6 +568,16 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
+                // cairo-vm fills with 0 before the variant value based on the variant with most values, if they are a tuple
+                /*
+                   enum MyEnum {
+                       A: felt252,
+                       B: (felt252, felt252, felt252),
+                   }
+
+                   will produce [0, 0, A_value] for the variant A in cairo-vm, because B is a tuple of 3 elements.
+                   0 is a filler.
+                */
                 prop_assert!(native_rets.peek().is_some());
                 let enum_container = native_rets.next().unwrap().as_array().unwrap();
                 prop_assert_eq!(enum_container.len(), 2);
@@ -429,14 +585,8 @@ pub fn compare_outputs(
 
                 let mut is_bool = false;
 
-                if let GenericArg::Type(id) = &info.info.long_id.generic_args[1] {
-                    // TODO: is there a better way to recognize a boolean?
-                    is_bool = id
-                        .debug_name
-                        .as_ref()
-                        .unwrap()
-                        .as_str()
-                        .eq("Tuple<core::bool>");
+                if let GenericArg::UserType(id) = &info.info.long_id.generic_args[0] {
+                    is_bool = id.debug_name.as_ref().unwrap().as_str().eq("core::bool");
                 }
 
                 let is_panic = match &info.info.long_id.generic_args[0] {
@@ -450,13 +600,8 @@ pub fn compare_outputs(
                 };
 
                 if is_bool {
-                    let vn_val = vm_rets.next().unwrap();
-                    let vn_val = casm_variant_to_sierra(
-                        vn_val.parse::<i64>().unwrap(),
-                        info.variants.len() as i64,
-                    ) as u64
-                        == 1;
-                    let native_val: bool = native_tag == 0; // 0 = true
+                    let vn_val = vm_rets.next().unwrap() == "1";
+                    let native_val: bool = native_tag == 1; // 1 = true
                     prop_assert_eq!(vn_val, native_val, "bool value mismatch");
                 } else if is_panic {
                     check_next_type(
@@ -467,12 +612,45 @@ pub fn compare_outputs(
                         reg,
                     )?;
                 } else {
-                    let vm_tag = vm_rets.next().unwrap();
-                    let vm_tag = casm_variant_to_sierra(
-                        vm_tag.parse::<i64>().unwrap(),
-                        info.variants.len() as i64,
-                    ) as u64;
-                    prop_assert_eq!(vm_tag, native_tag, "enum tag mismatch");
+                    let vm_tag = {
+                        let vm_tag = vm_rets.next().unwrap();
+                        if info.variants.len() > 2 {
+                            casm_variant_to_sierra(
+                                vm_tag.parse::<i64>().unwrap(),
+                                info.variants.len() as i64,
+                            ) as u64
+                        } else {
+                            vm_tag.parse().unwrap()
+                        }
+                    };
+                    prop_assert_eq!(vm_tag, native_tag, "non panic enum tag mismatch");
+
+                    let mut max_tuple_count = 0;
+                    let mut this_variant_count = 0;
+
+                    // check if a variant is a struct, we need to skip cairo-vm values if the current
+                    // variant has less elements count than the biggest struct field count.
+                    for (i, x) in info.variants.iter().enumerate() {
+                        let variant_type = reg.get_type(x).unwrap();
+
+                        let current_count =
+                            if let CoreTypeConcrete::Struct(struct_type) = variant_type {
+                                max_tuple_count = max_tuple_count.max(struct_type.members.len());
+                                struct_type.members.len()
+                            } else {
+                                max_tuple_count = max_tuple_count.max(1);
+                                1
+                            };
+
+                        if i as u64 == native_tag {
+                            this_variant_count = current_count;
+                        }
+                    }
+
+                    // can't use skip because changes the iterator type and it's lazy.
+                    for _ in 0..(max_tuple_count - this_variant_count) {
+                        vm_rets.next().expect("should have filler value");
+                    }
 
                     check_next_type(
                         reg.get_type(&info.variants[native_tag as usize]).unwrap(),

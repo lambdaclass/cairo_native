@@ -22,8 +22,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::CmpiPredicate,
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value,
+        ValueLike,
+    },
     Context,
 };
 use num_bigint::{Sign, ToBigInt};
@@ -241,12 +244,12 @@ where
 /// Generate MLIR operations for the `felt252_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -254,25 +257,26 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let bool_ty = IntegerType::new(context, 1).into();
-    let felt252_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let arg0: Value = entry.argument(0)?.into();
 
-    let attr_k0 = IntegerAttribute::new(0, felt252_ty).into();
-    let attr_cmp_eq = IntegerAttribute::new(
-        CmpiPredicate::Eq as i64,
-        IntegerType::new(context, 64).into(),
-    )
-    .into();
+    let op = entry.append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(0, arg0.r#type()).into(),
+        location,
+    ));
+    let const_0 = op.result(0)?.into();
 
-    let value: Value = entry.argument(0)?.into();
-    mlir_asm! { context, entry, location =>
-        ; k0 = "arith.constant"() { "value" = attr_k0 } : () -> felt252_ty
-        ; is_zero = "arith.cmpi"(value, k0) { "predicate" = attr_cmp_eq } : () -> bool_ty
-    };
+    let op = entry.append_operation(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        const_0,
+        location,
+    ));
+    let condition = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(is_zero, [0, 1], [&[], &[value]], location));
+    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+
     Ok(())
 }
 

@@ -181,21 +181,21 @@ where
         .pad_to_align()
         .size();
 
-    let op0 = entry.append_operation(llvm::extract_value(
+    let op_ptr = entry.append_operation(llvm::extract_value(
         context,
         entry.argument(0)?.into(),
         DenseI64ArrayAttribute::new(context, &[0]),
         ptr_ty,
         location,
     ));
-    let op1 = entry.append_operation(llvm::extract_value(
+    let op_length = entry.append_operation(llvm::extract_value(
         context,
         entry.argument(0)?.into(),
         DenseI64ArrayAttribute::new(context, &[1]),
         len_ty,
         location,
     ));
-    let op2 = entry.append_operation(llvm::extract_value(
+    let op_capacity = entry.append_operation(llvm::extract_value(
         context,
         entry.argument(0)?.into(),
         DenseI64ArrayAttribute::new(context, &[2]),
@@ -203,15 +203,15 @@ where
         location,
     ));
 
-    let op3 = entry.append_operation(arith::cmpi(
+    let op_has_cap = entry.append_operation(arith::cmpi(
         context,
         CmpiPredicate::Uge,
-        op1.result(0)?.into(),
-        op2.result(0)?.into(),
+        op_length.result(0)?.into(),
+        op_capacity.result(0)?.into(),
         location,
     ));
     let op4 = entry.append_operation(scf::r#if(
-        op3.result(0)?.into(),
+        op_has_cap.result(0)?.into(),
         &[array_ty, ptr_ty],
         {
             let region = Region::new();
@@ -223,8 +223,8 @@ where
                 location,
             ));
             let op5 = block.append_operation(arith::addi(
-                op2.result(0)?.into(),
-                op2.result(0)?.into(),
+                op_capacity.result(0)?.into(),
+                op_capacity.result(0)?.into(),
                 location,
             ));
             let op6 = block.append_operation(arith::maxui(
@@ -255,7 +255,7 @@ where
 
             let op10 = block.append_operation(
                 OperationBuilder::new("llvm.bitcast", location)
-                    .add_operands(&[op0.result(0)?.into()])
+                    .add_operands(&[op_ptr.result(0)?.into()])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
                     .build(),
             );
@@ -299,7 +299,7 @@ where
             let block = region.append_block(Block::new(&[]));
 
             block.append_operation(scf::r#yield(
-                &[entry.argument(0)?.into(), op0.result(0)?.into()],
+                &[entry.argument(0)?.into(), op_ptr.result(0)?.into()],
                 location,
             ));
 
@@ -321,7 +321,7 @@ where
                 ),
             ])
             .add_operands(&[op4.result(1)?.into()])
-            .add_operands(&[op1.result(0)?.into()])
+            .add_operands(&[op_length.result(0)?.into()])
             .add_results(&[opaque_ptr_ty])
             .build(),
     );
@@ -339,7 +339,7 @@ where
         location,
     ));
     let op7 = entry.append_operation(arith::addi(
-        op1.result(0)?.into(),
+        op_length.result(0)?.into(),
         op6.result(0)?.into(),
         location,
     ));
@@ -1222,6 +1222,50 @@ mod test {
         let result = run_program(&program, "run_test", json!([null]));
 
         assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
+    }
+
+    #[test]
+    fn run_get_big() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (u32, u32, u32, u32) {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(17_u32);
+                numbers.append(17_u32);
+                numbers.append(18_u32);
+                numbers.append(19_u32);
+                numbers.append(20_u32);
+                numbers.append(21_u32);
+                numbers.append(22_u32);
+                numbers.append(23_u32);
+                (
+                    *numbers.at(20),
+                    *numbers.at(21),
+                    *numbers.at(22),
+                    *numbers.at(23),
+                )
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(result, json!([null, [0, [[20, 21, 22, 23]]]]));
     }
 
     #[test]
