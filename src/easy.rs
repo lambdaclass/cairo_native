@@ -10,7 +10,7 @@ use crate::{
         MetadataStorage,
     },
     types::{felt252::PRIME, TypeBuilder},
-    utils::{self, register_runtime_symbols},
+    utils::register_runtime_symbols,
     values::ValueBuilder,
 };
 use cairo_lang_compiler::CompilerConfig;
@@ -184,6 +184,27 @@ pub fn required_initial_gas<'p>(
     }
 }
 
+/// Returns the required initial gas, also inserts de Gas metadata if needed.
+pub fn get_required_initial_gas(
+    program: &Program,
+    metadata: &mut MetadataStorage,
+    entry_point: &GenFunction<StatementIdx>,
+) -> Option<u64> {
+    if program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+    {
+        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
+        metadata.insert(gas_metadata).unwrap();
+        required_initial_gas
+    } else {
+        None
+    }
+}
+
 /// Performs all steps to compile a Sierra program into an MLIR context which can later be lowered to LLVM.
 pub fn compile_sierra_to_mlir<'c, 'p, 'd, D, S>(
     context: &'c Context,
@@ -248,69 +269,23 @@ where
     Ok(())
 }
 
-/// Shortcut to compile and execute a program.
-///
-/// For short programs this function may suffice, but as the program grows the other interface is
-/// preferred since there is some stuff that should be cached, such as the MLIR context and the
-/// execution engines for programs that will be run multiple times.
-pub fn compile_and_execute<'de, D, S>(
-    program_path: &Path,
-    entry_point: &str,
-    params: D,
-    returns: S,
-) -> Result<(), Box<Error<'de, CoreType, CoreLibfunc, D, S>>>
-where
-    D: Deserializer<'de>,
-    S: Serializer,
-{
-    // Compile the cairo program to sierra.
-    let program = cairo_to_sierra(program_path);
-    let function_id = find_function_id(&program, entry_point);
-
-    // Initialize MLIR.
-    let context = initialize_mlir();
-
-    // Compile sierra to MLIR
-    let (mut module, registry, required_initial_gas) =
-        compile_sierra_to_mlir(&context, &program, function_id)?;
-
-    // Lower MLIR to LLVM
-    lower_mlir_to_llvm::<D, S>(&context, &mut module)?;
-
-    // Create the JIT engine.
-    let engine = ExecutionEngine::new(&module, 3, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    utils::register_runtime_symbols(&engine);
-
-    // Execute the program
-    crate::execute::<CoreType, CoreLibfunc, D, S>(
-        &engine,
-        &registry,
-        function_id,
-        params,
-        returns,
-        required_initial_gas,
-    )
-    .unwrap_or_else(|e| match &*e {
-        crate::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-            panic!(
-                "Expected inputs with signature: ({})",
-                registry
-                    .get_function(function_id)
-                    .unwrap()
-                    .signature
-                    .param_types
-                    .iter()
-                    .map(ToString::to_string)
-                    .intersperse_with(|| ", ".to_string())
-                    .collect::<String>()
-            )
-        }
-        e => panic!("{:?}", e),
-    });
-
-    Ok(())
+/// Runs the needed MLIR passes on the module to execute with the JIT.
+pub fn run_passes(
+    context: &Context,
+    module: &mut Module,
+) -> std::result::Result<(), melior::Error> {
+    // Lower to LLVM.
+    let pass_manager = PassManager::new(context);
+    pass_manager.enable_verifier(true);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.run(module)
 }
 
 /// Parse a numeric string into felt, wrapping negatives around the prime modulo.
@@ -409,47 +384,4 @@ pub fn create_engine(module: &Module) -> ExecutionEngine {
     register_runtime_symbols(&engine);
 
     engine
-}
-
-/// Returns the required initial gas, also inserts de Gas metadata if needed.
-pub fn get_required_initial_gas(
-    program: &Program,
-    metadata: &mut MetadataStorage,
-    entry_point: &GenFunction<StatementIdx>,
-) -> Option<u64> {
-    if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    }
-}
-
-/// Runs the needed MLIR passes on the module to execute with the JIT.
-pub fn run_passes(
-    context: &Context,
-    module: &mut Module,
-) -> std::result::Result<(), melior::Error> {
-    // Lower to LLVM.
-    let pass_manager = PassManager::new(context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager.run(module)
 }
