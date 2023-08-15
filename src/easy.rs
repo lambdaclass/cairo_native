@@ -14,6 +14,7 @@ use crate::{
     values::ValueBuilder,
 };
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -22,7 +23,6 @@ use cairo_lang_sierra::{
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra::ids::FunctionId;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -142,7 +142,7 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
 }
 
 /// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
-pub fn find_function_id<'a >(program: &'a Program, function_name: &str) -> &'a FunctionId {
+pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
     &program
         .funcs
         .iter()
@@ -151,6 +151,7 @@ pub fn find_function_id<'a >(program: &'a Program, function_name: &str) -> &'a F
         .id
 }
 
+/// Initialize an MLIR context.
 pub fn initialize_mlir() -> Context {
     let context = Context::new();
     context.append_dialect_registry(&{
@@ -159,14 +160,16 @@ pub fn initialize_mlir() -> Context {
         registry
     });
     context.load_all_available_dialects();
-
     register_all_passes();
-
-    return context
+    context
 }
 
-/// Returns an Option indicating whether a function entrypoint requires an initial gas value.
-pub fn required_initial_gas<'p, 'm>(program: &'p Program, function_id: &'p FunctionId, metadata: &'m mut MetadataStorage) -> Option<u64> {
+/// Returns an Option indicating whether a function entrypoint requires an initial gas value or not.
+pub fn required_initial_gas<'p>(
+    program: &'p Program,
+    function_id: &'p FunctionId,
+    metadata: &mut MetadataStorage,
+) -> Option<u64> {
     if program
         .type_declarations
         .iter()
@@ -181,15 +184,25 @@ pub fn required_initial_gas<'p, 'm>(program: &'p Program, function_id: &'p Funct
     }
 }
 
-pub fn compile_sierra_to_mlir<'c, 'p, 'd, D, S>(context: &'c Context, program: &'p Program, function_id: &'p FunctionId) 
--> Result<( Module<'c>, ProgramRegistry<CoreType, CoreLibfunc>, Option<u64> ), Box<Error<'d, CoreType, CoreLibfunc, D, S>>> 
+/// Performs all steps to compile a Sierra program into an MLIR context which can later be lowered to LLVM.
+pub fn compile_sierra_to_mlir<'c, 'p, 'd, D, S>(
+    context: &'c Context,
+    program: &'p Program,
+    function_id: &'p FunctionId,
+) -> Result<
+    (
+        Module<'c>,
+        ProgramRegistry<CoreType, CoreLibfunc>,
+        Option<u64>,
+    ),
+    Box<Error<'d, CoreType, CoreLibfunc, D, S>>,
+>
 where
     D: Deserializer<'d>,
     S: Serializer,
 {
-
     // Create the empty module
-    let module = Module::new(Location::unknown(&context));
+    let module = Module::new(Location::unknown(context));
 
     // Create the metadata storage
     let mut metadata = MetadataStorage::new();
@@ -204,19 +217,22 @@ where
     // Check whether the entry point of the program requires an initial gas value
     let required_initial_gas = required_initial_gas(program, function_id, &mut metadata);
 
-    crate::compile(&context, &module, program, &registry, &mut metadata, None)
+    crate::compile(context, &module, program, &registry, &mut metadata, None)
         .map_err(Error::Compile)?;
 
-    return Ok( (module, registry, required_initial_gas) )
+    Ok((module, registry, required_initial_gas))
 }
 
-pub fn lower_mlir_to_llvm<'c, 'd, D, S>(context: &'c Context, module: &'c mut Module) 
-    -> Result<(), Box<Error<'d, CoreType, CoreLibfunc, D, S>>> 
+/// Given an MLIR context and module, loweres the operations to LLVM IR.
+pub fn lower_mlir_to_llvm<'c, 'd, D, S>(
+    context: &'c Context,
+    module: &'c mut Module,
+) -> Result<(), Box<Error<'d, CoreType, CoreLibfunc, D, S>>>
 where
     D: Deserializer<'d>,
     S: Serializer,
 {
-    let pass_manager = PassManager::new(&context);
+    let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
@@ -227,7 +243,7 @@ where
     pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
     pass_manager
-        .run(&mut module)
+        .run(module)
         .map_err(|e| Error::JitRunner(e.into()))?;
     Ok(())
 }
@@ -250,15 +266,16 @@ where
     // Compile the cairo program to sierra.
     let program = cairo_to_sierra(program_path);
     let function_id = find_function_id(&program, entry_point);
-    
+
     // Initialize MLIR.
     let context = initialize_mlir();
 
     // Compile sierra to MLIR
-    let (mut module, registry, required_initial_gas) = compile_sierra_to_mlir(&context, &program, function_id)?;
+    let (mut module, registry, required_initial_gas) =
+        compile_sierra_to_mlir(&context, &program, function_id)?;
 
     // Lower MLIR to LLVM
-    lower_mlir_to_llvm(&context, &mut module);
+    lower_mlir_to_llvm::<D, S>(&context, &mut module)?;
 
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);
