@@ -190,15 +190,15 @@
 
 pub use self::{compiler::compile, jit_runner::execute};
 
-mod compiler;
 pub mod debug_info;
 pub mod easy;
 pub mod error;
-mod ffi;
-mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
 pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
+mod compiler;
+mod ffi;
+mod jit_runner;

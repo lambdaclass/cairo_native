@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra::ids::FunctionId;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -111,23 +112,9 @@ where
     }
 }
 
-/// Shortcut to compile and execute a program.
-///
-/// For short programs this function may suffice, but as the program grows the other interface is
-/// preferred since there is some stuff that should be cached, such as the MLIR context and the
-/// execution engines for programs that will be run multiple times.
-pub fn compile_and_execute<'de, D, S>(
-    program: &Path,
-    entry_point: &str,
-    params: D,
-    returns: S,
-) -> Result<(), Box<Error<'de, CoreType, CoreLibfunc, D, S>>>
-where
-    D: Deserializer<'de>,
-    S: Serializer,
-{
-    // Compile the cairo program to sierra.
-    let program = &if program
+/// Compile a cairo program found at the given path to sierra.
+pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
+    if program
         .extension()
         .map(|x| {
             x.to_ascii_lowercase()
@@ -151,16 +138,20 @@ where
                 .parse(&source)
                 .unwrap(),
         )
-    };
+    }
+}
 
-    let function_id = &program
+/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+pub fn find_function_id<'a >(program: &'a Program, function_name: &str) -> &'a FunctionId {
+    &program
         .funcs
         .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
+        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
         .unwrap()
-        .id;
+        .id
+}
 
-    // Initialize MLIR.
+pub fn initialize_mlir() -> Context {
     let context = Context::new();
     context.append_dialect_registry(&{
         let registry = DialectRegistry::new();
@@ -171,50 +162,103 @@ where
 
     register_all_passes();
 
-    // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-        .map_err(|e| Error::Compile(e.into()))?;
+    return context
+}
 
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    // Gas
-    let required_initial_gas = if program
+/// Returns an Option indicating whether a function entrypoint requires an initial gas value.
+pub fn required_initial_gas<'p, 'm>(program: &'p Program, function_id: &'p FunctionId, metadata: &'m mut MetadataStorage) -> Option<u64> {
+    if program
         .type_declarations
         .iter()
         .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
     {
         let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
         let required_initial_gas = { gas_metadata.get_initial_required_gas(function_id) };
         metadata.insert(gas_metadata).unwrap();
         required_initial_gas
     } else {
         None
-    };
+    }
+}
+
+pub fn compile_sierra_to_mlir<'c, 'p, 'd, D, S>(context: &'c Context, program: &'p Program, function_id: &'p FunctionId) 
+-> Result<( Module<'c>, ProgramRegistry<CoreType, CoreLibfunc>, Option<u64> ), Box<Error<'d, CoreType, CoreLibfunc, D, S>>> 
+where
+    D: Deserializer<'d>,
+    S: Serializer,
+{
+
+    // Create the empty module
+    let module = Module::new(Location::unknown(&context));
+
+    // Create the metadata storage
+    let mut metadata = MetadataStorage::new();
+
+    // Create the Sierra program registry
+    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
+        .map_err(|e| Error::Compile(e.into()))?;
+
+    // Make the runtime library available by inserting it into the metadata so it can be later retrieved
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    // Check whether the entry point of the program requires an initial gas value
+    let required_initial_gas = required_initial_gas(program, function_id, &mut metadata);
 
     crate::compile(&context, &module, program, &registry, &mut metadata, None)
         .map_err(Error::Compile)?;
 
-    // Lower to LLVM.
+    return Ok( (module, registry, required_initial_gas) )
+}
+
+pub fn lower_mlir_to_llvm<'c, 'd, D, S>(context: &'c Context, module: &'c mut Module) 
+    -> Result<(), Box<Error<'d, CoreType, CoreLibfunc, D, S>>> 
+where
+    D: Deserializer<'d>,
+    S: Serializer,
+{
     let pass_manager = PassManager::new(&context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
-
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
     pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
     pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
     pass_manager.add_pass(pass::conversion::create_func_to_llvm());
     pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
     pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
     pass_manager
         .run(&mut module)
         .map_err(|e| Error::JitRunner(e.into()))?;
+    Ok(())
+}
+
+/// Shortcut to compile and execute a program.
+///
+/// For short programs this function may suffice, but as the program grows the other interface is
+/// preferred since there is some stuff that should be cached, such as the MLIR context and the
+/// execution engines for programs that will be run multiple times.
+pub fn compile_and_execute<'de, D, S>(
+    program_path: &Path,
+    entry_point: &str,
+    params: D,
+    returns: S,
+) -> Result<(), Box<Error<'de, CoreType, CoreLibfunc, D, S>>>
+where
+    D: Deserializer<'de>,
+    S: Serializer,
+{
+    // Compile the cairo program to sierra.
+    let program = cairo_to_sierra(program_path);
+    let function_id = find_function_id(&program, entry_point);
+    
+    // Initialize MLIR.
+    let context = initialize_mlir();
+
+    // Compile sierra to MLIR
+    let (mut module, registry, required_initial_gas) = compile_sierra_to_mlir(&context, &program, function_id)?;
+
+    // Lower MLIR to LLVM
+    lower_mlir_to_llvm(&context, &mut module);
 
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);
@@ -222,7 +266,7 @@ where
     #[cfg(feature = "with-runtime")]
     utils::register_runtime_symbols(&engine);
 
-    // Execute
+    // Execute the program
     crate::execute::<CoreType, CoreLibfunc, D, S>(
         &engine,
         &registry,
