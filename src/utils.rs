@@ -1,8 +1,12 @@
 //! # Various utilities
 
-use cairo_lang_sierra::ids::FunctionId;
+use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_sierra::{
+    ids::FunctionId,
+    program::{GenFunction, Program, StatementIdx},
+};
 use melior::ExecutionEngine;
-use std::{alloc::Layout, borrow::Cow, fmt, ptr::NonNull};
+use std::{alloc::Layout, borrow::Cow, fmt, path::Path, ptr::NonNull, sync::Arc};
 
 /// Generate a function name.
 ///
@@ -44,6 +48,56 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         Layout::array::<u64>(width.next_multiple_of(64) as usize >> 6).unwrap()
     }
+}
+
+/// Compile a cairo program found at the given path to sierra.
+pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
+    if program
+        .extension()
+        .map(|x| {
+            x.to_ascii_lowercase()
+                .to_string_lossy()
+                .eq_ignore_ascii_case("cairo")
+        })
+        .unwrap_or(false)
+    {
+        cairo_lang_compiler::compile_cairo_project_at_path(
+            program,
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    } else {
+        let source = std::fs::read_to_string(program).unwrap();
+        Arc::new(
+            cairo_lang_sierra::ProgramParser::new()
+                .parse(&source)
+                .unwrap(),
+        )
+    }
+}
+
+/// Returns the given entry point if present.
+pub fn find_entry_point<'a>(
+    program: &'a Program,
+    entry_point: &str,
+) -> Option<&'a GenFunction<StatementIdx>> {
+    program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
+}
+
+/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
+    &program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
+        .unwrap()
+        .id
 }
 
 #[cfg(feature = "with-runtime")]

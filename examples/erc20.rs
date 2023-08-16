@@ -4,11 +4,12 @@ use cairo_felt::Felt252;
 use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_native::{
     easy::{
-        create_compiler, create_engine, felt252_bigint, felt252_short_str, find_entry_point,
-        get_required_initial_gas, run_passes,
+        create_compiler, create_engine, felt252_bigint, felt252_short_str, lower_mlir_to_llvm,
+        required_initial_gas,
     },
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_entry_point,
 };
 use serde_json::json;
 use std::io;
@@ -297,7 +298,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     // Gas
-    let required_initial_gas = get_required_initial_gas(&program, &mut metadata, entry_point);
+    let required_initial_gas = required_initial_gas(&program, &entry_point.id, &mut metadata);
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -309,7 +310,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Lower to LLVM.
-    run_passes(&context, &mut module).unwrap();
+    lower_mlir_to_llvm(&context, &mut module).unwrap();
 
     // Create the JIT engine.
     let engine = create_engine(&module);

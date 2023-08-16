@@ -4,11 +4,10 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_native::{
-    easy::{
-        create_compiler, create_engine, find_entry_point, get_required_initial_gas, run_passes,
-    },
+    easy::{create_compiler, create_engine, lower_mlir_to_llvm, required_initial_gas},
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_function_id,
 };
 use serde_json::json;
 use std::{io, path::Path};
@@ -285,7 +284,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .unwrap();
 
-    let entry_point = find_entry_point(&program, "hello_starknet::hello_starknet::main").unwrap();
+    let function_id = find_function_id(&program, "hello_starknet::hello_starknet::main");
 
     // Initialize MLIR.
     let (context, mut module, registry, mut metadata) = create_compiler(&program).unwrap();
@@ -296,7 +295,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     // Gas
-    let required_initial_gas = get_required_initial_gas(&program, &mut metadata, entry_point);
+    let required_initial_gas = required_initial_gas(&program, function_id, &mut metadata);
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -308,7 +307,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Lower to LLVM.
-    run_passes(&context, &mut module).unwrap();
+    lower_mlir_to_llvm(&context, &mut module).unwrap();
 
     // Create the JIT engine.
     let engine = create_engine(&module);
@@ -326,7 +325,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     cairo_native::execute(
         &engine,
         &registry,
-        &entry_point.id,
+        function_id,
         params_input,
         &mut serde_json::Serializer::pretty(io::stdout()),
         required_initial_gas,

@@ -47,8 +47,8 @@ where
     S: Serializer,
 {
     // Compile the cairo program to sierra.
-    let program = cairo_native::easy::cairo_to_sierra(program_path);
-    let function_id = cairo_native::easy::find_function_id(&program, entry_point);
+    let program = cairo_native::utils::cairo_to_sierra(program_path);
+    let function_id = cairo_native::utils::find_function_id(&program, entry_point);
 
     // Initialize MLIR.
     let context = cairo_native::easy::initialize_mlir();
@@ -58,7 +58,8 @@ where
         cairo_native::easy::compile_sierra_to_mlir(&context, &program, function_id)?;
 
     // Lower MLIR to LLVM
-    cairo_native::easy::lower_mlir_to_llvm::<D, S>(&context, &mut module)?;
+    cairo_native::easy::lower_mlir_to_llvm(&context, &mut module)
+        .map_err(|e| Error::JitRunner(e.into()))?;
 
     // Create the JIT engine.
     let engine = ExecutionEngine::new(&module, 3, &[], false);

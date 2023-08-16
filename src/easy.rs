@@ -13,14 +13,13 @@ use crate::{
     utils::register_runtime_symbols,
     values::ValueBuilder,
 };
-use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         GenericLibfunc, GenericType,
     },
-    program::{GenFunction, Program, StatementIdx},
+    program::Program,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -32,7 +31,7 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserializer, Serializer};
-use std::{fmt, ops::Neg, path::Path, sync::Arc};
+use std::{fmt, ops::Neg};
 
 /// The possible errors encountered when calling [`compile_and_execute`]
 pub enum Error<'de, TType, TLibfunc, D, S>
@@ -112,45 +111,6 @@ where
     }
 }
 
-/// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
-    if program
-        .extension()
-        .map(|x| {
-            x.to_ascii_lowercase()
-                .to_string_lossy()
-                .eq_ignore_ascii_case("cairo")
-        })
-        .unwrap_or(false)
-    {
-        cairo_lang_compiler::compile_cairo_project_at_path(
-            program,
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap()
-    } else {
-        let source = std::fs::read_to_string(program).unwrap();
-        Arc::new(
-            cairo_lang_sierra::ProgramParser::new()
-                .parse(&source)
-                .unwrap(),
-        )
-    }
-}
-
-/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
-pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
-    &program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
-        .unwrap()
-        .id
-}
-
 /// Initialize an MLIR context.
 pub fn initialize_mlir() -> Context {
     let context = Context::new();
@@ -165,9 +125,10 @@ pub fn initialize_mlir() -> Context {
 }
 
 /// Returns an Option indicating whether a function entrypoint requires an initial gas value or not.
-pub fn required_initial_gas<'p>(
-    program: &'p Program,
-    function_id: &'p FunctionId,
+/// Also inserts Gas metadata if needed.
+pub fn required_initial_gas(
+    program: &Program,
+    function_id: &FunctionId,
     metadata: &mut MetadataStorage,
 ) -> Option<u64> {
     if program
@@ -184,32 +145,13 @@ pub fn required_initial_gas<'p>(
     }
 }
 
-/// Returns the required initial gas, also inserts de Gas metadata if needed.
-pub fn get_required_initial_gas(
-    program: &Program,
-    metadata: &mut MetadataStorage,
-    entry_point: &GenFunction<StatementIdx>,
-) -> Option<u64> {
-    if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    }
-}
-
 /// Performs all steps to compile a Sierra program into an MLIR context which can later be lowered to LLVM.
-pub fn compile_sierra_to_mlir<'c, 'p, 'd, D, S>(
+// TODO: Rethink this error type to make it simpler.
+#[allow(clippy::type_complexity)]
+pub fn compile_sierra_to_mlir<'c, 'd, D, S>(
     context: &'c Context,
-    program: &'p Program,
-    function_id: &'p FunctionId,
+    program: &Program,
+    function_id: &FunctionId,
 ) -> Result<
     (
         Module<'c>,
@@ -244,37 +186,9 @@ where
     Ok((module, registry, required_initial_gas))
 }
 
-/// Given an MLIR context and module, loweres the operations to LLVM IR.
-pub fn lower_mlir_to_llvm<'c, 'd, D, S>(
-    context: &'c Context,
-    module: &'c mut Module,
-) -> Result<(), Box<Error<'d, CoreType, CoreLibfunc, D, S>>>
-where
-    D: Deserializer<'d>,
-    S: Serializer,
-{
-    let pass_manager = PassManager::new(context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    pass_manager
-        .run(module)
-        .map_err(|e| Error::JitRunner(e.into()))?;
-    Ok(())
-}
-
-/// Runs the needed MLIR passes on the module to execute with the JIT.
-pub fn run_passes(
-    context: &Context,
-    module: &mut Module,
-) -> std::result::Result<(), melior::Error> {
-    // Lower to LLVM.
+/// Given an MLIR context and module, lowers the operations to LLVM IR.
+// TODO: We should check what error is it best to return here.
+pub fn lower_mlir_to_llvm(context: &Context, module: &mut Module) -> Result<(), melior::Error> {
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -327,17 +241,6 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
     digits.resize(8, 0);
     digits.try_into().unwrap()
-}
-
-/// Returns the given entry point.
-pub fn find_entry_point<'a>(
-    program: &'a Program,
-    entry_point: &str,
-) -> Option<&'a GenFunction<StatementIdx>> {
-    program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
 }
 
 /// Creates all the structures needed to compile and create the JIT engine.
