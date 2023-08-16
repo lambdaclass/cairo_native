@@ -1,8 +1,7 @@
 #![feature(iter_intersperse)]
 
 use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use cairo_native::easy::Error;
-use melior::ExecutionEngine;
+use cairo_native::easy::{create_engine, Error};
 use serde::{Deserializer, Serializer};
 use serde_json::json;
 use std::{io::stdout, path::Path};
@@ -62,10 +61,7 @@ where
         .map_err(|e| Error::JitRunner(e.into()))?;
 
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(&module, 3, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    cairo_native::utils::register_runtime_symbols(&engine);
+    let engine = create_engine(&module);
 
     // Execute the program
     cairo_native::execute::<CoreType, CoreLibfunc, D, S>(

@@ -257,15 +257,7 @@ pub fn create_compiler(
     Box<dyn std::error::Error>,
 > {
     // Initialize MLIR.
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-
-    register_all_passes();
+    let context = initialize_mlir();
 
     // Compile the program.
     let module = Module::new(Location::unknown(&context));
@@ -273,7 +265,9 @@ pub fn create_compiler(
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
     // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+    metadata
+        .insert(RuntimeBindingsMeta::default())
+        .ok_or("Could not insert runtime library")?;
 
     Ok((context, module, registry, metadata))
 }
