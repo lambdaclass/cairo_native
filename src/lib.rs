@@ -183,7 +183,6 @@
 #![feature(iterator_try_collect)]
 #![feature(map_try_insert)]
 #![feature(nonzero_ops)]
-#![feature(provide_any)]
 #![feature(strict_provenance)]
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
