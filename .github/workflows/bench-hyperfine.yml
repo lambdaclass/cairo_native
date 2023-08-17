@@ -15,7 +15,7 @@ env:
 
 jobs:
   bench-hyperfine:
-    name: Hyperfine
+    name: Hyperfine (Linux, x86_64)
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
