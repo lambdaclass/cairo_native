@@ -76,10 +76,6 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Install hyperfine
-        uses: taiki-e/install-action@v2
-        with:
-          tool: hyperfine@1.16
       - name: Fetch corelibs.
         run: ./scripts/fetch-corelibs.sh
       - name: Fetch and build cairo.
