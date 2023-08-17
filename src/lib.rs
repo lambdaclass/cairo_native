@@ -188,6 +188,25 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{compiler::compile, jit_runner::execute};
+use crate::easy::create_engine;
+use cairo_lang_sierra::{
+    extensions::core::{CoreLibfunc, CoreType},
+    ids::FunctionId,
+    program::Program,
+    program_registry::ProgramRegistry,
+};
+use easy::initialize_mlir;
+use melior::{
+    ir::{Location, Module},
+    pass::{self, PassManager},
+    Context, ExecutionEngine,
+};
+use metadata::{
+    gas::{GasMetadata, MetadataComputationConfig},
+    runtime_bindings::RuntimeBindingsMeta,
+    MetadataStorage,
+};
+use serde::{Deserializer, Serializer};
 
 mod compiler;
 pub mod debug_info;
@@ -201,3 +220,146 @@ pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
+
+pub struct NativeCompiler {
+    context: Context,
+    // registry: Registry,
+    metadata: MetadataStorage,
+}
+
+impl NativeCompiler {
+    pub fn new() -> Self {
+        let context = initialize_mlir();
+        let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default());
+
+        Self { context, metadata }
+    }
+
+    pub fn compile(&mut self, program: &Program) -> NativeModule {
+        // Instantiate an empty module. Since mutability is handled in the MLRI library,
+        // it is not declared as mutable, but this variable changes state one passed to
+        // the `crate::compile` function.
+        let module = Module::new(Location::unknown(&self.context));
+
+        // Create the Sierra program registry
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program).unwrap();
+
+        crate::compile(
+            &self.context,
+            &module,
+            program,
+            &registry,
+            &mut self.metadata,
+            None,
+        )
+        .unwrap();
+
+        NativeModule::new(module, registry)
+    }
+
+    pub fn lower_to_llvm(&self, native_module: &mut NativeModule) -> Result<(), melior::Error> {
+        let pass_manager = PassManager::new(&self.context);
+        pass_manager.enable_verifier(true);
+        pass_manager.add_pass(pass::transform::create_canonicalizer());
+        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+        pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+        pass_manager.run(&mut native_module.module)
+    }
+}
+
+pub struct EntrypointInfo {
+    fn_id: FunctionId,
+    required_init_gas: Option<u64>,
+}
+
+impl EntrypointInfo {
+    pub fn new(program: &Program, metadata: &mut MetadataStorage, fn_id: FunctionId) -> Self {
+        let required_init_gas = if program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+        {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            let required_initial_gas = { gas_metadata.get_initial_required_gas(&fn_id) };
+            metadata.insert(gas_metadata).unwrap();
+            required_initial_gas
+        } else {
+            None
+        };
+
+        EntrypointInfo {
+            fn_id,
+            required_init_gas,
+        }
+    }
+}
+
+pub struct NativeModule<'m> {
+    module: Module<'m>,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
+}
+
+impl<'m> NativeModule<'m> {
+    fn new(module: Module<'m>, registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
+        Self { module, registry }
+    }
+}
+
+pub struct NativeExecutor {
+    engine: ExecutionEngine,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
+}
+
+impl NativeExecutor {
+    pub fn new(native_module: NativeModule) -> Self {
+        let engine = create_engine(&native_module.module);
+        let registry = native_module.registry;
+        Self { engine, registry }
+    }
+
+    pub fn execute<'de, D, S>(
+        &self,
+        entrypoint_info: &EntrypointInfo,
+        params: D,
+        returns: S,
+    ) -> Result<(), ()>
+    where
+        D: Deserializer<'de>,
+        S: Serializer,
+    {
+        execute(
+            &self.engine,
+            &self.registry,
+            &entrypoint_info.fn_id,
+            params,
+            returns,
+            entrypoint_info.required_init_gas,
+        )
+        .unwrap_or_else(|e| match &*e {
+            error::jit_engine::ErrorImpl::DeserializeError(_) => {
+                panic!(
+                    "Expected inputs with signature: ({})",
+                    self.registry
+                        .get_function(&entrypoint_info.fn_id)
+                        .unwrap()
+                        .signature
+                        .param_types
+                        .iter()
+                        .map(ToString::to_string)
+                        .intersperse_with(|| ", ".to_string())
+                        .collect::<String>()
+                )
+            }
+            e => panic!("{:?}", e),
+        });
+
+        Ok(())
+    }
+}

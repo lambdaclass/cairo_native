@@ -88,3 +88,16 @@ impl MetadataStorage {
             .map(|meta| meta.downcast_mut::<T>().unwrap())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::{runtime_bindings::RuntimeBindingsMeta, *};
+
+    #[test]
+    fn runtime_library_insert_works() {
+        let mut metadata = MetadataStorage::new();
+        let ret = metadata.insert(RuntimeBindingsMeta::default());
+
+        assert!(ret.is_some());
+    }
+}

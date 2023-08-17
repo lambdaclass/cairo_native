@@ -64,7 +64,7 @@ where
     let engine = create_engine(&module);
 
     // Execute the program
-    cairo_native::execute::<CoreType, CoreLibfunc, D, S>(
+    cairo_native::execute(
         &engine,
         &registry,
         function_id,
