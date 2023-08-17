@@ -101,7 +101,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
           files: lcov.info
           fail_ci_if_error: true
-  test_macos:
+
+  test-macos:
       name: Test (macOS, Apple silicon)
       runs-on: [self-hosted, macOS]
       env:
