@@ -1,7 +1,7 @@
 #![feature(iter_intersperse)]
 
 use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use cairo_native::easy::{create_engine, Error};
+use cairo_native::{easy::Error, NativeContext, NativeExecutor};
 use serde::{Deserializer, Serializer};
 use serde_json::json;
 use std::{io::stdout, path::Path};
@@ -46,49 +46,39 @@ where
     S: Serializer,
 {
     // Compile the cairo program to sierra.
-    let program = cairo_native::utils::cairo_to_sierra(program_path);
-    let function_id = cairo_native::utils::find_function_id(&program, entry_point);
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
-    // Initialize MLIR.
-    let context = cairo_native::easy::initialize_mlir();
+    let mut native_context = NativeContext::new();
 
-    // Compile sierra to MLIR
-    let (mut module, registry, required_initial_gas) =
-        cairo_native::easy::compile_sierra_to_mlir(&context, &program, function_id)?;
-
-    // Lower MLIR to LLVM
-    cairo_native::easy::lower_mlir_to_llvm(&context, &mut module)
+    let native_program = native_context
+        .compile(&sierra_program)
         .map_err(|e| Error::JitRunner(e.into()))?;
 
-    // Create the JIT engine.
-    let engine = create_engine(&module);
+    let required_init_gas = native_program.get_required_init_gas(&fn_id);
+    let native_executor = NativeExecutor::new(native_program);
 
-    // Execute the program
-    cairo_native::execute(
-        &engine,
-        &registry,
-        function_id,
-        params,
-        returns,
-        required_initial_gas,
-    )
-    .unwrap_or_else(|e| match &*e {
-        cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-            panic!(
-                "Expected inputs with signature: ({})",
-                registry
-                    .get_function(function_id)
-                    .unwrap()
-                    .signature
-                    .param_types
-                    .iter()
-                    .map(ToString::to_string)
-                    .intersperse_with(|| ", ".to_string())
-                    .collect::<String>()
-            )
-        }
-        e => panic!("{:?}", e),
-    });
+    native_executor
+        .execute(&fn_id, params, returns, required_init_gas)
+        .unwrap_or_else(|e| match &*e {
+            cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+                panic!(
+                    "Expected inputs with signature: ({})",
+                    native_executor
+                        .native_module
+                        .registry
+                        .get_function(fn_id)
+                        .unwrap()
+                        .signature
+                        .param_types
+                        .iter()
+                        .map(ToString::to_string)
+                        .intersperse_with(|| ", ".to_string())
+                        .collect::<String>()
+                )
+            }
+            e => panic!("{:?}", e),
+        });
 
     Ok(())
 }

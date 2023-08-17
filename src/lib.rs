@@ -1,4 +1,4 @@
-//! # Cairo Sierra to MLIR compiler and JIT engine
+// # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
@@ -189,6 +189,7 @@
 
 pub use self::{compiler::compile, jit_runner::execute};
 use crate::easy::create_engine;
+use crate::error::JitRunnerError;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
@@ -207,6 +208,8 @@ use metadata::{
     MetadataStorage,
 };
 use serde::{Deserializer, Serializer};
+use types::TypeBuilder;
+use values::ValueBuilder;
 
 mod compiler;
 pub mod debug_info;
@@ -221,27 +224,34 @@ pub mod types;
 pub mod utils;
 pub mod values;
 
-pub struct NativeCompiler {
+pub struct NativeContext {
     context: Context,
-    // registry: Registry,
-    metadata: MetadataStorage,
 }
 
-impl NativeCompiler {
+impl NativeContext {
     pub fn new() -> Self {
         let context = initialize_mlir();
+
+        Self { context }
+    }
+
+    pub fn compile(&mut self, program: &Program) -> Result<NativeModule, melior::Error> {
+        let mut module = Module::new(Location::unknown(&self.context));
         let mut metadata = MetadataStorage::new();
+
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
 
-        Self { context, metadata }
-    }
+        let has_gas_builtin = program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
 
-    pub fn compile(&mut self, program: &Program) -> NativeModule {
-        // Instantiate an empty module. Since mutability is handled in the MLRI library,
-        // it is not declared as mutable, but this variable changes state one passed to
-        // the `crate::compile` function.
-        let module = Module::new(Location::unknown(&self.context));
+        // We assume that GasMetadata will be always present when the program uses the gas builtin.
+        if has_gas_builtin {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            metadata.insert(gas_metadata).unwrap();
+        }
 
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program).unwrap();
@@ -251,15 +261,17 @@ impl NativeCompiler {
             &module,
             program,
             &registry,
-            &mut self.metadata,
+            &mut metadata,
             None,
         )
         .unwrap();
 
-        NativeModule::new(module, registry)
+        self.lower_to_llvm(&mut module)?;
+
+        Ok(NativeModule::new(module, registry, metadata))
     }
 
-    pub fn lower_to_llvm(&self, native_module: &mut NativeModule) -> Result<(), melior::Error> {
+    pub fn lower_to_llvm(&self, module: &mut Module) -> Result<(), melior::Error> {
         let pass_manager = PassManager::new(&self.context);
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -270,96 +282,70 @@ impl NativeCompiler {
         pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
         pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
         pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        pass_manager.run(&mut native_module.module)
-    }
-}
-
-pub struct EntrypointInfo {
-    fn_id: FunctionId,
-    required_init_gas: Option<u64>,
-}
-
-impl EntrypointInfo {
-    pub fn new(program: &Program, metadata: &mut MetadataStorage, fn_id: FunctionId) -> Self {
-        let required_init_gas = if program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-        {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-            let required_initial_gas = { gas_metadata.get_initial_required_gas(&fn_id) };
-            metadata.insert(gas_metadata).unwrap();
-            required_initial_gas
-        } else {
-            None
-        };
-
-        EntrypointInfo {
-            fn_id,
-            required_init_gas,
-        }
+        pass_manager.run(module)
     }
 }
 
 pub struct NativeModule<'m> {
     module: Module<'m>,
-    registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: MetadataStorage,
 }
 
 impl<'m> NativeModule<'m> {
-    fn new(module: Module<'m>, registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
-        Self { module, registry }
+    fn new(
+        module: Module<'m>,
+        registry: ProgramRegistry<CoreType, CoreLibfunc>,
+        metadata: MetadataStorage,
+    ) -> Self {
+        Self {
+            module,
+            registry,
+            metadata,
+        }
+    }
+
+    pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u64> {
+        if let Some(gas_metadata) = self.metadata.get::<GasMetadata>() {
+            gas_metadata.get_initial_required_gas(&fn_id)
+        } else {
+            None
+        }
     }
 }
 
-pub struct NativeExecutor {
+pub struct NativeExecutor<'m> {
     engine: ExecutionEngine,
-    registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub native_module: NativeModule<'m>,
 }
 
-impl NativeExecutor {
-    pub fn new(native_module: NativeModule) -> Self {
+impl<'m> NativeExecutor<'m> {
+    pub fn new(native_module: NativeModule<'m>) -> Self {
         let engine = create_engine(&native_module.module);
-        let registry = native_module.registry;
-        Self { engine, registry }
+        Self {
+            engine,
+            native_module,
+        }
     }
 
     pub fn execute<'de, D, S>(
         &self,
-        entrypoint_info: &EntrypointInfo,
+        fn_id: &FunctionId,
         params: D,
         returns: S,
-    ) -> Result<(), ()>
+        required_init_gas: Option<u64>,
+    ) -> Result<S::Ok, JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>
     where
         D: Deserializer<'de>,
         S: Serializer,
     {
         execute(
             &self.engine,
-            &self.registry,
-            &entrypoint_info.fn_id,
+            &self.native_module.registry,
+            fn_id,
             params,
             returns,
-            entrypoint_info.required_init_gas,
+            required_init_gas,
         )
-        .unwrap_or_else(|e| match &*e {
-            error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                panic!(
-                    "Expected inputs with signature: ({})",
-                    self.registry
-                        .get_function(&entrypoint_info.fn_id)
-                        .unwrap()
-                        .signature
-                        .param_types
-                        .iter()
-                        .map(ToString::to_string)
-                        .intersperse_with(|| ", ".to_string())
-                        .collect::<String>()
-                )
-            }
-            e => panic!("{:?}", e),
-        });
-
-        Ok(())
     }
 }
