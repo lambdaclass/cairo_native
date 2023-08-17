@@ -55,7 +55,49 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: Benchmarking
+          body-includes: Benchmarking (Linux in x86_64)
+      - name: Create or update bench comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: bench-hyperfine.md
+          edit-mode: replace
+
+  bench-hyperfine-macos:
+    name: Hyperfine (macOS, Apple silicon)
+    runs-on: [self-hosted, macOS]
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_160_PREFIX: /opt/homebrew/opt/llvm@16
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Install hyperfine
+        uses: taiki-e/install-action@v2
+        with:
+          tool: hyperfine@1.16
+      - name: Fetch corelibs.
+        run: ./scripts/fetch-corelibs.sh
+      - name: Fetch and build cairo.
+        run: wget https://github.com/starkware-libs/cairo/releases/download/v2.1.0/release-x86_64-unknown-linux-musl.tar.gz && tar xvf release-x86_64-unknown-linux-musl.tar.gz
+      - name: Build project
+        run: make build
+      - name: Run benchmarks
+        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/{factorial_100,fib_1k,map}.cairo
+      - name: Create markdown file
+        run: bash .github/scripts/merge-benches.sh
+
+      - name: Find Bench Comment
+        uses: peter-evans/find-comment@v2
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Benchmarking (MacOS in aarch64)
       - name: Create or update bench comment
         uses: peter-evans/create-or-update-comment@v3
         with:
