@@ -288,7 +288,8 @@ impl NativeContext {
         pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
         pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
         pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        Ok(pass_manager.run(module)?)
+        let result = pass_manager.run(module)?;
+        Ok(result)
     }
 }
 
@@ -362,19 +363,19 @@ impl<'m> NativeExecutor<'m> {
         params: D,
         returns: S,
         required_init_gas: Option<u64>,
-    ) -> Result<S::Ok, JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>
+    ) -> Result<S::Ok, Box<JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>>
     where
         D: Deserializer<'de>,
         S: Serializer,
     {
-        execute(
+        Ok(execute(
             &self.engine,
             &self.native_module.registry,
             fn_id,
             params,
             returns,
             required_init_gas,
-        )
+        )?)
     }
 }
 
