@@ -16,7 +16,7 @@ fn main() {
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
-    let name = cairo_native::easy::felt252_short_str("user");
+    let name = cairo_native::utils::felt252_short_str("user");
 
     // Compile and execute the given sierra program, with the inputs and outputs serialized using JSON.
     compile_and_execute(
@@ -62,10 +62,10 @@ where
         .execute(&fn_id, params, returns, required_init_gas)
         .unwrap_or_else(|e| match &*e {
             cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
+                let module = native_executor.get_module();
                 panic!(
                     "Expected inputs with signature: ({})",
-                    native_executor
-                        .native_module
+                    module
                         .registry
                         .get_function(fn_id)
                         .unwrap()

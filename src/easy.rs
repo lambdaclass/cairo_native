@@ -147,44 +147,43 @@ pub fn required_initial_gas(
 
 /// Performs all steps to compile a Sierra program into an MLIR context which can later be lowered to LLVM.
 // TODO: Rethink this error type to make it simpler.
-#[allow(clippy::type_complexity)]
-pub fn compile_sierra_to_mlir<'c, 'd, D, S>(
-    context: &'c Context,
-    program: &Program,
-    function_id: &FunctionId,
-) -> Result<
-    (
-        Module<'c>,
-        ProgramRegistry<CoreType, CoreLibfunc>,
-        Option<u64>,
-    ),
-    Box<Error<'d, CoreType, CoreLibfunc, D, S>>,
->
-where
-    D: Deserializer<'d>,
-    S: Serializer,
-{
-    // Create the empty module
-    let module = Module::new(Location::unknown(context));
+// #[allow(clippy::type_complexity)]
+// pub fn compile_sierra_to_mlir<'c, 'd, D, S>(
+//     context: &'c Context,
+//     program: &Program,
+//     function_id: &FunctionId,
+// ) -> Result<
+//     (
+//         Module<'c>,
+//         ProgramRegistry<CoreType, CoreLibfunc>,
+//         Option<u64>,
+//     ),
+//     Box<Error<'d, CoreType, CoreLibfunc, D, S>>,
+// >
+// where
+//     D: Deserializer<'d>,
+//     S: Serializer,
+// {
+//     // Create the empty module
+//     let module = Module::new(Location::unknown(context));
 
-    // Create the metadata storage
-    let mut metadata = MetadataStorage::new();
+//     // Create the metadata storage
+//     let mut metadata = MetadataStorage::new();
 
-    // Create the Sierra program registry
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-        .map_err(|e| Error::Compile(e.into()))?;
+//     // Create the Sierra program registry
+//     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
+//         .map_err(|e| Error::Compile(e.into()))?;
 
-    // Make the runtime library available by inserting it into the metadata so it can be later retrieved
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+//     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
-    // Check whether the entry point of the program requires an initial gas value
-    let required_initial_gas = required_initial_gas(program, function_id, &mut metadata);
+//     // Check whether the entry point of the program requires an initial gas value
+//     let required_initial_gas = required_initial_gas(program, function_id, &mut metadata);
 
-    crate::compile(context, &module, program, &registry, &mut metadata, None)
-        .map_err(Error::Compile)?;
+//     crate::compile(context, &module, program, &registry, &mut metadata, None)
+//         .map_err(Error::Compile)?;
 
-    Ok((module, registry, required_initial_gas))
-}
+//     Ok((module, registry, required_initial_gas))
+// }
 
 /// Given an MLIR context and module, lowers the operations to LLVM IR.
 // TODO: We should check what error is it best to return here.
@@ -200,47 +199,6 @@ pub fn lower_mlir_to_llvm(context: &Context, module: &mut Module) -> Result<(), 
     pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
     pass_manager.run(module)
-}
-
-/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
-pub fn felt252_str(value: &str) -> [u32; 8] {
-    let value = value
-        .parse::<BigInt>()
-        .expect("value must be a digit number");
-    let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-        _ => value.to_biguint().unwrap(),
-    };
-
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
-}
-
-/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
-pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
-    let value: BigInt = value.into();
-    let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-        _ => value.to_biguint().unwrap(),
-    };
-
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
-}
-
-/// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> [u32; 8] {
-    let values: Vec<_> = value
-        .chars()
-        .filter(|&c| c.is_ascii())
-        .map(|c| c as u8)
-        .collect();
-
-    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
-    digits.resize(8, 0);
-    digits.try_into().unwrap()
 }
 
 /// Creates all the structures needed to compile and create the JIT engine.
@@ -270,15 +228,4 @@ pub fn create_compiler(
         .ok_or("Could not insert runtime library")?;
 
     Ok((context, module, registry, metadata))
-}
-
-/// Creates the execution engine, with all symbols registered.
-pub fn create_engine(module: &Module) -> ExecutionEngine {
-    // Create the JIT engine.
-    let engine = ExecutionEngine::new(module, 3, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-
-    engine
 }

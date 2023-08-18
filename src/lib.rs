@@ -188,7 +188,6 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{compiler::compile, jit_runner::execute};
-use crate::easy::create_engine;
 use crate::error::JitRunnerError;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -208,8 +207,8 @@ use metadata::{
     MetadataStorage,
 };
 use serde::{Deserializer, Serializer};
-use types::TypeBuilder;
-use values::ValueBuilder;
+use std::any::Any;
+use utils::create_engine;
 
 mod compiler;
 pub mod debug_info;
@@ -237,16 +236,15 @@ impl NativeContext {
 
     pub fn compile(&mut self, program: &Program) -> Result<NativeModule, melior::Error> {
         let mut module = Module::new(Location::unknown(&self.context));
-        let mut metadata = MetadataStorage::new();
-
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
 
         let has_gas_builtin = program
             .type_declarations
             .iter()
             .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
 
+        let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
         if has_gas_builtin {
             let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
@@ -271,7 +269,7 @@ impl NativeContext {
         Ok(NativeModule::new(module, registry, metadata))
     }
 
-    pub fn lower_to_llvm(&self, module: &mut Module) -> Result<(), melior::Error> {
+    fn lower_to_llvm(&self, module: &mut Module) -> Result<(), melior::Error> {
         let pass_manager = PassManager::new(&self.context);
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -312,11 +310,25 @@ impl<'m> NativeModule<'m> {
             None
         }
     }
+
+    pub fn insert_metadata<T>(&mut self, meta: T) -> Option<&mut T>
+    where
+        T: Any,
+    {
+        self.metadata.insert(meta)
+    }
+
+    pub fn get_metadata<T>(&self) -> Option<&T>
+    where
+        T: Any,
+    {
+        self.metadata.get::<T>()
+    }
 }
 
 pub struct NativeExecutor<'m> {
     engine: ExecutionEngine,
-    pub native_module: NativeModule<'m>,
+    native_module: NativeModule<'m>,
 }
 
 impl<'m> NativeExecutor<'m> {
@@ -326,6 +338,10 @@ impl<'m> NativeExecutor<'m> {
             engine,
             native_module,
         }
+    }
+
+    pub fn get_module(&self) -> &NativeModule<'m> {
+        &self.native_module
     }
 
     pub fn execute<'de, D, S>(

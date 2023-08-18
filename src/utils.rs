@@ -5,8 +5,9 @@ use cairo_lang_sierra::{
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
 };
-use melior::ExecutionEngine;
-use std::{alloc::Layout, borrow::Cow, fmt, path::Path, ptr::NonNull, sync::Arc};
+use melior::{ir::Module, ExecutionEngine};
+use num_bigint::{BigInt, BigUint, Sign};
+use std::{alloc::Layout, borrow::Cow, fmt, ops::Neg, path::Path, ptr::NonNull, sync::Arc};
 
 /// Generate a function name.
 ///
@@ -98,6 +99,58 @@ pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a Fu
         .find(|x| x.id.debug_name.as_deref() == Some(function_name))
         .unwrap()
         .id
+}
+
+/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
+pub fn felt252_str(value: &str) -> [u32; 8] {
+    let value = value
+        .parse::<BigInt>()
+        .expect("value must be a digit number");
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
+pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+    let value: BigInt = value.into();
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+/// Parse a short string into a felt that can be used in the cairo-native input.
+pub fn felt252_short_str(value: &str) -> [u32; 8] {
+    let values: Vec<_> = value
+        .chars()
+        .filter(|&c| c.is_ascii())
+        .map(|c| c as u8)
+        .collect();
+
+    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
+    digits.resize(8, 0);
+    digits.try_into().unwrap()
+}
+
+/// Creates the execution engine, with all symbols registered.
+pub fn create_engine(module: &Module) -> ExecutionEngine {
+    // Create the JIT engine.
+    let engine = ExecutionEngine::new(module, 3, &[], false);
+
+    #[cfg(feature = "with-runtime")]
+    register_runtime_symbols(&engine);
+
+    engine
 }
 
 #[cfg(feature = "with-runtime")]
@@ -315,6 +368,7 @@ macro_rules! codegen_ret_extr {
         }
     };
 }
+use crate::types::felt252::PRIME;
 pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]
