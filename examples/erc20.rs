@@ -1,12 +1,11 @@
 #![feature(strict_provenance)]
 
 use cairo_felt::Felt252;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_native::{
-    easy::{create_compiler, lower_mlir_to_llvm, required_initial_gas},
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::find_entry_point,
+    utils::{felt252_bigint, felt252_short_str, find_function_id},
+    NativeContext, NativeExecutor,
 };
 use serde_json::json;
 use std::io;
@@ -260,7 +259,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
     std::env::set_var(
         "CARGO_MANIFEST_DIR",
@@ -275,59 +274,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
             .finish(),
-    )?;
+    )
+    .unwrap();
 
     let source = std::fs::read_to_string("programs/erc20.sierra").unwrap();
-
-    let program = cairo_lang_sierra::ProgramParser::new()
+    let sierra_program = cairo_lang_sierra::ProgramParser::new()
         .parse(&source)
         .unwrap();
 
-    let entry_point =
-        find_entry_point(&program, "erc20::erc20::erc_20::__constructor::constructor").unwrap();
+    let mut native_context = NativeContext::new();
 
-    // Initialize MLIR.
-    let (context, mut module, registry, mut metadata) = create_compiler(&program).unwrap();
-
-    // Make the Starknet syscall handler available.
-    metadata
-        .insert(SyscallHandlerMeta::new(&SyscallHandler))
+    let mut native_program = native_context.compile(&sierra_program).unwrap();
+    native_program
+        .insert_metadata(SyscallHandlerMeta::new(&SyscallHandler))
         .unwrap();
 
-    // Gas
-    let required_initial_gas = required_initial_gas(&program, &entry_point.id, &mut metadata);
+    let syscall_addr = native_program
+        .get_metadata::<SyscallHandlerMeta>()
+        .unwrap()
+        .as_ptr()
+        .addr();
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        None,
-    )?;
+    let fn_id = find_function_id(
+        &sierra_program,
+        "erc20::erc20::erc_20::__constructor::constructor",
+    );
+    let required_init_gas = native_program.get_required_init_gas(fn_id);
 
-    // Lower to LLVM.
-    lower_mlir_to_llvm(&context, &mut module).unwrap();
-
-    // Create the JIT engine.
-    let engine = create_engine(&module);
-
-    /* possible entry points:
-    erc20::erc20::erc_20::__external::get_name@0([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::get_symbol@122([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::get_decimals@244([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::get_total_supply@366([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::balance_of@488([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::allowance@641([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::transfer@820([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::transfer_from@991([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::approve@1189([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::increase_allowance@1360([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__external::decrease_allowance@1531([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-    erc20::erc20::erc_20::__constructor::constructor@1702([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
-     */
-
-    let params_input = json!([
+    let params = json!([
         // pedersen
         null,
         // range check
@@ -335,11 +309,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // gas
         u64::MAX,
         // system
-        metadata
-            .get::<SyscallHandlerMeta>()
-            .unwrap()
-            .as_ptr()
-            .addr(),
+        syscall_addr,
         // The amount of params change depending on the contract function called
         // Struct<Span<Array<felt>>>
         [
@@ -358,16 +328,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ]
     ]);
 
-    cairo_native::execute(
-        &engine,
-        &registry,
-        &entry_point.id,
-        params_input,
-        &mut serde_json::Serializer::pretty(io::stdout()),
-        required_initial_gas,
-    )
-    .unwrap();
-    println!();
+    let returns = &mut serde_json::Serializer::pretty(io::stdout());
+
+    /* possible entry points:
+    erc20::erc20::erc_20::__external::get_name@0([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::get_symbol@122([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::get_decimals@244([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::get_total_supply@366([0]: RangeCheck, [1]: GasBuiltin, [2]: System, [3]: core::array::Span::<core::felt252>) -> (RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::balance_of@488([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::allowance@641([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::transfer@820([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::transfer_from@991([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::approve@1189([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::increase_allowance@1360([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__external::decrease_allowance@1531([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+    erc20::erc20::erc_20::__constructor::constructor@1702([0]: Pedersen, [1]: RangeCheck, [2]: GasBuiltin, [3]: System, [4]: core::array::Span::<core::felt252>) -> (Pedersen, RangeCheck, GasBuiltin, System, core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>);
+     */
+
+    let native_executor = NativeExecutor::new(native_program);
+
+    native_executor
+        .execute(fn_id, params, returns, required_init_gas)
+        .unwrap();
 
     // Useful code to print a short felt string returned from the json, in case it panics
     /*
@@ -382,5 +364,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     */
 
-    Ok(())
+    println!("Cairo program was compiled and executed succesfully.");
 }

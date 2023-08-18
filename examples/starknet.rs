@@ -2,9 +2,7 @@
 
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_native::{
-    easy::{create_compiler, lower_mlir_to_llvm, required_initial_gas, Error},
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::find_function_id,

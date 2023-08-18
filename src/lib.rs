@@ -195,10 +195,11 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
-use easy::initialize_mlir;
 use melior::{
+    dialect::DialectRegistry,
     ir::{Location, Module},
     pass::{self, PassManager},
+    utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
 use metadata::{
@@ -364,4 +365,17 @@ impl<'m> NativeExecutor<'m> {
             required_init_gas,
         )
     }
+}
+
+/// Initialize an MLIR context.
+pub fn initialize_mlir() -> Context {
+    let context = Context::new();
+    context.append_dialect_registry(&{
+        let registry = DialectRegistry::new();
+        register_all_dialects(&registry);
+        registry
+    });
+    context.load_all_available_dialects();
+    register_all_passes();
+    context
 }
