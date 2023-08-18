@@ -282,7 +282,7 @@ fn main() {
         .parse(&source)
         .unwrap();
 
-    let mut native_context = NativeContext::new();
+    let native_context = NativeContext::new();
 
     let mut native_program = native_context.compile(&sierra_program).unwrap();
     native_program

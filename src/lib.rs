@@ -213,7 +213,6 @@ use utils::create_engine;
 
 mod compiler;
 pub mod debug_info;
-pub mod easy;
 pub mod error;
 mod ffi;
 mod jit_runner;
@@ -224,6 +223,7 @@ pub mod types;
 pub mod utils;
 pub mod values;
 
+/// Context of IRs, dialects and passes for Cairo programs compilation.
 pub struct NativeContext {
     context: Context,
 }
@@ -231,11 +231,13 @@ pub struct NativeContext {
 impl NativeContext {
     pub fn new() -> Self {
         let context = initialize_mlir();
-
         Self { context }
     }
 
-    pub fn compile(&mut self, program: &Program) -> Result<NativeModule, melior::Error> {
+    pub fn compile(
+        &self,
+        program: &Program,
+    ) -> Result<NativeModule, error::CompileError<CoreType, CoreLibfunc>> {
         let mut module = Module::new(Location::unknown(&self.context));
 
         let has_gas_builtin = program
@@ -244,16 +246,19 @@ impl NativeContext {
             .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
 
         let mut metadata = MetadataStorage::new();
+
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
         if has_gas_builtin {
             let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-            metadata.insert(gas_metadata).unwrap();
+            // Unwrapping here is not necessary since the insertion will only fail if there was
+            // already some metadata of the same type.
+            metadata.insert(gas_metadata);
         }
 
         // Create the Sierra program registry
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program).unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
         crate::compile(
             &self.context,
@@ -262,15 +267,17 @@ impl NativeContext {
             &registry,
             &mut metadata,
             None,
-        )
-        .unwrap();
+        )?;
 
         self.lower_to_llvm(&mut module)?;
 
         Ok(NativeModule::new(module, registry, metadata))
     }
 
-    fn lower_to_llvm(&self, module: &mut Module) -> Result<(), melior::Error> {
+    fn lower_to_llvm(
+        &self,
+        module: &mut Module,
+    ) -> Result<(), error::CompileError<CoreType, CoreLibfunc>> {
         let pass_manager = PassManager::new(&self.context);
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -281,13 +288,13 @@ impl NativeContext {
         pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
         pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
         pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        pass_manager.run(module)
+        Ok(pass_manager.run(module)?)
     }
 }
 
 pub struct NativeModule<'m> {
     module: Module<'m>,
-    pub registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: MetadataStorage,
 }
 
@@ -343,6 +350,10 @@ impl<'m> NativeExecutor<'m> {
 
     pub fn get_module(&self) -> &NativeModule<'m> {
         &self.native_module
+    }
+
+    pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+        &self.native_module.registry
     }
 
     pub fn execute<'de, D, S>(

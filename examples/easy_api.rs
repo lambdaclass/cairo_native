@@ -1,7 +1,6 @@
 #![feature(iter_intersperse)]
 
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use cairo_native::{easy::Error, NativeContext, NativeExecutor};
+use cairo_native::{error::NativeError, NativeContext, NativeExecutor};
 use serde::{Deserializer, Serializer};
 use serde_json::json;
 use std::{io::stdout, path::Path};
@@ -40,21 +39,21 @@ pub fn compile_and_execute<'de, D, S>(
     entry_point: &str,
     params: D,
     returns: S,
-) -> Result<(), Box<Error<'de, CoreType, CoreLibfunc, D, S>>>
+) -> Result<(), NativeError<'de, D, S>>
 where
     D: Deserializer<'de>,
     S: Serializer,
 {
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
-    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
-    let mut native_context = NativeContext::new();
+    let native_context = NativeContext::new();
 
     let native_program = native_context
         .compile(&sierra_program)
-        .map_err(|e| Error::JitRunner(e.into()))?;
+        .map_err(|e| NativeError::CompilerError(e))?;
 
+    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
     let required_init_gas = native_program.get_required_init_gas(&fn_id);
     let native_executor = NativeExecutor::new(native_program);
 
@@ -62,11 +61,10 @@ where
         .execute(&fn_id, params, returns, required_init_gas)
         .unwrap_or_else(|e| match &*e {
             cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                let module = native_executor.get_module();
+                let registry = native_executor.get_program_registry();
                 panic!(
                     "Expected inputs with signature: ({})",
-                    module
-                        .registry
+                    registry
                         .get_function(fn_id)
                         .unwrap()
                         .signature
