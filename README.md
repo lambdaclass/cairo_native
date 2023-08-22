@@ -344,7 +344,7 @@ Options:
 
 # API usage example
 
-This is an example using the API in an easy example that requires the least setup to get running. It allows you to compile and execute a program using the JIT. The inputs and outputs in this case are
+This is a usage example using the API for an easy Cairo program that requires the least setup to get running. It allows you to compile and execute a program using the JIT. The inputs and outputs in this case are
 serialized using `serde_json` (so the format is JSON).
 
 Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, even the implicit ones such as builtins. Some examples of these are the `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them, with the exception of `GasBuiltin` can simply be
