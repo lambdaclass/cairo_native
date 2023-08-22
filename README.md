@@ -344,38 +344,36 @@ Options:
 
 # API usage example
 
-This is an example using the "easy" API that requires the least setup to get running, it allows
-you to compile and execute a program using the JIT. The inputs and outputs in this case are
-serialized using serde_json (so the format is JSON).
+This is an example using the API in an easy example that requires the least setup to get running. It allows you to compile and execute a program using the JIT. The inputs and outputs in this case are
+serialized using `serde_json` (so the format is JSON).
 
-Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, even the implicits (builtins)
-such as `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them but `GasBuiltin` can simply be
+Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, even the implicit ones such as builtins. Some examples of these are the `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them, with the exception of `GasBuiltin` can simply be
 passed as `null`.
 
 If the wrong inputs are passed, an error reports the needed inputs. You can also check the needed inputs by
-compiling the program to sierra and checking the arguments of the entry point you chose, it will look like:
+compiling the program to sierra and checking the arguments of the entry point you chose, it will look something like:
 
 ```
 example::example::main@0([0]: Pedersen, [1]: felt252, [2]: felt252) -> (Pedersen, felt252);
 ```
 
-Here in this case, we take the pedersen builtin and 2 felts. so we would pass the json:
+In this case, we take the pedersen builtin and 2 felts. So we pass the following json:
 
 ```json
 [null, [1,0,0,0,0,0,0,0],  [2,0,0,0,0,0,0,0]]
 ```
 
-The first null is the pedersen builtin, in cairo-native most builtins but `GasBuiltin` are not used at all, so `null` works.
+The first `null` is the pedersen builtin, in cairo-native most builtins (with the exception of `GasBuiltin`) are not used at all, so `null` works.
 
-The 2 felts are encoded as a array of u32 of length 8. In little endian order.
-You can use the functions provided on the `cairo_native::easy` module `felt252_str`, `felt252_bigint` and `felt252_short_str`
-to encode felts to this format easily.
+The two following inputs are felts encoded as a u32 array of length 8 in little endian order.
+You can use the functions provided on the `cairo_native::utils` module `felt252_str`, `felt252_bigint` and `felt252_short_str` to easily encode felts to this format.
 
 
 Example code:
 
 ```rust
-use cairo_native::easy::{compile_and_execute, felt252_short_str};
+use cairo_native::context::NativeContext;
+use cairo_native::executor::NativeExecutor;
 use serde_json::json;
 use std::{io::stdout, path::Path};
 
@@ -389,17 +387,35 @@ fn main() {
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
-    let name = felt252_short_str("user");
+    let program_path = Path::new("programs/examples/hello.cairo");
+    // Compile the cairo program to sierra.
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-    // Compile and execute the given sierra program, with the inputs and outputs serialized using JSON.
-    compile_and_execute(
-        Path::new("programs/examples/hello.cairo"),
-        "hello::hello::greet",
-        json!([name]),
-        &mut serde_json::Serializer::new(stdout()),
-    )
-    .unwrap();
-    println!();
+    // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+    // MLIR initialization and compilation of sierra programs into a MLIR module.
+    let native_context = NativeContext::new();
+
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context.compile(&sierra_program).unwrap();
+
+    // Get necessary information for the execution of the program from a given entrypoint:
+    //   * entrypoint function id
+    //   * required initial gas
+    let name = cairo_native::utils::felt252_short_str("user");
+    let entry_point = "hello::hello::greet";
+    let params = json!([name]);
+    let returns = &mut serde_json::Serializer::new(stdout());
+    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    let required_init_gas = native_program.get_required_init_gas(&fn_id);
+
+    // Instantiate MLIR executor.
+    let native_executor = NativeExecutor::new(native_program);
+
+    // Execute the program
+    native_executor
+        .execute(&fn_id, params, returns, required_init_gas).unwrap();
+
+    println!("Cairo program was compiled and executed succesfully.");
 }
 ```
 

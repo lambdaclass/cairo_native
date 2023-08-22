@@ -15,13 +15,7 @@ fn main() {
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
-    let name = cairo_native::utils::felt252_short_str("user");
-
     let program_path = Path::new("programs/examples/hello.cairo");
-    let entry_point = "hello::hello::greet";
-    let params = json!([name]);
-    let returns = &mut serde_json::Serializer::new(stdout());
-
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
@@ -35,6 +29,10 @@ fn main() {
     // Get necessary information for the execution of the program from a given entrypoint:
     //   * entrypoint function id
     //   * required initial gas
+    let name = cairo_native::utils::felt252_short_str("user");
+    let entry_point = "hello::hello::greet";
+    let params = json!([name]);
+    let returns = &mut serde_json::Serializer::new(stdout());
     let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
     let required_init_gas = native_program.get_required_init_gas(&fn_id);
 
