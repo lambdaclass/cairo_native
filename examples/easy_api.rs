@@ -41,7 +41,7 @@ fn main() {
 
     // Execute the program
     native_executor
-        .execute(&fn_id, params, returns, required_init_gas)
+        .execute(fn_id, params, returns, required_init_gas)
         .unwrap_or_else(|e| match &e.source {
             cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
                 let registry = native_executor.get_program_registry();
