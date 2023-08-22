@@ -24,7 +24,7 @@ impl<'m> NativeExecutor<'m> {
     }
 
     pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
-        &self.native_module.get_program_registry()
+        self.native_module.get_program_registry()
     }
 
     pub fn execute<'de, D, S>(
