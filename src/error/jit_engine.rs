@@ -70,6 +70,21 @@ where
     }
 }
 
+impl<'de, TType, TLibfunc, D, S, E> From<E> for Box<Error<'de, TType, TLibfunc, D, S>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+    S: Serializer,
+    ErrorImpl<'de, TType, TLibfunc, D, S>: From<E>,
+{
+    fn from(error: E) -> Self {
+        Self::new(Error::from(error))
+    }
+}
+
 // Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn't the case.
 impl<'de, TType, TLibfunc, D, S> fmt::Debug for Error<'de, TType, TLibfunc, D, S>

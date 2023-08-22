@@ -223,6 +223,9 @@ pub mod types;
 pub mod utils;
 pub mod values;
 
+pub type CompileError = Box<error::CompileError<CoreType, CoreLibfunc>>;
+pub type RunnerError<'de, D, S> = Box<error::JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>;
+
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 pub struct NativeContext {
     context: Context,
@@ -240,10 +243,7 @@ impl NativeContext {
         Self { context }
     }
 
-    pub fn compile(
-        &self,
-        program: &Program,
-    ) -> Result<NativeModule, error::CompileError<CoreType, CoreLibfunc>> {
+    pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
         let mut module = Module::new(Location::unknown(&self.context));
 
         let has_gas_builtin = program
@@ -280,10 +280,7 @@ impl NativeContext {
         Ok(NativeModule::new(module, registry, metadata))
     }
 
-    fn lower_to_llvm(
-        &self,
-        module: &mut Module,
-    ) -> Result<(), error::CompileError<CoreType, CoreLibfunc>> {
+    fn lower_to_llvm(&self, module: &mut Module) -> Result<(), CompileError> {
         let pass_manager = PassManager::new(&self.context);
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -294,8 +291,7 @@ impl NativeContext {
         pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
         pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
         pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        let result = pass_manager.run(module)?;
-        Ok(result)
+        Ok(pass_manager.run(module)?)
     }
 }
 
@@ -370,10 +366,6 @@ impl<'m> NativeExecutor<'m> {
         }
     }
 
-    pub fn get_module(&self) -> &NativeModule<'m> {
-        &self.native_module
-    }
-
     pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.native_module.registry
     }
@@ -384,7 +376,7 @@ impl<'m> NativeExecutor<'m> {
         params: D,
         returns: S,
         required_init_gas: Option<u64>,
-    ) -> Result<S::Ok, Box<JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>>
+    ) -> Result<S::Ok, RunnerError<'de, D, S>>
     where
         D: Deserializer<'de>,
         S: Serializer,
