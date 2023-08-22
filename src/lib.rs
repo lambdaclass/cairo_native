@@ -7,46 +7,12 @@
 //!
 //! ## Usage
 //!
-//! Right now, there are two ways of using this crate: the easy API and the normal one.
-//!
-//! **Easy API**
-//!
-//! The [easy API](crate::easy) contains a single function,
-//! [`compile_and_execute`](crate::easy::compile_and_execute) which combines both functions in the
-//! normal API as well as all the required initialization and customization. It may be used for
-//! testing and prototyping, but it's **NOT intended** to be anything more than that.
-//!
-//! ```
-//! # use serde_json::json;
-//! # use std::{io::stdout, path::Path};
-//! #
-//! # // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-//! # std::env::set_var(
-//! #     "CARGO_MANIFEST_DIR",
-//! #     format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-//! # );
-//! #
-//! # #[cfg(not(feature = "with-runtime"))]
-//! # compile_error!("This example requires the `with-runtime` feature to be active.");
-//! #
-//! let name = cairo_native::easy::felt252_short_str("user");
-//!
-//! // The easy API requires only the program, the entry point and the de/serializers.
-//! cairo_native::easy::compile_and_execute(
-//!     Path::new("programs/examples/hello.cairo"),
-//!     "hello::hello::greet",
-//!     json!([name]),
-//!     &mut serde_json::Serializer::new(stdout()),
-//! )
-//! .unwrap();
-//! # println!();
-//! ```
-//!
-//! **Normal API**
-//!
-//! The normal API contains two different functions: [`compile`] and [`execute`]. They require some
-//! initialization, but are much more powerful since they allow, for example, the caching of
-//! programs and JIT states.
+//! The API containts two structs, `NativeContext` and `NativeExecutor`.
+//! The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
+//! `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
+//! from an entrypoint.
+//! Programs and JIT states can be cached in contexts where their execution will be done multiple
+//! times.
 //!
 //! ```
 //! # use cairo_lang_compiler::CompilerConfig;
@@ -188,218 +154,18 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{compiler::compile, jit_runner::execute};
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    ids::FunctionId,
-    program::Program,
-    program_registry::ProgramRegistry,
-};
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
-};
-use metadata::{
-    gas::{GasMetadata, MetadataComputationConfig},
-    runtime_bindings::RuntimeBindingsMeta,
-    MetadataStorage,
-};
-use serde::{Deserializer, Serializer};
-use std::any::Any;
-use utils::create_engine;
 
 mod compiler;
+pub mod context;
 pub mod debug_info;
 pub mod error;
+pub mod executor;
 mod ffi;
 mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
+pub mod module;
 pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
-
-pub type CompileError = Box<error::CompileError<CoreType, CoreLibfunc>>;
-pub type RunnerError<'de, D, S> = Box<error::JitRunnerError<'de, CoreType, CoreLibfunc, D, S>>;
-
-/// Context of IRs, dialects and passes for Cairo programs compilation.
-pub struct NativeContext {
-    context: Context,
-}
-
-impl Default for NativeContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl NativeContext {
-    pub fn new() -> Self {
-        let context = initialize_mlir();
-        Self { context }
-    }
-
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
-        let mut module = Module::new(Location::unknown(&self.context));
-
-        let has_gas_builtin = program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
-
-        let mut metadata = MetadataStorage::new();
-
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
-        // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        if has_gas_builtin {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-            // Unwrapping here is not necessary since the insertion will only fail if there was
-            // already some metadata of the same type.
-            metadata.insert(gas_metadata);
-        }
-
-        // Create the Sierra program registry
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
-
-        crate::compile(
-            &self.context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )?;
-
-        self.lower_to_llvm(&mut module)?;
-
-        Ok(NativeModule::new(module, registry, metadata))
-    }
-
-    fn lower_to_llvm(&self, module: &mut Module) -> Result<(), CompileError> {
-        let pass_manager = PassManager::new(&self.context);
-        pass_manager.enable_verifier(true);
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-        pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        Ok(pass_manager.run(module)?)
-    }
-}
-
-/// A MLIR module in the context of Cairo Native.
-/// It is conformed by the MLIR module, the Sierra program registry
-/// and the program metadata.
-pub struct NativeModule<'m> {
-    module: Module<'m>,
-    registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: MetadataStorage,
-}
-
-impl<'m> NativeModule<'m> {
-    fn new(
-        module: Module<'m>,
-        registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: MetadataStorage,
-    ) -> Self {
-        Self {
-            module,
-            registry,
-            metadata,
-        }
-    }
-
-    /// Given some contract function's id, returns an option of the required
-    /// initial gas to execute it.
-    /// If no initial gas is required, `None` is returned.
-    pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u64> {
-        if let Some(gas_metadata) = self.metadata.get::<GasMetadata>() {
-            gas_metadata.get_initial_required_gas(fn_id)
-        } else {
-            None
-        }
-    }
-
-    /// Insert some metadata for the program execution and return a mutable reference to it.
-    ///
-    /// The insertion will fail, if there is already some metadata with the same type, in which case
-    /// it'll return `None`.
-    pub fn insert_metadata<T>(&mut self, meta: T) -> Option<&mut T>
-    where
-        T: Any,
-    {
-        self.metadata.insert(meta)
-    }
-
-    /// Retrieve a reference to some stored metadata.
-    ///
-    /// The retrieval will fail if there is no metadata with the requested type, in which case it'll
-    /// return `None`.
-    pub fn get_metadata<T>(&self) -> Option<&T>
-    where
-        T: Any,
-    {
-        self.metadata.get::<T>()
-    }
-}
-
-/// A MLIR execution engine in the context of Cairo Native.
-pub struct NativeExecutor<'m> {
-    engine: ExecutionEngine,
-    native_module: NativeModule<'m>,
-}
-
-impl<'m> NativeExecutor<'m> {
-    pub fn new(native_module: NativeModule<'m>) -> Self {
-        let engine = create_engine(&native_module.module);
-        Self {
-            engine,
-            native_module,
-        }
-    }
-
-    pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
-        &self.native_module.registry
-    }
-
-    pub fn execute<'de, D, S>(
-        &self,
-        fn_id: &FunctionId,
-        params: D,
-        returns: S,
-        required_init_gas: Option<u64>,
-    ) -> Result<S::Ok, RunnerError<'de, D, S>>
-    where
-        D: Deserializer<'de>,
-        S: Serializer,
-    {
-        Ok(execute(
-            &self.engine,
-            &self.native_module.registry,
-            fn_id,
-            params,
-            returns,
-            required_init_gas,
-        )?)
-    }
-}
-
-/// Initialize an MLIR context.
-pub fn initialize_mlir() -> Context {
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_passes();
-    context
-}

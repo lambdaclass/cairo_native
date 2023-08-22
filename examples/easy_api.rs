@@ -1,6 +1,7 @@
 #![feature(iter_intersperse)]
 
-use cairo_native::{NativeContext, NativeExecutor};
+use cairo_native::context::NativeContext;
+use cairo_native::executor::NativeExecutor;
 use serde_json::json;
 use std::{io::stdout, path::Path};
 

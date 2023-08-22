@@ -1,12 +1,17 @@
 use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
 use cairo_lang_sierra::{
     edit_state::EditStateError,
-    extensions::{GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        GenericLibfunc, GenericType,
+    },
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
 use std::{backtrace::Backtrace, fmt, ops::Deref};
 use thiserror::Error;
+
+pub type CompileError = Box<Error<CoreType, CoreLibfunc>>;
 
 #[derive(Error)]
 pub struct Error<TType, TLibfunc>

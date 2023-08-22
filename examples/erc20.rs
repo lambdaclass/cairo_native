@@ -1,11 +1,12 @@
 #![feature(strict_provenance)]
 
 use cairo_felt::Felt252;
+use cairo_native::context::NativeContext;
+use cairo_native::executor::NativeExecutor;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::{felt252_bigint, felt252_short_str, find_function_id},
-    NativeContext, NativeExecutor,
 };
 use serde_json::json;
 use std::io;
