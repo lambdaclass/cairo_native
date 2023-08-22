@@ -26,7 +26,7 @@ fn main() {
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
     // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
-    // MLIR configuration and compilation of sierra programs into a MLIR module.
+    // MLIR initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
