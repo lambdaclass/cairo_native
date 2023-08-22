@@ -188,7 +188,6 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{compiler::compile, jit_runner::execute};
-use crate::error::JitRunnerError;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,

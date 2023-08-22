@@ -64,9 +64,3 @@ fn main() {
 
     println!("Cairo program was compiled and executed succesfully.");
 }
-
-// / Shortcut to compile and execute a program.
-// /
-// / For short programs this function may suffice, but as the program grows the other interface is
-// / preferred since there is some stuff that should be cached, such as the MLIR context and the
-// / execution engines for programs that will be run multiple times.
