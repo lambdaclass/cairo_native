@@ -34,7 +34,7 @@ fn main() {
     let params = json!([name]);
     let returns = &mut serde_json::Serializer::new(stdout());
     let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-    let required_init_gas = native_program.get_required_init_gas(&fn_id);
+    let required_init_gas = native_program.get_required_init_gas(fn_id);
 
     // Instantiate MLIR executor.
     let native_executor = NativeExecutor::new(native_program);
