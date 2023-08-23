@@ -13,9 +13,8 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         int::{
-            unsigned::UintOperationConcreteLibfunc,
             unsigned128::{Uint128Concrete, Uint128Traits},
-            IntConstConcreteLibfunc, IntOperator,
+            IntConstConcreteLibfunc, IntOperationConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc, GenericLibfunc, GenericType,
@@ -350,7 +349,7 @@ pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    info: &UintOperationConcreteLibfunc,
+    info: &IntOperationConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,

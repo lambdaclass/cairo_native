@@ -1,12 +1,17 @@
 use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
 use cairo_lang_sierra::{
     edit_state::EditStateError,
-    extensions::{GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        GenericLibfunc, GenericType,
+    },
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
 use std::{backtrace::Backtrace, fmt, ops::Deref};
 use thiserror::Error;
+
+pub type CompileError = Box<Error<CoreType, CoreLibfunc>>;
 
 #[derive(Error)]
 pub struct Error<TType, TLibfunc>
@@ -59,6 +64,19 @@ where
             backtrace: Backtrace::capture(),
             source: error.into(),
         }
+    }
+}
+
+impl<TType, TLibfunc, E> From<E> for Box<Error<TType, TLibfunc>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    ErrorImpl<TType, TLibfunc>: From<E>,
+{
+    fn from(error: E) -> Self {
+        Self::new(Error::from(error))
     }
 }
 

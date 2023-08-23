@@ -1,12 +1,17 @@
 use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        GenericLibfunc, GenericType,
+    },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistryError,
 };
 use serde::{Deserializer, Serializer};
 use std::{alloc::LayoutError, backtrace::Backtrace, fmt, ops::Deref};
 use thiserror::Error;
+
+pub type RunnerError<'de, D, S> = Box<Error<'de, CoreType, CoreLibfunc, D, S>>;
 
 #[derive(Error)]
 pub struct Error<'de, TType, TLibfunc, D, S>
@@ -67,6 +72,21 @@ where
             backtrace: Backtrace::capture(),
             source: error.into(),
         }
+    }
+}
+
+impl<'de, TType, TLibfunc, D, S, E> From<E> for Box<Error<'de, TType, TLibfunc, D, S>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+    D: Deserializer<'de>,
+    S: Serializer,
+    ErrorImpl<'de, TType, TLibfunc, D, S>: From<E>,
+{
+    fn from(error: E) -> Self {
+        Self::new(Error::from(error))
     }
 }
 

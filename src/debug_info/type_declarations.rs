@@ -12,12 +12,11 @@ pub fn find_type_declaration(
 
     for crate_id in db.crates() {
         for module_id in db.crate_modules(crate_id).iter().copied() {
-            for extern_type_id in db.module_extern_types_ids(module_id)? {
+            for extern_type_id in db.module_extern_types_ids(module_id)?.iter() {
                 if extern_type_id.name(db) == type_id {
-                    return Ok(Some(StableLocation {
-                        module_file_id: extern_type_id.module_file_id(db),
-                        stable_ptr: extern_type_id.untyped_stable_ptr(db),
-                    }));
+                    return Ok(Some(StableLocation::new(
+                        extern_type_id.untyped_stable_ptr(db),
+                    )));
                 }
             }
         }
