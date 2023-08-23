@@ -1,8 +1,13 @@
 //! # Various utilities
 
-use cairo_lang_sierra::ids::FunctionId;
-use melior::ExecutionEngine;
-use std::{alloc::Layout, borrow::Cow, fmt, ptr::NonNull};
+use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_sierra::{
+    ids::FunctionId,
+    program::{GenFunction, Program, StatementIdx},
+};
+use melior::{ir::Module, ExecutionEngine};
+use num_bigint::{BigInt, BigUint, Sign};
+use std::{alloc::Layout, borrow::Cow, fmt, ops::Neg, path::Path, ptr::NonNull, sync::Arc};
 
 /// Generate a function name.
 ///
@@ -44,6 +49,108 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         Layout::array::<u64>(width.next_multiple_of(64) as usize >> 6).unwrap()
     }
+}
+
+/// Compile a cairo program found at the given path to sierra.
+pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
+    if program
+        .extension()
+        .map(|x| {
+            x.to_ascii_lowercase()
+                .to_string_lossy()
+                .eq_ignore_ascii_case("cairo")
+        })
+        .unwrap_or(false)
+    {
+        cairo_lang_compiler::compile_cairo_project_at_path(
+            program,
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    } else {
+        let source = std::fs::read_to_string(program).unwrap();
+        Arc::new(
+            cairo_lang_sierra::ProgramParser::new()
+                .parse(&source)
+                .unwrap(),
+        )
+    }
+}
+
+/// Returns the given entry point if present.
+pub fn find_entry_point<'a>(
+    program: &'a Program,
+    entry_point: &str,
+) -> Option<&'a GenFunction<StatementIdx>> {
+    program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
+}
+
+/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
+    &program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
+        .unwrap()
+        .id
+}
+
+/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
+pub fn felt252_str(value: &str) -> [u32; 8] {
+    let value = value
+        .parse::<BigInt>()
+        .expect("value must be a digit number");
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
+pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+    let value: BigInt = value.into();
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    let mut u32_digits = value.to_u32_digits();
+    u32_digits.resize(8, 0);
+    u32_digits.try_into().unwrap()
+}
+
+/// Parse a short string into a felt that can be used in the cairo-native input.
+pub fn felt252_short_str(value: &str) -> [u32; 8] {
+    let values: Vec<_> = value
+        .chars()
+        .filter(|&c| c.is_ascii())
+        .map(|c| c as u8)
+        .collect();
+
+    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
+    digits.resize(8, 0);
+    digits.try_into().unwrap()
+}
+
+/// Creates the execution engine, with all symbols registered.
+pub fn create_engine(module: &Module) -> ExecutionEngine {
+    // Create the JIT engine.
+    let engine = ExecutionEngine::new(module, 3, &[], false);
+
+    #[cfg(feature = "with-runtime")]
+    register_runtime_symbols(&engine);
+
+    engine
 }
 
 #[cfg(feature = "with-runtime")]
@@ -261,6 +368,7 @@ macro_rules! codegen_ret_extr {
         }
     };
 }
+use crate::types::felt252::PRIME;
 pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]

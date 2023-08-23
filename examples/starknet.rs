@@ -2,13 +2,12 @@
 
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
+use cairo_native::context::NativeContext;
+use cairo_native::executor::NativeExecutor;
 use cairo_native::{
-    easy::{
-        create_compiler, create_engine, find_entry_point, get_required_initial_gas, run_passes,
-    },
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_function_id,
 };
 use serde_json::json;
 use std::{io, path::Path};
@@ -262,13 +261,14 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
             .finish(),
-    )?;
+    )
+    .unwrap();
 
     // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
     std::env::set_var(
@@ -276,7 +276,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
     );
 
-    let program = cairo_lang_compiler::compile_cairo_project_at_path(
+    let sierra_program = cairo_lang_compiler::compile_cairo_project_at_path(
         Path::new("programs/examples/hello_starknet.cairo"),
         CompilerConfig {
             replace_ids: true,
@@ -285,54 +285,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .unwrap();
 
-    let entry_point = find_entry_point(&program, "hello_starknet::hello_starknet::main").unwrap();
+    let native_context = NativeContext::new();
 
-    // Initialize MLIR.
-    let (context, mut module, registry, mut metadata) = create_compiler(&program).unwrap();
-
-    // Make the Starknet syscall handler available.
-    metadata
-        .insert(SyscallHandlerMeta::new(&SyscallHandler))
+    let mut native_program = native_context.compile(&sierra_program).unwrap();
+    native_program
+        .insert_metadata(SyscallHandlerMeta::new(&SyscallHandler))
         .unwrap();
 
-    // Gas
-    let required_initial_gas = get_required_initial_gas(&program, &mut metadata, entry_point);
+    let syscall_addr = native_program
+        .get_metadata::<SyscallHandlerMeta>()
+        .unwrap()
+        .as_ptr()
+        .addr();
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        None,
-    )?;
+    let fn_id = find_function_id(&sierra_program, "hello_starknet::hello_starknet::main");
+    let required_init_gas = native_program.get_required_init_gas(fn_id);
+    let params = json!([(), u64::MAX, syscall_addr,]);
+    let returns = &mut serde_json::Serializer::pretty(io::stdout());
 
-    // Lower to LLVM.
-    run_passes(&context, &mut module).unwrap();
+    let native_executor = NativeExecutor::new(native_program);
 
-    // Create the JIT engine.
-    let engine = create_engine(&module);
+    native_executor
+        .execute(fn_id, params, returns, required_init_gas)
+        .unwrap();
 
-    let params_input = json!([
-        (),
-        u64::MAX,
-        metadata
-            .get::<SyscallHandlerMeta>()
-            .unwrap()
-            .as_ptr()
-            .addr()
-    ]);
-
-    cairo_native::execute(
-        &engine,
-        &registry,
-        &entry_point.id,
-        params_input,
-        &mut serde_json::Serializer::pretty(io::stdout()),
-        required_initial_gas,
-    )
-    .unwrap();
-    println!();
-
-    Ok(())
+    println!("Cairo program was compiled and executed succesfully.");
 }
