@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["debug_with","generate_function_name","get_integer_layout","register_runtime_symbols"]};
+window.SIDEBAR_ITEMS = {"fn":["cairo_to_sierra","create_engine","debug_with","felt252_bigint","felt252_short_str","felt252_str","find_entry_point","find_function_id","generate_function_name","get_integer_layout","register_runtime_symbols"]};

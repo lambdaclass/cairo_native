@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ErrorImpl"],"fn":["make_deserializer_error","make_insuficient_gas_error","make_serializer_error","make_type_builder_error"],"struct":["Error"]};
+window.SIDEBAR_ITEMS = {"enum":["ErrorImpl"],"fn":["make_deserializer_error","make_insuficient_gas_error","make_serializer_error","make_type_builder_error"],"struct":["Error"],"type":["RunnerError"]};

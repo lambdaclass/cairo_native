@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-cb6f1f67f1bcd037.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (07438b092 2023-08-16)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-1596385f77d47ef2.css" data-theme-dark-css="dark-0a43001d3fc2282c.css" data-theme-ayu-css="ayu-fd19013d6ce078bf.css" ><script src="../../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-1596385f77d47ef2.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-0a43001d3fc2282c.css"><link rel="stylesheet" href="../../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-47e7ab555ef2818a.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (c469197b1 2023-08-22)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-b2d31d2efc7e9b67.css" data-theme-dark-css="dark-3388a2fb2ef8066b.css" data-theme-ayu-css="ayu-8c3c66a6cf12cb2f.css" ><script src="../../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-b2d31d2efc7e9b67.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-3388a2fb2ef8066b.css"><link rel="stylesheet" href="../../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -116,93 +116,8 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! # Cairo Sierra to MLIR compiler and JIT engine
-//!
+</pre></div><pre class="rust"><code><span class="comment">// # Cairo Sierra to MLIR compiler and JIT engine
+</span><span class="doccomment">//!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
 //! compiled (externally) into a binary
@@ -210,159 +125,72 @@
 //!
 //! ## Usage
 //!
-//! Right now, there are two ways of using this crate: the easy API and the normal one.
-//!
-//! **Easy API**
-//!
-//! The [easy API](crate::easy) contains a single function,
-//! [`compile_and_execute`](crate::easy::compile_and_execute) which combines both functions in the
-//! normal API as well as all the required initialization and customization. It may be used for
-//! testing and prototyping, but it&#39;s **NOT intended** to be anything more than that.
+//! The API containts two structs, `NativeContext` and `NativeExecutor`.
+//! The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
+//! `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
+//! from an entrypoint.
+//! Programs and JIT states can be cached in contexts where their execution will be done multiple
+//! times.
 //!
 //! ```
-//! # use serde_json::json;
-//! # use std::{io::stdout, path::Path};
-//! #
-//! # // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-//! # std::env::set_var(
-//! #     &quot;CARGO_MANIFEST_DIR&quot;,
-//! #     format!(&quot;{}/a&quot;, std::env::var(&quot;CARGO_MANIFEST_DIR&quot;).unwrap()),
-//! # );
-//! #
-//! # #[cfg(not(feature = &quot;with-runtime&quot;))]
-//! # compile_error!(&quot;This example requires the `with-runtime` feature to be active.&quot;);
-//! #
-//! let name = cairo_native::easy::felt252_short_str(&quot;user&quot;);
+//! use cairo_native::context::NativeContext;
+//! use cairo_native::executor::NativeExecutor;
+//! use serde_json::json;
+//! use std::{io::stdout, path::Path};
 //!
-//! // The easy API requires only the program, the entry point and the de/serializers.
-//! cairo_native::easy::compile_and_execute(
-//!     Path::new(&quot;programs/examples/hello.cairo&quot;),
-//!     &quot;hello::hello::greet&quot;,
-//!     json!([name]),
-//!     &amp;mut serde_json::Serializer::new(stdout()),
-//! )
-//! .unwrap();
-//! # println!();
-//! ```
+//! // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
+//! std::env::set_var(
+//!     &quot;CARGO_MANIFEST_DIR&quot;,
+//!     format!(&quot;{}/a&quot;, std::env::var(&quot;CARGO_MANIFEST_DIR&quot;).unwrap()),
+//! );
 //!
-//! **Normal API**
+//! #[cfg(not(feature = &quot;with-runtime&quot;))]
+//! compile_error!(&quot;This example requires the `with-runtime` feature to be active.&quot;);
 //!
-//! The normal API contains two different functions: [`compile`] and [`execute`]. They require some
-//! initialization, but are much more powerful since they allow, for example, the caching of
-//! programs and JIT states.
+//! let name = cairo_native::utils::felt252_short_str(&quot;user&quot;);
 //!
-//! ```
-//! # use cairo_lang_compiler::CompilerConfig;
-//! # use cairo_lang_sierra::{
-//! #     extensions::core::{CoreLibfunc, CoreType},
-//! #     program_registry::ProgramRegistry,
-//! # };
-//! # use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
-//! # use melior::{
-//! #     dialect::DialectRegistry,
-//! #     ir::{operation::OperationPrintingFlags, Location, Module},
-//! #     pass::{self, PassManager},
-//! #     utility::register_all_dialects,
-//! #     Context,
-//! #     ExecutionEngine,
-//! # };
-//! # use serde_json::json;
-//! # use std::{io::stdout, path::Path};
-//! #
-//! # // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-//! # std::env::set_var(
-//! #     &quot;CARGO_MANIFEST_DIR&quot;,
-//! #     format!(&quot;{}/a&quot;, std::env::var(&quot;CARGO_MANIFEST_DIR&quot;).unwrap()),
-//! # );
-//! #
-//! # #[cfg(not(feature = &quot;with-runtime&quot;))]
-//! # compile_error!(&quot;This example requires the `with-runtime` feature to be active.&quot;);
-//! #
-//! # // Load Sierra program and its registry.
-//! # let program = cairo_lang_compiler::compile_cairo_project_at_path(
-//! #     Path::new(&quot;programs/examples/hello.cairo&quot;),
-//! #     CompilerConfig {
-//! #         replace_ids: true,
-//! #         ..Default::default()
-//! #     },
-//! # )
-//! # .unwrap();
-//! # let registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(&amp;program)
-//! #     .expect(&quot;Failed to initialize the Sierra program&#39;s registry&quot;);
-//! #
-//! // MLIR initialization.
-//! let context = Context::new();
-//! context.append_dialect_registry(&amp;{
-//!     let registry = DialectRegistry::new();
-//!     register_all_dialects(&amp;registry);
-//!     registry
-//! });
-//! context.load_all_available_dialects();
+//! let program_path = Path::new(&quot;programs/examples/hello.cairo&quot;);
+
 //!
-//! // Module to store the compiled program in.
-//! let mut module = Module::new(Location::unknown(&amp;context));
+//! // Compile the cairo program to sierra.
+//! let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 //!
-//! // Metadata initialization.
-//! let mut metadata = MetadataStorage::new();
-//! metadata.insert(RuntimeBindingsMeta::default()).unwrap(); // Only if using the runtime library.
+//! // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+//! // MLIR initialization and compilation of sierra programs into a MLIR module.
+//! let native_context = NativeContext::new();
 //!
-//! // Actual compilation. The compiled program will be stored in `module`.
-//! // If the program was already compiled and stored, the `parse` method of `melior::ir::Module`
-//! // will parse it.
-//! cairo_native::compile::&lt;CoreType, CoreLibfunc&gt;(
-//!     &amp;context,
-//!     &amp;module,
-//!     &amp;program,
-//!     &amp;registry,
-//!     &amp;mut metadata,
-//!     None, // If provided, some operations will contain source locations.
-//! )
-//! .expect(&quot;Compilation from Cairo to Sierra failed&quot;);
+//! // Compile the sierra program into a MLIR module. The MLIR program lowering into LLVM is done here too.
+//! let native_program = native_context.compile(&amp;sierra_program).expect(&quot;Compilation from Cairo to MLIR failed&quot;);
 //!
 //! // Print the resulting MLIR program.
 //! println!(
 //!     &quot;{}&quot;,
-//!     module
+//!     native_program
+//!         .get_module()
 //!         .as_operation()
 //!         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))
 //!         .expect(&quot;MLIR printing failed&quot;)
 //! );
 //!
-//! // At this point we could stop here, but let&#39;s continue with the JIT section for the sake of
+//! // At this point we could stop here, but let&#39;s continue with the JIT execution for the sake of
 //! // completion.
 //!
-//! // MLIR program lowering into LLVM.
-//! let pass_manager = PassManager::new(&amp;context);
-//! pass_manager.enable_verifier(true);
-//! pass_manager.add_pass(pass::transform::create_canonicalizer());
-//! pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-//! pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-//! pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-//! pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-//! pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-//! pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-//! pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-//! pass_manager.run(&amp;mut module).expect(&quot;MLIR lowering passes failed&quot;);
+//! // Get necessary information for the execution of the program from a given entrypoint:
+//! //   * entrypoint function id
+//! //   * required initial gas
+//! let entry_point = &quot;hello::hello::greet&quot;;
+//! let params = json!([name]);
+//! let returns = &amp;mut serde_json::Serializer::new(stdout());
+//! let fn_id = cairo_native::utils::find_function_id(&amp;sierra_program, entry_point);
+//! let required_init_gas = native_program.get_required_init_gas(&amp;fn_id);
 //!
 //! // JIT engine initialization. This engine may be cached in memory to keep potential JIT
 //! // optimizations between invocations.
-//! let engine = ExecutionEngine::new(&amp;module, 3, &amp;[], false);
-//! cairo_native::utils::register_runtime_symbols(&amp;engine); // Only if using the runtime library.
+//! let native_executor = NativeExecutor::new(native_program);
 //!
 //! // Invoke the function.
-//! cairo_native::execute::&lt;CoreType, CoreLibfunc, _, _&gt;(
-//!     &amp;engine,
-//!     &amp;registry,
-//!     &amp;program
-//!         .funcs
-//!         .iter()
-//!         .find(|x| x.id.debug_name.as_deref() == Some(&quot;hello::hello::greet&quot;))
-//!         .unwrap()
-//!         .id,
-//!     json!([[1919251317, 0, 0, 0, 0, 0, 0, 0]]),
-//!     &amp;mut serde_json::Serializer::pretty(stdout()),
-//! )
-//! .unwrap();
+//! native_executor.execute(&amp;fn_id, params, returns, required_init_gas).unwrap();
+//!
 //! ```
 //!
 //! ## Common definitions
@@ -370,8 +198,8 @@
 //! Within this project there are lots of functions with the same signature. As their arguments have
 //! all the same meaning, they are documented here:
 //!
-//!   - `context: Context`: The MLIR context.
-//!   - `module: &amp;Module`: The compiled MLIR program.
+//!   - `context: NativeContext`: The MLIR context.
+//!   - `module: &amp;NativeModule`: The compiled MLIR program, with other relevant information such as program registry and metadata.
 //!   - `program: &amp;Program`: The Sierra input program.
 //!   - `registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;`: The registry extracted from the program.
 //!   - `metadata: &amp;mut MetadataStorage`: Current compiler metadata.
@@ -393,13 +221,15 @@
 </span><span class="kw">pub use </span><span class="self">self</span>::{compiler::compile, jit_runner::execute};
 
 <span class="kw">mod </span>compiler;
+<span class="kw">pub mod </span>context;
 <span class="kw">pub mod </span>debug_info;
-<span class="kw">pub mod </span>easy;
 <span class="kw">pub mod </span>error;
+<span class="kw">pub mod </span>executor;
 <span class="kw">mod </span>ffi;
 <span class="kw">mod </span>jit_runner;
 <span class="kw">pub mod </span>libfuncs;
 <span class="kw">pub mod </span>metadata;
+<span class="kw">pub mod </span>module;
 <span class="kw">pub mod </span>starknet;
 <span class="kw">pub mod </span>types;
 <span class="kw">pub mod </span>utils;

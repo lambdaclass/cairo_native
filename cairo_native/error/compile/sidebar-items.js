@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ErrorImpl"],"fn":["make_libfunc_builder_error","make_type_builder_error"],"struct":["Error"]};
+window.SIDEBAR_ITEMS = {"enum":["ErrorImpl"],"fn":["make_libfunc_builder_error","make_type_builder_error"],"struct":["Error"],"type":["CompileError"]};

@@ -1,112 +1,80 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Cairo Sierra to MLIR compiler and JIT engine"><title>cairo_native - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-cb6f1f67f1bcd037.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (07438b092 2023-08-16)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-1596385f77d47ef2.css" data-theme-dark-css="dark-0a43001d3fc2282c.css" data-theme-ayu-css="ayu-fd19013d6ce078bf.css" ><script src="../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-1596385f77d47ef2.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-0a43001d3fc2282c.css"><link rel="stylesheet" href="../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../cairo_native/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../cairo_native/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate cairo_native</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">cairo_native</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/cairo_native/lib.rs.html#1-203">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="cairo-sierra-to-mlir-compiler-and-jit-engine"><a href="#cairo-sierra-to-mlir-compiler-and-jit-engine">Cairo Sierra to MLIR compiler and JIT engine</a></h2>
-<p>This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR, which can be JIT-executed or further compiled (externally) into a binary ahead of time."><title>cairo_native - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-47e7ab555ef2818a.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (c469197b1 2023-08-22)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-b2d31d2efc7e9b67.css" data-theme-dark-css="dark-3388a2fb2ef8066b.css" data-theme-ayu-css="ayu-8c3c66a6cf12cb2f.css" ><script src="../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../static.files/light-b2d31d2efc7e9b67.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../static.files/dark-3388a2fb2ef8066b.css"><link rel="stylesheet" href="../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../cairo_native/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../cairo_native/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate cairo_native</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">cairo_native</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/cairo_native/lib.rs.html#2-118">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 which can be <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JIT-executed</a> or further
 compiled (externally) into a binary
 <a href="https://en.wikipedia.org/wiki/Ahead-of-time_compilation">ahead of time</a>.</p>
 <h3 id="usage"><a href="#usage">Usage</a></h3>
-<p>Right now, there are two ways of using this crate: the easy API and the normal one.</p>
-<p><strong>Easy API</strong></p>
-<p>The <a href="easy/index.html" title="mod cairo_native::easy">easy API</a> contains a single function,
-<a href="easy/fn.compile_and_execute.html" title="fn cairo_native::easy::compile_and_execute"><code>compile_and_execute</code></a> which combines both functions in the
-normal API as well as all the required initialization and customization. It may be used for
-testing and prototyping, but it’s <strong>NOT intended</strong> to be anything more than that.</p>
+<p>The API containts two structs, <code>NativeContext</code> and <code>NativeExecutor</code>.
+The main purpose of <code>NativeContext</code> is MLIR initialization, compilation and lowering to LLVM.
+<code>NativeExecutor</code> in the other hand is responsible of executing MLIR compiled sierra programs
+from an entrypoint.
+Programs and JIT states can be cached in contexts where their execution will be done multiple
+times.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>name = cairo_native::easy::felt252_short_str(<span class="string">&quot;user&quot;</span>);
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>cairo_native::context::NativeContext;
+<span class="kw">use </span>cairo_native::executor::NativeExecutor;
+<span class="kw">use </span>serde_json::json;
+<span class="kw">use </span>std::{io::stdout, path::Path};
 
-<span class="comment">// The easy API requires only the program, the entry point and the de/serializers.
-</span>cairo_native::easy::compile_and_execute(
-    Path::new(<span class="string">&quot;programs/examples/hello.cairo&quot;</span>),
-    <span class="string">&quot;hello::hello::greet&quot;</span>,
-    <span class="macro">json!</span>([name]),
-    <span class="kw-2">&amp;mut </span>serde_json::Serializer::new(stdout()),
-)
-.unwrap();</code></pre></div>
-<p><strong>Normal API</strong></p>
-<p>The normal API contains two different functions: <a href="fn.compile.html" title="fn cairo_native::compile"><code>compile</code></a> and <a href="fn.execute.html" title="fn cairo_native::execute"><code>execute</code></a>. They require some
-initialization, but are much more powerful since they allow, for example, the caching of
-programs and JIT states.</p>
+<span class="comment">// FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
+</span>std::env::set_var(
+    <span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>,
+    <span class="macro">format!</span>(<span class="string">&quot;{}/a&quot;</span>, std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).unwrap()),
+);
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// MLIR initialization.
-</span><span class="kw">let </span>context = Context::new();
-context.append_dialect_registry(<span class="kw-2">&amp;</span>{
-    <span class="kw">let </span>registry = DialectRegistry::new();
-    register_all_dialects(<span class="kw-2">&amp;</span>registry);
-    registry
-});
-context.load_all_available_dialects();
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;with-runtime&quot;</span>))]
+</span><span class="macro">compile_error!</span>(<span class="string">&quot;This example requires the `with-runtime` feature to be active.&quot;</span>);
 
-<span class="comment">// Module to store the compiled program in.
-</span><span class="kw">let </span><span class="kw-2">mut </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span>context));
+<span class="kw">let </span>name = cairo_native::utils::felt252_short_str(<span class="string">&quot;user&quot;</span>);
 
-<span class="comment">// Metadata initialization.
-</span><span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
-metadata.insert(RuntimeBindingsMeta::default()).unwrap(); <span class="comment">// Only if using the runtime library.
+<span class="kw">let </span>program_path = Path::new(<span class="string">&quot;programs/examples/hello.cairo&quot;</span>);
 
-// Actual compilation. The compiled program will be stored in `module`.
-// If the program was already compiled and stored, the `parse` method of `melior::ir::Module`
-// will parse it.
-</span>cairo_native::compile::&lt;CoreType, CoreLibfunc&gt;(
-    <span class="kw-2">&amp;</span>context,
-    <span class="kw-2">&amp;</span>module,
-    <span class="kw-2">&amp;</span>program,
-    <span class="kw-2">&amp;</span>registry,
-    <span class="kw-2">&amp;mut </span>metadata,
-    <span class="prelude-val">None</span>, <span class="comment">// If provided, some operations will contain source locations.
-</span>)
-.expect(<span class="string">&quot;Compilation from Cairo to Sierra failed&quot;</span>);
+<span class="comment">// Compile the cairo program to sierra.
+</span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+
+<span class="comment">// Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+// MLIR initialization and compilation of sierra programs into a MLIR module.
+</span><span class="kw">let </span>native_context = NativeContext::new();
+
+<span class="comment">// Compile the sierra program into a MLIR module. The MLIR program lowering into LLVM is done here too.
+</span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).expect(<span class="string">&quot;Compilation from Cairo to MLIR failed&quot;</span>);
 
 <span class="comment">// Print the resulting MLIR program.
 </span><span class="macro">println!</span>(
     <span class="string">&quot;{}&quot;</span>,
-    module
+    native_program
+        .get_module()
         .as_operation()
         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>))
         .expect(<span class="string">&quot;MLIR printing failed&quot;</span>)
 );
 
-<span class="comment">// At this point we could stop here, but let&#39;s continue with the JIT section for the sake of
+<span class="comment">// At this point we could stop here, but let&#39;s continue with the JIT execution for the sake of
 // completion.
 
-// MLIR program lowering into LLVM.
-</span><span class="kw">let </span>pass_manager = PassManager::new(<span class="kw-2">&amp;</span>context);
-pass_manager.enable_verifier(<span class="bool-val">true</span>);
-pass_manager.add_pass(pass::transform::create_canonicalizer());
-pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-pass_manager.run(<span class="kw-2">&amp;mut </span>module).expect(<span class="string">&quot;MLIR lowering passes failed&quot;</span>);
+// Get necessary information for the execution of the program from a given entrypoint:
+//   * entrypoint function id
+//   * required initial gas
+</span><span class="kw">let </span>entry_point = <span class="string">&quot;hello::hello::greet&quot;</span>;
+<span class="kw">let </span>params = <span class="macro">json!</span>([name]);
+<span class="kw">let </span>returns = <span class="kw-2">&amp;mut </span>serde_json::Serializer::new(stdout());
+<span class="kw">let </span>fn_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
+<span class="kw">let </span>required_init_gas = native_program.get_required_init_gas(<span class="kw-2">&amp;</span>fn_id);
 
 <span class="comment">// JIT engine initialization. This engine may be cached in memory to keep potential JIT
 // optimizations between invocations.
-</span><span class="kw">let </span>engine = ExecutionEngine::new(<span class="kw-2">&amp;</span>module, <span class="number">3</span>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
-cairo_native::utils::register_runtime_symbols(<span class="kw-2">&amp;</span>engine); <span class="comment">// Only if using the runtime library.
+</span><span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
 
-// Invoke the function.
-</span>cairo_native::execute::&lt;CoreType, CoreLibfunc, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
-    <span class="kw-2">&amp;</span>engine,
-    <span class="kw-2">&amp;</span>registry,
-    <span class="kw-2">&amp;</span>program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == <span class="prelude-val">Some</span>(<span class="string">&quot;hello::hello::greet&quot;</span>))
-        .unwrap()
-        .id,
-    <span class="macro">json!</span>([[<span class="number">1919251317</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]]),
-    <span class="kw-2">&amp;mut </span>serde_json::Serializer::pretty(stdout()),
-)
-.unwrap();</code></pre></div>
+<span class="comment">// Invoke the function.
+</span>native_executor.execute(<span class="kw-2">&amp;</span>fn_id, params, returns, required_init_gas).unwrap();
+</code></pre></div>
 <h3 id="common-definitions"><a href="#common-definitions">Common definitions</a></h3>
 <p>Within this project there are lots of functions with the same signature. As their arguments have
 all the same meaning, they are documented here:</p>
 <ul>
-<li><code>context: Context</code>: The MLIR context.</li>
-<li><code>module: &amp;Module</code>: The compiled MLIR program.</li>
+<li><code>context: NativeContext</code>: The MLIR context.</li>
+<li><code>module: &amp;NativeModule</code>: The compiled MLIR program, with other relevant information such as program registry and metadata.</li>
 <li><code>program: &amp;Program</code>: The Sierra input program.</li>
 <li><code>registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;</code>: The registry extracted from the program.</li>
 <li><code>metadata: &amp;mut MetadataStorage</code>: Current compiler metadata.</li>
 </ul>
-</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="debug_info/index.html" title="mod cairo_native::debug_info">debug_info</a></div><div class="desc docblock-short">Extracts useful debugging information from cairo programs to make it available to the generated MLIR.</div></li><li><div class="item-name"><a class="mod" href="easy/index.html" title="mod cairo_native::easy">easy</a></div><div class="desc docblock-short">The easy to use API to compile and execute cairo programs using the MLIR JIT.</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod cairo_native::error">error</a></div><div class="desc docblock-short">Various error types used thorough the crate.</div></li><li><div class="item-name"><a class="mod" href="libfuncs/index.html" title="mod cairo_native::libfuncs">libfuncs</a></div><div class="desc docblock-short">Compiler libfunc infrastructure</div></li><li><div class="item-name"><a class="mod" href="metadata/index.html" title="mod cairo_native::metadata">metadata</a></div><div class="desc docblock-short">Code generation metadata</div></li><li><div class="item-name"><a class="mod" href="starknet/index.html" title="mod cairo_native::starknet">starknet</a></div><div class="desc docblock-short">Starknet related code for <code>cairo_native</code></div></li><li><div class="item-name"><a class="mod" href="types/index.html" title="mod cairo_native::types">types</a></div><div class="desc docblock-short">Compiler type infrastructure</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod cairo_native::utils">utils</a></div><div class="desc docblock-short">Various utilities</div></li><li><div class="item-name"><a class="mod" href="values/index.html" title="mod cairo_native::values">values</a></div><div class="desc docblock-short">JIT params and return values de/serialization</div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.compile.html" title="fn cairo_native::compile">compile</a></div><div class="desc docblock-short">Run the compiler on a program. The compiled program is stored in the MLIR module.</div></li><li><div class="item-name"><a class="fn" href="fn.execute.html" title="fn cairo_native::execute">execute</a></div><div class="desc docblock-short">Execute a function on an engine loaded with a Sierra program.</div></li></ul></section></div></main></body></html>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="context/index.html" title="mod cairo_native::context">context</a></div></li><li><div class="item-name"><a class="mod" href="debug_info/index.html" title="mod cairo_native::debug_info">debug_info</a></div><div class="desc docblock-short">Extracts useful debugging information from cairo programs to make it available to the generated MLIR.</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod cairo_native::error">error</a></div><div class="desc docblock-short">Various error types used thorough the crate.</div></li><li><div class="item-name"><a class="mod" href="executor/index.html" title="mod cairo_native::executor">executor</a></div></li><li><div class="item-name"><a class="mod" href="libfuncs/index.html" title="mod cairo_native::libfuncs">libfuncs</a></div><div class="desc docblock-short">Compiler libfunc infrastructure</div></li><li><div class="item-name"><a class="mod" href="metadata/index.html" title="mod cairo_native::metadata">metadata</a></div><div class="desc docblock-short">Code generation metadata</div></li><li><div class="item-name"><a class="mod" href="module/index.html" title="mod cairo_native::module">module</a></div></li><li><div class="item-name"><a class="mod" href="starknet/index.html" title="mod cairo_native::starknet">starknet</a></div><div class="desc docblock-short">Starknet related code for <code>cairo_native</code></div></li><li><div class="item-name"><a class="mod" href="types/index.html" title="mod cairo_native::types">types</a></div><div class="desc docblock-short">Compiler type infrastructure</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod cairo_native::utils">utils</a></div><div class="desc docblock-short">Various utilities</div></li><li><div class="item-name"><a class="mod" href="values/index.html" title="mod cairo_native::values">values</a></div><div class="desc docblock-short">JIT params and return values de/serialization</div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.compile.html" title="fn cairo_native::compile">compile</a></div><div class="desc docblock-short">Run the compiler on a program. The compiled program is stored in the MLIR module.</div></li><li><div class="item-name"><a class="fn" href="fn.execute.html" title="fn cairo_native::execute">execute</a></div><div class="desc docblock-short">Execute a function on an engine loaded with a Sierra program.</div></li></ul></section></div></main></body></html>
