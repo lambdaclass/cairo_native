@@ -1,4 +1,4 @@
-use hash::pedersen;
+use core::pedersen::pedersen;
 
 fn main() -> (felt252, felt252, felt252) {
     (

@@ -239,7 +239,7 @@ mod test {
     #[test]
     fn run_pedersen() {
         let program = load_cairo!(
-            use hash::pedersen;
+            use core::pedersen::pedersen;
 
             fn run_test(a: felt252, b: felt252) -> felt252 {
                 pedersen(a, b)

@@ -5,7 +5,7 @@ set -e
 
 git clone \
     --depth 1 \
-    --branch v2.1.0 \
+    --branch v2.2.0 \
     https://github.com/starkware-libs/cairo.git \
     starkware-cairo
 
