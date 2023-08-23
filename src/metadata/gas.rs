@@ -97,3 +97,33 @@ impl GasMetadata {
             .map(|x| x as u64)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cairo_lang_compiler::CompilerConfig;
+    use std::path::Path;
+
+    #[test]
+    fn new_gas_metadata_works() {
+        std::env::set_var(
+            "CARGO_MANIFEST_DIR",
+            format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+        );
+
+        let program = cairo_lang_compiler::compile_cairo_project_at_path(
+            Path::new("programs/examples/hello_starknet.cairo"),
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let config = MetadataComputationConfig::default();
+
+        let gas_metadata = GasMetadata::new(&program, config);
+
+        println!("GAS METADATA CREATED SUCCESSFULLY");
+    }
+}
