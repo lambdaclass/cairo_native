@@ -78,7 +78,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@nightly-2023-01-01
+        # uses: dtolnay/rust-toolchain@nightly-2023-01-01
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup default nightly-2023-06-19
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-llvm-cov
