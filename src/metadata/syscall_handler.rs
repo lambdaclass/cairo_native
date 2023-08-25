@@ -16,7 +16,7 @@ pub struct SyscallHandlerMeta<'a> {
 impl<'a> SyscallHandlerMeta<'a> {
     pub fn new<T>(handler_impl: &'a T) -> Self
     where
-        T: 'a + Debug + StarkNetSyscallHandler,
+        T: 'a + StarkNetSyscallHandler,
     {
         let layout = Layout::new::<StarkNetSyscallHandlerCallbacks<'a, T>>();
         let mut handler = unsafe {
