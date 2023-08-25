@@ -529,7 +529,7 @@ where
         function.entry_point,
         initial_state,
         |statement_idx, state| {
-            let block = blocks.try_insert(statement_idx.0, Block::new(&[])).unwrap();
+            let block = blocks.insert(statement_idx.0, Block::new(&[])).unwrap();
 
             Ok(match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {

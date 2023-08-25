@@ -423,22 +423,20 @@ pub mod test {
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let program = Arc::unwrap_or_clone(
-            compile_prepared_db(
-                &mut db,
-                main_crate_ids,
-                CompilerConfig {
-                    diagnostics_reporter: DiagnosticsReporter::stderr(),
-                    replace_ids: true,
-                    ..Default::default()
-                },
-            )
-            .unwrap(),
-        );
+        let program = compile_prepared_db(
+            &mut db,
+            main_crate_ids,
+            CompilerConfig {
+                diagnostics_reporter: DiagnosticsReporter::stderr(),
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
         let module_name = program_file.path().with_extension("");
         let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), program)
+        (module_name.to_string(), (*program).clone())
     }
 
     pub fn run_program(
