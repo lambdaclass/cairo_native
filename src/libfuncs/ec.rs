@@ -1009,10 +1009,11 @@ mod test {
             }
         };
         static ref EC_POINT_FROM_X_NZ: (String, Program) = load_cairo! {
-            use core::ec::{ec_point_from_x, EcPoint};
+            use core::ec::{ec_point_from_x_nz, EcPoint};
+            use core::zeroable::NonZero;
 
-            fn run_test(x: felt252) -> Option<EcPoint> {
-                ec_point_from_x(x)
+            fn run_test(x: felt252) -> Option<NonZero<EcPoint>> {
+                ec_point_from_x_nz(x)
             }
         };
         static ref EC_STATE_ADD: (String, Program) = load_cairo! {

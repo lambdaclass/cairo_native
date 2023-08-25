@@ -15,7 +15,7 @@ mod common;
 // generic tests
 #[test_case("tests/cases/fib_counter.cairo")]
 #[test_case("tests/cases/fib_local.cairo")]
-#[test_case("tests/cases/pedersen.cairo")]
+#[test_case("tests/cases/pedersen_hash.cairo")]
 #[test_case("tests/cases/unwrap_non_zero.cairo")]
 #[test_case("tests/cases/poseidon.cairo" => ignore["not implemented yet"])]
 // enums
