@@ -88,7 +88,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn storage_read(
-        &self,
+        &mut self,
         address_domain: u32,
         address: cairo_felt::Felt252,
     ) -> SyscallResult<cairo_felt::Felt252> {
@@ -97,7 +97,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn storage_write(
-        &self,
+        &mut self,
         address_domain: u32,
         address: cairo_felt::Felt252,
         value: cairo_felt::Felt252,
