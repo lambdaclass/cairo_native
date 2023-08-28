@@ -102,20 +102,20 @@ jobs:
           files: lcov.info
           fail_ci_if_error: true
   test_macos:
-      name: Test (macOS, Apple silicon)
-      runs-on: [self-hosted, macOS]
-      env:
-        CARGO_TERM_COLOR: always
-        CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-        MLIR_SYS_160_PREFIX: /opt/homebrew/opt/llvm@16
-        RUST_LOG: debug
-      steps:
-        - uses: actions/checkout@v3
-        - name: Rustup toolchain install
-          uses: dtolnay/rust-toolchain@nightly
-          with:
-            components: clippy
-        - name: Fetch corelibs.
-          run: ./scripts/fetch-corelibs.sh
-        - name: Run tests
-          run: make test
+    name: Test (macOS, Apple silicon)
+    runs-on: [self-hosted, macOS]
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_160_PREFIX: /opt/homebrew/opt/llvm@16
+      RUST_LOG: debug
+    steps:
+      - uses: actions/checkout@v3
+      - name: Rustup toolchain install
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - name: Fetch corelibs.
+        run: ./scripts/fetch-corelibs.sh
+      - name: Run tests
+        run: make test

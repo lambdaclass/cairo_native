@@ -66,7 +66,7 @@ lazy_static! {
     };
 
     pub static ref PEDERSEN: (String, Program, SierraCasmRunner) = load_cairo! {
-        use hash::pedersen;
+        use core::pedersen::pedersen;
 
         fn run_test(a: felt252, b: felt252) -> felt252 {
             pedersen(a, b)

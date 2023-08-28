@@ -1015,7 +1015,7 @@ where
 
     let op = entry.append_operation(arith::cmpi(
         context,
-        CmpiPredicate::Ult,
+        CmpiPredicate::Ule,
         end_val,
         len,
         location,

@@ -12,12 +12,11 @@ pub fn find_libfunc_declaration(
 
     for crate_id in db.crates() {
         for module_id in db.crate_modules(crate_id).iter().copied() {
-            for extern_libfunc_id in db.module_extern_functions_ids(module_id)? {
+            for extern_libfunc_id in db.module_extern_functions_ids(module_id)?.iter() {
                 if extern_libfunc_id.name(db) == libfunc_id {
-                    return Ok(Some(StableLocation {
-                        module_file_id: extern_libfunc_id.module_file_id(db),
-                        stable_ptr: extern_libfunc_id.untyped_stable_ptr(db),
-                    }));
+                    return Ok(Some(StableLocation::new(
+                        extern_libfunc_id.untyped_stable_ptr(db),
+                    )));
                 }
             }
         }
