@@ -78,9 +78,10 @@ pub trait StarkNetSyscallHandler {
         calldata: &[Felt252],
     ) -> SyscallResult<Vec<Felt252>>;
 
-    fn storage_read(&self, address_domain: u32, address: Felt252) -> SyscallResult<Felt252>;
+    fn storage_read(&mut self, address_domain: u32, address: Felt252) -> SyscallResult<Felt252>;
+
     fn storage_write(
-        &self,
+        &mut self,
         address_domain: u32,
         address: Felt252,
         value: Felt252,
