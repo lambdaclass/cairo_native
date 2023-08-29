@@ -1,7 +1,6 @@
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
 use std::{
     alloc::Layout,
-    fmt::Debug,
     ptr::{addr_of, NonNull},
 };
 
@@ -13,7 +12,7 @@ pub struct SyscallHandlerMeta {
 impl SyscallHandlerMeta {
     pub fn new<T>(handler_impl: &T) -> Self
     where
-        T: Debug + StarkNetSyscallHandler,
+        T: StarkNetSyscallHandler,
     {
         let layout = Layout::new::<StarkNetSyscallHandlerCallbacks<T>>();
         let mut handler = unsafe {

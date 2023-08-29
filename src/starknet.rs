@@ -311,10 +311,7 @@ pub(crate) mod handler {
     where
         T: StarkNetSyscallHandler + 'a,
     {
-        pub fn new(handler: &'a T) -> Self
-        where
-            T: Debug,
-        {
+        pub fn new(handler: &'a T) -> Self {
             Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,
