@@ -107,7 +107,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn emit_event(
-        &self,
+        &mut self,
         keys: &[cairo_felt::Felt252],
         data: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {

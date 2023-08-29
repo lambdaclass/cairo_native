@@ -87,7 +87,7 @@ pub trait StarkNetSyscallHandler {
         value: Felt252,
     ) -> SyscallResult<()>;
 
-    fn emit_event(&self, keys: &[Felt252], data: &[Felt252]) -> SyscallResult<()>;
+    fn emit_event(&mut self, keys: &[Felt252], data: &[Felt252]) -> SyscallResult<()>;
     fn send_message_to_l1(&self, to_address: Felt252, payload: &[Felt252]) -> SyscallResult<()>;
 
     fn keccak(&self, input: &[u64]) -> SyscallResult<U256>;
