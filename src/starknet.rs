@@ -73,7 +73,7 @@ pub trait StarkNetSyscallHandler {
     ) -> SyscallResult<Vec<Felt252>>;
 
     fn call_contract(
-        &self,
+        &mut self,
         address: Felt252,
         entry_point_selector: Felt252,
         calldata: &[Felt252],
