@@ -76,7 +76,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn call_contract(
-        &self,
+        &mut self,
         address: cairo_felt::Felt252,
         entry_point_selector: cairo_felt::Felt252,
         calldata: &[cairo_felt::Felt252],
@@ -116,7 +116,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn send_message_to_l1(
-        &self,
+        &mut self,
         to_address: cairo_felt::Felt252,
         payload: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
