@@ -1,5 +1,6 @@
 //! # Various utilities
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     ids::FunctionId,
@@ -140,6 +141,17 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
     digits.resize(8, 0);
     digits.try_into().unwrap()
+}
+
+pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
+    let mut ret = vec![];
+
+    for limb in u32_limbs {
+        let bytes = limb.to_le_bytes();
+        ret.extend_from_slice(&bytes);
+    }
+
+    Felt252::from_bytes_le(&ret)
 }
 
 /// Creates the execution engine, with all symbols registered.
