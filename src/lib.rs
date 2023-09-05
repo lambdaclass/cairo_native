@@ -99,6 +99,7 @@ mod compiler;
 pub mod context;
 pub mod debug_info;
 pub mod error;
+pub mod execution_result;
 pub mod executor;
 mod ffi;
 mod jit_runner;
