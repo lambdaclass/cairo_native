@@ -44,7 +44,8 @@ where
 {
     let arguments = (0..entry.argument_count())
         .map(|i| Result::Ok(entry.argument(i)?.into()))
-        .try_collect::<Vec<_>>()?;
+        .collect::<Result<Vec<_>>>()?;
+
     let result_types = info.signature.branch_signatures[0]
         .vars
         .iter()
@@ -55,7 +56,7 @@ where
                     .build(context, helper, registry, metadata)?,
             )
         })
-        .try_collect::<Vec<_>>()?;
+        .collect::<Result<Vec<_>>>()?;
 
     if let Some(tailrec_meta) = metadata.get_mut::<TailRecursionMeta>() {
         let op0 = entry.append_operation(memref::load(tailrec_meta.depth_counter(), &[], location));
@@ -95,7 +96,7 @@ where
                 0,
                 &(0..result_types.len())
                     .map(|i| Result::Ok(cont_block.argument(i)?.into()))
-                    .try_collect::<Vec<_>>()?,
+                    .collect::<Result<Vec<_>>>()?,
                 location,
             ),
         );
@@ -117,7 +118,7 @@ where
                     .iter()
                     .enumerate()
                     .map(|(i, _)| Result::Ok(op0.result(i)?.into()))
-                    .try_collect::<Vec<_>>()?,
+                    .collect::<Result<Vec<_>>>()?,
                 location,
             ),
         );

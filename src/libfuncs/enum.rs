@@ -32,6 +32,7 @@ use melior::{
     },
     Context,
 };
+use std::num::TryFromIntError;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -255,11 +256,14 @@ where
         tag_ty,
         location,
     ));
+
+    let case_values: Vec<i64> = (0..variant_tys.len())
+        .map(|n| i64::try_from(n))
+        .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
+
     entry.append_operation(cf::switch(
         context,
-        &(0..variant_tys.len())
-            .map(i64::try_from)
-            .try_collect::<Vec<_>>()?,
+        &case_values,
         op2.result(0)?.into(),
         tag_ty,
         (default_block, &[]),

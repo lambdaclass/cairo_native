@@ -90,7 +90,6 @@
 #![feature(box_into_inner)]
 #![feature(error_generic_member_access)]
 #![feature(hash_extract_if)]
-#![feature(iterator_try_collect)]
 #![feature(nonzero_ops)]
 #![feature(strict_provenance)]
 // #![warn(missing_docs)]
