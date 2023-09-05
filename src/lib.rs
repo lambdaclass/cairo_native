@@ -91,7 +91,6 @@
 #![feature(error_generic_member_access)]
 #![feature(hash_extract_if)]
 #![feature(iterator_try_collect)]
-#![feature(map_try_insert)]
 #![feature(nonzero_ops)]
 #![feature(strict_provenance)]
 // #![warn(missing_docs)]

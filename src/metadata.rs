@@ -43,10 +43,12 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .try_insert(TypeId::of::<T>(), Box::new(meta))
-            .ok()
-            .map(|meta| meta.downcast_mut::<T>().unwrap())
+        if self.entries.contains_key(&TypeId::of::<T>()) {
+            None
+        } else {
+            self.entries.insert(TypeId::of::<T>(), Box::new(meta));
+            self.get_mut::<T>()
+        }
     }
 
     /// Remove some metadata and return its last value.

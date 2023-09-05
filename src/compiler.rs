@@ -529,7 +529,14 @@ where
         function.entry_point,
         initial_state,
         |statement_idx, state| {
-            let block = blocks.insert(statement_idx.0, Block::new(&[])).unwrap();
+            let block = {
+                if blocks.contains_key(&statement_idx.0) {
+                    panic!("statement index already present in block");
+                } else {
+                    blocks.insert(statement_idx.0, Block::new(&[]));
+                    blocks.get_mut(&statement_idx.0).unwrap()
+                }
+            };
 
             Ok(match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
