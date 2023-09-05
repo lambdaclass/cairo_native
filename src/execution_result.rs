@@ -55,7 +55,7 @@ impl<'de> Deserialize<'de> for NativeExecutionResult {
                         let return_values: Vec<Vec<Vec<Vec<u32>>>> =
                             serde_json::from_value(return_values).unwrap();
 
-                        return Ok(NativeExecutionResult {
+                        Ok(NativeExecutionResult {
                             gas_builtin: None,
                             range_check: None,
                             system: None,
@@ -65,7 +65,7 @@ impl<'de> Deserialize<'de> for NativeExecutionResult {
                                 .collect(),
                             failure_flag: failure_flag == 1,
                             error_msg: None,
-                        });
+                        })
                     }
 
                     // When the execution returns an error, the return values are
@@ -87,21 +87,21 @@ impl<'de> Deserialize<'de> for NativeExecutionResult {
                             .trim_start_matches('\0')
                             .to_owned();
 
-                        return Ok(NativeExecutionResult {
+                        Ok(NativeExecutionResult {
                             gas_builtin: None,
                             range_check: None,
                             system: None,
                             failure_flag: failure_flag == 1,
                             return_values: felt_error,
                             error_msg: Some(str_error),
-                        });
+                        })
                     }
-                    _ => return Err(de::Error::custom("expected failure flag to be 0 or 1")),
+                    _ => Err(de::Error::custom("expected failure flag to be 0 or 1")),
                 }
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "gas_builtin",
             "range_check",
             "system",
