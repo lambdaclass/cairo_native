@@ -87,7 +87,6 @@
 //!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
 
 #![feature(alloc_layout_extra)]
-#![feature(box_into_inner)]
 #![feature(error_generic_member_access)]
 #![feature(hash_extract_if)]
 #![feature(nonzero_ops)]

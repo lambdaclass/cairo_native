@@ -61,7 +61,7 @@ impl MetadataStorage {
     {
         self.entries
             .remove(&TypeId::of::<T>())
-            .map(|meta| Box::into_inner(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
+            .map(|meta| *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
     }
 
     /// Retrieve a reference to some metadata.
