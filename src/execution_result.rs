@@ -92,7 +92,7 @@ impl<'de> Deserialize<'de> for NativeExecutionResult {
                             range_check: None,
                             system: None,
                             failure_flag: failure_flag == 1,
-                            return_values: vec![0.into()],
+                            return_values: felt_error,
                             error_msg: Some(str_error),
                         });
                     }
