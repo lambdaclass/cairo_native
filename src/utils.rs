@@ -143,6 +143,7 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     digits.try_into().unwrap()
 }
 
+/// Converts a u32 slice into a Felt252
 pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
     let mut ret = vec![];
 
