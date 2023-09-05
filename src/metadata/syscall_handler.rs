@@ -1,27 +1,23 @@
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
 use std::{
     alloc::Layout,
-    fmt::Debug,
-    marker::PhantomData,
     ptr::{addr_of, NonNull},
 };
 
-pub struct SyscallHandlerMeta<'a> {
+pub struct SyscallHandlerMeta {
     handler: NonNull<()>,
     layout: Layout,
-
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> SyscallHandlerMeta<'a> {
-    pub fn new<T>(handler_impl: &'a T) -> Self
+impl SyscallHandlerMeta {
+    pub fn new<T>(handler_impl: &T) -> Self
     where
-        T: 'a + Debug + StarkNetSyscallHandler,
+        T: StarkNetSyscallHandler,
     {
-        let layout = Layout::new::<StarkNetSyscallHandlerCallbacks<'a, T>>();
+        let layout = Layout::new::<StarkNetSyscallHandlerCallbacks<T>>();
         let mut handler = unsafe {
             NonNull::new_unchecked(
-                std::alloc::alloc(layout) as *mut StarkNetSyscallHandlerCallbacks<'a, T>
+                std::alloc::alloc(layout) as *mut StarkNetSyscallHandlerCallbacks<T>
             )
         };
 
@@ -32,7 +28,6 @@ impl<'a> SyscallHandlerMeta<'a> {
         Self {
             handler: handler.cast(),
             layout,
-            phantom: PhantomData,
         }
     }
 
@@ -43,7 +38,7 @@ impl<'a> SyscallHandlerMeta<'a> {
     }
 }
 
-impl<'a> Drop for SyscallHandlerMeta<'a> {
+impl Drop for SyscallHandlerMeta {
     fn drop(&mut self) {
         unsafe {
             std::alloc::dealloc(self.handler.as_mut() as *mut _ as *mut u8, self.layout);

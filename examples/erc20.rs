@@ -76,7 +76,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn call_contract(
-        &self,
+        &mut self,
         address: cairo_felt::Felt252,
         entry_point_selector: cairo_felt::Felt252,
         calldata: &[cairo_felt::Felt252],
@@ -88,7 +88,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn storage_read(
-        &self,
+        &mut self,
         address_domain: u32,
         address: cairo_felt::Felt252,
     ) -> SyscallResult<cairo_felt::Felt252> {
@@ -97,7 +97,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn storage_write(
-        &self,
+        &mut self,
         address_domain: u32,
         address: cairo_felt::Felt252,
         value: cairo_felt::Felt252,
@@ -107,7 +107,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn emit_event(
-        &self,
+        &mut self,
         keys: &[cairo_felt::Felt252],
         data: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
@@ -116,7 +116,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn send_message_to_l1(
-        &self,
+        &mut self,
         to_address: cairo_felt::Felt252,
         payload: &[cairo_felt::Felt252],
     ) -> SyscallResult<()> {
