@@ -62,17 +62,6 @@ fn find_statement_locations(
         })
         .collect();
 
-    // remove_idxs
-    //     .iter()
-    //     .for_each(|idx| sierra_to_pre_sierra_mappings.remove(idx));
-
-    // sierra_to_pre_sierra_mappings
-    //     .extract_if(|_, statement| match statement {
-    //         GenStatement::Invocation(invocation) => contains_libfunc(&invocation.libfunc_id),
-    //         GenStatement::Return(_) => false,
-    //     })
-    //     .for_each(|_| {});
-
     // Map Sierra to lowering statements by using the pre-Sierra mappings.
     Ok(remap_sierra_statements_to_locations(
         sierra_to_pre_sierra_mappings,
