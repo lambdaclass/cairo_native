@@ -68,7 +68,11 @@ where
     let mut ser = serializer.serialize_seq(Some(2))?;
     ser.serialize_element(&tag_value)?;
     ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
-        ptr.map_addr(|addr| addr.unchecked_add(tag_layout.extend(payload_layout).unwrap().1)),
+        // ptr.map_addr(|addr| addr.unchecked_add(tag_layout.extend(payload_layout).unwrap().1)),
+        NonNull::new(
+            ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1) as *mut _,
+        )
+        .unwrap(),
         registry,
         payload_ty,
     ))?;
@@ -173,9 +177,15 @@ where
         unsafe {
             std::ptr::copy_nonoverlapping(
                 payload.cast::<u8>().as_ptr(),
-                ptr.map_addr(|addr| {
-                    addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
-                })
+                NonNull::new(
+                    ((ptr.as_ptr() as usize)
+                        + tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                        as *mut u8,
+                )
+                .unwrap()
+                // ptr.map_addr(|addr| {
+                //     addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                // })
                 .cast()
                 .as_ptr(),
                 variant_layouts[tag_value].size(),

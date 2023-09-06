@@ -54,16 +54,22 @@ where
     let ptr_layout = Layout::new::<*mut ()>();
     let len_layout = crate::utils::get_integer_layout(32);
 
-    let len_value = *ptr
-        .map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
-        .cast::<u32>()
-        .as_ref();
+    // let len_value = *ptr
+    let len_value = *NonNull::new(
+        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1) as *mut (),
+    )
+    .unwrap()
+    // .map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
+    .cast::<u32>()
+    .as_ref();
 
     let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
 
     let mut ser = serializer.serialize_seq(Some(len_value.try_into().unwrap()))?;
     for i in 0..(len_value as usize) {
-        let cur_elem_ptr = data_ptr.map_addr(|addr| addr.unchecked_add(elem_stride * i));
+        // let cur_elem_ptr = data_ptr.map_addr(|addr| addr.unchecked_add(elem_stride * i));
+        let cur_elem_ptr =
+            NonNull::new(((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut ()).unwrap();
 
         ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
             cur_elem_ptr.cast(),
@@ -163,13 +169,26 @@ where
                 cap = new_cap;
             }
 
+            // unsafe {
+            //     let a = NonNull::new_unchecked(ptr)
+            //         .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
+            //         .cast()
+            //         .as_ptr();
+            // }
+
+            // let a = elem.cast::<u8>().as_ptr();
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     elem.cast::<u8>().as_ptr(),
-                    NonNull::new_unchecked(ptr)
-                        .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
-                        .cast()
-                        .as_ptr(),
+                    // NonNull::new_unchecked(ptr)
+                    NonNull::new(
+                        ((NonNull::new_unchecked(ptr).as_ptr() as usize)
+                            + len as usize * elem_layout.size()) as *mut u8,
+                    )
+                    .unwrap()
+                    // .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
+                    .cast()
+                    .as_ptr(),
                     elem_layout.size(),
                 );
             }
@@ -193,14 +212,20 @@ where
             let (layout, offset) = Layout::new::<*mut NonNull<()>>()
                 .extend(Layout::new::<u32>())
                 .unwrap();
-            *target
-                .map_addr(|addr| addr.unchecked_add(offset))
+            // *target
+            //     .map_addr(|addr| addr.unchecked_add(offset))
+            //     .cast()
+            //     .as_mut() = len;
+            *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                .unwrap()
                 .cast()
                 .as_mut() = len;
 
             let (_, offset) = layout.extend(Layout::new::<u32>()).unwrap();
-            *target
-                .map_addr(|addr| addr.unchecked_add(offset))
+            // *target
+            //     .map_addr(|addr| addr.unchecked_add(offset))
+            *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                .unwrap()
                 .cast()
                 .as_mut() = cap;
             Ok(target.cast())

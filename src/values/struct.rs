@@ -52,7 +52,8 @@ where
         type ParamSerializer<'a, TType, TLibfunc> =
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
         ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
-            ptr.map_addr(|addr| addr.unchecked_add(offset)),
+            // ptr.map_addr(|addr| addr.unchecked_add(offset)),
+            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
             registry,
             member,
         ))?;
@@ -91,7 +92,8 @@ where
                 f,
                 member_ty,
                 registry,
-                ptr.map_addr(|addr| addr.unchecked_add(offset)),
+                NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
+                // ptr.map_addr(|addr| addr.unchecked_add(offset)),
             )
         }));
     }
@@ -181,9 +183,13 @@ where
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     member_ptr.cast::<u8>().as_ptr(),
-                    ptr.map_addr(|addr| addr.unchecked_add(offset))
+                    NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut u8)
+                        .unwrap()
                         .cast()
                         .as_ptr(),
+                    // ptr.map_addr(|addr| addr.unchecked_add(offset))
+                    //     .cast()
+                    // .as_ptr(),
                     layout.size(),
                 );
             }

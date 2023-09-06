@@ -147,7 +147,8 @@ where
                 TType,
                 TLibfunc,
             >>::new(
-                ret_ptr.map_addr(|addr| unsafe { addr.unchecked_add(offset) }),
+                // ret_ptr.map_addr(|addr| unsafe { addr.unchecked_add(offset) }),
+                NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap(),
                 registry,
                 ty,
             ))
