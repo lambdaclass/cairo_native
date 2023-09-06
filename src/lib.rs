@@ -88,7 +88,6 @@
 
 #![feature(alloc_layout_extra)]
 #![feature(error_generic_member_access)]
-#![feature(nonzero_ops)]
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
 
