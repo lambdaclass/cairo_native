@@ -753,21 +753,13 @@ where
 
     let array_ptr_src_opaque = array_ptr_src;
 
-    let op = block_not_empty.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-        location,
-    ));
-    let const_false = op.result(0)?.into();
-
     block_not_empty.append_operation(
         OperationBuilder::new("llvm.intr.memmove", location)
-            .add_operands(&[
-                array_opaque_ptr,
-                array_ptr_src_opaque,
-                elems_size,
-                const_false,
-            ])
+            .add_attributes(&[(
+                Identifier::new(context, "isVolatile"),
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+            )])
+            .add_operands(&[array_opaque_ptr, array_ptr_src_opaque, elems_size])
             .build(),
     );
 
