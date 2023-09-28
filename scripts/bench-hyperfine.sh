@@ -2,7 +2,7 @@
 
 # Configuration.
 ROOT_DIR="$(dirname $(dirname ${0%/*}))"
-MLIR_DIR="$MLIR_SYS_160_PREFIX"
+MLIR_DIR="$MLIR_SYS_170_PREFIX"
 
 CAIRO_SRCS=$(find \
     "$ROOT_DIR/programs/benches" \

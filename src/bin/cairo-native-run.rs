@@ -124,8 +124,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
     pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
     pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
 
     pass_manager.run(&mut module)?;
