@@ -47,7 +47,7 @@ run_bench() {
         --canonicalize \
         --cse \
         --expand-strided-metadata \
-        --convert-memref-to-llvm \
+        --finalize-memref-to-llvm \
         --convert-func-to-llvm \
         --convert-index-to-llvm \
         --reconcile-unrealized-casts \
