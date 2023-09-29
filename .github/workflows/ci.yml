@@ -111,7 +111,7 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v3
