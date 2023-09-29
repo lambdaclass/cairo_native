@@ -17,7 +17,7 @@ mod common;
 #[test_case("tests/cases/fib_local.cairo")]
 #[test_case("tests/cases/pedersen_hash.cairo")]
 #[test_case("tests/cases/unwrap_non_zero.cairo")]
-#[test_case("tests/cases/poseidon.cairo" => ignore["not implemented yet"])]
+#[test_case("tests/cases/poseidon.cairo")]
 // enums
 // TODO: compare error: Fail(Reason("assertion failed: `(left == right)` \n  left: `0`,\n right: `10` at tests/common.rs:453"))
 #[test_case("tests/cases/enums/enum_init.cairo")]

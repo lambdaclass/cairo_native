@@ -125,7 +125,9 @@ where
             Self::Pedersen(info) => {
                 self::pedersen::build(context, module, registry, metadata, info)
             }
-            Self::Poseidon(_) => todo!(),
+            Self::Poseidon(info) => {
+                self::poseidon::build(context, module, registry, metadata, info)
+            }
             Self::RangeCheck(info) => {
                 self::range_check::build(context, module, registry, metadata, info)
             }
@@ -229,7 +231,7 @@ where
             }
             CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => Layout::new::<()>(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(info) => match info {
                 StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
