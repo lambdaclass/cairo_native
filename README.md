@@ -453,8 +453,22 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 # to mlir with llvm dialect
 sierra2mlir program.sierra -o program.mlir
 
+# trranslate all dialects to the llvm dialect
+"$MLIR_SYS_170_PREFIX/bin/mlir-opt" \
+        --canonicalize \
+        --convert-scf-to-cf \
+        --canonicalize \
+        --cse \
+        --expand-strided-metadata \
+        --finalize-memref-to-llvm \
+        --convert-func-to-llvm \
+        --convert-index-to-llvm \
+        --reconcile-unrealized-casts \
+        "program.mlir" \
+        -o "program-llvm.mlir"
+
 # translate mlir to llvm-ir
-"$MLIR_SYS_170_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
+"$MLIR_SYS_170_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
 
 # compile natively
 "$MLIR_SYS_170_PREFIX"/bin/clang program.ll -Wno-override-module \
