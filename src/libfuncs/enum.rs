@@ -258,7 +258,7 @@ where
     ));
 
     let case_values: Vec<i64> = (0..variant_tys.len())
-        .map(|n| i64::try_from(n))
+        .map(i64::try_from)
         .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
 
     entry.append_operation(cf::switch(

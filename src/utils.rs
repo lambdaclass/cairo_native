@@ -413,7 +413,7 @@ pub mod test {
         Context, ExecutionEngine,
     };
     use num_bigint::{BigInt, Sign};
-    use std::{env::var, fs, ops::Neg, path::Path, sync::Arc};
+    use std::{env::var, fs, ops::Neg, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {

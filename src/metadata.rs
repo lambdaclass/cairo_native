@@ -11,7 +11,7 @@
 
 use std::{
     any::{Any, TypeId},
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
 };
 
 pub mod gas;
@@ -43,11 +43,11 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        if self.entries.contains_key(&TypeId::of::<T>()) {
-            None
-        } else {
-            self.entries.insert(TypeId::of::<T>(), Box::new(meta));
+        if let Entry::Vacant(e) = self.entries.entry(TypeId::of::<T>()) {
+            e.insert(Box::new(meta));
             self.get_mut::<T>()
+        } else {
+            None
         }
     }
 

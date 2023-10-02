@@ -530,11 +530,12 @@ where
         initial_state,
         |statement_idx, state| {
             let block = {
-                if blocks.contains_key(&statement_idx.0) {
-                    panic!("statement index already present in block");
-                } else {
-                    blocks.insert(statement_idx.0, Block::new(&[]));
+                if let std::collections::btree_map::Entry::Vacant(e) = blocks.entry(statement_idx.0)
+                {
+                    e.insert(Block::new(&[]));
                     blocks.get_mut(&statement_idx.0).unwrap()
+                } else {
+                    panic!("statement index already present in block");
                 }
             };
 
