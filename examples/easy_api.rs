@@ -1,7 +1,6 @@
-#![feature(iter_intersperse)]
-
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
+use itertools::Itertools;
 use serde_json::json;
 use std::{io::stdout, path::Path};
 
@@ -54,8 +53,7 @@ fn main() {
                         .param_types
                         .iter()
                         .map(ToString::to_string)
-                        .intersperse_with(|| ", ".to_string())
-                        .collect::<String>()
+                        .join(", ")
                 )
             }
             e => panic!("{:?}", e),

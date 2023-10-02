@@ -8,7 +8,7 @@ use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
-use std::{backtrace::Backtrace, fmt, ops::Deref};
+use std::{fmt, ops::Deref};
 use thiserror::Error;
 
 pub type CompileError = Box<Error<CoreType, CoreLibfunc>>;
@@ -21,7 +21,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
-    pub backtrace: Backtrace,
+    // TODO: enable once its stable in rust
+    // pub backtrace: Backtrace,
     pub source: ErrorImpl<TType, TLibfunc>,
 }
 
@@ -61,7 +62,7 @@ where
 {
     fn from(error: E) -> Self {
         Self {
-            backtrace: Backtrace::capture(),
+            // backtrace: Backtrace::capture(),
             source: error.into(),
         }
     }
@@ -91,7 +92,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
-            .field("backtrace", &self.backtrace)
+            // .field("backtrace", &self.backtrace)
             .field("source", &self.source)
             .finish()
     }

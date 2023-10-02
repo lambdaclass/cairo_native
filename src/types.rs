@@ -2,7 +2,11 @@
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
-use crate::{error::CoreTypeBuilderError, metadata::MetadataStorage, utils::get_integer_layout};
+use crate::{
+    error::CoreTypeBuilderError,
+    metadata::MetadataStorage,
+    utils::{get_integer_layout, layout_repeat},
+};
 use cairo_lang_sierra::{
     extensions::{
         core::CoreTypeConcrete, starknet::StarkNetTypeConcrete, GenericLibfunc, GenericType,
@@ -175,8 +179,8 @@ where
             CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::EcOp(_) => Layout::new::<()>(),
-            CoreTypeConcrete::EcPoint(_) => get_integer_layout(252).repeat(2)?.0,
-            CoreTypeConcrete::EcState(_) => get_integer_layout(252).repeat(4)?.0,
+            CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
+            CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.

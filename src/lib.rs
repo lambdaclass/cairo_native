@@ -86,8 +86,6 @@
 //!   - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted from the program.
 //!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
 
-#![feature(alloc_layout_extra)]
-#![feature(error_generic_member_access)]
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
 

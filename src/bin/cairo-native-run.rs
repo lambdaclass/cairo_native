@@ -1,8 +1,3 @@
-#![feature(arc_unwrap_or_clone)]
-#![feature(iter_intersperse)]
-#![feature(nonzero_ops)]
-#![feature(strict_provenance)]
-
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -19,6 +14,7 @@ use cairo_native::{
     utils::register_runtime_symbols,
 };
 use clap::Parser;
+use itertools::Itertools;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -34,7 +30,6 @@ use std::{
     fs::{self, File},
     io::{self, Write},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -163,8 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .param_types
                             .iter()
                             .map(ToString::to_string)
-                            .intersperse_with(|| ", ".to_string())
-                            .collect::<String>()
+                            .join(", ")
                     )
                 }
                 e => panic!("{:?}", e),
@@ -199,7 +193,7 @@ fn load_program(path: &Path) -> Result<Program, Box<dyn std::error::Error>> {
         Some("cairo") => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            Arc::unwrap_or_clone(compile_prepared_db(
+            (*compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
@@ -207,6 +201,7 @@ fn load_program(path: &Path) -> Result<Program, Box<dyn std::error::Error>> {
                     ..Default::default()
                 },
             )?)
+            .clone()
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;

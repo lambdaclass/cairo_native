@@ -1,5 +1,5 @@
 use super::{ValueBuilder, ValueDeserializer, ValueSerializer};
-use crate::{error::CoreTypeBuilderError, types::TypeBuilder};
+use crate::{error::CoreTypeBuilderError, types::TypeBuilder, utils::next_multiple_of_usize};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
@@ -40,7 +40,7 @@ where
 {
     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
         0 | 1 => 0,
-        num_variants => (num_variants.next_power_of_two().next_multiple_of(8) >> 3)
+        num_variants => (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
             .try_into()
             .unwrap(),
     });

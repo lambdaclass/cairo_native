@@ -8,7 +8,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistryError,
 };
 use serde::{Deserializer, Serializer};
-use std::{alloc::LayoutError, backtrace::Backtrace, fmt, ops::Deref};
+use std::{alloc::LayoutError, fmt, ops::Deref};
 use thiserror::Error;
 
 pub type RunnerError<'de, D, S> = Box<Error<'de, CoreType, CoreLibfunc, D, S>>;
@@ -23,7 +23,8 @@ where
     D: Deserializer<'de>,
     S: Serializer,
 {
-    pub backtrace: Backtrace,
+    // TODO: enable once its stable in rust
+    // pub backtrace: Backtrace,
     pub source: ErrorImpl<'de, TType, TLibfunc, D, S>,
 }
 
@@ -69,7 +70,7 @@ where
 {
     fn from(error: E) -> Self {
         Self {
-            backtrace: Backtrace::capture(),
+            // backtrace: Backtrace::capture(),
             source: error.into(),
         }
     }
@@ -103,7 +104,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
-            .field("backtrace", &self.backtrace)
+            // .field("backtrace", &self.backtrace)
             .field("source", &self.source)
             .finish()
     }

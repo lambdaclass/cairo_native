@@ -10,6 +10,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::padding_needed_for,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -104,9 +105,7 @@ where
             tag_ty,
             llvm::r#type::array(
                 IntegerType::new(context, 8).into(),
-                tag_layout
-                    .padding_needed_for(variant_tys[info.index].1.align())
-                    .try_into()?,
+                padding_needed_for(&tag_layout, variant_tys[info.index].1.align()).try_into()?,
             ),
             variant_tys[info.index].0,
         ],
@@ -300,9 +299,7 @@ where
                 tag_ty,
                 llvm::r#type::array(
                     IntegerType::new(context, 8).into(),
-                    tag_layout
-                        .padding_needed_for(payload_layout.align())
-                        .try_into()?,
+                    padding_needed_for(&tag_layout, payload_layout.align()).try_into()?,
                 ),
                 payload_ty,
             ],
