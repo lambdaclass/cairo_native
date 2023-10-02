@@ -191,6 +191,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
+            "cairo_native__libfunc__hades_permutation",
+            cairo_native_runtime::cairo_native__libfunc__hades_permutation
+                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
+        );
+
+        engine.register_symbol(
             "cairo_native__libfunc__ec__ec_point_from_x_nz",
             cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
                 as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),

@@ -185,7 +185,9 @@ where
             Self::Pedersen(selector) => self::pedersen::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Poseidon(_) => todo!(),
+            Self::Poseidon(selector) => self::poseidon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::StarkNet(selector) => self::stark_net::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
