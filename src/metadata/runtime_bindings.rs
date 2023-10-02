@@ -19,6 +19,7 @@ use std::{collections::HashSet, marker::PhantomData};
 enum RuntimeBinding {
     DebugPrint,
     Pedersen,
+    HadesPermutation,
     EcPointFromXNz,
     EcPointTryNewNz,
     EcStateAdd,
@@ -133,6 +134,56 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__pedersen"),
             &[dst_ptr, lhs_ptr, rhs_ptr],
+            &[],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `poseidon()` function.
+    /// The passed pointers serve both as in/out pointers. I.E results are stored in the given pointers.
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_hades_permutation<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        op0_ptr: Value<'c, '_>,
+        op1_ptr: Value<'c, '_>,
+        op2_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::HadesPermutation) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
+            &[op0_ptr, op1_ptr, op2_ptr],
             &[],
             location,
         )))

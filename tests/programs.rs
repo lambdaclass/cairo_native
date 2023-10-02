@@ -72,6 +72,14 @@ lazy_static! {
             pedersen(a, b)
         }
     };
+
+    pub static ref POSEIDON: (String, Program, SierraCasmRunner) = load_cairo! {
+        use core::poseidon::hades_permutation;
+
+        fn run_test(a: felt252, b: felt252, c: felt252) -> (felt252, felt252, felt252) {
+            hades_permutation(a, b, c)
+        }
+    };
 }
 
 #[test]
@@ -256,6 +264,38 @@ proptest! {
         compare_outputs(
             &PEDERSEN.1,
             &PEDERSEN.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+        )?;
+    }
+
+    #[test]
+    fn poseidon_proptest(a in any_felt252(), b in any_felt252(), c in any_felt252()) {
+        let result_vm = run_vm_program(
+            &POSEIDON,
+            "run_test",
+            &[Arg::Value(a.clone()), Arg::Value(b.clone()), Arg::Value(c.clone())],
+            Some(GAS),
+        )
+        .unwrap();
+
+        let mut a = a.to_biguint().to_u32_digits();
+        a.resize(8, 0);
+        let a: [u32; 8] = a.try_into().unwrap();
+
+        let mut b = b.to_biguint().to_u32_digits();
+        b.resize(8, 0);
+        let b: [u32; 8] = b.try_into().unwrap();
+
+        let mut c = c.to_biguint().to_u32_digits();
+        c.resize(8, 0);
+        let c: [u32; 8] = c.try_into().unwrap();
+
+        let result_native = run_native_program(&POSEIDON, "run_test", json!([null, a, b, c]));
+
+        compare_outputs(
+            &POSEIDON.1,
+            &POSEIDON.2.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )?;

@@ -136,7 +136,7 @@ impl ValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
             CoreTypeConcrete::Felt252DictEntry(_) => true,
             CoreTypeConcrete::SquashedFelt252Dict(_) => false,
             CoreTypeConcrete::Pedersen(_) => false,
-            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => false,
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(selector) => match selector {
                 StarkNetTypeConcrete::ClassHash(_) => false,
@@ -306,7 +306,9 @@ impl<'a, 'de> DeserializeSeed<'de> for CoreTypeDeserializer<'a, CoreType, CoreLi
                 CoreTypeConcrete::Pedersen(info) => {
                     self::pedersen::deserialize(deserializer, self.arena, self.registry, info)
                 }
-                CoreTypeConcrete::Poseidon(_) => todo!(),
+                CoreTypeConcrete::Poseidon(info) => {
+                    self::poseidon::deserialize(deserializer, self.arena, self.registry, info)
+                }
                 CoreTypeConcrete::Span(_) => todo!(),
                 CoreTypeConcrete::StarkNet(selector) => match selector {
                     StarkNetTypeConcrete::ClassHash(info) => self::stark_net::deserialize_address(
@@ -462,7 +464,9 @@ impl<'a> Serialize for CoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Pedersen(info) => unsafe {
                 self::pedersen::serialize(serializer, self.registry, self.ptr, info)
             },
-            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Poseidon(info) => unsafe {
+                self::poseidon::serialize(serializer, self.registry, self.ptr, info)
+            },
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(selector) => match selector {
                 StarkNetTypeConcrete::ClassHash(info) => unsafe {

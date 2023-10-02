@@ -308,7 +308,7 @@ pub fn compare_inputless_program(program_path: &str) {
                 "GasBuiltin" => {
                     json!(u64::MAX)
                 }
-                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" => {
+                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
                     json!(null)
                 }
                 x => {
@@ -690,7 +690,15 @@ pub fn compare_outputs(
                     .as_null()
                     .expect("should be null");
             }
-            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => {
+                // runner: ignore
+                // native: null
+                native_rets
+                    .next()
+                    .unwrap()
+                    .as_null()
+                    .expect("should be null");
+            }
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => {
