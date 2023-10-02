@@ -30,7 +30,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location, Region, Value, ValueLike,
+        Attribute, Block, Identifier, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -477,19 +477,16 @@ where
                     ))
                     .result(0)?
                     .into();
-                let k1_i1 = entry
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(1, IntegerType::new(context, 1).into()).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
 
                 let leading_zeros = block
                     .append_operation(
                         OperationBuilder::new("llvm.intr.ctlz", location)
-                            .add_operands(&[entry.argument(1)?.into(), k1_i1])
+                            .add_attributes(&[(
+                                Identifier::new(context, "is_zero_poison"),
+                                IntegerAttribute::new(1, IntegerType::new(context, 1).into())
+                                    .into(),
+                            )])
+                            .add_operands(&[entry.argument(1)?.into()])
                             .add_results(&[i128_ty])
                             .build(),
                     )

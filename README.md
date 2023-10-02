@@ -240,7 +240,7 @@ Footnotes on the libfuncs list:
 ### Dependencies
 
 - Linux or macOS (aarch64 included) only for now
-- LLVM 16+ with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
+- LLVM 17 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
 - Nightly Rust
 - Git
 
@@ -250,17 +250,19 @@ Install LLVM with MLIR. You can use the official packages provided by LLVM.
 
 #### Linux
 
-Setup a environment variable called `MLIR_SYS_160_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_170_PREFIX` and `TABLEGEN_170_PREFIX` pointing to the llvm directory:
 
 ```bash
-export MLIR_SYS_160_PREFIX=/usr/lib/llvm-16
+export MLIR_SYS_170_PREFIX=/usr/lib/llvm-17
+export TABLEGEN_170_PREFIX=/usr/lib/llvm-17
 ```
 
 #### MacOS
 
 ```bash
-brew install llvm@16
-export MLIR_SYS_160_PREFIX=/opt/homebrew/opt/llvm@16
+brew install llvm@17
+export MLIR_SYS_170_PREFIX=/opt/homebrew/opt/llvm@17
+export TABLEGEN_170_PREFIX=/opt/homebrew/opt/llvm@17
 ```
 
 ### Make commands:
@@ -432,7 +434,8 @@ fn main() {
 
 You need to setup some environment variables:
 ```bash
-$MLIR_SYS_160_PREFIX=/path/to/llvm16  # Required for non-standard LLVM install locations.
+$MLIR_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
+$TABLEGEN_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
 ```
 
 ```bash
@@ -450,14 +453,28 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 # to mlir with llvm dialect
 sierra2mlir program.sierra -o program.mlir
 
+# trranslate all dialects to the llvm dialect
+"$MLIR_SYS_170_PREFIX/bin/mlir-opt" \
+        --canonicalize \
+        --convert-scf-to-cf \
+        --canonicalize \
+        --cse \
+        --expand-strided-metadata \
+        --finalize-memref-to-llvm \
+        --convert-func-to-llvm \
+        --convert-index-to-llvm \
+        --reconcile-unrealized-casts \
+        "program.mlir" \
+        -o "program-llvm.mlir"
+
 # translate mlir to llvm-ir
-"$MLIR_SYS_160_PREFIX"/bin/mlir-translate --mlir-to-llvmir program.mlir -o program.ll
+"$MLIR_SYS_170_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
 
 # compile natively
-"$MLIR_SYS_160_PREFIX"/bin/clang program.ll -Wno-override-module \
-    -L "$MLIR_SYS_160_PREFIX"/lib -L"./target/release/" \
+"$MLIR_SYS_170_PREFIX"/bin/clang program.ll -Wno-override-module \
+    -L "$MLIR_SYS_170_PREFIX"/lib -L"./target/release/" \
     -lsierra2mlir_utils -lmlir_c_runner_utils \
-    -Wl,-rpath "$MLIR_SYS_160_PREFIX"/lib \
+    -Wl,-rpath "$MLIR_SYS_170_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
 

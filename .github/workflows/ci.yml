@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16/
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
@@ -23,11 +24,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-16 llvm-16-dev llvm-16-runtime clang-16 clang-tools-16 lld-16 libpolly-16-dev libmlir-16-dev mlir-16-tools
+        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
       - name: Clippy
         run: make check
 
@@ -46,7 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16/
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
       RUSTUP_TOOLCHAIN: nightly
     steps:
       - uses: actions/checkout@v3
@@ -58,11 +60,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-16 llvm-16-dev llvm-16-runtime clang-16 clang-tools-16 lld-16 libpolly-16-dev libmlir-16-dev mlir-16-tools
+        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
@@ -73,7 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_160_PREFIX: /usr/lib/llvm-16/
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v3
@@ -86,11 +89,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-16 llvm-16-dev llvm-16-runtime clang-16 clang-tools-16 lld-16 libpolly-16-dev libmlir-16-dev mlir-16-tools
+        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
       - name: Fetch corelibs.
         run: ./scripts/fetch-corelibs.sh
       - name: test and generate coverage
@@ -107,7 +110,8 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_160_PREFIX: /opt/homebrew/opt/llvm@16
+      MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
+      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v3

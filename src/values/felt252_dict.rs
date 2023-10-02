@@ -43,7 +43,6 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    assert!(!ptr.as_ptr().is_null());
     let ptr = ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
     let ptr = *ptr.as_ptr();
     let map = Box::from_raw(ptr.as_ptr());
@@ -52,8 +51,6 @@ where
     let mut ser = serializer.serialize_map(Some(map.len()))?;
 
     for (key, val_ptr) in map.iter() {
-        assert!(!val_ptr.as_ptr().is_null());
-
         type ParamSerializer<'a, TType, TLibfunc> =
             <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
 
@@ -87,8 +84,6 @@ where
     let target_type = registry.get_type(&info.ty).unwrap();
 
     for (key, val_ptr) in map.iter() {
-        assert!(!val_ptr.as_ptr().is_null());
-
         fmt.entry(
             &BigUint::from_bytes_le(key).to_str_radix(10),
             &debug_with(|f| target_type.debug_fmt(f, &info.ty, registry, val_ptr.cast())),
