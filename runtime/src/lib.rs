@@ -96,7 +96,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__libfunc__poseidon(op0: *mut u8, op1: *mut u8, op2: *mut u8) {
+pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
+    op0: *mut u8,
+    op1: *mut u8,
+    op2: *mut u8,
+) {
     // Extract arrays from the pointers.
     let op0 = slice::from_raw_parts_mut(op0, 32);
     let op1 = slice::from_raw_parts_mut(op1, 32);

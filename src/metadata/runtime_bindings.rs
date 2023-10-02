@@ -19,7 +19,7 @@ use std::{collections::HashSet, marker::PhantomData};
 enum RuntimeBinding {
     DebugPrint,
     Pedersen,
-    Poseidon,
+    HadesPermutation,
     EcPointFromXNz,
     EcPointTryNewNz,
     EcStateAdd,
@@ -142,7 +142,7 @@ impl RuntimeBindingsMeta {
     /// Register if necessary, then invoke the `poseidon()` function.
     /// The passed pointers serve both as in/out pointers. I.E results are stored in the given pointers.
     #[allow(clippy::too_many_arguments)]
-    pub fn libfunc_poseidon<'c, 'a>(
+    pub fn libfunc_hades_permutation<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -155,10 +155,10 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::Poseidon) {
+        if self.active_map.insert(RuntimeBinding::HadesPermutation) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, "cairo_native__libfunc__poseidon"),
+                StringAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
@@ -182,7 +182,7 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__poseidon"),
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
             &[op0_ptr, op1_ptr, op2_ptr],
             &[],
             location,

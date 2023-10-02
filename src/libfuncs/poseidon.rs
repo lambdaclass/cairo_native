@@ -49,12 +49,12 @@ where
 {
     match selector {
         PoseidonConcreteLibfunc::HadesPermutation(info) => {
-            build_poseidon(context, registry, entry, location, helper, metadata, info)
+            build_hades_permutation(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
 
-pub fn build_poseidon<'ctx, TType, TLibfunc>(
+pub fn build_hades_permutation<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'ctx Block<'ctx>,
@@ -210,7 +210,7 @@ where
         .expect("Runtime library not available.");
 
     runtime_bindings
-        .libfunc_poseidon(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
+        .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
 
     let op0_be = entry
         .append_operation(llvm::load(
@@ -290,7 +290,7 @@ mod test {
     use serde_json::json;
 
     #[test]
-    fn run_poseidon() {
+    fn run_hades_permutation() {
         let program = load_cairo!(
             use core::poseidon::hades_permutation;
 
