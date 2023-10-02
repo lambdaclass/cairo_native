@@ -28,7 +28,12 @@ use cairo_native::{
     types::felt252::PRIME,
     utils::register_runtime_symbols,
 };
-use lambdaworks_math::{field::element::FieldElement, unsigned_integer::element::UnsignedInteger};
+use lambdaworks_math::{
+    field::{
+        element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
+    },
+    unsigned_integer::element::UnsignedInteger,
+};
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -241,8 +246,8 @@ pub fn run_native_program(
     pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
     pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
     pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
 
     pass_manager
@@ -746,7 +751,9 @@ pub fn any_felt252() -> impl Strategy<Value = Felt252> {
             ];
             FieldElement::new(UnsignedInteger::from_limbs(limbs))
         })
-        .prop_map(|value| Felt252::from_bytes_be(&value.to_bytes_be()))
+        .prop_map(|value: FieldElement<MontgomeryBackendPrimeField<_, 4>>| {
+            Felt252::from_bytes_be(&value.to_bytes_be())
+        })
 }
 
 /// Returns a [`Strategy`] that generates any nonzero Felt252

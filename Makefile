@@ -4,8 +4,12 @@
 # Environment detection.
 #
 
-ifeq ($(MLIR_SYS_160_PREFIX),)
-  $(error Could not find a suitable LLVM 16 toolchain)
+ifeq ($(MLIR_SYS_170_PREFIX),)
+  $(error Could not find a suitable LLVM 17 toolchain (mlir))
+endif
+
+ifeq ($(TABLEGEN_170_PREFIX),)
+  $(error Could not find a suitable LLVM 17 toolchain (tablegen))
 endif
 
 # If corelibs is not present, fetch it.

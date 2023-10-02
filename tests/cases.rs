@@ -61,7 +61,7 @@ mod common;
 #[test_case("tests/cases/array/index_invalid.cairo")]
 #[test_case("tests/cases/array/pop_front_invalid.cairo")]
 #[test_case("tests/cases/array/pop_front_valid.cairo")]
-#[test_case("tests/cases/array/slice.cairo" => ignore["TODO: fails"])]
+#[test_case("tests/cases/array/slice.cairo")]
 // nullable
 #[test_case("tests/cases/nullable/test_nullable.cairo" => ignore["unimplemented"])]
 fn test_cases(program_path: &str) {
