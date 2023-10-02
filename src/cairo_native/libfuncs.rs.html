@@ -473,6 +473,8 @@
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -660,7 +662,9 @@
             <span class="self">Self</span>::Pedersen(selector) =&gt; <span class="self">self</span>::pedersen::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::stark_net::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),

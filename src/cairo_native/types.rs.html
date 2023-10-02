@@ -268,6 +268,8 @@
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -395,7 +397,9 @@
             <span class="self">Self</span>::Pedersen(info) =&gt; {
                 <span class="self">self</span>::pedersen::build(context, module, registry, metadata, info)
             }
-            <span class="self">Self</span>::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Poseidon(info) =&gt; {
+                <span class="self">self</span>::poseidon::build(context, module, registry, metadata, info)
+            }
             <span class="self">Self</span>::RangeCheck(info) =&gt; {
                 <span class="self">self</span>::range_check::build(context, module, registry, metadata, info)
             }
@@ -499,7 +503,7 @@
             </span>}
             CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*mut </span>std::ffi::c_void&gt;(), <span class="comment">// ptr
             </span>CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
-            CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::StarkNet(info) =&gt; <span class="kw">match </span>info {
                 StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
