@@ -1,12 +1,13 @@
 use cairo_lang_sierra::program_registry::ProgramRegistryError;
-use std::{alloc::LayoutError, backtrace::Backtrace, fmt, num::TryFromIntError, ops::Deref};
+use std::{alloc::LayoutError, fmt, num::TryFromIntError, ops::Deref};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub struct Error {
-    pub backtrace: Backtrace,
+    // TODO: enable once its stable in rust
+    // pub backtrace: Backtrace,
     pub source: ErrorImpl,
 }
 
@@ -30,7 +31,7 @@ where
 {
     fn from(error: E) -> Self {
         Self {
-            backtrace: Backtrace::capture(),
+            // backtrace: Backtrace::capture(),
             source: error.into(),
         }
     }
@@ -40,6 +41,8 @@ where
 pub enum ErrorImpl {
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
+    #[error(transparent)]
+    LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
     #[error(transparent)]
     ProgramRegistryError(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]

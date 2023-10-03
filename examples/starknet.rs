@@ -1,5 +1,3 @@
-#![feature(strict_provenance)]
-
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_native::context::NativeContext;
@@ -296,7 +294,7 @@ fn main() {
         .get_metadata::<SyscallHandlerMeta>()
         .unwrap()
         .as_ptr()
-        .addr();
+        .as_ptr() as *const () as usize;
 
     let fn_id = find_function_id(&sierra_program, "hello_starknet::hello_starknet::main");
     let required_init_gas = native_program.get_required_init_gas(fn_id);

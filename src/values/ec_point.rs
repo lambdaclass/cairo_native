@@ -1,7 +1,7 @@
 use super::ValueBuilder;
 use crate::{
     types::{felt252::PRIME, TypeBuilder},
-    utils::get_integer_layout,
+    utils::{get_integer_layout, layout_repeat},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -25,7 +25,7 @@ where
     D: Deserializer<'de>,
 {
     let ptr = arena
-        .alloc_layout(get_integer_layout(252).repeat(2).unwrap().0)
+        .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
         .cast();
 
     let data = <[[u32; 8]; 2] as Deserialize>::deserialize(deserializer)?;

@@ -529,7 +529,15 @@ where
         function.entry_point,
         initial_state,
         |statement_idx, state| {
-            let block = blocks.try_insert(statement_idx.0, Block::new(&[])).unwrap();
+            let block = {
+                if let std::collections::btree_map::Entry::Vacant(e) = blocks.entry(statement_idx.0)
+                {
+                    e.insert(Block::new(&[]));
+                    blocks.get_mut(&statement_idx.0).unwrap()
+                } else {
+                    panic!("statement index already present in block");
+                }
+            };
 
             Ok(match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {

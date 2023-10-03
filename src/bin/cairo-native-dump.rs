@@ -1,5 +1,3 @@
-#![feature(arc_unwrap_or_clone)]
-
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
@@ -25,7 +23,6 @@ use std::{
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -89,14 +86,15 @@ fn load_program<'c>(
         Some("cairo") => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            let program = Arc::unwrap_or_clone(compile_prepared_db(
+            let program = (*compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
-            )?);
+            )?)
+            .clone();
 
             let debug_locations = if let Some(context) = context {
                 let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {

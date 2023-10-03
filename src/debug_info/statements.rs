@@ -47,16 +47,20 @@ fn find_statement_locations(
         db.concrete_function_with_body_postpanic_lowered(function_long_id.body(db)?.unwrap())?;
 
     // Map Sierra to pre-Sierra statements.
-    let mut sierra_to_pre_sierra_mappings =
+    let sierra_to_pre_sierra_mappings =
         map_sierra_to_pre_sierra_statements(function.entry_point, statements, &function_impl.body);
 
     // Remove Sierra-specific invocations (they have no location since they are compiler-generated).
-    sierra_to_pre_sierra_mappings
-        .extract_if(|_, statement| match statement {
-            GenStatement::Invocation(invocation) => contains_libfunc(&invocation.libfunc_id),
-            GenStatement::Return(_) => false,
+    let sierra_to_pre_sierra_mappings: HashMap<_, _> = sierra_to_pre_sierra_mappings
+        .into_iter()
+        .filter(|(_, statement)| {
+            if let GenStatement::Invocation(invocation) = statement {
+                !contains_libfunc(&invocation.libfunc_id)
+            } else {
+                false
+            }
         })
-        .for_each(|_| {});
+        .collect();
 
     // Map Sierra to lowering statements by using the pre-Sierra mappings.
     Ok(remap_sierra_statements_to_locations(

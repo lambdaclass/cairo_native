@@ -1,5 +1,3 @@
-#![feature(strict_provenance)]
-
 use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
@@ -294,7 +292,7 @@ fn main() {
         .get_metadata::<SyscallHandlerMeta>()
         .unwrap()
         .as_ptr()
-        .addr();
+        .as_ptr() as *const () as usize;
 
     let fn_id = find_function_id(
         &sierra_program,

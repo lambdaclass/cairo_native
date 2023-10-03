@@ -1,5 +1,5 @@
 use super::{ValueBuilder, ValueDeserializer, ValueSerializer};
-use crate::{error::CoreTypeBuilderError, types::TypeBuilder};
+use crate::{error::CoreTypeBuilderError, types::TypeBuilder, utils::next_multiple_of_usize};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
@@ -40,7 +40,7 @@ where
 {
     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
         0 | 1 => 0,
-        num_variants => (num_variants.next_power_of_two().next_multiple_of(8) >> 3)
+        num_variants => (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
             .try_into()
             .unwrap(),
     });
@@ -68,7 +68,12 @@ where
     let mut ser = serializer.serialize_seq(Some(2))?;
     ser.serialize_element(&tag_value)?;
     ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
-        ptr.map_addr(|addr| addr.unchecked_add(tag_layout.extend(payload_layout).unwrap().1)),
+        // nightly feature - alloc_layout_extra:
+        // ptr.map_addr(|addr| addr.unchecked_add(tag_layout.extend(payload_layout).unwrap().1)),
+        NonNull::new(
+            ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1) as *mut _,
+        )
+        .unwrap(),
         registry,
         payload_ty,
     ))?;
@@ -173,9 +178,16 @@ where
         unsafe {
             std::ptr::copy_nonoverlapping(
                 payload.cast::<u8>().as_ptr(),
-                ptr.map_addr(|addr| {
-                    addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
-                })
+                NonNull::new(
+                    ((ptr.as_ptr() as usize)
+                        + tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                        as *mut u8,
+                )
+                .unwrap()
+                // nightly feature - alloc_layout_extra:
+                // ptr.map_addr(|addr| {
+                //     addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                // })
                 .cast()
                 .as_ptr(),
                 variant_layouts[tag_value].size(),

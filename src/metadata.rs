@@ -11,7 +11,7 @@
 
 use std::{
     any::{Any, TypeId},
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
 };
 
 pub mod gas;
@@ -43,10 +43,12 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .try_insert(TypeId::of::<T>(), Box::new(meta))
-            .ok()
-            .map(|meta| meta.downcast_mut::<T>().unwrap())
+        if let Entry::Vacant(e) = self.entries.entry(TypeId::of::<T>()) {
+            e.insert(Box::new(meta));
+            self.get_mut::<T>()
+        } else {
+            None
+        }
     }
 
     /// Remove some metadata and return its last value.
@@ -59,7 +61,7 @@ impl MetadataStorage {
     {
         self.entries
             .remove(&TypeId::of::<T>())
-            .map(|meta| Box::into_inner(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
+            .map(|meta| *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
     }
 
     /// Retrieve a reference to some metadata.

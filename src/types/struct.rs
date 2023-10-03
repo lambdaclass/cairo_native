@@ -70,7 +70,7 @@ where
                 .get_type(field)?
                 .build(context, module, registry, metadata)
         })
-        .try_collect()?;
+        .collect::<Result<_>>()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);
 
     Ok(struct_ty)
