@@ -54,12 +54,12 @@ where
     let ptr_layout = Layout::new::<*mut ()>();
     let len_layout = crate::utils::get_integer_layout(32);
 
-    // let len_value = *ptr
+    // nightly feature - strict_provenance:
+    // let len_value = *ptr.map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
     let len_value = *NonNull::new(
         ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1) as *mut (),
     )
     .unwrap()
-    // .map_addr(|addr| addr.unchecked_add(ptr_layout.extend(len_layout).unwrap().1))
     .cast::<u32>()
     .as_ref();
 
@@ -67,6 +67,7 @@ where
 
     let mut ser = serializer.serialize_seq(Some(len_value.try_into().unwrap()))?;
     for i in 0..(len_value as usize) {
+        // nightly feature - strict_provenance, alloc_layout_extra:
         // let cur_elem_ptr = data_ptr.map_addr(|addr| addr.unchecked_add(elem_stride * i));
         let cur_elem_ptr =
             NonNull::new(((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut ()).unwrap();
@@ -169,6 +170,7 @@ where
                 cap = new_cap;
             }
 
+            // nightly feature - strict_provenance, alloc_layout_extra:
             // unsafe {
             //     let a = NonNull::new_unchecked(ptr)
             //         .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
@@ -186,6 +188,7 @@ where
                             + len as usize * elem_layout.size()) as *mut u8,
                     )
                     .unwrap()
+                    // nightly feature - alloc_layout_extra:
                     // .map_addr(|addr| addr.unchecked_add(len as usize * elem_layout.size()))
                     .cast()
                     .as_ptr(),
@@ -212,6 +215,7 @@ where
             let (layout, offset) = Layout::new::<*mut NonNull<()>>()
                 .extend(Layout::new::<u32>())
                 .unwrap();
+            // nightly feature - alloc_layout_extra:
             // *target
             //     .map_addr(|addr| addr.unchecked_add(offset))
             //     .cast()
@@ -222,6 +226,7 @@ where
                 .as_mut() = len;
 
             let (_, offset) = layout.extend(Layout::new::<u32>()).unwrap();
+            // nightly feature - alloc_layout_extra:
             // *target
             //     .map_addr(|addr| addr.unchecked_add(offset))
             *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)

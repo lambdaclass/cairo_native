@@ -93,6 +93,7 @@ where
                 member_ty,
                 registry,
                 NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
+                // nightly feature - alloc_layout_extra:
                 // ptr.map_addr(|addr| addr.unchecked_add(offset)),
             )
         }));
@@ -187,6 +188,7 @@ where
                         .unwrap()
                         .cast()
                         .as_ptr(),
+                    // nightly feature - alloc_layout_extra:
                     // ptr.map_addr(|addr| addr.unchecked_add(offset))
                     //     .cast()
                     // .as_ptr(),

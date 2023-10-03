@@ -68,6 +68,7 @@ where
     let mut ser = serializer.serialize_seq(Some(2))?;
     ser.serialize_element(&tag_value)?;
     ser.serialize_element(&ParamSerializer::<TType, TLibfunc>::new(
+        // nightly feature - alloc_layout_extra:
         // ptr.map_addr(|addr| addr.unchecked_add(tag_layout.extend(payload_layout).unwrap().1)),
         NonNull::new(
             ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1) as *mut _,
@@ -183,6 +184,7 @@ where
                         as *mut u8,
                 )
                 .unwrap()
+                // nightly feature - alloc_layout_extra:
                 // ptr.map_addr(|addr| {
                 //     addr.unchecked_add(tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
                 // })
