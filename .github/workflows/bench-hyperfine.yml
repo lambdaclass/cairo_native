@@ -23,7 +23,7 @@ jobs:
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2

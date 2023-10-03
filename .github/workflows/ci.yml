@@ -17,7 +17,7 @@ jobs:
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -49,10 +49,10 @@ jobs:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
-      RUSTUP_TOOLCHAIN: nightly
+      RUSTUP_TOOLCHAIN: 1.72.1
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@1.72.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-llvm-cov
@@ -116,7 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: clippy
       - name: Fetch corelibs.
