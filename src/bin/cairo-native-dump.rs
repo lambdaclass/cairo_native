@@ -8,6 +8,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
     ProgramParser,
 };
+use cairo_lang_starknet::{
+    contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
+    plugin::StarkNetPlugin,
+};
 use cairo_native::{
     debug_info::{DebugInfo, DebugLocations},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -23,6 +27,7 @@ use std::{
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -39,7 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the program.
     let context = Context::new();
-    let (program, debug_info) = load_program(Path::new(&args.input), Some(&context))?;
+    let (program, debug_info) =
+        load_program(Path::new(&args.input), Some(&context), args.starknet)?;
 
     // Initialize MLIR.
     context.append_dialect_registry(&{
@@ -81,9 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn load_program<'c>(
     path: &Path,
     context: Option<&'c Context>,
+    is_contract: bool,
 ) -> Result<(Program, Option<DebugLocations<'c>>), Box<dyn std::error::Error>> {
     Ok(match path.extension().and_then(OsStr::to_str) {
-        Some("cairo") => {
+        Some("cairo") if !is_contract => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
             let program = (*compile_prepared_db(
@@ -95,6 +102,42 @@ fn load_program<'c>(
                 },
             )?)
             .clone();
+
+            let debug_locations = if let Some(context) = context {
+                let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
+                    let mut buffer = String::new();
+                    assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
+                    buffer
+                })?;
+
+                Some(DebugLocations::extract(context, &db, &debug_info))
+            } else {
+                None
+            };
+
+            (program, debug_locations)
+        }
+        Some("cairo") if is_contract => {
+            // mimics cairo_lang_starknet::contract_class::compile_path
+            let mut db = RootDatabase::builder()
+                .detect_corelib()
+                .with_macro_plugin(Arc::new(StarkNetPlugin::default()))
+                .with_inline_macro_plugin(SelectorMacro::NAME, Arc::new(SelectorMacro))
+                .build()?;
+
+            let main_crate_ids = setup_project(&mut db, Path::new(&path))?;
+
+            let contract = compile_contract_in_prepared_db(
+                &db,
+                None,
+                main_crate_ids,
+                CompilerConfig {
+                    replace_ids: true,
+                    ..Default::default()
+                },
+            )?;
+
+            let program = contract.extract_sierra_program()?;
 
             let debug_locations = if let Some(context) = context {
                 let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
@@ -131,6 +174,10 @@ struct CmdLine {
 
     #[clap(short = 'o', long = "output", value_parser = parse_output, default_value = "-")]
     output: CompilerOutput,
+
+    /// Compile a starknet contract
+    #[clap(long)]
+    starknet: bool,
 }
 
 #[derive(Clone, Debug)]

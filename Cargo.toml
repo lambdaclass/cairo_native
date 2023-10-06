@@ -55,10 +55,10 @@ tracing-subscriber = { version = "0.3", features = [
 cairo-lang-sierra-gas = "2.2.0"
 cairo-lang-sierra-ap-change = "2.2.0"
 cairo-lang-utils = "2.2.0"
+cairo-lang-starknet = "2.2.0"
 
 [dev-dependencies]
 cairo-lang-runner = "2.2.0"
-cairo-lang-starknet = "2.2.0"
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions = "1.4"
