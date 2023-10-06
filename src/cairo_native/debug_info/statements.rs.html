@@ -130,6 +130,7 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::db::RootDatabase;
 <span class="kw">use </span>cairo_lang_diagnostics::DiagnosticAdded;
 <span class="kw">use </span>cairo_lang_lowering::{
@@ -216,10 +217,11 @@
             PreSierraStatement::PushValues(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
         };
 
-        <span class="kw">let </span>(lhs_idx, _lhs_statement) = lhs_iter.next().unwrap();
-        <span class="comment">// TODO: Assert lhs_statement == rhs_statement.
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((lhs_idx, _lhs_statement)) = lhs_iter.next() {
+            <span class="comment">// TODO: Assert lhs_statement == rhs_statement.
 
-        </span>mappings.insert(StatementIdx(lhs_idx), rhs_statement);
+            </span>mappings.insert(StatementIdx(lhs_idx), rhs_statement);
+        }
     }
 
     mappings
