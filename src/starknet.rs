@@ -52,8 +52,8 @@ pub struct Secp256r1Point {
 }
 
 pub trait StarkNetSyscallHandler {
-    fn get_block_hash(&self, block_number: u64) -> SyscallResult<Felt252>;
-    fn get_execution_info(&self) -> SyscallResult<ExecutionInfo>;
+    fn get_block_hash(&self, block_number: u64, remaining_gas: &mut u64) -> SyscallResult<Felt252>;
+    fn get_execution_info(&self, remaining_gas: &mut u64) -> SyscallResult<ExecutionInfo>;
 
     fn deploy(
         &self,
@@ -61,14 +61,16 @@ pub trait StarkNetSyscallHandler {
         contract_address_salt: Felt252,
         calldata: &[Felt252],
         deploy_from_zero: bool,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<(Felt252, Vec<Felt252>)>;
-    fn replace_class(&self, class_hash: Felt252) -> SyscallResult<()>;
+    fn replace_class(&self, class_hash: Felt252, remaining_gas: &mut u64) -> SyscallResult<()>;
 
     fn library_call(
         &self,
         class_hash: Felt252,
         function_selector: Felt252,
         calldata: &[Felt252],
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt252>>;
 
     fn call_contract(
@@ -76,61 +78,109 @@ pub trait StarkNetSyscallHandler {
         address: Felt252,
         entry_point_selector: Felt252,
         calldata: &[Felt252],
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt252>>;
 
-    fn storage_read(&mut self, address_domain: u32, address: Felt252) -> SyscallResult<Felt252>;
+    fn storage_read(
+        &mut self,
+        address_domain: u32,
+        address: Felt252,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt252>;
 
     fn storage_write(
         &mut self,
         address_domain: u32,
         address: Felt252,
         value: Felt252,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<()>;
 
-    fn emit_event(&mut self, keys: &[Felt252], data: &[Felt252]) -> SyscallResult<()>;
+    fn emit_event(
+        &mut self,
+        keys: &[Felt252],
+        data: &[Felt252],
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<()>;
 
-    fn send_message_to_l1(&mut self, to_address: Felt252, payload: &[Felt252])
-        -> SyscallResult<()>;
+    fn send_message_to_l1(
+        &mut self,
+        to_address: Felt252,
+        payload: &[Felt252],
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<()>;
 
-    fn keccak(&self, input: &[u64]) -> SyscallResult<U256>;
+    fn keccak(&self, input: &[u64], remaining_gas: &mut u64) -> SyscallResult<U256>;
 
     // TODO: secp256k1 syscalls
     fn secp256k1_add(
         &self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
     fn secp256k1_get_point_from_x(
         &self,
         x: U256,
         y_parity: bool,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
-    fn secp256k1_get_xy(&self, p: Secp256k1Point) -> SyscallResult<(U256, U256)>;
+    fn secp256k1_get_xy(
+        &self,
+        p: Secp256k1Point,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<(U256, U256)>;
 
-    fn secp256k1_mul(&self, p: Secp256k1Point, m: U256) -> SyscallResult<Option<Secp256k1Point>>;
+    fn secp256k1_mul(
+        &self,
+        p: Secp256k1Point,
+        m: U256,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>>;
 
-    fn secp256k1_new(&self, x: U256, y: U256) -> SyscallResult<Option<Secp256k1Point>>;
+    fn secp256k1_new(
+        &self,
+        x: U256,
+        y: U256,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>>;
 
     // TODO: secp256r1 syscalls
     fn secp256r1_add(
         &self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
     fn secp256r1_get_point_from_x(
         &self,
         x: U256,
         y_parity: bool,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
-    fn secp256r1_get_xy(&self, p: Secp256k1Point) -> SyscallResult<(U256, U256)>;
+    fn secp256r1_get_xy(
+        &self,
+        p: Secp256k1Point,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<(U256, U256)>;
 
-    fn secp256r1_mul(&self, p: Secp256k1Point, m: U256) -> SyscallResult<Option<Secp256k1Point>>;
+    fn secp256r1_mul(
+        &self,
+        p: Secp256k1Point,
+        m: U256,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>>;
 
-    fn secp256r1_new(&self, x: U256, y: U256) -> SyscallResult<Option<Secp256k1Point>>;
+    fn secp256r1_new(
+        &self,
+        x: U256,
+        y: U256,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>>;
 
     // Testing syscalls.
     // TODO: Make them optional. Crash if called but not implemented.
@@ -376,11 +426,11 @@ pub(crate) mod handler {
         extern "C" fn wrap_get_block_hash(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             block_number: u64,
         ) {
             // TODO: Handle gas.
-            let result = ptr.get_block_hash(block_number);
+            let result = ptr.get_block_hash(block_number, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -396,10 +446,10 @@ pub(crate) mod handler {
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
         ) {
             // TODO: handle gas
-            let result = ptr.get_execution_info();
+            let result = ptr.get_execution_info(gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -464,7 +514,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_deploy(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
@@ -501,6 +551,7 @@ pub(crate) mod handler {
                 contract_address_salt,
                 &calldata,
                 deploy_from_zero,
+                gas,
             );
 
             *result_ptr = match result {
@@ -521,7 +572,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_replace_class(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             class_hash: &Felt252Abi,
         ) {
             // TODO: Handle gas.
@@ -530,7 +581,7 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.replace_class(class_hash);
+            let result = ptr.replace_class(class_hash, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -546,7 +597,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_library_call(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             class_hash: &Felt252Abi,
             function_selector: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
@@ -577,7 +628,7 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.library_call(class_hash, function_selector, &calldata);
+            let result = ptr.library_call(class_hash, function_selector, &calldata, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -597,7 +648,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_call_contract(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             address: &Felt252Abi,
             entry_point_selector: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
@@ -628,7 +679,7 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.call_contract(address, entry_point_selector, &calldata);
+            let result = ptr.call_contract(address, entry_point_selector, &calldata, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -648,7 +699,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_storage_read(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             address_domain: u32,
             address: &Felt252Abi,
         ) {
@@ -658,7 +709,7 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.storage_read(address_domain, address);
+            let result = ptr.storage_read(address_domain, address, gas);
 
             *result_ptr = match result {
                 Ok(res) => SyscallResultAbi {
@@ -674,7 +725,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_storage_write(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             address_domain: u32,
             address: &Felt252Abi,
             value: &Felt252Abi,
@@ -690,7 +741,7 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.storage_write(address_domain, address, value);
+            let result = ptr.storage_write(address_domain, address, value, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -706,7 +757,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_emit_event(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             keys: *const (*const Felt252Abi, u32, u32),
             data: *const (*const Felt252Abi, u32, u32),
         ) {
@@ -740,7 +791,7 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.emit_event(&keys, &data);
+            let result = ptr.emit_event(&keys, &data, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -756,7 +807,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_send_message_to_l1(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             to_address: &Felt252Abi,
             payload: *const (*const Felt252Abi, u32, u32),
         ) {
@@ -780,7 +831,7 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.send_message_to_l1(to_address, &payload);
+            let result = ptr.send_message_to_l1(to_address, &payload, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -796,7 +847,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_keccak(
             result_ptr: &mut SyscallResultAbi<U256>,
             ptr: &mut T,
-            _gas: &mut u64,
+            gas: &mut u64,
             input: *const (*const u64, u32, u32),
         ) {
             // TODO: handle gas
@@ -806,7 +857,7 @@ pub(crate) mod handler {
                 std::slice::from_raw_parts((*input).0, len)
             };
 
-            let result = ptr.keccak(input);
+            let result = ptr.keccak(input, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
