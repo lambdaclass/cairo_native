@@ -70,8 +70,8 @@ jobs:
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.42/cargo-udeps-v0.1.42-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
 
-  coverage:
-    name: test and coverage
+  test:
+    name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
@@ -84,8 +84,6 @@ jobs:
         uses: dtolnay/rust-toolchain@1.72.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -97,13 +95,7 @@ jobs:
       - name: Fetch corelibs.
         run: ./scripts/fetch-corelibs.sh
       - name: test and generate coverage
-        run: make coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
-          files: lcov.info
-          fail_ci_if_error: true
+        run: make test
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
@@ -123,3 +115,30 @@ jobs:
         run: ./scripts/fetch-corelibs.sh
       - name: Run tests
         run: make test
+  coverage:
+    name: coverage
+    runs-on: [self-hosted, macOS]
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
+      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
+      RUST_LOG: debug
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.72.1
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Fetch corelibs.
+        run: ./scripts/fetch-corelibs.sh
+      - name: test and generate coverage
+        run: make coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: lcov.info
+          fail_ci_if_error: true
