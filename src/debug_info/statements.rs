@@ -84,10 +84,11 @@ fn map_sierra_to_pre_sierra_statements<'a>(
             PreSierraStatement::PushValues(_) => panic!(),
         };
 
-        let (lhs_idx, _lhs_statement) = lhs_iter.next().unwrap();
-        // TODO: Assert lhs_statement == rhs_statement.
+        if let Some((lhs_idx, _lhs_statement)) = lhs_iter.next() {
+            // TODO: Assert lhs_statement == rhs_statement.
 
-        mappings.insert(StatementIdx(lhs_idx), rhs_statement);
+            mappings.insert(StatementIdx(lhs_idx), rhs_statement);
+        }
     }
 
     mappings
