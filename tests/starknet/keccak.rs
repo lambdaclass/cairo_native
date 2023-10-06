@@ -1,17 +1,11 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::felt252_bigint;
-use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::find_function_id,
+use cairo_native::starknet::{
+    BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
 use serde_json::json;
-use std::{io, path::Path};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use std::path::Path;
 
 use crate::common::run_native_starknet_contract;
 
@@ -328,7 +322,4 @@ fn keccak_test() {
     );
 
     dbg!(result);
-
-    println!();
-    println!("Cairo program was compiled and executed succesfully.");
 }

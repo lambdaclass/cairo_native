@@ -30,7 +30,7 @@ use cairo_native::{
     },
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
-    utils::{find_function, find_function_id, register_runtime_symbols},
+    utils::{find_function, register_runtime_symbols},
 };
 use lambdaworks_math::{
     field::{
@@ -50,8 +50,7 @@ use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use serde_json::{json, Value};
 use std::{
-    env::var, fs, io::Cursor, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr,
-    sync::Arc,
+    env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
 
 #[allow(unused_macros)]
