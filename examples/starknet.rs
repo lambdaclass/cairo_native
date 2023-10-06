@@ -1,9 +1,9 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::{compile_path, starknet_compile};
+use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::{felt252_bigint, felt252_short_str};
+use cairo_native::utils::felt252_bigint;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
