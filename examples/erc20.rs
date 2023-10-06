@@ -318,7 +318,7 @@ fn main() {
     let sierra_program = contract.extract_sierra_program().unwrap();
 
     // uncomment to save the contract sierra program
-    // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
+    // std::fs::write("erc20.sierra", sierra_program.to_string()).unwrap();
 
     /* uncomment to find all the functions in the program you can call
     let names: Vec<_> = sierra_program
