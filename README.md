@@ -223,6 +223,11 @@ This is a list of the current progress implementing each **libfunc**.
 1. `set_version` (StarkNet, testing)
 1. `struct_snapshot_deconstruct`
 1. `u512_safe_divmod_by_u256`
+1. `i128_diff`
+1. `i16_diff`
+1. `i32_diff`
+1. `i64_diff`
+1. `i8_diff`
 
 </details>
 

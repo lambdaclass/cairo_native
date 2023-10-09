@@ -61,9 +61,6 @@ doc:
 doc-open:
 	cargo doc --all-features --no-deps --workspace --open
 
-book:
-	mdbook serve docs
-
 bench: build
 	./scripts/bench-hyperfine.sh
 
