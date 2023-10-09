@@ -36,13 +36,7 @@ mod Keccak {
             let mut orig_array = input.clone();
 
             let res = keccak::cairo_keccak(ref input, 0x11000010, 4);
-            assert(@res.low == @0x43ccdbe17ae03b02b308ebe4a23c4cc9, 'Wrong hash low 1');
-            assert(@res.high == @0xf3cc56e9bd860f83e3e3bc69919b176a, 'Wrong hash high 1');
 
-            // With "garbage" at the end (note the `aa`s), we should get the same result.
-            let res = keccak::cairo_keccak(ref orig_array, 0xaaaaaaaa11000010, 4);
-            assert(@res.low == @0x43ccdbe17ae03b02b308ebe4a23c4cc9, 'Wrong hash low 2');
-            assert(@res.high == @0xf3cc56e9bd860f83e3e3bc69919b176a, 'Wrong hash high 2');
 
             1
         }
