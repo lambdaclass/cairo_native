@@ -102,6 +102,18 @@ pub fn find_entry_point<'a>(
 }
 
 /// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+pub fn find_function<'a>(
+    program: &'a Program,
+    function_name: &str,
+) -> &'a GenFunction<StatementIdx> {
+    program
+        .funcs
+        .iter()
+        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
+        .unwrap()
+}
+
+/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
 pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
     &program
         .funcs

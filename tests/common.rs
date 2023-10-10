@@ -20,13 +20,17 @@ use cairo_lang_sierra::{
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
+    context::NativeContext,
+    executor::NativeExecutor,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
+        syscall_handler::SyscallHandlerMeta,
         MetadataStorage,
     },
+    starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
-    utils::register_runtime_symbols,
+    utils::{find_function, register_runtime_symbols},
 };
 use lambdaworks_math::{
     field::{
@@ -329,6 +333,69 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_native,
     )
     .expect("compare error");
+}
+
+/// Runs the program using cairo-native JIT.
+pub fn run_native_starknet_contract<T>(
+    sierra_program: &Program,
+    entry_point: &str,
+    args: serde_json::Value,
+    handler: &T,
+) -> serde_json::Value
+where
+    T: StarkNetSyscallHandler,
+{
+    let native_context = NativeContext::new();
+
+    let mut native_program = native_context.compile(sierra_program).unwrap();
+    native_program
+        .insert_metadata(SyscallHandlerMeta::new(handler))
+        .unwrap();
+
+    let syscall_addr = native_program
+        .get_metadata::<SyscallHandlerMeta>()
+        .unwrap()
+        .as_ptr()
+        .as_ptr() as *const () as usize;
+
+    let entry_point_fn = find_function(sierra_program, entry_point);
+    let entry_point_id = &entry_point_fn.id;
+
+    let required_init_gas = native_program.get_required_init_gas(entry_point_id);
+
+    let native_executor = NativeExecutor::new(native_program);
+
+    let native_inputs: Vec<_> = entry_point_fn
+        .params
+        .iter()
+        .map(
+            |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
+                "GasBuiltin" => {
+                    json!(u64::MAX)
+                }
+                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
+                    json!(null)
+                }
+                "System" => {
+                    json!(syscall_addr)
+                }
+                // contract state
+                "core::array::Span::<core::felt252>" => args.clone(),
+                x => {
+                    unimplemented!("unhandled input type: {:?}", x);
+                }
+            },
+        )
+        .collect();
+
+    native_executor
+        .execute(
+            entry_point_id,
+            json!(native_inputs),
+            serde_json::value::Serializer,
+            required_init_gas,
+        )
+        .unwrap()
 }
 
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares

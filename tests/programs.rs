@@ -11,6 +11,7 @@ use proptest::prelude::*;
 use serde_json::json;
 
 mod common;
+mod starknet;
 
 const GAS: usize = usize::MAX;
 
