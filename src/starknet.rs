@@ -67,7 +67,7 @@ pub trait StarkNetSyscallHandler {
         deploy_from_zero: bool,
         remaining_gas: &mut u64,
     ) -> SyscallResult<(Felt252, Vec<Felt252>)>;
-    fn replace_class(&self, class_hash: Felt252, remaining_gas: &mut u64) -> SyscallResult<()>;
+    fn replace_class(&mut self, class_hash: Felt252, remaining_gas: &mut u64) -> SyscallResult<()>;
 
     fn library_call(
         &mut self,

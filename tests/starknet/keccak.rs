@@ -65,7 +65,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         ))
     }
 
-    fn replace_class(&self, class_hash: cairo_felt::Felt252, _gas: &mut u64) -> SyscallResult<()> {
+    fn replace_class(&mut self, class_hash: cairo_felt::Felt252, _gas: &mut u64) -> SyscallResult<()> {
         println!("Called `replace_class({class_hash})` from MLIR.");
         Ok(())
     }
