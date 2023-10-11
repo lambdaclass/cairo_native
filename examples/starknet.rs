@@ -18,7 +18,7 @@ struct SyscallHandler;
 
 impl StarkNetSyscallHandler for SyscallHandler {
     fn get_block_hash(
-        &self,
+        &mut self,
         block_number: u64,
         _gas: &mut u64,
     ) -> SyscallResult<cairo_felt::Felt252> {
@@ -53,7 +53,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn deploy(
-        &self,
+        &mut self,
         class_hash: cairo_felt::Felt252,
         contract_address_salt: cairo_felt::Felt252,
         calldata: &[cairo_felt::Felt252],
@@ -67,13 +67,17 @@ impl StarkNetSyscallHandler for SyscallHandler {
         ))
     }
 
-    fn replace_class(&self, class_hash: cairo_felt::Felt252, _gas: &mut u64) -> SyscallResult<()> {
+    fn replace_class(
+        &mut self,
+        class_hash: cairo_felt::Felt252,
+        _gas: &mut u64,
+    ) -> SyscallResult<()> {
         println!("Called `replace_class({class_hash})` from MLIR.");
         Ok(())
     }
 
     fn library_call(
-        &self,
+        &mut self,
         class_hash: cairo_felt::Felt252,
         function_selector: cairo_felt::Felt252,
         calldata: &[cairo_felt::Felt252],
@@ -145,7 +149,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn secp256k1_add(
-        &self,
+        &mut self,
         _p0: cairo_native::starknet::Secp256k1Point,
         _p1: cairo_native::starknet::Secp256k1Point,
         _gas: &mut u64,
@@ -224,7 +228,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn secp256r1_new(
-        &self,
+        &mut self,
         _x: cairo_native::starknet::U256,
         _y: cairo_native::starknet::U256,
         _gas: &mut u64,
@@ -232,55 +236,55 @@ impl StarkNetSyscallHandler for SyscallHandler {
         todo!()
     }
 
-    fn pop_log(&self) {
+    fn pop_log(&mut self) {
         todo!()
     }
 
-    fn set_account_contract_address(&self, _contract_address: cairo_felt::Felt252) {
+    fn set_account_contract_address(&mut self, _contract_address: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_block_number(&self, _block_number: u64) {
+    fn set_block_number(&mut self, _block_number: u64) {
         todo!()
     }
 
-    fn set_block_timestamp(&self, _block_timestamp: u64) {
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
         todo!()
     }
 
-    fn set_caller_address(&self, _address: cairo_felt::Felt252) {
+    fn set_caller_address(&mut self, _address: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_chain_id(&self, _chain_id: cairo_felt::Felt252) {
+    fn set_chain_id(&mut self, _chain_id: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_contract_address(&self, _address: cairo_felt::Felt252) {
+    fn set_contract_address(&mut self, _address: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_max_fee(&self, _max_fee: u128) {
+    fn set_max_fee(&mut self, _max_fee: u128) {
         todo!()
     }
 
-    fn set_nonce(&self, _nonce: cairo_felt::Felt252) {
+    fn set_nonce(&mut self, _nonce: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_sequencer_address(&self, _address: cairo_felt::Felt252) {
+    fn set_sequencer_address(&mut self, _address: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_signature(&self, _signature: &[cairo_felt::Felt252]) {
+    fn set_signature(&mut self, _signature: &[cairo_felt::Felt252]) {
         todo!()
     }
 
-    fn set_transaction_hash(&self, _transaction_hash: cairo_felt::Felt252) {
+    fn set_transaction_hash(&mut self, _transaction_hash: cairo_felt::Felt252) {
         todo!()
     }
 
-    fn set_version(&self, _version: cairo_felt::Felt252) {
+    fn set_version(&mut self, _version: cairo_felt::Felt252) {
         todo!()
     }
 }
