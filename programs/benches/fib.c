@@ -5,7 +5,7 @@
 
 typedef struct fib_return_values
 {
-    uint64_t remaining_gas;
+    __uint128_t remaining_gas;
     struct {
         uint8_t discriminant;
         union {
