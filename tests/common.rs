@@ -63,7 +63,7 @@ macro_rules! load_cairo {
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
 
-pub(crate) const GAS: usize = usize::MAX;
+pub(crate) const GAS: u64 = u64::MAX;
 
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
@@ -310,7 +310,7 @@ pub fn compare_inputless_program(program_path: &str) {
         .map(
             |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
                 "GasBuiltin" => {
-                    json!(u64::MAX)
+                    json!(u64::MAX as u128)
                 }
                 "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
                     json!(null)
@@ -322,7 +322,7 @@ pub fn compare_inputless_program(program_path: &str) {
         )
         .collect();
 
-    let result_vm = run_vm_program(program, "main", &[], Some(GAS)).unwrap();
+    let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
 
     let result_native = run_native_program(program, "main", json!(native_inputs));
 
@@ -371,7 +371,7 @@ where
         .map(
             |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
                 "GasBuiltin" => {
-                    json!(u64::MAX)
+                    json!(u64::MAX as u128)
                 }
                 "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
                     json!(null)
@@ -427,7 +427,7 @@ pub fn compare_outputs(
         .peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
     let mut vm_rets = vm_return_vals.iter().peekable();
-    let vm_gas: u64 = vm_result
+    let vm_gas: u128 = vm_result
         .gas_counter
         .as_ref()
         .map(|x| x.to_biguint().try_into().unwrap())
@@ -437,7 +437,7 @@ pub fn compare_outputs(
         ty: &CoreTypeConcrete,
         native_rets: &mut impl Iterator<Item = &'a Value>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
-        vm_gas: u64,
+        vm_gas: u128,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<(), TestCaseError> {
         let mut native_rets = native_rets.into_iter().peekable();
@@ -547,8 +547,12 @@ pub fn compare_outputs(
                 // native: compare to gas
                 prop_assert!(native_rets.peek().is_some());
 
-                // sometimes gas is not returned?
-                let gas_val = native_rets.next().unwrap().as_u64().expect("should be u64");
+                // let gas_val = native_rets.next().unwrap().as_number().expect("should be a number");
+                let gas_val: u128 = match native_rets.next().unwrap() {
+                    Value::Number(n) => n.to_string().parse().expect("should parse"),
+                    _ => panic!("wrong gas type"),
+                };
+
                 prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),

@@ -23,11 +23,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
-    ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        r#type::IntegerType,
-        Attribute, Block, Location, ValueLike,
-    },
+    ir::{attribute::StringAttribute, r#type::IntegerType, Attribute, Block, Location, ValueLike},
     Context,
 };
 
@@ -83,14 +79,11 @@ where
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
+    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(
-                cost.unwrap_or(0) as i64,
-                IntegerType::new(context, 64).into(),
-            )
-            .into(),
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type)).unwrap(),
             location,
         ))
         .result(0)?
@@ -149,11 +142,11 @@ where
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
-    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u64_type)).unwrap(),
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type)).unwrap(),
             location,
         ))
         .result(0)?

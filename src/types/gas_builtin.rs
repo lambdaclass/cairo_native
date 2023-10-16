@@ -31,5 +31,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    Ok(IntegerType::new(context, 64).into())
+    Ok(IntegerType::new(context, 128).into())
 }

@@ -32,7 +32,7 @@ impl<'m> NativeExecutor<'m> {
         fn_id: &FunctionId,
         params: D,
         returns: S,
-        required_init_gas: Option<u64>,
+        required_init_gas: Option<u128>,
     ) -> Result<S::Ok, RunnerError<'de, D, S>>
     where
         D: Deserializer<'de>,

@@ -14,7 +14,7 @@ pub struct GasMetadata {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GasCost(pub Option<u64>);
+pub struct GasCost(pub Option<u128>);
 
 /// Configuration for metadata computation.
 #[derive(Default)]
@@ -61,7 +61,7 @@ impl GasMetadata {
     }
 
     // Compute the initial gas required by the function.
-    pub fn get_initial_required_gas(&self, func: &FunctionId) -> Option<u64> {
+    pub fn get_initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
         // In case we don't have any costs - it means no equations were solved - so the gas builtin
         // is irrelevant, and we can return any value.
         if self.gas_info.function_costs.is_empty() {
@@ -72,7 +72,9 @@ impl GasMetadata {
         let required_gas = self.gas_info.function_costs[func.clone()]
             .iter()
             .map(|(cost_token_type, val)| {
-                let val_usize: u64 = (*val).try_into().unwrap();
+                let val_usize: u128 = (*val)
+                    .try_into()
+                    .expect("gas couldn't be converted to u128, should never happen");
                 let token_cost = if *cost_token_type == CostTokenType::Const {
                     1
                 } else {
@@ -89,11 +91,14 @@ impl GasMetadata {
         &self,
         idx: StatementIdx,
         cost_type: CostTokenType,
-    ) -> Option<u64> {
+    ) -> Option<u128> {
         self.gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
-            .map(|x| x as u64)
+            .map(|x| {
+                x.try_into()
+                    .expect("gas cost couldn't be converted to u128, should never happen")
+            })
     }
 }

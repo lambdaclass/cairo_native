@@ -139,7 +139,7 @@ where
     SerializeError(S::Error),
 
     #[error("not enough gas to run, needed '{needed}' had '{have}'")]
-    InsufficientGasError { needed: u64, have: u64 },
+    InsufficientGasError { needed: u128, have: u128 },
 }
 
 impl<'de, TType, TLibfunc, D, S> fmt::Debug for ErrorImpl<'de, TType, TLibfunc, D, S>
@@ -226,8 +226,8 @@ where
 }
 
 pub fn make_insuficient_gas_error<'de, TType, TLibfunc, D, S>(
-    needed: u64,
-    have: u64,
+    needed: u128,
+    have: u128,
 ) -> Error<'de, TType, TLibfunc, D, S>
 where
     TType: GenericType,

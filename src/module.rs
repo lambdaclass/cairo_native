@@ -32,7 +32,7 @@ impl<'m> NativeModule<'m> {
     /// Given some contract function's id, returns an option of the required
     /// initial gas to execute it.
     /// If no initial gas is required, `None` is returned.
-    pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u64> {
+    pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u128> {
         if let Some(gas_metadata) = self.metadata.get::<GasMetadata>() {
             gas_metadata.get_initial_required_gas(fn_id)
         } else {
