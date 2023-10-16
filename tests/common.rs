@@ -547,7 +547,6 @@ pub fn compare_outputs(
                 // native: compare to gas
                 prop_assert!(native_rets.peek().is_some());
 
-                // let gas_val = native_rets.next().unwrap().as_number().expect("should be a number");
                 let gas_val: u128 = match native_rets.next().unwrap() {
                     Value::Number(n) => n.to_string().parse().expect("should parse"),
                     _ => panic!("wrong gas type"),
