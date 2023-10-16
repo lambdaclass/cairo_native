@@ -4,7 +4,7 @@
 
 typedef struct map_return_values
 {
-    __uint128_t remaining_gas;
+    unsigned __int128 remaining_gas;
     struct {
         uint8_t discriminant;
         union {
