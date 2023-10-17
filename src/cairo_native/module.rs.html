@@ -104,7 +104,7 @@
     <span class="doccomment">/// Given some contract function&#39;s id, returns an option of the required
     /// initial gas to execute it.
     /// If no initial gas is required, `None` is returned.
-    </span><span class="kw">pub fn </span>get_required_init_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    </span><span class="kw">pub fn </span>get_required_init_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(gas_metadata) = <span class="self">self</span>.metadata.get::&lt;GasMetadata&gt;() {
             gas_metadata.get_initial_required_gas(fn_id)
         } <span class="kw">else </span>{

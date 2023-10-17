@@ -97,6 +97,11 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
@@ -113,7 +118,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy)]
-</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span><span class="prelude-ty">Option</span>&lt;u64&gt;);
+</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span><span class="prelude-ty">Option</span>&lt;u128&gt;);
 
 <span class="doccomment">/// Configuration for metadata computation.
 </span><span class="attr">#[derive(Default)]
@@ -160,7 +165,7 @@
     }
 
     <span class="comment">// Compute the initial gas required by the function.
-    </span><span class="kw">pub fn </span>get_initial_required_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, func: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    </span><span class="kw">pub fn </span>get_initial_required_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, func: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
         <span class="comment">// In case we don&#39;t have any costs - it means no equations were solved - so the gas builtin
         // is irrelevant, and we can return any value.
         </span><span class="kw">if </span><span class="self">self</span>.gas_info.function_costs.is_empty() {
@@ -171,7 +176,9 @@
         </span><span class="kw">let </span>required_gas = <span class="self">self</span>.gas_info.function_costs[func.clone()]
             .iter()
             .map(|(cost_token_type, val)| {
-                <span class="kw">let </span>val_usize: u64 = (<span class="kw-2">*</span>val).try_into().unwrap();
+                <span class="kw">let </span>val_usize: u128 = (<span class="kw-2">*</span>val)
+                    .try_into()
+                    .expect(<span class="string">&quot;gas couldn&#39;t be converted to u128, should never happen&quot;</span>);
                 <span class="kw">let </span>token_cost = <span class="kw">if </span><span class="kw-2">*</span>cost_token_type == CostTokenType::Const {
                     <span class="number">1
                 </span>} <span class="kw">else </span>{
@@ -188,12 +195,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         idx: StatementIdx,
         cost_type: CostTokenType,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
         <span class="self">self</span>.gas_info
             .variable_values
             .get(<span class="kw-2">&amp;</span>(idx, cost_type))
             .copied()
-            .map(|x| x <span class="kw">as </span>u64)
+            .map(|x| {
+                x.try_into()
+                    .expect(<span class="string">&quot;gas cost couldn&#39;t be converted to u128, should never happen&quot;</span>)
+            })
     }
 }
 </code></pre></div></section></main></body></html>

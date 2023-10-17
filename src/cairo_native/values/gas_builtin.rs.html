@@ -55,8 +55,6 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ValueBuilder;
 <span class="kw">use </span><span class="kw">crate</span>::types::TypeBuilder;
 <span class="kw">use </span>bumpalo::Bump;
@@ -80,10 +78,8 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt; + ValueBuilder&lt;TType, TLibfunc&gt;,
     D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
 {
-    <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u64&gt;()).cast();
-
-    <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_mut() = &lt;u64 <span class="kw">as </span>Deserialize&gt;::deserialize(deserializer)<span class="question-mark">?</span>;
-
+    <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u128&gt;()).cast();
+    <span class="kw-2">*</span>ptr.cast::&lt;u128&gt;().as_mut() = &lt;u128 <span class="kw">as </span>Deserialize&gt;::deserialize(deserializer)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(ptr)
 }
 
@@ -99,7 +95,7 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt; + ValueBuilder&lt;TType, TLibfunc&gt;,
     S: Serializer,
 {
-    &lt;u64 <span class="kw">as </span>Serialize&gt;::serialize(ptr.cast::&lt;u64&gt;().as_ref(), serializer)
+    &lt;u128 <span class="kw">as </span>Serialize&gt;::serialize(ptr.cast::&lt;u128&gt;().as_ref(), serializer)
 }
 
 <span class="kw">pub unsafe fn </span>debug_fmt&lt;TType, TLibfunc&gt;(
@@ -114,6 +110,6 @@
     TLibfunc: GenericLibfunc,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt; + ValueBuilder&lt;TType, TLibfunc&gt;,
 {
-    fmt::Debug::fmt(ptr.cast::&lt;u64&gt;().as_ref(), f)
+    fmt::Debug::fmt(ptr.cast::&lt;u128&gt;().as_ref(), f)
 }
 </code></pre></div></section></main></body></html>

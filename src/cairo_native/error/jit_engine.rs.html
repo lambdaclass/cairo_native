@@ -380,7 +380,7 @@
     </span>SerializeError(S::Error),
 
     <span class="attr">#[error(<span class="string">&quot;not enough gas to run, needed &#39;{needed}&#39; had &#39;{have}&#39;&quot;</span>)]
-    </span>InsufficientGasError { needed: u64, have: u64 },
+    </span>InsufficientGasError { needed: u128, have: u128 },
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>, TType, TLibfunc, D, S&gt; fmt::Debug <span class="kw">for </span>ErrorImpl&lt;<span class="lifetime">&#39;de</span>, TType, TLibfunc, D, S&gt;
@@ -467,8 +467,8 @@
 }
 
 <span class="kw">pub fn </span>make_insuficient_gas_error&lt;<span class="lifetime">&#39;de</span>, TType, TLibfunc, D, S&gt;(
-    needed: u64,
-    have: u64,
+    needed: u128,
+    have: u128,
 ) -&gt; Error&lt;<span class="lifetime">&#39;de</span>, TType, TLibfunc, D, S&gt;
 <span class="kw">where
     </span>TType: GenericType,

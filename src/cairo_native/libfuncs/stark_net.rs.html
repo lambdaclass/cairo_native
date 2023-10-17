@@ -4927,7 +4927,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -5044,7 +5044,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             address_arg_ptr_ty,
             entry_point_selector_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -5196,7 +5196,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -5482,7 +5482,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -5531,7 +5531,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             IntegerType::new(context, <span class="number">32</span>).into(),
             address_arg_ptr_ty,
         ],
@@ -5681,7 +5681,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -5815,7 +5815,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -5892,7 +5892,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             IntegerType::new(context, <span class="number">32</span>).into(),
             address_arg_ptr_ty,
             value_arg_ptr_ty,
@@ -6044,7 +6044,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -6388,7 +6388,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -6487,7 +6487,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             keys_arg_ptr_ty,
             data_arg_ptr_ty,
         ],
@@ -6637,7 +6637,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -6767,7 +6767,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -6788,7 +6788,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             IntegerType::new(context, <span class="number">64</span>).into(),
         ],
         <span class="bool-val">false</span>,
@@ -6936,7 +6936,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -7066,7 +7066,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -7087,7 +7087,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
         ],
         <span class="bool-val">false</span>,
     );
@@ -7228,7 +7228,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -7406,7 +7406,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -7523,7 +7523,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             class_hash_arg_ptr_ty,
             contract_address_salt_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -7686,7 +7686,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -7841,7 +7841,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -7901,7 +7901,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             input_arg_ptr_ty,
         ],
         <span class="bool-val">false</span>,
@@ -8043,7 +8043,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -8173,7 +8173,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -8290,7 +8290,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             class_hash_arg_ptr_ty,
             function_selector_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -8442,7 +8442,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -8576,7 +8576,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -8625,7 +8625,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             class_hash_arg_ptr_ty,
         ],
         <span class="bool-val">false</span>,
@@ -8767,7 +8767,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -8901,7 +8901,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(
-                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    IntegerType::new(context, <span class="number">128</span>).into(),
                     <span class="number">0</span>,
                 )])
                 .build(),
@@ -8989,7 +8989,7 @@
         <span class="kw-2">&amp;</span>[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+            llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
             to_address_arg_ptr_ty,
             payload_arg_ptr_ty,
         ],
@@ -9139,7 +9139,7 @@
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">128</span>).into(),
             location,
             LoadStoreOptions::default(),
         ))
