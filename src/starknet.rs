@@ -52,21 +52,25 @@ pub struct Secp256r1Point {
 }
 
 pub trait StarkNetSyscallHandler {
-    fn get_block_hash(&self, block_number: u64, remaining_gas: &mut u64) -> SyscallResult<Felt252>;
+    fn get_block_hash(
+        &mut self,
+        block_number: u64,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt252>;
     fn get_execution_info(&self, remaining_gas: &mut u64) -> SyscallResult<ExecutionInfo>;
 
     fn deploy(
-        &self,
+        &mut self,
         class_hash: Felt252,
         contract_address_salt: Felt252,
         calldata: &[Felt252],
         deploy_from_zero: bool,
         remaining_gas: &mut u64,
     ) -> SyscallResult<(Felt252, Vec<Felt252>)>;
-    fn replace_class(&self, class_hash: Felt252, remaining_gas: &mut u64) -> SyscallResult<()>;
+    fn replace_class(&mut self, class_hash: Felt252, remaining_gas: &mut u64) -> SyscallResult<()>;
 
     fn library_call(
-        &self,
+        &mut self,
         class_hash: Felt252,
         function_selector: Felt252,
         calldata: &[Felt252],
@@ -114,7 +118,7 @@ pub trait StarkNetSyscallHandler {
 
     // TODO: secp256k1 syscalls
     fn secp256k1_add(
-        &self,
+        &mut self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
         remaining_gas: &mut u64,
@@ -176,7 +180,7 @@ pub trait StarkNetSyscallHandler {
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
     fn secp256r1_new(
-        &self,
+        &mut self,
         x: U256,
         y: U256,
         remaining_gas: &mut u64,
@@ -184,31 +188,31 @@ pub trait StarkNetSyscallHandler {
 
     // Testing syscalls.
     // TODO: Make them optional. Crash if called but not implemented.
-    fn pop_log(&self);
+    fn pop_log(&mut self);
 
-    fn set_account_contract_address(&self, contract_address: Felt252);
+    fn set_account_contract_address(&mut self, contract_address: Felt252);
 
-    fn set_block_number(&self, block_number: u64);
+    fn set_block_number(&mut self, block_number: u64);
 
-    fn set_block_timestamp(&self, block_timestamp: u64);
+    fn set_block_timestamp(&mut self, block_timestamp: u64);
 
-    fn set_caller_address(&self, address: Felt252);
+    fn set_caller_address(&mut self, address: Felt252);
 
-    fn set_chain_id(&self, chain_id: Felt252);
+    fn set_chain_id(&mut self, chain_id: Felt252);
 
-    fn set_contract_address(&self, address: Felt252);
+    fn set_contract_address(&mut self, address: Felt252);
 
-    fn set_max_fee(&self, max_fee: u128);
+    fn set_max_fee(&mut self, max_fee: u128);
 
-    fn set_nonce(&self, nonce: Felt252);
+    fn set_nonce(&mut self, nonce: Felt252);
 
-    fn set_sequencer_address(&self, address: Felt252);
+    fn set_sequencer_address(&mut self, address: Felt252);
 
-    fn set_signature(&self, signature: &[Felt252]);
+    fn set_signature(&mut self, signature: &[Felt252]);
 
-    fn set_transaction_hash(&self, transaction_hash: Felt252);
+    fn set_transaction_hash(&mut self, transaction_hash: Felt252);
 
-    fn set_version(&self, version: Felt252);
+    fn set_version(&mut self, version: Felt252);
 }
 
 // TODO: Move to the correct place or remove if unused.
