@@ -871,6 +871,10 @@
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
 <a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="attr">#![allow(clippy::type_complexity)]
@@ -925,21 +929,25 @@
 </span>}
 
 <span class="kw">pub trait </span>StarkNetSyscallHandler {
-    <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, block_number: u64, remaining_gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;Felt252&gt;;
+    <span class="kw">fn </span>get_block_hash(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_number: u64,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Felt252&gt;;
     <span class="kw">fn </span>get_execution_info(<span class="kw-2">&amp;</span><span class="self">self</span>, remaining_gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;ExecutionInfo&gt;;
 
     <span class="kw">fn </span>deploy(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         class_hash: Felt252,
         contract_address_salt: Felt252,
         calldata: <span class="kw-2">&amp;</span>[Felt252],
         deploy_from_zero: bool,
         remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;(Felt252, Vec&lt;Felt252&gt;)&gt;;
-    <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;</span><span class="self">self</span>, class_hash: Felt252, remaining_gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;()&gt;;
+    <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;mut </span><span class="self">self</span>, class_hash: Felt252, remaining_gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;()&gt;;
 
     <span class="kw">fn </span>library_call(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         class_hash: Felt252,
         function_selector: Felt252,
         calldata: <span class="kw-2">&amp;</span>[Felt252],
@@ -987,7 +995,7 @@
 
     <span class="comment">// TODO: secp256k1 syscalls
     </span><span class="kw">fn </span>secp256k1_add(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
         remaining_gas: <span class="kw-2">&amp;mut </span>u64,
@@ -1049,7 +1057,7 @@
     ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256k1Point&gt;&gt;;
 
     <span class="kw">fn </span>secp256r1_new(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: U256,
         y: U256,
         remaining_gas: <span class="kw-2">&amp;mut </span>u64,
@@ -1057,31 +1065,31 @@
 
     <span class="comment">// Testing syscalls.
     // TODO: Make them optional. Crash if called but not implemented.
-    </span><span class="kw">fn </span>pop_log(<span class="kw-2">&amp;</span><span class="self">self</span>);
+    </span><span class="kw">fn </span>pop_log(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;</span><span class="self">self</span>, contract_address: Felt252);
+    <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, contract_address: Felt252);
 
-    <span class="kw">fn </span>set_block_number(<span class="kw-2">&amp;</span><span class="self">self</span>, block_number: u64);
+    <span class="kw">fn </span>set_block_number(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_number: u64);
 
-    <span class="kw">fn </span>set_block_timestamp(<span class="kw-2">&amp;</span><span class="self">self</span>, block_timestamp: u64);
+    <span class="kw">fn </span>set_block_timestamp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_timestamp: u64);
 
-    <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
 
-    <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;</span><span class="self">self</span>, chain_id: Felt252);
+    <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chain_id: Felt252);
 
-    <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
 
-    <span class="kw">fn </span>set_max_fee(<span class="kw-2">&amp;</span><span class="self">self</span>, max_fee: u128);
+    <span class="kw">fn </span>set_max_fee(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_fee: u128);
 
-    <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;</span><span class="self">self</span>, nonce: Felt252);
+    <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, nonce: Felt252);
 
-    <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
 
-    <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, signature: <span class="kw-2">&amp;</span>[Felt252]);
+    <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, signature: <span class="kw-2">&amp;</span>[Felt252]);
 
-    <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, transaction_hash: Felt252);
+    <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, transaction_hash: Felt252);
 
-    <span class="kw">fn </span>set_version(<span class="kw-2">&amp;</span><span class="self">self</span>, version: Felt252);
+    <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, version: Felt252);
 }
 
 <span class="comment">// TODO: Move to the correct place or remove if unused.
