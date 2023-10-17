@@ -21,10 +21,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     D: Deserializer<'de>,
 {
-    let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
-
-    *ptr.cast::<u64>().as_mut() = <u64 as Deserialize>::deserialize(deserializer)?;
-
+    let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
+    *ptr.cast::<u128>().as_mut() = <u128 as Deserialize>::deserialize(deserializer)?;
     Ok(ptr)
 }
 
@@ -40,7 +38,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
     S: Serializer,
 {
-    <u64 as Serialize>::serialize(ptr.cast::<u64>().as_ref(), serializer)
+    <u128 as Serialize>::serialize(ptr.cast::<u128>().as_ref(), serializer)
 }
 
 pub unsafe fn debug_fmt<TType, TLibfunc>(
@@ -55,5 +53,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
 {
-    fmt::Debug::fmt(ptr.cast::<u64>().as_ref(), f)
+    fmt::Debug::fmt(ptr.cast::<u128>().as_ref(), f)
 }

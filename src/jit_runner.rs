@@ -43,7 +43,7 @@ pub fn execute<'de, TType, TLibfunc, D, S>(
     function_id: &FunctionId,
     params: D,
     returns: S,
-    required_initial_gas: Option<u64>,
+    required_initial_gas: Option<u128>,
 ) -> Result<S::Ok, JitRunnerError<'de, TType, TLibfunc, D, S>>
 where
     TType: GenericType,
@@ -74,7 +74,7 @@ where
     if let Some(required_initial_gas) = required_initial_gas {
         for (id, param) in entry_point.signature.param_types.iter().zip(params.iter()) {
             if id.debug_name.as_deref() == Some("GasBuiltin") {
-                let gas_builtin = unsafe { *param.cast::<u64>().as_ptr() };
+                let gas_builtin = unsafe { *param.cast::<u128>().as_ptr() };
 
                 if gas_builtin < required_initial_gas {
                     return Err(make_insuficient_gas_error(
@@ -87,7 +87,7 @@ where
 
                 unsafe {
                     // update gas with the starting gas
-                    param.cast::<u64>().as_ptr().write(starting_gas);
+                    param.cast::<u128>().as_ptr().write(starting_gas);
                 }
             }
         }

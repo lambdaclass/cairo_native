@@ -249,7 +249,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -366,7 +366,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             address_arg_ptr_ty,
             entry_point_selector_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -518,7 +518,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -804,7 +804,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -853,7 +853,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             IntegerType::new(context, 32).into(),
             address_arg_ptr_ty,
         ],
@@ -1003,7 +1003,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -1137,7 +1137,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -1214,7 +1214,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             IntegerType::new(context, 32).into(),
             address_arg_ptr_ty,
             value_arg_ptr_ty,
@@ -1366,7 +1366,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -1710,7 +1710,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -1809,7 +1809,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             keys_arg_ptr_ty,
             data_arg_ptr_ty,
         ],
@@ -1959,7 +1959,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -2089,7 +2089,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -2110,7 +2110,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             IntegerType::new(context, 64).into(),
         ],
         false,
@@ -2258,7 +2258,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -2388,7 +2388,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -2409,7 +2409,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
         ],
         false,
     );
@@ -2550,7 +2550,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -2728,7 +2728,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -2845,7 +2845,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             class_hash_arg_ptr_ty,
             contract_address_salt_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -3008,7 +3008,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -3163,7 +3163,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -3223,7 +3223,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             input_arg_ptr_ty,
         ],
         false,
@@ -3365,7 +3365,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -3495,7 +3495,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -3612,7 +3612,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             class_hash_arg_ptr_ty,
             function_selector_arg_ptr_ty,
             calldata_arg_ptr_ty,
@@ -3764,7 +3764,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -3898,7 +3898,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -3947,7 +3947,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             class_hash_arg_ptr_ty,
         ],
         false,
@@ -4089,7 +4089,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
@@ -4223,7 +4223,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 64).into(),
+                    IntegerType::new(context, 128).into(),
                     0,
                 )])
                 .build(),
@@ -4311,7 +4311,7 @@ where
         &[
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
-            llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+            llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
             to_address_arg_ptr_ty,
             payload_arg_ptr_ty,
         ],
@@ -4461,7 +4461,7 @@ where
         .append_operation(llvm::load(
             context,
             gas_builtin_ptr,
-            IntegerType::new(context, 64).into(),
+            IntegerType::new(context, 128).into(),
             location,
             LoadStoreOptions::default(),
         ))
