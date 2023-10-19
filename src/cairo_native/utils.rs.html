@@ -742,7 +742,6 @@
 <a href="#742" id="742">742</a>
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use </span>cairo_felt::Felt252;
@@ -846,16 +845,15 @@
         .find(|x| x.id.debug_name.as_deref() == <span class="prelude-val">Some</span>(entry_point))
 }
 
-<span class="doccomment">/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
-</span><span class="kw">pub fn </span>find_function&lt;<span class="lifetime">&#39;a</span>&gt;(
-    program: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Program,
-    function_name: <span class="kw-2">&amp;</span>str,
-) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>GenFunction&lt;StatementIdx&gt; {
+<span class="doccomment">/// Returns the given entry point if present.
+</span><span class="kw">pub fn </span>find_entry_point_by_idx(
+    program: <span class="kw-2">&amp;</span>Program,
+    entry_point_idx: usize,
+) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>GenFunction&lt;StatementIdx&gt;&gt; {
     program
         .funcs
         .iter()
-        .find(|x| x.id.debug_name.as_deref() == <span class="prelude-val">Some</span>(function_name))
-        .unwrap()
+        .find(|x| x.id.id == entry_point_idx <span class="kw">as </span>u64)
 }
 
 <span class="doccomment">/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.

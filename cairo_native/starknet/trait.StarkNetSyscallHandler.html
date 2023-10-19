@@ -6,7 +6,7 @@
         remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt252&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.get_execution_info" class="fn">get_execution_info</a>(
-        &amp;self,
+        &amp;mut self,
         remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfo.html" title="struct cairo_native::starknet::ExecutionInfo">ExecutionInfo</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.deploy" class="fn">deploy</a>(
@@ -142,7 +142,7 @@
     block_number: <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u64.html">u64</a>,
     remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt252&gt;</h4></section><section id="tymethod.get_execution_info" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#60">source</a><h4 class="code-header">fn <a href="#tymethod.get_execution_info" class="fn">get_execution_info</a>(
-    &amp;self,
+    &amp;mut self,
     remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfo.html" title="struct cairo_native::starknet::ExecutionInfo">ExecutionInfo</a>&gt;</h4></section><section id="tymethod.deploy" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#62-69">source</a><h4 class="code-header">fn <a href="#tymethod.deploy" class="fn">deploy</a>(
     &amp;mut self,

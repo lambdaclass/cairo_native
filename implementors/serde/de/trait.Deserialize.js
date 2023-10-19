@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"cairo_native":[["impl&lt;'de&gt; <a class=\"trait\" href=\"https://docs.rs/serde/1.0.188/serde/de/trait.Deserialize.html\" title=\"trait serde::de::Deserialize\">Deserialize</a>&lt;'de&gt; for <a class=\"struct\" href=\"cairo_native/execution_result/struct.NativeExecutionResult.html\" title=\"struct cairo_native::execution_result::NativeExecutionResult\">NativeExecutionResult</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -115,33 +115,67 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::u32_vec_to_felt;
 <span class="kw">use </span>cairo_felt::Felt252;
+<span class="kw">use </span>cairo_lang_sierra::extensions::core::CoreTypeConcrete;
 <span class="kw">use </span>serde::{
     de::{<span class="self">self</span>, SeqAccess},
-    Deserialize, Deserializer,
+    Deserializer,
 };
 <span class="kw">use </span>serde_json::Value;
-<span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::fmt::{<span class="self">self</span>};
 
-<span class="attr">#[derive(Debug)]
+<span class="doccomment">/// Starknet contract execution result.
+</span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub struct </span>NativeExecutionResult {
-    <span class="kw">pub </span>gas_builtin: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    <span class="kw">pub </span>range_check: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    <span class="kw">pub </span>system: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    <span class="kw">pub </span>gas_consumed: u128,
     <span class="kw">pub </span>failure_flag: bool,
     <span class="kw">pub </span>return_values: Vec&lt;Felt252&gt;,
     <span class="kw">pub </span>error_msg: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>NativeExecutionResult {
-    <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, D::Error&gt;
+<span class="kw">impl </span>NativeExecutionResult {
+    <span class="doccomment">/// Deserializes the NativeExecutionResult using the return types.
+    ///
+    /// The deserializer assumes a order in the incoming data, it expects the return values to be last (which is the case as of cairo 2).
+    ///
+    /// You can get the return types from a list of `CoreTypeConcrete` from a list of `ConcreteTypeId` using the sierra `ProgramRegistry`.
+    </span><span class="kw">pub fn </span>deserialize_from_ret_types&lt;<span class="lifetime">&#39;de</span>, D&gt;(
+        deserializer: D,
+        ret_types: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>CoreTypeConcrete],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, D::Error&gt;
     <span class="kw">where
         </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        <span class="kw">struct </span>NativeExecutionResultVisitor;
+        <span class="kw">struct </span>NativeExecutionResultVisitor&lt;<span class="lifetime">&#39;a</span>&gt; {
+            ret_types: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CoreTypeConcrete],
+        }
 
-        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>NativeExecutionResultVisitor {
+        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>NativeExecutionResultVisitor&lt;<span class="lifetime">&#39;_</span>&gt; {
             <span class="kw">type </span>Value = NativeExecutionResult;
 
             <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
@@ -152,83 +186,97 @@
             <span class="kw">where
                 </span>A: SeqAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
-                <span class="comment">// The last element of the sequence is stored. This is where the
-                // result of the MLIR execution will be.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>last_element: <span class="prelude-ty">Option</span>&lt;Value&gt; = <span class="prelude-val">None</span>;
-                <span class="kw">while let </span><span class="prelude-val">Some</span>(value) = seq.next_element::&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;&gt;()<span class="question-mark">? </span>{
-                    last_element = value;
+                <span class="kw">let </span><span class="kw-2">mut </span>gas_consumed: u128 = <span class="number">0</span>;
+
+                <span class="kw">for </span>ret_type <span class="kw">in </span><span class="self">self</span>.ret_types {
+                    <span class="kw">match </span>ret_type {
+                        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; {
+                            gas_consumed = seq.next_element()<span class="question-mark">?</span>.unwrap();
+                        }
+                        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; {
+                            seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
+                        }
+                        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; {
+                            seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
+                        }
+                        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; {
+                            seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
+                        }
+                        CoreTypeConcrete::StarkNet(<span class="kw">_</span>) =&gt; {
+                            seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
+                        }
+                        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
+                            seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
+                        }
+                        CoreTypeConcrete::Enum(<span class="kw">_</span>) =&gt; {
+                            <span class="comment">// return values
+                            // The failure flag indicates if the execution was done successfully.
+                            </span><span class="kw">let </span>(failure_flag, return_values): (u64, Value) =
+                                serde_json::from_value(seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>.unwrap())
+                                    .unwrap();
+
+                            <span class="kw">return match </span>failure_flag {
+                                <span class="comment">// When the execution is successful, the return values are
+                                // stored in a nested vector. The innermost vector of u32
+                                // represents a field element.
+                                </span><span class="number">0 </span>=&gt; {
+                                    <span class="kw">let </span>return_values: Vec&lt;Vec&lt;Vec&lt;Vec&lt;u32&gt;&gt;&gt;&gt; =
+                                        serde_json::from_value(return_values).unwrap();
+
+                                    <span class="prelude-val">Ok</span>(NativeExecutionResult {
+                                        gas_consumed,
+                                        return_values: return_values[<span class="number">0</span>][<span class="number">0</span>]
+                                            .iter()
+                                            .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
+                                            .collect(),
+                                        failure_flag: failure_flag == <span class="number">1</span>,
+                                        error_msg: <span class="prelude-val">None</span>,
+                                    })
+                                }
+
+                                <span class="comment">// When the execution returns an error, the return values are
+                                // a tuple with an empty array in the first place (don&#39;t really know
+                                // why) and a vector of u32 vectors in the second. These represent a
+                                // felt encoded string that gives some details about the error.
+                                </span><span class="number">1 </span>=&gt; {
+                                    <span class="kw">let </span>return_values: (Vec&lt;u32&gt;, Vec&lt;Vec&lt;u32&gt;&gt;) =
+                                        serde_json::from_value(return_values).unwrap();
+
+                                    <span class="kw">let </span>felt_error: Vec&lt;Felt252&gt; = return_values
+                                        .<span class="number">1
+                                        </span>.iter()
+                                        .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
+                                        .collect();
+
+                                    <span class="kw">let </span>str_error =
+                                        String::from_utf8(felt_error[<span class="number">0</span>].to_be_bytes().to_vec())
+                                            .unwrap()
+                                            .trim_start_matches(<span class="string">&#39;\0&#39;</span>)
+                                            .to_owned();
+
+                                    <span class="prelude-val">Ok</span>(NativeExecutionResult {
+                                        gas_consumed,
+                                        failure_flag: failure_flag == <span class="number">1</span>,
+                                        return_values: felt_error,
+                                        error_msg: <span class="prelude-val">Some</span>(str_error),
+                                    })
+                                }
+                                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(de::Error::custom(<span class="string">&quot;expected failure flag to be 0 or 1&quot;</span>)),
+                            };
+                        }
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(de::Error::custom(<span class="string">&quot;unexpected type when deserializing&quot;</span>))<span class="question-mark">?</span>,
+                    }
                 }
 
-                <span class="comment">// The failure flag indicates if the execution was done successfully.
-                </span><span class="kw">let </span>(failure_flag, return_values): (u64, Value) =
-                    serde_json::from_value(last_element.unwrap()).unwrap();
-
-                <span class="kw">match </span>failure_flag {
-                    <span class="comment">// When the execution is successful, the return values are
-                    // stored in a nested vector. The innermost vector of u32
-                    // represents a field element.
-                    // TODO: This should be generalized for more return types
-                    </span><span class="number">0 </span>=&gt; {
-                        <span class="kw">let </span>return_values: Vec&lt;Vec&lt;Vec&lt;Vec&lt;u32&gt;&gt;&gt;&gt; =
-                            serde_json::from_value(return_values).unwrap();
-
-                        <span class="prelude-val">Ok</span>(NativeExecutionResult {
-                            gas_builtin: <span class="prelude-val">None</span>,
-                            range_check: <span class="prelude-val">None</span>,
-                            system: <span class="prelude-val">None</span>,
-                            return_values: return_values[<span class="number">0</span>][<span class="number">0</span>]
-                                .iter()
-                                .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
-                                .collect(),
-                            failure_flag: failure_flag == <span class="number">1</span>,
-                            error_msg: <span class="prelude-val">None</span>,
-                        })
-                    }
-
-                    <span class="comment">// When the execution returns an error, the return values are
-                    // a tuple with an empty array in the first place (don&#39;t really know
-                    // why) and a vector of u32 vectors in the second. These represent a
-                    // felt encoded string that gives some details about the error.
-                    </span><span class="number">1 </span>=&gt; {
-                        <span class="kw">let </span>return_values: (Vec&lt;u32&gt;, Vec&lt;Vec&lt;u32&gt;&gt;) =
-                            serde_json::from_value(return_values).unwrap();
-
-                        <span class="kw">let </span>felt_error: Vec&lt;Felt252&gt; = return_values
-                            .<span class="number">1
-                            </span>.iter()
-                            .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
-                            .collect();
-
-                        <span class="kw">let </span>str_error = String::from_utf8(felt_error[<span class="number">0</span>].to_be_bytes().to_vec())
-                            .unwrap()
-                            .trim_start_matches(<span class="string">&#39;\0&#39;</span>)
-                            .to_owned();
-
-                        <span class="prelude-val">Ok</span>(NativeExecutionResult {
-                            gas_builtin: <span class="prelude-val">None</span>,
-                            range_check: <span class="prelude-val">None</span>,
-                            system: <span class="prelude-val">None</span>,
-                            failure_flag: failure_flag == <span class="number">1</span>,
-                            return_values: felt_error,
-                            error_msg: <span class="prelude-val">Some</span>(str_error),
-                        })
-                    }
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(de::Error::custom(<span class="string">&quot;expected failure flag to be 0 or 1&quot;</span>)),
-                }
+                <span class="prelude-val">Err</span>(de::Error::custom(<span class="string">&quot;failed to deserialize&quot;</span>))
             }
         }
 
-        <span class="kw">const </span>FIELDS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = <span class="kw-2">&amp;</span>[
-            <span class="string">&quot;gas_builtin&quot;</span>,
-            <span class="string">&quot;range_check&quot;</span>,
-            <span class="string">&quot;system&quot;</span>,
-            <span class="string">&quot;return_values&quot;</span>,
-            <span class="string">&quot;failure_flag&quot;</span>,
-        ];
+        <span class="kw">const </span>FIELDS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = <span class="kw-2">&amp;</span>[<span class="string">&quot;gas_consumed&quot;</span>, <span class="string">&quot;return_values&quot;</span>, <span class="string">&quot;failure_flag&quot;</span>];
         deserializer.deserialize_struct(
             <span class="string">&quot;NativeExecutionResult&quot;</span>,
             FIELDS,
-            NativeExecutionResultVisitor,
+            NativeExecutionResultVisitor { ret_types },
         )
     }
 }

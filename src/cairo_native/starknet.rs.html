@@ -864,18 +864,6 @@
 <a href="#864" id="864">864</a>
 <a href="#865" id="865">865</a>
 <a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="attr">#![allow(clippy::type_complexity)]
@@ -935,7 +923,7 @@
         block_number: u64,
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;Felt252&gt;;
-    <span class="kw">fn </span>get_execution_info(<span class="kw-2">&amp;</span><span class="self">self</span>, remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;ExecutionInfo&gt;;
+    <span class="kw">fn </span>get_execution_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;ExecutionInfo&gt;;
 
     <span class="kw">fn </span>deploy(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1312,8 +1300,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             block_number: u64,
         ) {
-            <span class="comment">// TODO: Handle gas.
-            </span><span class="kw">let </span>result = ptr.get_block_hash(block_number, gas);
+            <span class="kw">let </span>result = ptr.get_block_hash(block_number, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -1331,8 +1318,7 @@
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>result = ptr.get_execution_info(gas);
+            <span class="kw">let </span>result = ptr.get_execution_info(gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -1403,8 +1389,7 @@
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1458,8 +1443,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="comment">// TODO: Handle gas.
-            </span><span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1485,8 +1469,7 @@
             function_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1536,8 +1519,7 @@
             entry_point_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1586,8 +1568,7 @@
             address_domain: u32,
             address: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="comment">// TODO: Handle gas.
-            </span><span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1613,8 +1594,7 @@
             address: <span class="kw-2">&amp;</span>Felt252Abi,
             value: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="comment">// TODO: Handle gas.
-            </span><span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1644,9 +1624,7 @@
             keys: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
             data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="comment">// TODO: Handle gas.
-
-            </span><span class="kw">let </span>keys: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>keys: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>len = (<span class="kw-2">*</span>keys).<span class="number">1 </span><span class="kw">as </span>usize;
                 std::slice::from_raw_parts((<span class="kw-2">*</span>keys).<span class="number">0</span>, len)
             }
@@ -1694,8 +1672,7 @@
             to_address: <span class="kw-2">&amp;</span>Felt252Abi,
             payload: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>to_address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>to_address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = to_address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1733,8 +1710,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             input: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>u64, u32, u32),
         ) {
-            <span class="comment">// TODO: handle gas
-            </span><span class="kw">let </span>input = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>input = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>len = (<span class="kw-2">*</span>input).<span class="number">1 </span><span class="kw">as </span>usize;
 
                 std::slice::from_raw_parts((<span class="kw-2">*</span>input).<span class="number">0</span>, len)
