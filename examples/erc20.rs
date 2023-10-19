@@ -12,7 +12,6 @@ use cairo_native::{
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::{felt252_bigint, felt252_short_str},
 };
-use itertools::Itertools;
 use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
