@@ -1,6 +1,5 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::program::Program;
 use cairo_lang_starknet::contract_class::{compile_path, ContractClass};
 use cairo_native::starknet::{
     BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
@@ -292,7 +291,7 @@ lazy_static! {
     static ref KECCAK_CONTRACT: ContractClass = {
         let path = Path::new("tests/starknet/contracts/test_keccak.cairo");
 
-        let contract = compile_path(
+        compile_path(
             path,
             None,
             CompilerConfig {
@@ -300,9 +299,7 @@ lazy_static! {
                 ..Default::default()
             },
         )
-        .unwrap();
-
-        contract
+        .unwrap()
     };
 }
 
@@ -310,14 +307,6 @@ lazy_static! {
 fn keccak_test() {
     // uncomment to save the contract sierra program
     // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref()).collect();
-    println!("{names:#?}");
-    */
 
     let contract = &KECCAK_CONTRACT;
 
@@ -334,6 +323,4 @@ fn keccak_test() {
     assert!(!result.failure_flag);
     assert_eq!(result.gas_consumed, 1000);
     assert_eq!(result.return_values, vec![1.into()]);
-
-    dbg!(&result);
 }

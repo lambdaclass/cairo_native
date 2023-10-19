@@ -10,10 +10,9 @@ use cairo_native::utils::{felt252_bigint, find_entry_point_by_idx};
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::find_function_id,
 };
 use serde_json::json;
-use std::{io, path::Path};
+use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug)]
