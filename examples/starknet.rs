@@ -1,9 +1,12 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete};
+use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
+use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::felt252_bigint;
+use cairo_native::utils::{felt252_bigint, find_entry_point_by_idx};
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -27,7 +30,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn get_execution_info(
-        &self,
+        &mut self,
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
         println!("Called `get_execution_info()` from MLIR.");
@@ -320,7 +323,10 @@ fn main() {
     )
     .unwrap();
 
+    let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
+    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
+        ProgramRegistry::new(&sierra_program).unwrap();
 
     // uncomment to save the contract sierra program
     // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
@@ -348,10 +354,17 @@ fn main() {
 
     // Call the echo function from the contract using the generated wrapper.
 
-    let fn_id = find_function_id(
-        &sierra_program,
-        "hello_starknet::hello_starknet::Echo::__wrapper_echo",
-    );
+    let entry_point_fn =
+        find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
+
+    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
+        .signature
+        .ret_types
+        .iter()
+        .map(|x| program_registry.get_type(x).unwrap())
+        .collect();
+
+    let fn_id = &entry_point_fn.id;
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
     let params = json!([
@@ -373,14 +386,22 @@ fn main() {
             ]
         ],
     ]);
-    let returns = &mut serde_json::Serializer::pretty(io::stdout());
-
     let native_executor = NativeExecutor::new(native_program);
+
+    let mut writer: Vec<u8> = Vec::new();
+    let returns = &mut serde_json::Serializer::new(&mut writer);
 
     native_executor
         .execute(fn_id, params, returns, required_init_gas)
-        .unwrap();
+        .expect("failed to execute the given contract");
+
+    let result = NativeExecutionResult::deserialize_from_ret_types(
+        &mut serde_json::Deserializer::from_slice(&writer),
+        &ret_types,
+    )
+    .expect("failed to serialize starknet execution result");
 
     println!();
     println!("Cairo program was compiled and executed succesfully.");
+    println!("{result:#?}");
 }

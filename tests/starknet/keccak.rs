@@ -1,7 +1,7 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::program::Program;
-use cairo_lang_starknet::contract_class::compile_path;
+use cairo_lang_starknet::contract_class::{compile_path, ContractClass};
 use cairo_native::starknet::{
     BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
@@ -25,7 +25,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn get_execution_info(
-        &self,
+        &mut self,
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
         println!("Called `get_execution_info()` from MLIR.");
@@ -141,12 +141,9 @@ impl StarkNetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn keccak(
-        &self,
-        input: &[u64],
-        _gas: &mut u128,
-    ) -> SyscallResult<cairo_native::starknet::U256> {
+    fn keccak(&self, input: &[u64], gas: &mut u128) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
+        *gas -= 1000;
         Ok(U256(Felt252::from(1234567890).to_le_bytes()))
     }
 
@@ -292,7 +289,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 lazy_static! {
-    static ref KECCAK_CONTRACT: Program = {
+    static ref KECCAK_CONTRACT: ContractClass = {
         let path = Path::new("tests/starknet/contracts/test_keccak.cairo");
 
         let contract = compile_path(
@@ -305,7 +302,7 @@ lazy_static! {
         )
         .unwrap();
 
-        contract.extract_sierra_program().unwrap()
+        contract
     };
 }
 
@@ -322,12 +319,21 @@ fn keccak_test() {
     println!("{names:#?}");
     */
 
-    let _result = run_native_starknet_contract(
-        &KECCAK_CONTRACT,
-        "test_keccak::test_keccak::Keccak::__wrapper_cairo_keccak_test",
+    let contract = &KECCAK_CONTRACT;
+
+    let entry_point = contract.entry_points_by_type.external.get(0).unwrap();
+
+    let program = contract.extract_sierra_program().unwrap();
+    let result = run_native_starknet_contract(
+        &program,
+        entry_point.function_idx,
         json!([[]]),
         &SyscallHandler,
     );
 
-    // dbg!(&result);
+    assert!(!result.failure_flag);
+    assert_eq!(result.gas_consumed, 1000);
+    assert_eq!(result.return_values, vec![1.into()]);
+
+    dbg!(&result);
 }

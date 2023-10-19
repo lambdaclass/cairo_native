@@ -525,12 +525,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -1010,12 +1019,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -1373,12 +1391,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -1966,12 +1993,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -2265,12 +2301,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -2557,12 +2602,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -3015,14 +3069,23 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(
         helper.cond_br(
             result_tag,
             [1, 0],
             [
-                &[remaining_gas, entry.argument(1)?.into(), payload_err],
+                &[gas_consumed, entry.argument(1)?.into(), payload_err],
                 &[
-                    remaining_gas,
+                    gas_consumed,
                     entry.argument(1)?.into(),
                     entry
                         .append_operation(llvm::extract_value(
@@ -3182,15 +3245,11 @@ where
     let input_arg_ptr_ty = llvm::r#type::pointer(
         llvm::r#type::r#struct(
             context,
-            &[llvm::r#type::r#struct(
-                context,
-                &[
-                    llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
-                    IntegerType::new(context, 32).into(),
-                    IntegerType::new(context, 32).into(),
-                ],
-                false,
-            )],
+            &[
+                llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+            ],
             false,
         ),
         0,
@@ -3372,12 +3431,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -3771,12 +3839,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -4096,12 +4173,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -4468,12 +4554,21 @@ where
         .result(0)?
         .into();
 
+    let gas_consumed = entry
+        .append_operation(arith::subi(
+            entry.argument(0)?.into(),
+            remaining_gas,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[remaining_gas, entry.argument(1)?.into(), payload_err],
-            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
+            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));

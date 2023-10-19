@@ -1,30 +1,40 @@
 use crate::utils::u32_vec_to_felt;
 use cairo_felt::Felt252;
+use cairo_lang_sierra::extensions::core::CoreTypeConcrete;
 use serde::{
     de::{self, SeqAccess},
-    Deserialize, Deserializer,
+    Deserializer,
 };
 use serde_json::Value;
-use std::fmt;
+use std::fmt::{self};
 
-#[derive(Debug)]
+/// Starknet contract execution result.
+#[derive(Debug, Default)]
 pub struct NativeExecutionResult {
-    pub gas_builtin: Option<u64>,
-    pub range_check: Option<u64>,
-    pub system: Option<u64>,
+    pub gas_consumed: u128,
     pub failure_flag: bool,
     pub return_values: Vec<Felt252>,
     pub error_msg: Option<String>,
 }
 
-impl<'de> Deserialize<'de> for NativeExecutionResult {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+impl NativeExecutionResult {
+    /// Deserializes the NativeExecutionResult using the return types.
+    ///
+    /// The deserializer assumes a order in the incoming data, it expects the return values to be last (which is the case as of cairo 2).
+    ///
+    /// You can get the return types from a list of `CoreTypeConcrete` from a list of `ConcreteTypeId` using the sierra `ProgramRegistry`.
+    pub fn deserialize_from_ret_types<'de, D>(
+        deserializer: D,
+        ret_types: &[&CoreTypeConcrete],
+    ) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct NativeExecutionResultVisitor;
+        struct NativeExecutionResultVisitor<'a> {
+            ret_types: &'a [&'a CoreTypeConcrete],
+        }
 
-        impl<'de> de::Visitor<'de> for NativeExecutionResultVisitor {
+        impl<'de> de::Visitor<'de> for NativeExecutionResultVisitor<'_> {
             type Value = NativeExecutionResult;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -35,83 +45,97 @@ impl<'de> Deserialize<'de> for NativeExecutionResult {
             where
                 A: SeqAccess<'de>,
             {
-                // The last element of the sequence is stored. This is where the
-                // result of the MLIR execution will be.
-                let mut last_element: Option<Value> = None;
-                while let Some(value) = seq.next_element::<Option<Value>>()? {
-                    last_element = value;
+                let mut gas_consumed: u128 = 0;
+
+                for ret_type in self.ret_types {
+                    match ret_type {
+                        CoreTypeConcrete::GasBuiltin(_) => {
+                            gas_consumed = seq.next_element()?.unwrap();
+                        }
+                        CoreTypeConcrete::RangeCheck(_) => {
+                            seq.next_element::<Value>()?;
+                        }
+                        CoreTypeConcrete::Pedersen(_) => {
+                            seq.next_element::<Value>()?;
+                        }
+                        CoreTypeConcrete::Poseidon(_) => {
+                            seq.next_element::<Value>()?;
+                        }
+                        CoreTypeConcrete::StarkNet(_) => {
+                            seq.next_element::<Value>()?;
+                        }
+                        CoreTypeConcrete::SegmentArena(_) => {
+                            seq.next_element::<Value>()?;
+                        }
+                        CoreTypeConcrete::Enum(_) => {
+                            // return values
+                            // The failure flag indicates if the execution was done successfully.
+                            let (failure_flag, return_values): (u64, Value) =
+                                serde_json::from_value(seq.next_element::<Value>()?.unwrap())
+                                    .unwrap();
+
+                            return match failure_flag {
+                                // When the execution is successful, the return values are
+                                // stored in a nested vector. The innermost vector of u32
+                                // represents a field element.
+                                0 => {
+                                    let return_values: Vec<Vec<Vec<Vec<u32>>>> =
+                                        serde_json::from_value(return_values).unwrap();
+
+                                    Ok(NativeExecutionResult {
+                                        gas_consumed,
+                                        return_values: return_values[0][0]
+                                            .iter()
+                                            .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
+                                            .collect(),
+                                        failure_flag: failure_flag == 1,
+                                        error_msg: None,
+                                    })
+                                }
+
+                                // When the execution returns an error, the return values are
+                                // a tuple with an empty array in the first place (don't really know
+                                // why) and a vector of u32 vectors in the second. These represent a
+                                // felt encoded string that gives some details about the error.
+                                1 => {
+                                    let return_values: (Vec<u32>, Vec<Vec<u32>>) =
+                                        serde_json::from_value(return_values).unwrap();
+
+                                    let felt_error: Vec<Felt252> = return_values
+                                        .1
+                                        .iter()
+                                        .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
+                                        .collect();
+
+                                    let str_error =
+                                        String::from_utf8(felt_error[0].to_be_bytes().to_vec())
+                                            .unwrap()
+                                            .trim_start_matches('\0')
+                                            .to_owned();
+
+                                    Ok(NativeExecutionResult {
+                                        gas_consumed,
+                                        failure_flag: failure_flag == 1,
+                                        return_values: felt_error,
+                                        error_msg: Some(str_error),
+                                    })
+                                }
+                                _ => Err(de::Error::custom("expected failure flag to be 0 or 1")),
+                            };
+                        }
+                        _ => Err(de::Error::custom("unexpected type when deserializing"))?,
+                    }
                 }
 
-                // The failure flag indicates if the execution was done successfully.
-                let (failure_flag, return_values): (u64, Value) =
-                    serde_json::from_value(last_element.unwrap()).unwrap();
-
-                match failure_flag {
-                    // When the execution is successful, the return values are
-                    // stored in a nested vector. The innermost vector of u32
-                    // represents a field element.
-                    // TODO: This should be generalized for more return types
-                    0 => {
-                        let return_values: Vec<Vec<Vec<Vec<u32>>>> =
-                            serde_json::from_value(return_values).unwrap();
-
-                        Ok(NativeExecutionResult {
-                            gas_builtin: None,
-                            range_check: None,
-                            system: None,
-                            return_values: return_values[0][0]
-                                .iter()
-                                .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
-                                .collect(),
-                            failure_flag: failure_flag == 1,
-                            error_msg: None,
-                        })
-                    }
-
-                    // When the execution returns an error, the return values are
-                    // a tuple with an empty array in the first place (don't really know
-                    // why) and a vector of u32 vectors in the second. These represent a
-                    // felt encoded string that gives some details about the error.
-                    1 => {
-                        let return_values: (Vec<u32>, Vec<Vec<u32>>) =
-                            serde_json::from_value(return_values).unwrap();
-
-                        let felt_error: Vec<Felt252> = return_values
-                            .1
-                            .iter()
-                            .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
-                            .collect();
-
-                        let str_error = String::from_utf8(felt_error[0].to_be_bytes().to_vec())
-                            .unwrap()
-                            .trim_start_matches('\0')
-                            .to_owned();
-
-                        Ok(NativeExecutionResult {
-                            gas_builtin: None,
-                            range_check: None,
-                            system: None,
-                            failure_flag: failure_flag == 1,
-                            return_values: felt_error,
-                            error_msg: Some(str_error),
-                        })
-                    }
-                    _ => Err(de::Error::custom("expected failure flag to be 0 or 1")),
-                }
+                Err(de::Error::custom("failed to deserialize"))
             }
         }
 
-        const FIELDS: &[&str] = &[
-            "gas_builtin",
-            "range_check",
-            "system",
-            "return_values",
-            "failure_flag",
-        ];
+        const FIELDS: &[&str] = &["gas_consumed", "return_values", "failure_flag"];
         deserializer.deserialize_struct(
             "NativeExecutionResult",
             FIELDS,
-            NativeExecutionResultVisitor,
+            NativeExecutionResultVisitor { ret_types },
         )
     }
 }

@@ -57,7 +57,7 @@ pub trait StarkNetSyscallHandler {
         block_number: u64,
         remaining_gas: &mut u128,
     ) -> SyscallResult<Felt252>;
-    fn get_execution_info(&self, remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo>;
+    fn get_execution_info(&mut self, remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo>;
 
     fn deploy(
         &mut self,
@@ -434,7 +434,6 @@ pub(crate) mod handler {
             gas: &mut u128,
             block_number: u64,
         ) {
-            // TODO: Handle gas.
             let result = ptr.get_block_hash(block_number, gas);
 
             *result_ptr = match result {
@@ -453,7 +452,6 @@ pub(crate) mod handler {
             ptr: &mut T,
             gas: &mut u128,
         ) {
-            // TODO: handle gas
             let result = ptr.get_execution_info(gas);
 
             *result_ptr = match result {
@@ -525,7 +523,6 @@ pub(crate) mod handler {
             calldata: *const (*const Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ) {
-            // TODO: handle gas
             let class_hash = Felt252::from_bytes_be(&{
                 let mut data = class_hash.0;
                 data.reverse();
@@ -580,7 +577,6 @@ pub(crate) mod handler {
             gas: &mut u128,
             class_hash: &Felt252Abi,
         ) {
-            // TODO: Handle gas.
             let class_hash = Felt252::from_bytes_be(&{
                 let mut data = class_hash.0;
                 data.reverse();
@@ -607,7 +603,6 @@ pub(crate) mod handler {
             function_selector: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
         ) {
-            // TODO: handle gas
             let class_hash = Felt252::from_bytes_be(&{
                 let mut data = class_hash.0;
                 data.reverse();
@@ -658,7 +653,6 @@ pub(crate) mod handler {
             entry_point_selector: &Felt252Abi,
             calldata: *const (*const Felt252Abi, u32, u32),
         ) {
-            // TODO: handle gas
             let address = Felt252::from_bytes_be(&{
                 let mut data = address.0;
                 data.reverse();
@@ -708,7 +702,6 @@ pub(crate) mod handler {
             address_domain: u32,
             address: &Felt252Abi,
         ) {
-            // TODO: Handle gas.
             let address = Felt252::from_bytes_be(&{
                 let mut data = address.0;
                 data.reverse();
@@ -735,7 +728,6 @@ pub(crate) mod handler {
             address: &Felt252Abi,
             value: &Felt252Abi,
         ) {
-            // TODO: Handle gas.
             let address = Felt252::from_bytes_be(&{
                 let mut data = address.0;
                 data.reverse();
@@ -766,8 +758,6 @@ pub(crate) mod handler {
             keys: *const (*const Felt252Abi, u32, u32),
             data: *const (*const Felt252Abi, u32, u32),
         ) {
-            // TODO: Handle gas.
-
             let keys: Vec<_> = unsafe {
                 let len = (*keys).1 as usize;
                 std::slice::from_raw_parts((*keys).0, len)
@@ -816,7 +806,6 @@ pub(crate) mod handler {
             to_address: &Felt252Abi,
             payload: *const (*const Felt252Abi, u32, u32),
         ) {
-            // TODO: handle gas
             let to_address = Felt252::from_bytes_be(&{
                 let mut data = to_address.0;
                 data.reverse();
@@ -855,7 +844,6 @@ pub(crate) mod handler {
             gas: &mut u128,
             input: *const (*const u64, u32, u32),
         ) {
-            // TODO: handle gas
             let input = unsafe {
                 let len = (*input).1 as usize;
 
