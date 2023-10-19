@@ -21,6 +21,7 @@ use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
+    execution_result::NativeExecutionResult,
     executor::NativeExecutor,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -30,7 +31,7 @@ use cairo_native::{
     },
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
-    utils::{find_function, register_runtime_symbols},
+    utils::{find_entry_point_by_idx, register_runtime_symbols},
 };
 use lambdaworks_math::{
     field::{
@@ -338,13 +339,16 @@ pub fn compare_inputless_program(program_path: &str) {
 /// Runs the program using cairo-native JIT.
 pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
-    entry_point: &str,
+    entry_point_function_idx: usize,
     args: serde_json::Value,
     handler: &T,
-) -> serde_json::Value
+) -> NativeExecutionResult
 where
     T: StarkNetSyscallHandler,
 {
+    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
+        ProgramRegistry::new(sierra_program).unwrap();
+
     let native_context = NativeContext::new();
 
     let mut native_program = native_context.compile(sierra_program).unwrap();
@@ -358,7 +362,13 @@ where
         .as_ptr()
         .as_ptr() as *const () as usize;
 
-    let entry_point_fn = find_function(sierra_program, entry_point);
+    let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
+    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
+        .signature
+        .ret_types
+        .iter()
+        .map(|x| program_registry.get_type(x).unwrap())
+        .collect();
     let entry_point_id = &entry_point_fn.id;
 
     let required_init_gas = native_program.get_required_init_gas(entry_point_id);
@@ -388,14 +398,23 @@ where
         )
         .collect();
 
+    let mut writer: Vec<u8> = Vec::new();
+    let returns = &mut serde_json::Serializer::new(&mut writer);
+
     native_executor
         .execute(
             entry_point_id,
             json!(native_inputs),
-            serde_json::value::Serializer,
+            returns,
             required_init_gas,
         )
-        .unwrap()
+        .expect("failed to execute the given contract");
+
+    NativeExecutionResult::deserialize_from_ret_types(
+        &mut serde_json::Deserializer::from_slice(&writer),
+        &ret_types,
+    )
+    .expect("failed to serialize starknet execution result")
 }
 
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares

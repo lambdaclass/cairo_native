@@ -101,16 +101,15 @@ pub fn find_entry_point<'a>(
         .find(|x| x.id.debug_name.as_deref() == Some(entry_point))
 }
 
-/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
-pub fn find_function<'a>(
-    program: &'a Program,
-    function_name: &str,
-) -> &'a GenFunction<StatementIdx> {
+/// Returns the given entry point if present.
+pub fn find_entry_point_by_idx(
+    program: &Program,
+    entry_point_idx: usize,
+) -> Option<&GenFunction<StatementIdx>> {
     program
         .funcs
         .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(function_name))
-        .unwrap()
+        .find(|x| x.id.id == entry_point_idx as u64)
 }
 
 /// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
