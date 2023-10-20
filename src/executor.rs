@@ -11,11 +11,11 @@ use serde::{Deserializer, Serializer};
 pub struct NativeExecutor<'m> {
     engine: ExecutionEngine,
     // NativeModule needs to be kept alive with the executor or it will segfault when trying to execute.
-    native_module: NativeModule<'m>,
+    native_module: &'m NativeModule<'m>,
 }
 
 impl<'m> NativeExecutor<'m> {
-    pub fn new(native_module: NativeModule<'m>) -> Self {
+    pub fn new(native_module: &'m NativeModule<'m>) -> Self {
         let module = native_module.get_module();
         let engine = create_engine(module);
         Self {

@@ -36,7 +36,7 @@ fn main() {
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
     // Instantiate MLIR executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeExecutor::new(&native_program);
 
     // Execute the program
     native_executor

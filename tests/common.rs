@@ -373,7 +373,7 @@ where
 
     let required_init_gas = native_program.get_required_init_gas(entry_point_id);
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeExecutor::new(&native_program);
 
     let native_inputs: Vec<_> = entry_point_fn
         .params
