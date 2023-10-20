@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
 
 use cairo_lang_sierra::program::Program;
 
@@ -9,6 +9,12 @@ pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe refcounting.
     cache: HashMap<K, Rc<RefCell<NativeModule<'a>>>>,
+}
+
+impl<'a, K: PartialEq + Eq + Hash> Debug for ProgramCache<'a, K> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ProgramCache")
+    }
 }
 
 impl<'a, K: PartialEq + Eq + Hash> ProgramCache<'a, K> {
