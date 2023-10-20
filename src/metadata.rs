@@ -22,7 +22,7 @@ pub mod syscall_handler;
 pub mod tail_recursion;
 
 /// Metadata container.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
 }

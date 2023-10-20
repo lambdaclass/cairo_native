@@ -5,7 +5,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::ir::Module;
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 
 /// A MLIR module in the context of Cairo Native.
 /// It is conformed by the MLIR module, the Sierra program registry
@@ -68,5 +68,11 @@ impl<'m> NativeModule<'m> {
 
     pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
+    }
+}
+
+impl Debug for NativeModule<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.module.as_operation().to_string())
     }
 }
