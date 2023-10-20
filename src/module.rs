@@ -51,13 +51,13 @@ impl<'m> NativeModule<'m> {
         self.metadata.insert(meta)
     }
 
-     /// Removes metadata
-     pub fn remove_metadata<T>(&mut self) -> Option<T>
-     where
-         T: Any,
-     {
-         self.metadata.remove()
-     }
+    /// Removes metadata
+    pub fn remove_metadata<T>(&mut self) -> Option<T>
+    where
+        T: Any,
+    {
+        self.metadata.remove()
+    }
 
     /// Retrieve a reference to some stored metadata.
     ///
