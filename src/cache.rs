@@ -1,14 +1,14 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use cairo_lang_sierra::program::Program;
 
-use crate::{context::NativeContext, module::NativeModule};
+use crate::{context::NativeContext, executor::NativeExecutor};
 
 /// A Cache for programs with the same context.
 pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe refcounting.
-    cache: HashMap<K, Rc<RefCell<NativeModule<'a>>>>,
+    cache: HashMap<K, NativeExecutor<'a>>,
 }
 
 impl<'a, K: PartialEq + Eq + Hash> Debug for ProgramCache<'a, K> {
@@ -17,7 +17,7 @@ impl<'a, K: PartialEq + Eq + Hash> Debug for ProgramCache<'a, K> {
     }
 }
 
-impl<'a, K: PartialEq + Eq + Hash> ProgramCache<'a, K> {
+impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
             context,
@@ -25,19 +25,15 @@ impl<'a, K: PartialEq + Eq + Hash> ProgramCache<'a, K> {
         }
     }
 
-    /// Checks if the program identified by the given key is already compiled and returns it or compiles it.
-    pub fn compile_or_get(&mut self, key: K, program: &Program) -> Rc<RefCell<NativeModule<'a>>> {
-        let module = self
-            .cache
-            .entry(key)
-            .or_insert_with(|| {
-                Rc::new(RefCell::new(
-                    self.context.compile(program).expect("should compile"),
-                ))
-            })
-            .clone();
+    pub fn get(&self, key: K) -> Option<&NativeExecutor<'a>> {
+        self.cache.get(&key)
+    }
 
-        module
+    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> &NativeExecutor<'a> {
+        let module = self.context.compile(program).expect("should compile");
+        let executor = NativeExecutor::new(module);
+        self.cache.insert(key.clone(), executor);
+        self.cache.get(&key).unwrap()
     }
 }
 
@@ -67,21 +63,21 @@ mod test {
         let mut cache: ProgramCache<&'static str> = ProgramCache::new(&context);
 
         let start = Instant::now();
-        cache.compile_or_get("program1", &program1);
+        cache.compile_and_insert("program1", &program1);
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();
-        cache.compile_or_get("program1", &program1);
+        cache.get("program1").expect("exists");
         let diff_2 = Instant::now().duration_since(start);
 
         assert!(diff_2 < diff_1);
 
         let start = Instant::now();
-        cache.compile_or_get("program2", &program2);
+        cache.compile_and_insert("program2", &program2);
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();
-        cache.compile_or_get("program2", &program2);
+        cache.get("program2").expect("exists");
         let diff_2 = Instant::now().duration_since(start);
 
         assert!(diff_2 < diff_1);
