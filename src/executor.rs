@@ -28,6 +28,14 @@ impl<'m> NativeExecutor<'m> {
         self.native_module.get_program_registry()
     }
 
+    pub fn get_module(&self) -> &NativeModule<'m> {
+        &self.native_module
+    }
+
+    pub fn get_module_mut(&mut self) -> &mut NativeModule<'m> {
+        &mut self.native_module
+    }
+
     pub fn execute<'de, D, S>(
         &self,
         fn_id: &FunctionId,
