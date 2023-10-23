@@ -88,10 +88,10 @@ run_bench() {
     hyperfine \
         --warmup 3 \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
-        "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
-        "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
-        "$OUTPUT_DIR/$base_name" \
-        "$OUTPUT_DIR/$base_name-march-native" \
+        -n "Cairo-vm (Rust, Cairo 1)" "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
+        -n "cairo-native (JIT MLIR ORC Engine)" "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
+        -n "cairo-native (AOT Native binary)" "$OUTPUT_DIR/$base_name" \
+        -n "cairo-native (AOT Native binary with host CPU features, march=native)" "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 }
 
