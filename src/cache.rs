@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
 
 use cairo_lang_sierra::program::Program;
 
@@ -8,7 +8,8 @@ use crate::{context::NativeContext, executor::NativeExecutor};
 pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe refcounting.
-    cache: HashMap<K, NativeExecutor<'a>>,
+    // Using a Arc<RwLock<T>> here is useless because NativeExecutor is not Send and Sync.
+    cache: HashMap<K, Rc<RefCell<NativeExecutor<'a>>>>,
 }
 
 impl<'a, K: PartialEq + Eq + Hash> Debug for ProgramCache<'a, K> {
@@ -25,19 +26,20 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
         }
     }
 
-    pub fn get(&self, key: K) -> Option<&NativeExecutor<'a>> {
-        self.cache.get(&key)
+    pub fn get(&self, key: K) -> Option<Rc<RefCell<NativeExecutor<'a>>>> {
+        self.cache.get(&key).cloned()
     }
 
-    pub fn get_mut(&mut self, key: K) -> Option<&mut NativeExecutor<'a>> {
-        self.cache.get_mut(&key)
-    }
-
-    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> &mut NativeExecutor<'a> {
+    pub fn compile_and_insert(
+        &mut self,
+        key: K,
+        program: &Program,
+    ) -> Rc<RefCell<NativeExecutor<'a>>> {
         let module = self.context.compile(program).expect("should compile");
         let executor = NativeExecutor::new(module);
-        self.cache.insert(key.clone(), executor);
-        self.cache.get_mut(&key).unwrap()
+        self.cache
+            .insert(key.clone(), Rc::new(RefCell::new(executor)));
+        self.cache.get_mut(&key).cloned().unwrap()
     }
 }
 
