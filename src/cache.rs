@@ -29,11 +29,15 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
         self.cache.get(&key)
     }
 
-    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> &NativeExecutor<'a> {
+    pub fn get_mut(&mut self, key: K) -> Option<&mut NativeExecutor<'a>> {
+        self.cache.get_mut(&key)
+    }
+
+    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> &mut NativeExecutor<'a> {
         let module = self.context.compile(program).expect("should compile");
         let executor = NativeExecutor::new(module);
         self.cache.insert(key.clone(), executor);
-        self.cache.get(&key).unwrap()
+        self.cache.get_mut(&key).unwrap()
     }
 }
 
