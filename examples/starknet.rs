@@ -385,7 +385,7 @@ fn main() {
             ]
         ],
     ]);
-    let native_executor = NativeExecutor::new(&native_program);
+    let native_executor = NativeExecutor::new(native_program);
 
     let mut writer: Vec<u8> = Vec::new();
     let returns = &mut serde_json::Serializer::new(&mut writer);
