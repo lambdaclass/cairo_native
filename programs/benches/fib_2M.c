@@ -21,7 +21,7 @@ typedef struct fib_return_values
 
 
 static void run_bench(fib_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_fib::fib::main")));
+    __attribute__((weakref("_mlir_ciface_fib_2M::fib_2M::main")));
 
 
 int main()
@@ -30,5 +30,7 @@ int main()
 
     run_bench(&return_values, NULL, 0);
 
-    return 0;
+    // discriminant 0 == Result::Ok
+    // return value 0 == ok in hyperfine
+    return return_values.result.discriminant;
 }

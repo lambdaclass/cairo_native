@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Configuration.
-ROOT_DIR="$(dirname $(dirname ${0%/*}))"
+ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
 MLIR_DIR="$MLIR_SYS_170_PREFIX"
 
 CAIRO_SRCS=$(find \
@@ -14,17 +14,24 @@ COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-dump"
 JIT_CLI="$ROOT_DIR/target/release/cairo-native-run"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+
 # Initial setup.
 if [[ ! -e "$COMPILER_CLI" ]]
 then
-    echo "Compiler CLI not found. Is the project built in release mode?"
+    echo "${bold}Compiler CLI not found. Is the project built in release mode?${normal}"
     exit 1
 fi
 if [[ -z "$MLIR_DIR" ]]
 then
-    echo "MLIR_DIR is empty. Did you forget to set MLIR_SYS_160_PREFIX?"
+    echo "${bold}MLIR_DIR is empty. Did you forget to set MLIR_SYS_160_PREFIX?${normal}"
     exit 1
 fi
+
+echo "This benchmarks compares the Starknet cairo-run command, which uses the Rust cairo-vm internally against the"
+echo "cairo native compiler, using both the JIT engine and a natively compiled binary"
+echo
 
 set -e
 mkdir -p "$OUTPUT_DIR"
@@ -33,8 +40,6 @@ mkdir -p "$OUTPUT_DIR"
 run_bench() {
     base_path="${1%.cairo}"
     base_name=$(basename $base_path)
-
-    >&2 echo "Benchmarking $1..."
 
     "$COMPILER_CLI" \
         "$base_path.cairo" \
@@ -88,34 +93,34 @@ run_bench() {
     hyperfine \
         --warmup 3 \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
-        "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
-        "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
-        "$OUTPUT_DIR/$base_name" \
-        "$OUTPUT_DIR/$base_name-march-native" \
+        --export-json "$OUTPUT_DIR/$base_name.json" \
+        -n "Cairo-vm (Rust, Cairo 1)" "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
+        -n "cairo-native (JIT MLIR ORC Engine)" "echo '[null, 18446744073709551615]' | $JIT_CLI $base_path.cairo $base_name::$base_name::main --inputs -" \
+        -n "cairo-native (AOT Native binary)" "$OUTPUT_DIR/$base_name" \
+        -n "cairo-native (AOT Native binary with host CPU features, march=native)" "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 }
 
 
 if [ $# -eq 0 ]
 then
-    echo "Benchmarking ${#CAIRO_SRCS[@]} programs."
-    echo
+    echo "${bold}Benchmarking ${#CAIRO_SRCS[@]} programs.${normal}${normal}"
 
     count=1
     for program in "${CAIRO_SRCS[@]}"
     do
-        echo "[$count/${#CAIRO_SRCS[@]}] Benchmarking program at $program."
+        echo "${bold}[$count/${#CAIRO_SRCS[@]}] Benchmarking program at $program.${normal}"
         run_bench "$program"
 
         count=$((count + 1))
     done
 else
-    echo "Benchmarking ${$#} programs."
+    echo "${bold}Benchmarking $# programs."
 
     count=1
     for program in "$@"
     do
-        echo "[$count/${#CAIRO_SRCS[@]}] Benchmarking program at $program."
+        echo "${bold}[$count/${#CAIRO_SRCS[@]}] Benchmarking program at $program.${normal}"
         run_bench "$program"
 
         count=$((count + 1))

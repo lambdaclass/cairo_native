@@ -65,7 +65,7 @@ jobs:
       - name: Build project
         run: make build
       - name: Run benchmarks
-        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/{factorial_100,fib_1k,map}.cairo
+        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/*.cairo
       - name: Create markdown file
         run: bash .github/scripts/merge-benches.sh
 
