@@ -92,8 +92,8 @@ endif
 	ln -s cairo2/corelib corelib
 
 deps-macos: build-cairo-2-compiler-macos
-	-brew install llvm@17
-	echo "You can execute the env-macos.sh script to setup the needed env variables."
+	-brew install llvm@17 --quiet
+	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
 cairo-repo-2-dir = cairo2
 cairo-repo-2-dir-macos = cairo2-macos
