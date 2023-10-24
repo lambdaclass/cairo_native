@@ -70,6 +70,20 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::metadata::{gas::GasMetadata, MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -77,7 +91,7 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::ir::Module;
-<span class="kw">use </span>std::any::Any;
+<span class="kw">use </span>std::{any::Any, fmt::Debug};
 
 <span class="doccomment">/// A MLIR module in the context of Cairo Native.
 /// It is conformed by the MLIR module, the Sierra program registry
@@ -123,6 +137,14 @@
         <span class="self">self</span>.metadata.insert(meta)
     }
 
+    <span class="doccomment">/// Removes metadata
+    </span><span class="kw">pub fn </span>remove_metadata&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt;
+    <span class="kw">where
+        </span>T: Any,
+    {
+        <span class="self">self</span>.metadata.remove()
+    }
+
     <span class="doccomment">/// Retrieve a reference to some stored metadata.
     ///
     /// The retrieval will fail if there is no metadata with the requested type, in which case it&#39;ll
@@ -140,6 +162,12 @@
 
     <span class="kw">pub fn </span>get_program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.registry
+    }
+}
+
+<span class="kw">impl </span>Debug <span class="kw">for </span>NativeModule&lt;<span class="lifetime">&#39;_</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.write_str(<span class="kw-2">&amp;</span><span class="self">self</span>.module.as_operation().to_string())
     }
 }
 </code></pre></div></section></main></body></html>

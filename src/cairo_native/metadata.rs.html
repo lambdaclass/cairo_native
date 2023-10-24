@@ -127,7 +127,7 @@
 <span class="kw">pub mod </span>tail_recursion;
 
 <span class="doccomment">/// Metadata container.
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Debug)]
 </span><span class="kw">pub struct </span>MetadataStorage {
     entries: HashMap&lt;TypeId, Box&lt;<span class="kw">dyn </span>Any&gt;&gt;,
 }

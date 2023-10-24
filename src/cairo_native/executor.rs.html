@@ -50,6 +50,15 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{error::jit_engine::RunnerError, execute, module::NativeModule, utils::create_engine};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -62,7 +71,8 @@
 <span class="doccomment">/// A MLIR JIT execution engine in the context of Cairo Native.
 </span><span class="kw">pub struct </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
     engine: ExecutionEngine,
-    native_module: NativeModule&lt;<span class="lifetime">&#39;m</span>&gt;,
+    <span class="comment">// NativeModule needs to be kept alive with the executor or it will segfault when trying to execute.
+    </span>native_module: NativeModule&lt;<span class="lifetime">&#39;m</span>&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
@@ -77,6 +87,14 @@
 
     <span class="kw">pub fn </span>get_program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
         <span class="self">self</span>.native_module.get_program_registry()
+    }
+
+    <span class="kw">pub fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>NativeModule&lt;<span class="lifetime">&#39;m</span>&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.native_module
+    }
+
+    <span class="kw">pub fn </span>get_module_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>NativeModule&lt;<span class="lifetime">&#39;m</span>&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.native_module
     }
 
     <span class="kw">pub fn </span>execute&lt;<span class="lifetime">&#39;de</span>, D, S&gt;(
