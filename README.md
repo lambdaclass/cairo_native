@@ -251,28 +251,90 @@ Footnotes on the libfuncs list:
 
 ### Setup
 
-Install LLVM with MLIR. You can use the official packages provided by LLVM.
+> This step applies to all operating systems.
+
+Run the following make target to install the dependencies (**both Linux and macOS**):
+
+```bash
+make deps
+```
 
 #### Linux
+
+Since Linux distributions change widely, you need to install LLVM 17 via your package manager, compile it or check if the current release has a Linux binary.
+
+If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
+Then you can install with:
+
+```bash
+sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+```
+
+If you decide to build from source, here are some indications:
+
+<details><summary>Install LLVM from source instructions</summary>
+
+```bash
+# Go to https://github.com/llvm/llvm-project/releases
+# Download the latest LLVM 17 release:
+# The blob to download is called llvm-project-17.x.x.src.tar.xz
+
+# For example
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.3/llvm-project-17.0.3.src.tar.xz
+tar xf llvm-project-17.0.3.src.tar.xz
+
+cd llvm-project-17.0.3.src.tar
+mkdir build
+cd build
+
+# The following cmake command configures the build to be installed to /opt/llvm-17
+cmake -G Ninja ../llvm \
+   -DLLVM_ENABLE_PROJECTS="mlir;clang;clang-tools-extra;lld;polly" \
+   -DLLVM_BUILD_EXAMPLES=OFF \
+   -DLLVM_TARGETS_TO_BUILD="Native;NVPTX" \
+   -DCMAKE_INSTALL_PREFIX=/opt/llvm-17 \
+   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+   -DLLVM_PARALLEL_LINK_JOBS=4 \
+   -DLLVM_ENABLE_BINDINGS=OFF \
+   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
+   -DLLVM_ENABLE_ASSERTIONS=OFF
+
+ninja install
+```
+
+</details>
 
 Setup a environment variable called `MLIR_SYS_170_PREFIX` and `TABLEGEN_170_PREFIX` pointing to the llvm directory:
 
 ```bash
+# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-17
 export MLIR_SYS_170_PREFIX=/usr/lib/llvm-17
 export TABLEGEN_170_PREFIX=/usr/lib/llvm-17
 ```
 
+Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
+```bash
+make deps
+```
+
 #### MacOS
 
+The makefile `deps` target (which you should have ran before) installs LLVM 17 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
+needed environment variables.
+
 ```bash
-brew install llvm@17
-export MLIR_SYS_170_PREFIX=/opt/homebrew/opt/llvm@17
-export TABLEGEN_170_PREFIX=/opt/homebrew/opt/llvm@17
+./env-macos.sh
 ```
 
 ### Make commands:
 
 Running `make` by itself will list available targets.
+
+- Install the necessary dependencies (on Linux, you need to get LLVM 17 manually):
+
+```bash
+make deps
+```
 
 - Build a release version:
 
