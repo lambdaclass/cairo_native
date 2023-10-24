@@ -111,8 +111,8 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
-      - name: Fetch corelibs.
-        run: ./scripts/fetch-corelibs.sh
+      - name: Install deps
+        run: make deps
       - name: test
         run: make test
   test_macos:
@@ -130,8 +130,8 @@ jobs:
         uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: clippy
-      - name: Fetch corelibs.
-        run: ./scripts/fetch-corelibs.sh
+      - name: Install deps
+        run: make deps
       - name: Run tests
         run: make test
   coverage:
@@ -151,8 +151,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Fetch corelibs.
-        run: ./scripts/fetch-corelibs.sh
+      - name: Install deps
+        run: make deps
       - name: test and generate coverage
         run: make coverage
       - name: Upload coverage to Codecov

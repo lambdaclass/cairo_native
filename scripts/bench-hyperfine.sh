@@ -9,7 +9,7 @@ CAIRO_SRCS=$(find \
     -type f -name "*.cairo")
 IFS=$'\n' read -rd '' -a CAIRO_SRCS <<<"$CAIRO_SRCS"
 
-CAIRO_RUN="${CAIRO_RUN:=cairo-run}"
+CAIRO_RUN="$ROOT_DIR/cairo2/bin/cairo-run"
 COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-dump"
 JIT_CLI="$ROOT_DIR/target/release/cairo-native-run"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
@@ -101,6 +101,7 @@ run_bench() {
         >> /dev/stderr
 }
 
+echo "Rust cairo-run version: $($CAIRO_RUN --version)"
 
 if [ $# -eq 0 ]
 then

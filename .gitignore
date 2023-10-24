@@ -21,3 +21,6 @@ corelib
 
 .env
 .vscode/
+
+cairo-*.tar
+/cairo2

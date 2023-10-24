@@ -58,14 +58,12 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: hyperfine@1.16
-      - name: Fetch corelibs.
-        run: ./scripts/fetch-corelibs.sh
-      - name: Fetch and build cairo.
-        run: wget https://github.com/starkware-libs/cairo/releases/download/v2.1.0/release-x86_64-unknown-linux-musl.tar.gz && tar xvf release-x86_64-unknown-linux-musl.tar.gz
+      - name: Install deps
+        run: make deps
       - name: Build project
         run: make build
       - name: Run benchmarks
-        run: PATH="cairo/bin/:$PATH" && ./scripts/bench-hyperfine.sh programs/benches/*.cairo
+        run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
       - name: Create markdown file
         run: bash .github/scripts/merge-benches.sh
 
