@@ -13,11 +13,11 @@ endif
 ifndef TABLEGEN_170_PREFIX
 	$(error Could not find a suitable LLVM 17 toolchain (tablegen), please set TABLEGEN_170_PREFIX env pointing to the LLVM 17 dir)
 endif
-	@echo "LLVM is correctly set."
+	@echo "LLVM is correctly set at $(MLIR_SYS_170_PREFIX)."
 
 needs-cairo2:
 ifeq ($(wildcard ./cairo2/.),)
-	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' or 'make deps-macos' to install the necessary dependencies.)
+	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' to install the necessary dependencies.)
 endif
 
 CAIRO_2_VERSION=2.2.0
