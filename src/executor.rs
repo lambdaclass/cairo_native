@@ -10,6 +10,7 @@ use serde::{Deserializer, Serializer};
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct NativeExecutor<'m> {
     engine: ExecutionEngine,
+    // NativeModule needs to be kept alive with the executor or it will segfault when trying to execute.
     native_module: NativeModule<'m>,
 }
 
@@ -25,6 +26,14 @@ impl<'m> NativeExecutor<'m> {
 
     pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         self.native_module.get_program_registry()
+    }
+
+    pub fn get_module(&self) -> &NativeModule<'m> {
+        &self.native_module
+    }
+
+    pub fn get_module_mut(&mut self) -> &mut NativeModule<'m> {
+        &mut self.native_module
     }
 
     pub fn execute<'de, D, S>(

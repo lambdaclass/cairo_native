@@ -91,6 +91,7 @@
 
 pub use self::{compiler::compile, jit_runner::execute};
 
+pub mod cache;
 mod compiler;
 pub mod context;
 pub mod debug_info;
