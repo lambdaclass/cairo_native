@@ -1,9 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 
-typedef struct fib_return_values
+typedef struct factorial_return_values
 {
     unsigned __int128 remaining_gas;
     struct {
@@ -17,18 +16,20 @@ typedef struct fib_return_values
             } err;
         };
     } result;
-} fib_return_values_t;
+} factorial_return_values_t;
 
 
-static void run_bench(fib_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_fib_1m::fib_1m::main")));
+static void run_bench(factorial_return_values_t *, void *, uint64_t)
+    __attribute__((weakref("_mlir_ciface_factorial_1M::factorial_1M::main")));
 
 
 int main()
 {
-    fib_return_values_t return_values;
+    factorial_return_values_t return_values;
 
     run_bench(&return_values, NULL, 0);
 
+    // discriminant 0 == Result::Ok
+    // return value 0 == ok in hyperfine
     return return_values.result.discriminant;
 }
