@@ -357,7 +357,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -1175,6 +1175,173 @@ mod test {
     }
 
     #[test]
+    fn run_append_u256() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u256> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(1_u256);
+                numbers.append(2_u256);
+                numbers.append(3_u256);
+                numbers.append(4_u256);
+                numbers.append(5_u256);
+                numbers.append(6_u256);
+                numbers.append(7_u256);
+                numbers.append(8_u256);
+                numbers.append(9_u256);
+                numbers.append(10_u256);
+                numbers.pop_front();
+                numbers.pop_front();
+                numbers.pop_front();
+                numbers.append(11_u256);
+                numbers.append(
+                    200000000000000000000000000000000000000000000000000000000000000000000_u256,
+                );
+                numbers.append(10000000000000000000000000000000000000000000000000000000000000_u256);
+                numbers
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        dbg!(result);
+        // assert_eq!(result, json!([[4]]));
+    }
+
+    #[test]
+    fn run_array_fake_keccak() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u256 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(1_u256);
+                numbers.append(2_u256);
+                numbers.append(3_u256);
+                numbers.append(4_u256);
+                numbers.append(5_u256);
+                numbers.append(6_u256);
+                numbers.append(7_u256);
+                numbers.append(8_u256);
+                numbers.append(9_u256);
+                numbers.append(10_u256);
+                numbers.pop_front();
+                snap_test(numbers.span())
+            }
+
+            fn snap_test(mut arr: Span<u256>) -> u256 {
+                match arr.pop_front() {
+                    Option::Some(v) => *v,
+                    Option::None => 0_u256,
+                }
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+        assert_eq!(result, json!([[[2, 0]]]));
+    }
+
+    #[test]
+    fn run_array_double_ref_append() {
+        let program = load_cairo!(
+            use array::{Span, ArrayTrait, SpanTrait};
+            use integer::TryInto;
+            use option::OptionTrait;
+
+            const KECCAK_FULL_RATE_IN_BYTES: usize = 136;
+            const KECCAK_FULL_RATE_IN_U64S: usize = 17;
+            const BYTES_IN_U64_WORD: usize = 8;
+
+            fn run_test() -> Array<u64> {
+                let mut input = array![
+                            0x0000000000000001,
+                            0x0000000000000002,
+                            0x0000000000000003,
+                            0x0000000000000004,
+                            0x0000000000000005,
+                            0x0000000000000006,
+                            0x0000000000000007,
+                            0x0000000000000008,
+                            0x0000000000000009,
+                            0x000000000000000a,
+                            0x000000000000000b,
+                            0x000000000000000c,
+                            0x000000000000000d
+                        ];
+                my_keccak(ref input, 0x11000010, 4);
+                input
+            }
+
+            fn my_keccak(ref input: Array<u64>, last_input_word: u64, last_input_num_bytes: usize) -> u256 {
+                add_padding(ref input, last_input_word, last_input_num_bytes);
+                0_u256
+            }
+
+            fn add_padding(ref input: Array<u64>, last_input_word: u64, last_input_num_bytes: usize) {
+                let words_divisor = KECCAK_FULL_RATE_IN_U64S.try_into().unwrap();
+                // `last_block_num_full_words` is in range [0, KECCAK_FULL_RATE_IN_U64S - 1]
+                let (_, last_block_num_full_words) = integer::u32_safe_divmod(input.len(), words_divisor);
+                // `last_block_num_bytes` is in range [0, KECCAK_FULL_RATE_IN_BYTES - 1]
+                let last_block_num_bytes = last_block_num_full_words * BYTES_IN_U64_WORD + last_input_num_bytes;
+
+                // The first word to append would be of the form
+                //     0x1<`last_input_num_bytes` LSB bytes of `last_input_word`>.
+                // For example, for `last_input_num_bytes == 4`:
+                //     0x1000000 + (last_input_word & 0xffffff)
+                let first_word_to_append = if last_input_num_bytes == 0 {
+                    // This case is handled separately to avoid unnecessary computations.
+                    1
+                } else {
+                    let first_padding_byte_part = if last_input_num_bytes == 1 {
+                        0x100
+                    } else if last_input_num_bytes == 2 {
+                        0x10000
+                    } else if last_input_num_bytes == 3 {
+                        0x1000000
+                    } else if last_input_num_bytes == 4 {
+                        0x100000000
+                    } else if last_input_num_bytes == 5 {
+                        0x10000000000
+                    } else if last_input_num_bytes == 6 {
+                        0x1000000000000
+                    } else if last_input_num_bytes == 7 {
+                        0x100000000000000
+                    } else {
+                        panic_with_felt252(666)
+                    };
+                    let (_, r) = integer::u64_safe_divmod(
+                        last_input_word, first_padding_byte_part.try_into().unwrap()
+                    );
+                    first_padding_byte_part + r
+                };
+
+                if last_block_num_full_words == KECCAK_FULL_RATE_IN_U64S - 1 {
+                    input.append(0x8000000000000000 + first_word_to_append);
+                    return;
+                }
+
+                // last_block_num_full_words < KECCAK_FULL_RATE_IN_U64S - 1
+                input.append(first_word_to_append);
+                finalize_padding(ref input, KECCAK_FULL_RATE_IN_U64S - 1 - last_block_num_full_words);
+            }
+
+            // Finalize the padding by appending "0* 1".
+            fn finalize_padding(ref input: Array<u64>, num_padding_words: u32) {
+                if (num_padding_words == 1) {
+                    input.append(0x8000000000000000);
+                    return;
+                }
+
+                input.append(0);
+                finalize_padding(ref input, num_padding_words - 1);
+            }
+
+        );
+        let result = run_program(&program, "run_test", json!([null, u64::MAX]));
+        dbg!(&result);
+        // assert_eq!(result, json!([[[2, 0]]]));
+    }
+
+    #[test]
     fn run_len() {
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -1184,12 +1351,47 @@ mod test {
                 numbers.append(4_u32);
                 numbers.append(3_u32);
                 numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
                 numbers.len()
             }
         );
         let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([3]));
+        assert_eq!(result, json!([9]));
+    }
+
+    #[test]
+    fn run_slice_len() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+            use array::SpanTrait;
+
+            fn run_test() -> u32 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                numbers.append(2_u32);
+                let sp = numbers.span();
+                let slice = sp.slice(1, 9);
+                slice.len()
+            }
+        );
+        let result = run_program(&program, "run_test", json!([null]));
+
+        assert_eq!(result, json!([null, [0, [9]]]));
     }
 
     #[test]
@@ -1277,6 +1479,34 @@ mod test {
         let result = run_program(&program, "run_test", json!([null]));
 
         assert_eq!(result, json!([null, [0, [3]]]));
+    }
+
+    #[test]
+    fn run_pop_front_big() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u64> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(1_u64);
+                numbers.append(2_u64);
+                numbers.append(3_u64);
+                numbers.append(4_u64);
+                numbers.append(5_u64);
+                numbers.append(6_u64);
+                numbers.append(7_u64);
+                numbers.append(8_u64);
+                numbers.append(9_u64);
+                numbers.pop_front();
+                numbers.pop_front();
+                numbers.pop_front();
+                numbers.append(10_u64);
+                numbers
+            }
+        );
+        let result = run_program(&program, "run_test", json!([]));
+
+        assert_eq!(result, json!([[4, 5, 6, 7, 8, 9, 10]]));
     }
 
     #[test]
