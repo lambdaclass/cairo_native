@@ -17,9 +17,9 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         consts::SignatureAndConstConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType,
+        starknet::StarkNetConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType, ConcreteType,
     },
-    program_registry::ProgramRegistry,
+    program_registry::ProgramRegistry, ids::ConcreteTypeId,
 };
 use melior::{
     dialect::{
@@ -1310,39 +1310,9 @@ where
         .into();
 
     let payload_ok = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[0].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        // Ok payload is () we don't need a real value.
+        // but we need to malloc the array nevetherless because it is used somewhere
+        entry.append_operation(llvm::undef(variant_tys[0].0, location)).result(0)?.into()
     };
     let payload_err = {
         let ptr = entry
@@ -1402,10 +1372,10 @@ where
 
     entry.append_operation(helper.cond_br(
         result_tag,
-        [1, 0],
+        [1, 0], // when tag is 1 it means error, so the the true branch is defined at the false branch (inverted)
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
             &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[gas_consumed, entry.argument(1)?.into(), payload_err],
         ],
         location,
     ));

@@ -406,7 +406,9 @@ pub(crate) mod handler {
         }
 
         unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32) {
-            let ptr = libc::malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+            let data_layout = Layout::array::<E>(data.len()).unwrap();
+
+            let ptr = libc::malloc(data_layout.size()) as *mut E;
 
             let len: u32 = data.len().try_into().unwrap();
             for (i, val) in data.iter().enumerate() {
@@ -747,7 +749,9 @@ pub(crate) mod handler {
                         payload: ManuallyDrop::new(()),
                     }),
                 },
-                Err(e) => Self::wrap_error(&e),
+                Err(e) => {
+                    Self::wrap_error(&e)
+                },
             };
         }
 

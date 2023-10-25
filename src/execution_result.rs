@@ -98,6 +98,8 @@ impl NativeExecutionResult {
                                 // why) and a vector of u32 vectors in the second. These represent a
                                 // felt encoded string that gives some details about the error.
                                 1 => {
+                                    dbg!(&return_values);
+
                                     let return_values: (Vec<u32>, Vec<Vec<u32>>) =
                                         serde_json::from_value(return_values).unwrap();
 
@@ -107,11 +109,22 @@ impl NativeExecutionResult {
                                         .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
                                         .collect();
 
-                                    let str_error =
-                                        String::from_utf8(felt_error[0].to_be_bytes().to_vec())
-                                            .unwrap()
-                                            .trim_start_matches('\0')
-                                            .to_owned();
+                                    let str_error = String::from_utf8(
+                                        felt_error
+                                            .get(0)
+                                            .ok_or_else(|| {
+                                                de::Error::custom(
+                                                    "error getting felt error message",
+                                                )
+                                            })?
+                                            .to_be_bytes()
+                                            .to_vec(),
+                                    )
+                                    .map_err(|_| {
+                                        de::Error::custom("error parsing error from utf8")
+                                    })?
+                                    .trim_start_matches('\0')
+                                    .to_owned();
 
                                     Ok(NativeExecutionResult {
                                         gas_consumed,
@@ -131,7 +144,7 @@ impl NativeExecutionResult {
             }
         }
 
-        const FIELDS: &[&str] = &["gas_consumed", "return_values", "failure_flag"];
+        const FIELDS: &[&str] = &["gas_consumed", "return_values", "failure_flag", "error_msg"];
         deserializer.deserialize_struct(
             "NativeExecutionResult",
             FIELDS,

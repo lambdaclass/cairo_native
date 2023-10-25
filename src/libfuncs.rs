@@ -312,6 +312,14 @@ where
     ///
     /// This method will also store the returned values so that they can be moved into the state and
     /// used later on when required.
+    ///
+    /// ## Branches
+    /// A array of 2 indexes that point to a result in the results array.
+    ///
+    /// The `branches[0]` is for the true branch.
+    ///
+    /// The `branches[1]` is for the false branch.
+    ///
     // TODO: Allow one block to be libfunc-internal.
     pub fn cond_br(
         &self,
