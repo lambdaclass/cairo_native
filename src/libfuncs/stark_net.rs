@@ -28,8 +28,7 @@ use melior::{
     },
     ir::{
         attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
         },
         operation::OperationBuilder,
         r#type::IntegerType,
