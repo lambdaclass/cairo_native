@@ -107,11 +107,22 @@ impl NativeExecutionResult {
                                         .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
                                         .collect();
 
-                                    let str_error =
-                                        String::from_utf8(felt_error[0].to_be_bytes().to_vec())
-                                            .unwrap()
-                                            .trim_start_matches('\0')
-                                            .to_owned();
+                                    let str_error = String::from_utf8(
+                                        felt_error
+                                            .get(0)
+                                            .ok_or_else(|| {
+                                                de::Error::custom(
+                                                    "error getting felt error message",
+                                                )
+                                            })?
+                                            .to_be_bytes()
+                                            .to_vec(),
+                                    )
+                                    .map_err(|_| {
+                                        de::Error::custom("error parsing error from utf8")
+                                    })?
+                                    .trim_start_matches('\0')
+                                    .to_owned();
 
                                     Ok(NativeExecutionResult {
                                         gas_consumed,
