@@ -11,5 +11,5 @@ fn main() -> felt252 {
     // Make sure that factorial(10) == 3628800
     let y: felt252 = factorial(1, 10);
     assert(3628800 == y, 'failed test');
-    factorial(1, 1000000)
+    factorial(1, 2000000)
 }

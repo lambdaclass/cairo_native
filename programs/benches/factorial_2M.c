@@ -20,7 +20,7 @@ typedef struct factorial_return_values
 
 
 static void run_bench(factorial_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_factorial_1M::factorial_1M::main")));
+    __attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main")));
 
 
 int main()
