@@ -163,7 +163,7 @@
 <span class="doccomment">/// Starknet contract execution result.
 </span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub struct </span>NativeExecutionResult {
-    <span class="kw">pub </span>gas_consumed: u128,
+    <span class="kw">pub </span>remaining_gas: u128,
     <span class="kw">pub </span>failure_flag: bool,
     <span class="kw">pub </span>return_values: Vec&lt;Felt252&gt;,
     <span class="kw">pub </span>error_msg: <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -197,12 +197,12 @@
             <span class="kw">where
                 </span>A: SeqAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
-                <span class="kw">let </span><span class="kw-2">mut </span>gas_consumed: u128 = <span class="number">0</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>remaining_gas: u128 = <span class="number">0</span>;
 
                 <span class="kw">for </span>ret_type <span class="kw">in </span><span class="self">self</span>.ret_types {
                     <span class="kw">match </span>ret_type {
                         CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; {
-                            gas_consumed = seq.next_element()<span class="question-mark">?</span>.unwrap();
+                            remaining_gas = seq.next_element()<span class="question-mark">?</span>.unwrap();
                         }
                         CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; {
                             seq.next_element::&lt;Value&gt;()<span class="question-mark">?</span>;
@@ -235,7 +235,7 @@
                                         serde_json::from_value(return_values).unwrap();
 
                                     <span class="prelude-val">Ok</span>(NativeExecutionResult {
-                                        gas_consumed,
+                                        remaining_gas,
                                         return_values: return_values[<span class="number">0</span>][<span class="number">0</span>]
                                             .iter()
                                             .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
@@ -277,7 +277,7 @@
                                     .to_owned();
 
                                     <span class="prelude-val">Ok</span>(NativeExecutionResult {
-                                        gas_consumed,
+                                        remaining_gas,
                                         failure_flag: failure_flag == <span class="number">1</span>,
                                         return_values: felt_error,
                                         error_msg: <span class="prelude-val">Some</span>(str_error),
