@@ -11,7 +11,7 @@ use std::fmt::{self};
 /// Starknet contract execution result.
 #[derive(Debug, Default)]
 pub struct NativeExecutionResult {
-    pub gas_consumed: u128,
+    pub remaining_gas: u128,
     pub failure_flag: bool,
     pub return_values: Vec<Felt252>,
     pub error_msg: Option<String>,
@@ -45,12 +45,12 @@ impl NativeExecutionResult {
             where
                 A: SeqAccess<'de>,
             {
-                let mut gas_consumed: u128 = 0;
+                let mut remaining_gas: u128 = 0;
 
                 for ret_type in self.ret_types {
                     match ret_type {
                         CoreTypeConcrete::GasBuiltin(_) => {
-                            gas_consumed = seq.next_element()?.unwrap();
+                            remaining_gas = seq.next_element()?.unwrap();
                         }
                         CoreTypeConcrete::RangeCheck(_) => {
                             seq.next_element::<Value>()?;
@@ -83,7 +83,7 @@ impl NativeExecutionResult {
                                         serde_json::from_value(return_values).unwrap();
 
                                     Ok(NativeExecutionResult {
-                                        gas_consumed,
+                                        remaining_gas,
                                         return_values: return_values[0][0]
                                             .iter()
                                             .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
@@ -125,7 +125,7 @@ impl NativeExecutionResult {
                                     .to_owned();
 
                                     Ok(NativeExecutionResult {
-                                        gas_consumed,
+                                        remaining_gas,
                                         failure_flag: failure_flag == 1,
                                         return_values: felt_error,
                                         error_msg: Some(str_error),
