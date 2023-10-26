@@ -28,7 +28,8 @@ use melior::{
     },
     ir::{
         attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
         },
         operation::OperationBuilder,
         r#type::IntegerType,
@@ -526,9 +527,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -1020,9 +1023,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -1392,9 +1397,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -1994,9 +2001,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -2302,9 +2311,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -2603,9 +2614,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -3070,9 +3083,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -3432,9 +3447,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -3840,9 +3857,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -4174,9 +4193,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
@@ -4555,9 +4576,11 @@ where
         .into();
 
     let gas_consumed = entry
-        .append_operation(arith::subi(
-            entry.argument(0)?.into(),
-            remaining_gas,
+        .append_operation(llvm::call_intrinsic(
+            context,
+            StringAttribute::new(context, "llvm.usub.sat"),
+            &[entry.argument(0)?.into(), remaining_gas],
+            &[remaining_gas.r#type()],
             location,
         ))
         .result(0)?
