@@ -1011,23 +1011,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -1385,23 +1374,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -1989,23 +1967,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -2299,23 +2266,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -3060,25 +3016,14 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(
         helper.cond_br(
             result_tag,
             [1, 0],
             [
-                &[gas_consumed, entry.argument(1)?.into(), payload_err],
+                &[remaining_gas, entry.argument(1)?.into(), payload_err],
                 &[
-                    gas_consumed,
+                    remaining_gas,
                     entry.argument(1)?.into(),
                     entry
                         .append_operation(llvm::extract_value(
@@ -3424,23 +3369,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -3834,23 +3768,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -4170,23 +4093,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
@@ -4553,23 +4465,12 @@ where
         .result(0)?
         .into();
 
-    let gas_consumed = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[entry.argument(0)?.into(), remaining_gas],
-            &[remaining_gas.r#type()],
-            location,
-        ))
-        .result(0)?
-        .into();
-
     entry.append_operation(helper.cond_br(
         result_tag,
         [1, 0],
         [
-            &[gas_consumed, entry.argument(1)?.into(), payload_err],
-            &[gas_consumed, entry.argument(1)?.into(), payload_ok],
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
     ));
