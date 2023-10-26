@@ -139,6 +139,17 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::u32_vec_to_felt;
 <span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_sierra::extensions::core::CoreTypeConcrete;
@@ -248,11 +259,22 @@
                                         .map(|felt_bytes| u32_vec_to_felt(felt_bytes))
                                         .collect();
 
-                                    <span class="kw">let </span>str_error =
-                                        String::from_utf8(felt_error[<span class="number">0</span>].to_be_bytes().to_vec())
-                                            .unwrap()
-                                            .trim_start_matches(<span class="string">&#39;\0&#39;</span>)
-                                            .to_owned();
+                                    <span class="kw">let </span>str_error = String::from_utf8(
+                                        felt_error
+                                            .get(<span class="number">0</span>)
+                                            .ok_or_else(|| {
+                                                de::Error::custom(
+                                                    <span class="string">&quot;error getting felt error message&quot;</span>,
+                                                )
+                                            })<span class="question-mark">?
+                                            </span>.to_be_bytes()
+                                            .to_vec(),
+                                    )
+                                    .map_err(|<span class="kw">_</span>| {
+                                        de::Error::custom(<span class="string">&quot;error parsing error from utf8&quot;</span>)
+                                    })<span class="question-mark">?
+                                    </span>.trim_start_matches(<span class="string">&#39;\0&#39;</span>)
+                                    .to_owned();
 
                                     <span class="prelude-val">Ok</span>(NativeExecutionResult {
                                         gas_consumed,
