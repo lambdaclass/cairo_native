@@ -140,7 +140,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn keccak(&self, input: &[u64], gas: &mut u128) -> SyscallResult<cairo_native::starknet::U256> {
+    fn keccak(
+        &mut self,
+        input: &[u64],
+        gas: &mut u128,
+    ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
         *gas -= 1000;
         Ok(U256(Felt252::from(1234567890).to_le_bytes()))
