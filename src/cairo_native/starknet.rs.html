@@ -981,7 +981,7 @@
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;()&gt;;
 
-    <span class="kw">fn </span>keccak(<span class="kw-2">&amp;</span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>[u64], remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;U256&gt;;
+    <span class="kw">fn </span>keccak(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>[u64], remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;U256&gt;;
 
     <span class="comment">// TODO: secp256k1 syscalls
     </span><span class="kw">fn </span>secp256k1_add(

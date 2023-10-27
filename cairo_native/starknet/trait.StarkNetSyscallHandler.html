@@ -62,7 +62,7 @@
         remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.keccak" class="fn">keccak</a>(
-        &amp;self,
+        &amp;mut self,
         input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u64.html">u64</a>],
         remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>&gt;;
@@ -188,7 +188,11 @@
     to_address: Felt252,
     payload: &amp;[Felt252],
     remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.keccak" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#118">source</a><h4 class="code-header">fn <a href="#tymethod.keccak" class="fn">keccak</a>(&amp;self, input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u64.html">u64</a>], remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>&gt;</h4></section><section id="tymethod.secp256k1_add" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#121-126">source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_add" class="fn">secp256k1_add</a>(
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.keccak" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#118">source</a><h4 class="code-header">fn <a href="#tymethod.keccak" class="fn">keccak</a>(
+    &amp;mut self,
+    input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u64.html">u64</a>],
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>&gt;</h4></section><section id="tymethod.secp256k1_add" class="method"><a class="srclink rightside" href="../../src/cairo_native/starknet.rs.html#121-126">source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_add" class="fn">secp256k1_add</a>(
     &amp;mut self,
     p0: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
     p1: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
