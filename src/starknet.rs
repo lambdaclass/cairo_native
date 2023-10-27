@@ -115,7 +115,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<()>;
 
-    fn keccak(&self, input: &[u64], remaining_gas: &mut u128) -> SyscallResult<U256>;
+    fn keccak(&mut self, input: &[u64], remaining_gas: &mut u128) -> SyscallResult<U256>;
 
     // TODO: secp256k1 syscalls
     fn secp256k1_add(

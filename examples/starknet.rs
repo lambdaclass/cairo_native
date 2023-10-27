@@ -146,7 +146,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     fn keccak(
-        &self,
+        &mut self,
         input: &[u64],
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::U256> {
