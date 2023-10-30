@@ -341,7 +341,7 @@ pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
     entry_point_function_idx: usize,
     args: serde_json::Value,
-    handler: &T,
+    handler: &mut T,
 ) -> NativeExecutionResult
 where
     T: StarkNetSyscallHandler,

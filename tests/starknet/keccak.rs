@@ -321,7 +321,7 @@ fn keccak_test() {
         &program,
         entry_point.function_idx,
         json!([[]]),
-        &SyscallHandler,
+        &mut SyscallHandler,
     );
 
     assert!(!result.failure_flag);

@@ -342,7 +342,7 @@ fn main() {
 
     let mut native_program = native_context.compile(&sierra_program).unwrap();
     native_program
-        .insert_metadata(SyscallHandlerMeta::new(&SyscallHandler))
+        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
 
     let syscall_addr = native_program
