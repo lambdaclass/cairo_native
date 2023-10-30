@@ -6,8 +6,13 @@
 
 use crate::error::libfuncs::Result;
 use melior::{
-    ir::{Block, Location, Module, attribute::{StringAttribute, TypeAttribute, FlatSymbolRefAttribute}, r#type::FunctionType, Region, Identifier, Value},
-    Context, dialect::{func, llvm}, ExecutionEngine,
+    dialect::{func, llvm},
+    ir::{
+        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        r#type::FunctionType,
+        Block, Identifier, Location, Module, Region, Value,
+    },
+    Context, ExecutionEngine,
 };
 use std::collections::HashSet;
 

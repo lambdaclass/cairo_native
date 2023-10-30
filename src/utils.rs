@@ -177,7 +177,7 @@ pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(module: &Module, metadata: &MetadataStorage) -> ExecutionEngine {
+pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, 3, &[], false);
 
@@ -185,7 +185,7 @@ pub fn create_engine(module: &Module, metadata: &MetadataStorage) -> ExecutionEn
     register_runtime_symbols(&engine);
 
     #[cfg(feature = "with-debug-utils")]
-    metadata
+    _metadata
         .get::<crate::metadata::debug_utils::DebugUtils>()
         .unwrap()
         .register_impls(&engine);
