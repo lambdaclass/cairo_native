@@ -65,7 +65,9 @@ where
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::ClassHashToFelt252(_) => todo!(),
+        StarkNetConcreteLibfunc::ClassHashToFelt252(info) => {
+            build_class_hash_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ContractAddressConst(info) => {
             build_contract_address_const(context, registry, entry, location, helper, metadata, info)
         }
@@ -534,6 +536,25 @@ where
         ],
         location,
     ));
+    Ok(())
+}
+
+pub fn build_class_hash_to_felt252<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 
