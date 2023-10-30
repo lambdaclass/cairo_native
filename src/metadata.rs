@@ -14,6 +14,7 @@ use std::{
     collections::{hash_map::Entry, HashMap},
 };
 
+pub mod debug_utils;
 pub mod gas;
 pub mod prime_modulo;
 pub mod realloc_bindings;
@@ -22,7 +23,8 @@ pub mod syscall_handler;
 pub mod tail_recursion;
 
 /// Metadata container.
-#[derive(Default, Debug)]
+#[cfg_attr(not(feature = "with-debug-utils"), derive(Default))]
+#[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
 }
@@ -30,9 +32,7 @@ pub struct MetadataStorage {
 impl MetadataStorage {
     /// Create an empty metadata container.
     pub fn new() -> Self {
-        Self {
-            entries: HashMap::default(),
-        }
+        Self::default()
     }
 
     /// Insert some metadata and return a mutable reference.
@@ -88,6 +88,19 @@ impl MetadataStorage {
         self.entries
             .get_mut(&TypeId::of::<T>())
             .map(|meta| meta.downcast_mut::<T>().unwrap())
+    }
+}
+
+#[cfg(feature = "with-debug-utils")]
+impl Default for MetadataStorage {
+    fn default() -> Self {
+        let mut metadata = Self {
+            entries: Default::default(),
+        };
+
+        metadata.insert(debug_utils::DebugUtils::default());
+
+        metadata
     }
 }
 
