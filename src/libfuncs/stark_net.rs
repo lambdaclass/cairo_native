@@ -493,7 +493,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -559,7 +559,7 @@ where
             context,
             Attribute::parse(
                 context,
-                "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
+                "106710729501573572985208420194530329073740042555888586719489 : i252",
             )
             .unwrap(),
             location,
@@ -978,7 +978,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -1341,7 +1341,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -1934,7 +1934,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2233,7 +2233,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2525,7 +2525,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2983,7 +2983,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -3336,7 +3336,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -3735,7 +3735,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -4060,7 +4060,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -4432,7 +4432,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
