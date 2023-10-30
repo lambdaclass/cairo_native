@@ -157,20 +157,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -495,7 +484,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -731,20 +720,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -999,7 +977,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -1060,20 +1038,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -1362,7 +1329,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -1633,20 +1600,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -1955,7 +1911,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2016,20 +1972,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -2254,7 +2199,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2315,20 +2260,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -2546,7 +2480,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -2607,20 +2541,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -3004,7 +2927,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -3090,20 +3013,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -3357,7 +3269,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -3418,20 +3330,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -3756,7 +3657,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -3817,20 +3718,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -4081,7 +3971,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
@@ -4142,20 +4032,9 @@ where
 {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr = entry
         .append_operation(llvm::load(
             context,
-            ptr,
+            entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
             location,
             LoadStoreOptions::default(),
@@ -4453,7 +4332,7 @@ where
                         ),
                         (
                             Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(variant_tys[1].0).into(),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
                         ),
                     ])
                     .add_operands(&[result_ptr])
