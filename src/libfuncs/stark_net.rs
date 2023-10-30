@@ -540,7 +540,7 @@ where
 }
 
 pub fn build_class_hash_to_felt252<'ctx, 'this, TType, TLibfunc>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
