@@ -4672,6 +4672,27 @@
 <a href="#4672" id="4672">4672</a>
 <a href="#4673" id="4673">4673</a>
 <a href="#4674" id="4674">4674</a>
+<a href="#4675" id="4675">4675</a>
+<a href="#4676" id="4676">4676</a>
+<a href="#4677" id="4677">4677</a>
+<a href="#4678" id="4678">4678</a>
+<a href="#4679" id="4679">4679</a>
+<a href="#4680" id="4680">4680</a>
+<a href="#4681" id="4681">4681</a>
+<a href="#4682" id="4682">4682</a>
+<a href="#4683" id="4683">4683</a>
+<a href="#4684" id="4684">4684</a>
+<a href="#4685" id="4685">4685</a>
+<a href="#4686" id="4686">4686</a>
+<a href="#4687" id="4687">4687</a>
+<a href="#4688" id="4688">4688</a>
+<a href="#4689" id="4689">4689</a>
+<a href="#4690" id="4690">4690</a>
+<a href="#4691" id="4691">4691</a>
+<a href="#4692" id="4692">4692</a>
+<a href="#4693" id="4693">4693</a>
+<a href="#4694" id="4694">4694</a>
+<a href="#4695" id="4695">4695</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -4739,7 +4760,9 @@
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::ClassHashToFelt252(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        StarkNetConcreteLibfunc::ClassHashToFelt252(info) =&gt; {
+            build_class_hash_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ContractAddressConst(info) =&gt; {
             build_contract_address_const(context, registry, entry, location, helper, metadata, info)
         }
@@ -5208,6 +5231,25 @@
         ],
         location,
     ));
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">pub fn </span>build_class_hash_to_felt252&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+    _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
+<span class="kw">where
+    </span>TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
+    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
+{
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
     <span class="prelude-val">Ok</span>(())
 }
 
