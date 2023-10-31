@@ -11,6 +11,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -98,9 +99,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let target_type = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let target_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let op = entry.append_operation(llvm::undef(target_type, location));
     let value_undef = op.result(0)?.into();

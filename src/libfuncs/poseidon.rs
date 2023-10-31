@@ -9,7 +9,7 @@ use crate::{
     },
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -73,9 +73,13 @@ where
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let felt252_ty = registry
-        .get_type(&info.param_signatures()[1].ty)?
-        .build(context, helper, registry, metadata)?;
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
 
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);

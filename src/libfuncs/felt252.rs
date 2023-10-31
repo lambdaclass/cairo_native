@@ -8,7 +8,7 @@ use crate::{
     },
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::{felt252::Felt252, TypeBuilder},
-    utils::mlir_asm,
+    utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -81,9 +81,13 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let bool_ty = IntegerType::new(context, 1).into();
-    let felt252_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
     let i256 = IntegerType::new(context, 256).into();
     let i512 = IntegerType::new(context, 512).into();
 
@@ -227,9 +231,13 @@ where
         _ => info.c.to_biguint().unwrap(),
     };
 
-    let felt252_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap();
 

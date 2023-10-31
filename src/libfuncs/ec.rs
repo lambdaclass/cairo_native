@@ -15,7 +15,7 @@ use crate::{
         felt252::{register_prime_modulo_meta, Felt252},
         TypeBuilder,
     },
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -904,9 +904,13 @@ where
             context,
             entry.argument(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[0]),
-            registry
-                .get_type(&info.branch_signatures()[0].vars[0].ty)?
-                .build(context, helper, registry, metadata)?,
+            registry.build_type(
+                context,
+                helper,
+                registry,
+                metadata,
+                &info.branch_signatures()[0].vars[0].ty,
+            )?,
             location,
         ))
         .result(0)?
@@ -916,9 +920,13 @@ where
             context,
             entry.argument(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[1]),
-            registry
-                .get_type(&info.branch_signatures()[0].vars[1].ty)?
-                .build(context, helper, registry, metadata)?,
+            registry.build_type(
+                context,
+                helper,
+                registry,
+                metadata,
+                &info.branch_signatures()[0].vars[1].ty,
+            )?,
             location,
         ))
         .result(0)?
@@ -944,9 +952,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let ec_point_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let ec_point_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let point = entry
         .append_operation(llvm::undef(ec_point_ty, location))

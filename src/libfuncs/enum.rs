@@ -10,7 +10,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::padding_needed_for,
+    utils::{padding_needed_for, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -89,9 +89,13 @@ where
             .unwrap(),
     )?;
 
-    let enum_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let enum_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let op0 = entry.append_operation(arith::constant(
         context,
@@ -208,9 +212,13 @@ where
             .unwrap(),
     )?;
 
-    let enum_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let enum_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
 
     let op0 = helper.init_block().append_operation(arith::constant(
         context,

@@ -18,6 +18,7 @@ pub mod gas;
 pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
+pub mod snapshot_clones;
 pub mod syscall_handler;
 pub mod tail_recursion;
 
@@ -88,6 +89,17 @@ impl MetadataStorage {
         self.entries
             .get_mut(&TypeId::of::<T>())
             .map(|meta| meta.downcast_mut::<T>().unwrap())
+    }
+
+    pub fn get_or_insert_with<T>(&mut self, meta_gen: impl FnOnce() -> T) -> &mut T
+    where
+        T: Any,
+    {
+        self.entries
+            .entry(TypeId::of::<T>())
+            .or_insert_with(|| Box::new(meta_gen()))
+            .downcast_mut::<T>()
+            .unwrap()
     }
 }
 

@@ -10,6 +10,7 @@ use crate::{
     },
     metadata::{gas::GasCost, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -200,9 +201,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let builtin_costs_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let builtin_costs_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     // TODO: Implement libfunc.
     let op0 = entry.append_operation(llvm::undef(builtin_costs_ty, location));

@@ -4,7 +4,7 @@
 //! [finite field](https://en.wikipedia.org/wiki/Finite_field) modulo
 //! [a prime number](struct@self::PRIME).
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
@@ -42,7 +42,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    _info: &InfoOnlyConcreteType,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

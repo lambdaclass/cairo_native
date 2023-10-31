@@ -401,11 +401,11 @@
 //! |   1   | `i64` | `u64`               |         8 |    8 | Payload.      |
 //! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
@@ -430,7 +430,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &EnumConcreteType,
+    info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
@@ -487,7 +487,6 @@ where
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
         let concrete_payload_ty = registry.get_type(variant)?;
-
         let payload_layout = concrete_payload_ty.layout(registry)?;
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
@@ -525,10 +524,8 @@ where
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant)?;
-
-        let payload_ty = concrete_payload_ty.build(context, module, registry, metadata)?;
-        let payload_layout = concrete_payload_ty.layout(registry)?;
+        let (payload_ty, payload_layout) =
+            registry.build_type_with_layout(context, module, registry, metadata, variant)?;
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(
