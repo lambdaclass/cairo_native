@@ -8,6 +8,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -99,9 +100,13 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = info.c;
-    let value_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let value_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.branch_signatures[0].vars[0].ty,
+    )?;
 
     let op0 = entry.append_operation(arith::constant(
         context,
@@ -297,9 +302,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let target_type = registry
-        .get_type(&info.output_types()[0][0])?
-        .build(context, helper, registry, metadata)?;
+    let target_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.output_types()[0][0],
+    )?;
     let lhs: Value = entry.argument(0)?.into();
     let rhs: Value = entry.argument(1)?.into();
 
@@ -332,9 +341,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let felt252_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
     let value: Value = entry.argument(0)?.into();
 
     let op = entry.append_operation(arith::extui(value, felt252_ty, location));
@@ -630,12 +643,20 @@ where
     let range_check: Value = entry.argument(0)?.into();
     let value: Value = entry.argument(1)?.into();
 
-    let felt252_ty = registry
-        .get_type(&info.param_signatures()[1].ty)?
-        .build(context, helper, registry, metadata)?;
-    let result_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[1].ty)?
-        .build(context, helper, registry, metadata)?;
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
+    let result_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[1].ty,
+    )?;
 
     let op = entry.append_operation(arith::constant(
         context,

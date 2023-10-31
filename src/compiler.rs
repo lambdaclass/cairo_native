@@ -513,7 +513,7 @@ where
                     &param.id,
                     registry
                         .get_type(ty)?
-                        .build(context, module, registry, metadata_storage)
+                        .build(context, module, registry, metadata_storage, ty)
                         .map_err(make_type_builder_error(ty))?,
                 ))
             })
@@ -574,6 +574,7 @@ where
                                                         module,
                                                         registry,
                                                         metadata_storage,
+                                                        &var_info.ty,
                                                     )
                                                     .map_err(make_type_builder_error(&var_info.ty))
                                             },
@@ -701,7 +702,7 @@ where
     type_ids.iter().map(|id| {
         registry
             .get_type(id)?
-            .build(context, module, registry, metadata_storage)
+            .build(context, module, registry, metadata_storage, id)
             .map_err(make_type_builder_error(id))
     })
 }

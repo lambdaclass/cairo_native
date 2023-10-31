@@ -8,7 +8,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::mlir_asm,
+    utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -107,9 +107,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let u128_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[1].ty)?
-        .build(context, helper, registry, metadata)?;
+    let u128_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[1].ty,
+    )?;
 
     let bswap_intrin_attr = StringAttribute::new(context, "llvm.bswap.i128").into();
 
@@ -140,9 +144,13 @@ where
 {
     let value = info.c;
 
-    let u128_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let u128_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}")).unwrap();
 
@@ -727,9 +735,13 @@ where
     let origin_type = lhs.r#type();
 
     let target_type = IntegerType::new(context, 256).into();
-    let guarantee_type = registry
-        .get_type(&info.output_types()[0][2])?
-        .build(context, helper, registry, metadata)?;
+    let guarantee_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.output_types()[0][2],
+    )?;
 
     let op = entry.append_operation(arith::extui(lhs, target_type, location));
     let lhs = op.result(0)?.into();

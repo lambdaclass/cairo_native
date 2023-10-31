@@ -8,7 +8,7 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::MetadataStorage,
+    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -22,28 +22,41 @@ use melior::{
 
 /// Generate MLIR operations for the `snapshot_take` libfunc.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     // TODO: Should this act like dup like it does now? or are there special requirements. So far it seems to work.
     // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
 
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
-        location,
-    ));
+    let original_value = entry.argument(0)?.into();
+    let cloned_value = match metadata
+        .get_mut::<SnapshotClonesMeta<TType, TLibfunc>>()
+        .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
+    {
+        Some(invoke_fn) => invoke_fn(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            original_value,
+        )?,
+        None => original_value,
+    };
+
+    entry.append_operation(helper.br(0, &[original_value, cloned_value], location));
 
     Ok(())
 }

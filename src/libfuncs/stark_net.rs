@@ -12,7 +12,7 @@ use crate::{
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -2559,30 +2559,23 @@ where
         let mut layout = tag_layout;
         let output = [
             {
-                let payload_ty = llvm::r#type::r#struct(
+                let (p0_ty, p0_layout) = registry.build_type_with_layout(
                     context,
-                    &[
-                        registry
-                            .get_type(&info.branch_signatures()[0].vars[2].ty)?
-                            .build(context, helper, registry, metadata)?,
-                        registry
-                            .get_type(&info.branch_signatures()[0].vars[3].ty)?
-                            .build(context, helper, registry, metadata)?,
-                    ],
-                    false,
-                );
-                let payload_layout = {
-                    let layout = registry
-                        .get_type(&info.branch_signatures()[0].vars[2].ty)?
-                        .layout(registry)?;
-                    layout
-                        .extend(
-                            registry
-                                .get_type(&info.branch_signatures()[0].vars[3].ty)?
-                                .layout(registry)?,
-                        )?
-                        .0
-                };
+                    helper,
+                    registry,
+                    metadata,
+                    &info.branch_signatures()[0].vars[2].ty,
+                )?;
+                let (p1_ty, p1_layout) = registry.build_type_with_layout(
+                    context,
+                    helper,
+                    registry,
+                    metadata,
+                    &info.branch_signatures()[0].vars[3].ty,
+                )?;
+
+                let payload_ty = llvm::r#type::r#struct(context, &[p0_ty, p1_ty], false);
+                let payload_layout = p0_layout.extend(p1_layout)?.0;
 
                 let full_layout = tag_layout.extend(payload_layout)?.0;
                 layout = Layout::from_size_align(
@@ -2593,11 +2586,13 @@ where
                 (payload_ty, payload_layout)
             },
             {
-                let concrete_payload_ty =
-                    registry.get_type(&info.branch_signatures()[1].vars[2].ty)?;
-
-                let payload_ty = concrete_payload_ty.build(context, helper, registry, metadata)?;
-                let payload_layout = concrete_payload_ty.layout(registry)?;
+                let (payload_ty, payload_layout) = registry.build_type_with_layout(
+                    context,
+                    helper,
+                    registry,
+                    metadata,
+                    &info.branch_signatures()[1].vars[2].ty,
+                )?;
 
                 let full_layout = tag_layout.extend(payload_layout)?.0;
                 layout = Layout::from_size_align(

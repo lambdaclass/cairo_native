@@ -10,6 +10,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -67,12 +68,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let src_ty = registry
-        .get_type(&info.from_ty)?
-        .build(context, helper, registry, metadata)?;
-    let dst_ty = registry
-        .get_type(&info.to_ty)?
-        .build(context, helper, registry, metadata)?;
+    let src_ty = registry.build_type(context, helper, registry, metadata, &info.from_ty)?;
+    let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
     assert!(info.from_nbits >= info.to_nbits);
 
     if info.from_nbits == info.to_nbits {

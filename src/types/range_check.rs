@@ -3,7 +3,7 @@
 //! The range check type is used in the VM for checking whether values are in a specific range.
 //! Since this can be done natively in MLIR, this type is effectively an unit type.
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
@@ -26,7 +26,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: &InfoOnlyConcreteType,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

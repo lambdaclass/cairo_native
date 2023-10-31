@@ -11,6 +11,7 @@ use crate::{
     },
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -102,9 +103,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let array_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let op0 = entry.append_operation(
         OperationBuilder::new("llvm.mlir.null", location)
@@ -165,22 +170,21 @@ where
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
     let opaque_ptr_ty = llvm::r#type::opaque_pointer(context);
 
-    let elem_concrete_ty = registry.get_type(&info.ty)?;
-    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
-
-    let elem_stride = registry
-        .get_type(&info.ty)?
-        .layout(registry)?
-        .pad_to_align()
-        .size();
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let elem_stride = elem_layout.pad_to_align().size();
 
     let op_ptr = entry.append_operation(llvm::extract_value(
         context,
@@ -374,9 +378,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let array_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
@@ -414,13 +422,16 @@ where
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry
-        .get_type(&info.param_signatures()[1].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
 
-    let elem_concrete_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_concrete_ty.layout(registry)?;
-    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -558,13 +569,16 @@ where
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
 
-    let elem_concrete_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_concrete_ty.layout(registry)?;
-    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let elem_stride = registry
         .get_type(&info.ty)?
@@ -835,13 +849,21 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let array_ty = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
 
-    let elem_concrete_ty = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
-    let elem_layout = elem_concrete_ty.layout(registry)?;
-    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+    let (elem_ty, elem_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[1].ty,
+    )?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -978,13 +1000,16 @@ where
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry
-        .get_type(&info.param_signatures()[1].ty)?
-        .build(context, helper, registry, metadata)?;
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
 
-    let elem_concrete_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_concrete_ty.layout(registry)?;
-    let elem_ty = elem_concrete_ty.build(context, helper, registry, metadata)?;
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
