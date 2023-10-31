@@ -2,8 +2,8 @@
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
 //!
-//! This is so we only check if the ptr is nullptr for nullability, instead of using a enum in this case.
-//! TODO
+//! A nullable is functionally equivalent to Rust's `Option<Box<T>>`. Since it's always paired with
+//! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
 use super::TypeBuilder;
 use crate::{
