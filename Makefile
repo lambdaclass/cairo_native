@@ -5,6 +5,7 @@
 #
 
 UNAME := $(shell uname)
+CAIRO_2_VERSION=2.2.0
 
 check-llvm:
 ifndef MLIR_SYS_170_PREFIX
@@ -19,11 +20,7 @@ needs-cairo2:
 ifeq ($(wildcard ./cairo2/.),)
 	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' to install the necessary dependencies.)
 endif
-
-CAIRO_2_VERSION=2.2.0
-
-STARKNET_COMPILE_CAIRO_2:=cairo2/bin/starknet-compile
-STARKNET_SIERRA_COMPILE_CAIRO_2:=cairo2/bin/starknet-sierra-compile
+	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
 
 usage:
 	@echo "Usage:"
