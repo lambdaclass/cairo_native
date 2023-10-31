@@ -183,9 +183,7 @@ where
 
     let (elem_ty, elem_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
-    let elem_stride = elem_layout
-        .pad_to_align()
-        .size();
+    let elem_stride = elem_layout.pad_to_align().size();
 
     let op_ptr = entry.append_operation(llvm::extract_value(
         context,
