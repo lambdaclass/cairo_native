@@ -23,6 +23,7 @@ pub type CloneFn<TType, TLibfunc, P> = for<'ctx, 'this> fn(
     &LibfuncHelper<'ctx, 'this>,
     &mut MetadataStorage,
     WithSelf<P>,
+    Value<'ctx, 'this>,
 ) -> libfuncs::Result<Value<'ctx, 'this>>;
 
 type CloneFnWrapper<TType, TLibfunc> = Arc<
@@ -33,6 +34,7 @@ type CloneFnWrapper<TType, TLibfunc> = Arc<
         Location<'ctx>,
         &LibfuncHelper<'ctx, 'this>,
         &mut MetadataStorage,
+        Value<'this, 'ctx>,
     ) -> libfuncs::Result<Value<'ctx, 'this>>,
 >;
 
@@ -68,7 +70,7 @@ where
         self.mappings.insert(
             id,
             Arc::new(
-                move |context, registry, entry, location, helper, metadata| {
+                move |context, registry, entry, location, helper, metadata, value| {
                     handler(
                         context,
                         registry,
@@ -77,6 +79,7 @@ where
                         helper,
                         metadata,
                         WithSelf::new(&self_ty, &params),
+                        value,
                     )
                 },
             ),

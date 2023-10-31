@@ -39,15 +39,24 @@ where
     // TODO: Should this act like dup like it does now? or are there special requirements. So far it seems to work.
     // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
 
+    let original_value = entry.argument(0)?.into();
     let cloned_value = match metadata
         .get_mut::<SnapshotClonesMeta<TType, TLibfunc>>()
         .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
     {
-        Some(invoke_fn) => invoke_fn(context, registry, entry, location, helper, metadata)?,
-        None => entry.argument(0)?.into(),
+        Some(invoke_fn) => invoke_fn(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            original_value,
+        )?,
+        None => original_value,
     };
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), cloned_value], location));
+    entry.append_operation(helper.br(0, &[original_value, cloned_value], location));
 
     Ok(())
 }

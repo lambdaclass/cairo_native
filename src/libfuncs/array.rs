@@ -181,11 +181,9 @@ where
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
     let opaque_ptr_ty = llvm::r#type::opaque_pointer(context);
 
-    let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
-
-    let elem_stride = registry
-        .get_type(&info.ty)?
-        .layout(registry)?
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let elem_stride = elem_layout
         .pad_to_align()
         .size();
 
