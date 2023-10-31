@@ -271,9 +271,6 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 //!
 //! TODO
@@ -286,6 +283,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -343,12 +341,8 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>src_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
     <span class="macro">assert!</span>(info.from_nbits &gt;= info.to_nbits);
 
     <span class="kw">if </span>info.from_nbits == info.to_nbits {

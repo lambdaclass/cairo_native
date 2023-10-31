@@ -4567,11 +4567,6 @@
 <a href="#4567" id="4567">4567</a>
 <a href="#4568" id="4568">4568</a>
 <a href="#4569" id="4569">4569</a>
-<a href="#4570" id="4570">4570</a>
-<a href="#4571" id="4571">4571</a>
-<a href="#4572" id="4572">4572</a>
-<a href="#4573" id="4573">4573</a>
-<a href="#4574" id="4574">4574</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -4586,7 +4581,7 @@
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -7133,30 +7128,23 @@
         <span class="kw">let </span><span class="kw-2">mut </span>layout = tag_layout;
         <span class="kw">let </span>output = [
             {
-                <span class="kw">let </span>payload_ty = llvm::r#type::r#struct(
+                <span class="kw">let </span>(p0_ty, p0_layout) = registry.build_type_with_layout(
                     context,
-                    <span class="kw-2">&amp;</span>[
-                        registry
-                            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty)<span class="question-mark">?
-                            </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>,
-                        registry
-                            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">3</span>].ty)<span class="question-mark">?
-                            </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>,
-                    ],
-                    <span class="bool-val">false</span>,
-                );
-                <span class="kw">let </span>payload_layout = {
-                    <span class="kw">let </span>layout = registry
-                        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty)<span class="question-mark">?
-                        </span>.layout(registry)<span class="question-mark">?</span>;
-                    layout
-                        .extend(
-                            registry
-                                .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">3</span>].ty)<span class="question-mark">?
-                                </span>.layout(registry)<span class="question-mark">?</span>,
-                        )<span class="question-mark">?
-                        </span>.<span class="number">0
-                </span>};
+                    helper,
+                    registry,
+                    metadata,
+                    <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty,
+                )<span class="question-mark">?</span>;
+                <span class="kw">let </span>(p1_ty, p1_layout) = registry.build_type_with_layout(
+                    context,
+                    helper,
+                    registry,
+                    metadata,
+                    <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">3</span>].ty,
+                )<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>payload_ty = llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>[p0_ty, p1_ty], <span class="bool-val">false</span>);
+                <span class="kw">let </span>payload_layout = p0_layout.extend(p1_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
 
                 <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
                 layout = Layout::from_size_align(
@@ -7167,11 +7155,13 @@
                 (payload_ty, payload_layout)
             },
             {
-                <span class="kw">let </span>concrete_payload_ty =
-                    registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">2</span>].ty)<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>payload_ty = concrete_payload_ty.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
-                <span class="kw">let </span>payload_layout = concrete_payload_ty.layout(registry)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(payload_ty, payload_layout) = registry.build_type_with_layout(
+                    context,
+                    helper,
+                    registry,
+                    metadata,
+                    <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">2</span>].ty,
+                )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
                 layout = Layout::from_size_align(

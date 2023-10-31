@@ -802,6 +802,7 @@
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
 <a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1317,7 +1318,7 @@
                     <span class="kw-2">&amp;</span>param.id,
                     registry
                         .get_type(ty)<span class="question-mark">?
-                        </span>.build(context, module, registry, metadata_storage)
+                        </span>.build(context, module, registry, metadata_storage, ty)
                         .map_err(make_type_builder_error(ty))<span class="question-mark">?</span>,
                 ))
             })
@@ -1378,6 +1379,7 @@
                                                         module,
                                                         registry,
                                                         metadata_storage,
+                                                        <span class="kw-2">&amp;</span>var_info.ty,
                                                     )
                                                     .map_err(make_type_builder_error(<span class="kw-2">&amp;</span>var_info.ty))
                                             },
@@ -1505,7 +1507,7 @@
     type_ids.iter().map(|id| {
         registry
             .get_type(id)<span class="question-mark">?
-            </span>.build(context, module, registry, metadata_storage)
+            </span>.build(context, module, registry, metadata_storage, id)
             .map_err(make_type_builder_error(id))
     })
 }

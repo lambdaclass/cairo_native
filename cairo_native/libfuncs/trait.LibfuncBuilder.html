@@ -32,8 +32,8 @@ libfuncs, contained in [CoreConcreteLibfunc].</p>
 <p>This is used by the compiler to check whether a statement is a function call and apply the
 tail recursion logic.</p>
 </div></details></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-LibfuncBuilder%3CTType,+TLibfunc%3E-for-CoreConcreteLibfunc" class="impl"><a class="srclink rightside" href="../../src/cairo_native/libfuncs.rs.html#88-215">source</a><a href="#impl-LibfuncBuilder%3CTType,+TLibfunc%3E-for-CoreConcreteLibfunc" class="anchor">§</a><h3 class="code-header">impl&lt;TType, TLibfunc&gt; <a class="trait" href="trait.LibfuncBuilder.html" title="trait cairo_native::libfuncs::LibfuncBuilder">LibfuncBuilder</a>&lt;TType, TLibfunc&gt; for CoreConcreteLibfunc<span class="where fmt-newline">where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc&lt;Concrete = Self&gt;,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc&lt;Concrete = Self&gt;,
     &lt;TType as GenericType&gt;::Concrete: <a class="trait" href="../types/trait.TypeBuilder.html" title="trait cairo_native::types::TypeBuilder">TypeBuilder</a>&lt;TType, TLibfunc, Error = <a class="struct" href="../error/types/struct.Error.html" title="struct cairo_native::error::types::Error">CoreTypeBuilderError</a>&gt;,</span></h3></section></summary><div class="impl-items"><section id="associatedtype.Error-1" class="associatedtype trait-impl"><a href="#associatedtype.Error-1" class="anchor">§</a><h4 class="code-header">type <a href="#associatedtype.Error" class="associatedtype">Error</a> = <a class="struct" href="../error/libfuncs/struct.Error.html" title="struct cairo_native::error::libfuncs::Error">Error</a></h4></section><section id="method.build" class="method trait-impl"><a class="srclink rightside" href="../../src/cairo_native/libfuncs.rs.html#96-207">source</a><a href="#method.build" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.build" class="fn">build</a>&lt;'ctx, 'this&gt;(
     &amp;self,
     context: &amp;'ctx Context,

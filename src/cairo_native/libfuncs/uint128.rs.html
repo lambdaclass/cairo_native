@@ -1044,6 +1044,18 @@
 <a href="#1044" id="1044">1044</a>
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1054,7 +1066,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::mlir_asm,
+    utils::{mlir_asm, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1153,9 +1165,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>u128_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>u128_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>bswap_intrin_attr = StringAttribute::new(context, <span class="string">&quot;llvm.bswap.i128&quot;</span>).into();
 
@@ -1186,9 +1202,13 @@
 {
     <span class="kw">let </span>value = info.c;
 
-    <span class="kw">let </span>u128_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>u128_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {u128_ty}&quot;</span>)).unwrap();
 
@@ -1773,9 +1793,13 @@
     <span class="kw">let </span>origin_type = lhs.r#type();
 
     <span class="kw">let </span>target_type = IntegerType::new(context, <span class="number">256</span>).into();
-    <span class="kw">let </span>guarantee_type = registry
-        .get_type(<span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">2</span>])<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">2</span>],
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_operation(arith::extui(lhs, target_type, location));
     <span class="kw">let </span>lhs = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

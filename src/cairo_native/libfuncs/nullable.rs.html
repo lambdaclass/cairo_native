@@ -231,6 +231,12 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -241,6 +247,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -354,8 +361,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>param_type = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>param_ty = param_type.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>param_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>arg = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 

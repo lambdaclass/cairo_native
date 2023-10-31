@@ -168,6 +168,11 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Memory-related libfuncs
 //!
 //! Natively compiled code doesn&#39;t need this kind of memory tracking because it has no notion of the
@@ -181,6 +186,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -268,9 +274,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>target_type = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>target_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_operation(llvm::undef(target_type, location));
     <span class="kw">let </span>value_undef = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

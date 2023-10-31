@@ -38,7 +38,7 @@
 //!
 //! Type representing the Poseidon builtin.
 
-</span><span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
+</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
     error::types::{Error, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
@@ -61,7 +61,7 @@
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>InfoOnlyConcreteType,
+    _info: WithSelf&lt;InfoOnlyConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
 <span class="kw">where
     </span>TType: GenericType,

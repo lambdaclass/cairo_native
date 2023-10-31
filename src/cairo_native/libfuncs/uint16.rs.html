@@ -927,6 +927,27 @@
 <a href="#927" id="927">927</a>
 <a href="#928" id="928">928</a>
 <a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u16`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -937,6 +958,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1028,9 +1050,13 @@
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
     <span class="kw">let </span>value = info.c;
-    <span class="kw">let </span>value_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
@@ -1226,9 +1252,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>target_type = registry
-        .get_type(<span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">0</span>])<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>target_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">0</span>],
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
@@ -1261,9 +1291,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>felt252_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>op = entry.append_operation(arith::extui(value, felt252_ty, location));
@@ -1559,12 +1593,20 @@
     <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>felt252_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
-    <span class="kw">let </span>result_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>result_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,

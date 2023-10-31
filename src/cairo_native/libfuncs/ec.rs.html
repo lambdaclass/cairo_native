@@ -1359,6 +1359,18 @@
 <a href="#1359" id="1359">1359</a>
 <a href="#1360" id="1360">1360</a>
 <a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
 //!
 //! TODO
@@ -1376,7 +1388,7 @@
         felt252::{register_prime_modulo_meta, Felt252},
         TypeBuilder,
     },
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -2265,9 +2277,13 @@
             context,
             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
             DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-            registry
-                .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-                </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>,
+            registry.build_type(
+                context,
+                helper,
+                registry,
+                metadata,
+                <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+            )<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2277,9 +2293,13 @@
             context,
             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
             DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-            registry
-                .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-                </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>,
+            registry.build_type(
+                context,
+                helper,
+                registry,
+                metadata,
+                <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+            )<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2305,9 +2325,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>ec_point_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>ec_point_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>point = entry
         .append_operation(llvm::undef(ec_point_ty, location))

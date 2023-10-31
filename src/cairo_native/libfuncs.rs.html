@@ -564,8 +564,8 @@
 
 <span class="kw">impl</span>&lt;TType, TLibfunc&gt; LibfuncBuilder&lt;TType, TLibfunc&gt; <span class="kw">for </span>CoreConcreteLibfunc
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc&lt;Concrete = <span class="self">Self</span>&gt;,
+    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
+    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc&lt;Concrete = <span class="self">Self</span>&gt;,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
 {
     <span class="kw">type </span>Error = CoreLibfuncBuilderError;

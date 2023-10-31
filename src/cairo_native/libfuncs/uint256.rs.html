@@ -790,6 +790,11 @@
 <a href="#790" id="790">790</a>
 <a href="#791" id="791">791</a>
 <a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u256`-related libfuncs
 //!
 //! TODO
@@ -802,6 +807,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -872,9 +878,13 @@
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i256_ty = IntegerType::new(context, <span class="number">256</span>).into();
 
-    <span class="kw">let </span>guarantee_type = registry
-        .get_type(<span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">3</span>])<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">3</span>],
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>lhs_struct: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs_struct: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();

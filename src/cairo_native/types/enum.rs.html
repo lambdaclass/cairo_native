@@ -538,9 +538,6 @@
 <a href="#538" id="538">538</a>
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum type
 //!
 //! Enumerations are special because they can potentially represent an unlimited amount of things at
@@ -944,11 +941,11 @@
 //! |   1   | `i64` | `u64`               |         8 |    8 | Payload.      |
 //! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
 
-</span><span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
+</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
     error::types::{Error, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
@@ -973,7 +970,7 @@
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: <span class="kw-2">&amp;</span>EnumConcreteType,
+    info: WithSelf&lt;EnumConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
 <span class="kw">where
     </span>TType: GenericType,
@@ -1030,7 +1027,6 @@
     <span class="kw">let </span><span class="kw-2">mut </span>output = Vec::with_capacity(variants.len());
     <span class="kw">for </span>variant <span class="kw">in </span>variants {
         <span class="kw">let </span>concrete_payload_ty = registry.get_type(variant)<span class="question-mark">?</span>;
-
         <span class="kw">let </span>payload_layout = concrete_payload_ty.layout(registry)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
@@ -1068,10 +1064,8 @@
     <span class="kw">let </span><span class="kw-2">mut </span>layout = tag_layout;
     <span class="kw">let </span><span class="kw-2">mut </span>output = Vec::with_capacity(variants.len());
     <span class="kw">for </span>variant <span class="kw">in </span>variants {
-        <span class="kw">let </span>concrete_payload_ty = registry.get_type(variant)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>payload_ty = concrete_payload_ty.build(context, module, registry, metadata)<span class="question-mark">?</span>;
-        <span class="kw">let </span>payload_layout = concrete_payload_ty.layout(registry)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(payload_ty, payload_layout) =
+            registry.build_type_with_layout(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
         layout = Layout::from_size_align(

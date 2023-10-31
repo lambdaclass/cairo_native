@@ -1021,6 +1021,27 @@
 <a href="#1021" id="1021">1021</a>
 <a href="#1022" id="1022">1022</a>
 <a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u64`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1031,6 +1052,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1122,9 +1144,13 @@
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
     <span class="kw">let </span>value = info.c;
-    <span class="kw">let </span>value_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
@@ -1321,9 +1347,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>target_type = registry
-        .get_type(<span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">0</span>])<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>target_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">0</span>],
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
@@ -1356,9 +1386,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>felt252_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>op = entry.append_operation(arith::extui(value, felt252_ty, location));
@@ -1654,12 +1688,20 @@
     <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>felt252_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
-    <span class="kw">let </span>result_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>result_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,

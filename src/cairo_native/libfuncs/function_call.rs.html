@@ -120,12 +120,6 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -139,7 +133,7 @@
     },
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
@@ -177,13 +171,7 @@
     <span class="kw">let </span>result_types = info.signature.branch_signatures[<span class="number">0</span>]
         .vars
         .iter()
-        .map(|x| {
-            Result::Ok(
-                registry
-                    .get_type(<span class="kw-2">&amp;</span>x.ty)<span class="question-mark">?
-                    </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>,
-            )
-        })
+        .map(|x| Result::Ok(registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>x.ty)<span class="question-mark">?</span>))
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(tailrec_meta) = metadata.get_mut::&lt;TailRecursionMeta&gt;() {

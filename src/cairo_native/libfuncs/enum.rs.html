@@ -424,6 +424,14 @@
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
 <a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -436,7 +444,7 @@
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::padding_needed_for,
+    utils::{padding_needed_for, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -515,9 +523,13 @@
             .unwrap(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>enum_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>enum_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
@@ -634,9 +646,13 @@
             .unwrap(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>enum_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>enum_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = helper.init_block().append_operation(arith::constant(
         context,

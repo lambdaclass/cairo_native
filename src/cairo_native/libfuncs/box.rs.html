@@ -176,6 +176,7 @@
     },
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -293,9 +294,8 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>inner_type = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_layout = inner_type.layout(registry)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_ty = inner_type.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(inner_ty, inner_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_operation(llvm::load(
         context,

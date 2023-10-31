@@ -103,6 +103,18 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Code generation metadata
 //!
 //! The metadata is used for various stuff that would be otherwise difficult or plain impossible
@@ -123,6 +135,7 @@
 <span class="kw">pub mod </span>prime_modulo;
 <span class="kw">pub mod </span>realloc_bindings;
 <span class="kw">pub mod </span>runtime_bindings;
+<span class="kw">pub mod </span>snapshot_clones;
 <span class="kw">pub mod </span>syscall_handler;
 <span class="kw">pub mod </span>tail_recursion;
 
@@ -193,6 +206,17 @@
         <span class="self">self</span>.entries
             .get_mut(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;())
             .map(|meta| meta.downcast_mut::&lt;T&gt;().unwrap())
+    }
+
+    <span class="kw">pub fn </span>get_or_insert_with&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, meta_gen: <span class="kw">impl </span>FnOnce() -&gt; T) -&gt; <span class="kw-2">&amp;mut </span>T
+    <span class="kw">where
+        </span>T: Any,
+    {
+        <span class="self">self</span>.entries
+            .entry(TypeId::of::&lt;T&gt;())
+            .or_insert_with(|| Box::new(meta_gen()))
+            .downcast_mut::&lt;T&gt;()
+            .unwrap()
     }
 }
 
