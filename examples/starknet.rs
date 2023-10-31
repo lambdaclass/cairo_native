@@ -401,6 +401,6 @@ fn main() {
     .expect("failed to serialize starknet execution result");
 
     println!();
-    println!("Cairo program was compiled and executed succesfully.");
+    println!("Cairo program was compiled and executed successfully.");
     println!("{result:#?}");
 }

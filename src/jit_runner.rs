@@ -3,7 +3,7 @@
 use crate::{
     error::{
         jit_engine::{
-            make_deserializer_error, make_insuficient_gas_error, make_serializer_error,
+            make_deserializer_error, make_insufficient_gas_error, make_serializer_error,
             make_type_builder_error,
         },
         JitRunnerError,
@@ -27,8 +27,8 @@ use tracing::debug;
 /// Execute a function on an engine loaded with a Sierra program.
 ///
 /// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
-/// the compiled module. This has been designed this way because it allows engine reusal, as opposed
-/// to building a different engine every time a function is called and therefore losing all
+/// the compiled module. This has been designed this way because it allows reusing the engine, as
+/// opposed to building a different engine every time a function is called and therefore losing all
 /// potential optimizations that are already present.
 ///
 /// The registry is needed to convert the params and return values into and from the JIT ABI. Check
@@ -69,15 +69,15 @@ where
         })
         .map_err(make_deserializer_error)?;
 
-    // If program has a required initial gas, check if a gas builting exists
-    // and check if the passed gas was enough, if so, deduct the required gas before execution.
+    // If program has a required initial gas, check if a gas builtin exists and check if the passed
+    // gas was enough, if so, deduct the required gas before execution.
     if let Some(required_initial_gas) = required_initial_gas {
         for (id, param) in entry_point.signature.param_types.iter().zip(params.iter()) {
             if id.debug_name.as_deref() == Some("GasBuiltin") {
                 let gas_builtin = unsafe { *param.cast::<u128>().as_ptr() };
 
                 if gas_builtin < required_initial_gas {
-                    return Err(make_insuficient_gas_error(
+                    return Err(make_insufficient_gas_error(
                         required_initial_gas,
                         gas_builtin,
                     ));

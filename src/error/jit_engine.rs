@@ -225,7 +225,7 @@ where
     }
 }
 
-pub fn make_insuficient_gas_error<'de, TType, TLibfunc, D, S>(
+pub fn make_insufficient_gas_error<'de, TType, TLibfunc, D, S>(
     needed: u128,
     have: u128,
 ) -> Error<'de, TType, TLibfunc, D, S>

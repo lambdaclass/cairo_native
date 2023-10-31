@@ -2,7 +2,7 @@
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
 //!
-//! This is so we only check if the ptr is nullptr for nulability, instead of using a enum in this case.
+//! This is so we only check if the ptr is nullptr for nullability, instead of using a enum in this case.
 //! TODO
 
 use super::TypeBuilder;
