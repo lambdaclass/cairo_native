@@ -8,6 +8,7 @@ use crate::{
     },
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -125,9 +126,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata)?;
+    let (inner_ty, inner_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let op = entry.append_operation(llvm::load(
         context,

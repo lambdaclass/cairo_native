@@ -21,7 +21,7 @@
 
 // TODO: Maybe the types used here can be i251 instead of i252.
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
@@ -46,29 +46,49 @@ pub fn build<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    selector: &StarkNetTypeConcrete,
+    selector: WithSelf<StarkNetTypeConcrete>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    match selector {
-        StarkNetTypeConcrete::ClassHash(info) => {
-            build_class_hash(context, module, registry, metadata, info)
-        }
-        StarkNetTypeConcrete::ContractAddress(info) => {
-            build_contract_address(context, module, registry, metadata, info)
-        }
-        StarkNetTypeConcrete::StorageBaseAddress(info) => {
-            build_storage_base_address(context, module, registry, metadata, info)
-        }
-        StarkNetTypeConcrete::StorageAddress(info) => {
-            build_storage_address(context, module, registry, metadata, info)
-        }
-        StarkNetTypeConcrete::System(info) => {
-            build_system(context, module, registry, metadata, info)
-        }
+    match &*selector {
+        StarkNetTypeConcrete::ClassHash(info) => build_class_hash(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
+        StarkNetTypeConcrete::ContractAddress(info) => build_contract_address(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
+        StarkNetTypeConcrete::StorageBaseAddress(info) => build_storage_base_address(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
+        StarkNetTypeConcrete::StorageAddress(info) => build_storage_address(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
+        StarkNetTypeConcrete::System(info) => build_system(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
         StarkNetTypeConcrete::Secp256Point(_) => todo!(),
     }
 }
@@ -78,7 +98,7 @@ pub fn build_class_hash<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &InfoOnlyConcreteType,
+    info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
@@ -94,7 +114,7 @@ pub fn build_contract_address<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &InfoOnlyConcreteType,
+    info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
@@ -110,7 +130,7 @@ pub fn build_storage_base_address<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &InfoOnlyConcreteType,
+    info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
@@ -126,7 +146,7 @@ pub fn build_storage_address<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &InfoOnlyConcreteType,
+    info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
@@ -142,7 +162,7 @@ pub fn build_system<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: &InfoOnlyConcreteType,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

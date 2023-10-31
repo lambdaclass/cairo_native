@@ -87,8 +87,8 @@ where
 
 impl<TType, TLibfunc> LibfuncBuilder<TType, TLibfunc> for CoreConcreteLibfunc
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc<Concrete = Self>,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc<Concrete = Self>,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
 {
     type Error = CoreLibfuncBuilderError;

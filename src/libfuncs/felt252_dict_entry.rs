@@ -13,7 +13,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -81,16 +81,29 @@ where
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let key_type = registry.get_type(&info.param_signatures()[1].ty)?;
-    let key_ty = key_type.build(context, helper, registry, metadata)?;
-    let key_layout = key_type.layout(registry)?;
+    let (key_ty, key_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
 
-    let entry_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let entry_ty = entry_type.build(context, helper, registry, metadata)?;
+    let entry_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
-    let value_type = registry.get_type(&info.branch_signatures()[0].vars[1].ty)?;
-    let value_ty = value_type.build(context, helper, registry, metadata)?;
-    let value_layout = value_type.layout(registry)?;
+    let (value_ty, value_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[1].ty,
+    )?;
 
     let dict_ptr = entry.argument(0)?.into();
     let key_value = entry.argument(1)?.into();

@@ -1,13 +1,21 @@
 //! # Various utilities
 
-use crate::{metadata::MetadataStorage, types::felt252::PRIME};
+use crate::{
+    metadata::MetadataStorage,
+    types::{felt252::PRIME, TypeBuilder},
+};
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    ids::FunctionId,
+    extensions::{GenericLibfunc, GenericType},
+    ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
+    program_registry::{ProgramRegistry, ProgramRegistryError},
 };
-use melior::{ir::Module, ExecutionEngine};
+use melior::{
+    ir::{Module, Type},
+    Context, ExecutionEngine,
+};
 use num_bigint::{BigInt, BigUint, Sign};
 use std::{
     alloc::Layout,
@@ -388,6 +396,87 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     // The safe constructor is called here to enforce the isize size limit.
     let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
     Ok((layout, padded_size))
+}
+
+pub trait ProgramRegistryExt<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+{
+    fn build_type<'ctx>(
+        &self,
+        context: &'ctx Context,
+        module: &Module<'ctx>,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
+        id: &ConcreteTypeId,
+    ) -> Result<Type<'ctx>, <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
+    where
+        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
+            From<Box<ProgramRegistryError>>;
+
+    fn build_type_with_layout<'ctx>(
+        &self,
+        context: &'ctx Context,
+        module: &Module<'ctx>,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
+        id: &ConcreteTypeId,
+    ) -> Result<(Type<'ctx>, Layout), <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
+    where
+        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
+            From<Box<ProgramRegistryError>>;
+}
+
+impl<TType, TLibfunc> ProgramRegistryExt<TType, TLibfunc> for ProgramRegistry<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+{
+    fn build_type<'ctx>(
+        &self,
+        context: &'ctx Context,
+        module: &Module<'ctx>,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
+        id: &ConcreteTypeId,
+    ) -> Result<Type<'ctx>, <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
+    where
+        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
+            From<Box<ProgramRegistryError>>,
+    {
+        registry
+            .get_type(id)?
+            .build(context, module, registry, metadata, id)
+    }
+
+    fn build_type_with_layout<'ctx>(
+        &self,
+        context: &'ctx Context,
+        module: &Module<'ctx>,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        metadata: &mut MetadataStorage,
+        id: &ConcreteTypeId,
+    ) -> Result<
+        (Type<'ctx>, Layout),
+        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+    >
+    where
+        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
+            From<Box<ProgramRegistryError>>,
+    {
+        let concrete_type = registry.get_type(id)?;
+
+        Ok((
+            concrete_type.build(context, module, registry, metadata, id)?,
+            concrete_type.layout(registry)?,
+        ))
+    }
 }
 
 /// The `mlir_asm!` macro is a shortcut to manually building operations.

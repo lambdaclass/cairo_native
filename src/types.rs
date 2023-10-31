@@ -9,7 +9,9 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::CoreTypeConcrete, starknet::StarkNetTypeConcrete, GenericLibfunc, GenericType,
+        core::{CoreConcreteLibfunc, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
+        GenericLibfunc, GenericType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -18,7 +20,7 @@ use melior::{
     ir::{Module, Type},
     Context,
 };
-use std::{alloc::Layout, error::Error};
+use std::{alloc::Layout, error::Error, ops::Deref};
 
 pub mod array;
 pub mod bitwise;
@@ -69,6 +71,7 @@ where
         module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error>;
 
     /// Generate the layout of the MLIR type.
@@ -89,8 +92,12 @@ where
 
 impl<TType, TLibfunc> TypeBuilder<TType, TLibfunc> for CoreTypeConcrete
 where
-    TType: GenericType<Concrete = Self>,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType<Concrete = Self>,
+    TLibfunc: 'static + GenericLibfunc<Concrete = CoreConcreteLibfunc>,
+    // TODO: Find a way to remove the `Concrete = CoreConcreteLibfunc` requirement on `TLibfunc` and
+    //   instead add the following restriction without causing an overflow evaluating requirement
+    //   error:
+    // <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     type Error = CoreTypeBuilderError;
 
@@ -100,66 +107,213 @@ where
         module: &Module<'ctx>,
         registry: &ProgramRegistry<TType, TLibfunc>,
         metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error> {
         match self {
-            Self::Array(info) => self::array::build(context, module, registry, metadata, info),
-            Self::Bitwise(info) => self::bitwise::build(context, module, registry, metadata, info),
-            Self::Box(info) => self::r#box::build(context, module, registry, metadata, info),
-            Self::BuiltinCosts(info) => {
-                self::builtin_costs::build(context, module, registry, metadata, info)
-            }
-            Self::EcOp(info) => self::ec_op::build(context, module, registry, metadata, info),
-            Self::EcPoint(info) => self::ec_point::build(context, module, registry, metadata, info),
-            Self::EcState(info) => self::ec_state::build(context, module, registry, metadata, info),
-            Self::Enum(info) => self::r#enum::build(context, module, registry, metadata, info),
-            Self::Felt252(info) => self::felt252::build(context, module, registry, metadata, info),
-            Self::Felt252Dict(info) => {
-                self::felt252_dict::build(context, module, registry, metadata, info)
-            }
-            Self::Felt252DictEntry(info) => {
-                self::felt252_dict_entry::build(context, module, registry, metadata, info)
-            }
-            Self::GasBuiltin(info) => {
-                self::gas_builtin::build(context, module, registry, metadata, info)
-            }
-            Self::NonZero(info) => self::non_zero::build(context, module, registry, metadata, info),
-            Self::Nullable(info) => {
-                self::nullable::build(context, module, registry, metadata, info)
-            }
-            Self::Pedersen(info) => {
-                self::pedersen::build(context, module, registry, metadata, info)
-            }
-            Self::Poseidon(info) => {
-                self::poseidon::build(context, module, registry, metadata, info)
-            }
-            Self::RangeCheck(info) => {
-                self::range_check::build(context, module, registry, metadata, info)
-            }
-            Self::SegmentArena(info) => {
-                self::segment_arena::build(context, module, registry, metadata, info)
-            }
-            Self::Snapshot(info) => {
-                self::snapshot::build(context, module, registry, metadata, info)
-            }
+            Self::Array(info) => self::array::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Bitwise(info) => self::bitwise::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Box(info) => self::r#box::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::BuiltinCosts(info) => self::builtin_costs::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::EcOp(info) => self::ec_op::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::EcPoint(info) => self::ec_point::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::EcState(info) => self::ec_state::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Enum(info) => self::r#enum::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Felt252(info) => self::felt252::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Felt252Dict(info) => self::felt252_dict::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Felt252DictEntry(info) => self::felt252_dict_entry::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::GasBuiltin(info) => self::gas_builtin::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::NonZero(info) => self::non_zero::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Nullable(info) => self::nullable::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Pedersen(info) => self::pedersen::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Poseidon(info) => self::poseidon::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::RangeCheck(info) => self::range_check::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::SegmentArena(info) => self::segment_arena::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Snapshot(info) => self::snapshot::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Span(_) => todo!(),
-            Self::SquashedFelt252Dict(info) => {
-                self::squashed_felt252_dict::build(context, module, registry, metadata, info)
-            }
-            Self::StarkNet(selector) => {
-                self::stark_net::build(context, module, registry, metadata, selector)
-            }
-            Self::Struct(info) => self::r#struct::build(context, module, registry, metadata, info),
-            Self::Uint128(info) => self::uint128::build(context, module, registry, metadata, info),
-            Self::Uint128MulGuarantee(info) => {
-                self::uint128_mul_guarantee::build(context, module, registry, metadata, info)
-            }
-            Self::Uint16(info) => self::uint16::build(context, module, registry, metadata, info),
-            Self::Uint32(info) => self::uint32::build(context, module, registry, metadata, info),
-            Self::Uint64(info) => self::uint64::build(context, module, registry, metadata, info),
-            Self::Uint8(info) => self::uint8::build(context, module, registry, metadata, info),
-            Self::Uninitialized(info) => {
-                self::uninitialized::build(context, module, registry, metadata, info)
-            }
+            Self::SquashedFelt252Dict(info) => self::squashed_felt252_dict::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::StarkNet(selector) => self::stark_net::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, selector),
+            ),
+            Self::Struct(info) => self::r#struct::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint128(info) => self::uint128::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint128MulGuarantee(info) => self::uint128_mul_guarantee::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint16(info) => self::uint16::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint32(info) => self::uint32::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint64(info) => self::uint64::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uint8(info) => self::uint8::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Uninitialized(info) => self::uninitialized::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             CoreTypeConcrete::Sint8(_) => todo!(),
             CoreTypeConcrete::Sint16(_) => todo!(),
             CoreTypeConcrete::Sint32(_) => todo!(),
@@ -272,5 +426,35 @@ where
             Self::Enum(info) => Some(&info.variants),
             _ => None,
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct WithSelf<'a, T> {
+    self_ty: &'a ConcreteTypeId,
+    inner: &'a T,
+}
+
+impl<'a, T> WithSelf<'a, T> {
+    pub fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
+        Self { self_ty, inner }
+    }
+
+    pub fn self_ty(&self) -> &ConcreteTypeId {
+        self.self_ty
+    }
+}
+
+impl<'a, T> AsRef<T> for WithSelf<'a, T> {
+    fn as_ref(&self) -> &T {
+        self.inner
+    }
+}
+
+impl<'a, T> Deref for WithSelf<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.inner
     }
 }
