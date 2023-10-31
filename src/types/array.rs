@@ -207,7 +207,7 @@ where
 
             entry.append_operation(llvm::call_intrinsic(
                 context,
-                StringAttribute::new(context, "llvm.memcpy.inline"),
+                StringAttribute::new(context, "llvm.memcpy"),
                 &[dst_ptr, src_ptr, dst_len_bytes, is_volatile],
                 &[],
                 location,
