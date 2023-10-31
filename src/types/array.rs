@@ -16,10 +16,15 @@
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
 //! [^2]: Both numbers are number of items, **not bytes**.
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
+    error::{
+        libfuncs,
+        types::{Error, Result},
+    },
+    libfuncs::{LibfuncBuilder, LibfuncHelper},
+    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
@@ -27,7 +32,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 
@@ -39,16 +44,27 @@ pub fn build<'ctx, TType, TLibfunc>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
     metadata: &mut MetadataStorage,
-    info: &InfoAndTypeConcreteType,
+    info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+    <TLibfunc as GenericLibfunc>::Concrete:
+        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
 {
-    let elem_ty = registry
-        .get_type(&info.ty)?
-        .build(context, module, registry, metadata)?;
+    metadata
+        .get_or_insert_with::<SnapshotClonesMeta<TType, TLibfunc>>(SnapshotClonesMeta::default)
+        .register(
+            info.self_ty().clone(),
+            snapshot_take,
+            InfoAndTypeConcreteType {
+                info: info.info.clone(),
+                ty: info.ty.clone(),
+            },
+        );
+
+    let elem_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
 
     let ptr_ty = llvm::r#type::pointer(elem_ty, 0);
     let len_ty = IntegerType::new(context, 32).into();
@@ -58,4 +74,23 @@ where
         &[ptr_ty, len_ty, len_ty],
         false,
     ))
+}
+
+fn snapshot_take<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: WithSelf<InfoAndTypeConcreteType>,
+) -> libfuncs::Result<Value<'ctx, 'this>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+    <TLibfunc as GenericLibfunc>::Concrete:
+        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
+{
+    todo!()
 }

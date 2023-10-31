@@ -10,6 +10,7 @@ use crate::{
     },
     metadata::MetadataStorage,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -80,9 +81,13 @@ where
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
-    let guarantee_type = registry
-        .get_type(&info.output_types()[0][3])?
-        .build(context, helper, registry, metadata)?;
+    let guarantee_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.output_types()[0][3],
+    )?;
 
     let lhs_struct: Value = entry.argument(1)?.into();
     let rhs_struct: Value = entry.argument(2)?.into();

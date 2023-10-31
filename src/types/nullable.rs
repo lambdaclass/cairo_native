@@ -5,7 +5,7 @@
 //! This is so we only check if the ptr is nullptr for nulability, instead of using a enum in this case.
 //! TODO
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
@@ -28,7 +28,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: &InfoAndTypeConcreteType,
+    _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

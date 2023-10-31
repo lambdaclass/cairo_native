@@ -12,7 +12,7 @@
 //! pub struct Box<T>(pub T);
 //! ```
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
@@ -35,7 +35,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: &InfoAndTypeConcreteType,
+    _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

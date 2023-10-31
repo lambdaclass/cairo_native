@@ -5,7 +5,7 @@
 //! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
 //! insert and get elements.
 
-use super::TypeBuilder;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
     metadata::MetadataStorage,
@@ -28,7 +28,7 @@ pub fn build<'ctx, TType, TLibfunc>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: &InfoAndTypeConcreteType,
+    _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,

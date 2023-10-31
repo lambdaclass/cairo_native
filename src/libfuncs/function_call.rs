@@ -11,7 +11,7 @@ use crate::{
     },
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
@@ -49,13 +49,7 @@ where
     let result_types = info.signature.branch_signatures[0]
         .vars
         .iter()
-        .map(|x| {
-            Result::Ok(
-                registry
-                    .get_type(&x.ty)?
-                    .build(context, helper, registry, metadata)?,
-            )
-        })
+        .map(|x| Result::Ok(registry.build_type(context, helper, registry, metadata, &x.ty)?))
         .collect::<Result<Vec<_>>>()?;
 
     if let Some(tailrec_meta) = metadata.get_mut::<TailRecursionMeta>() {
