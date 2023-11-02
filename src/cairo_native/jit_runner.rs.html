@@ -224,7 +224,7 @@
 </span><span class="kw">use crate</span>::{
     error::{
         jit_engine::{
-            make_deserializer_error, make_insuficient_gas_error, make_serializer_error,
+            make_deserializer_error, make_insufficient_gas_error, make_serializer_error,
             make_type_builder_error,
         },
         JitRunnerError,
@@ -248,8 +248,8 @@
 <span class="doccomment">/// Execute a function on an engine loaded with a Sierra program.
 ///
 /// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
-/// the compiled module. This has been designed this way because it allows engine reusal, as opposed
-/// to building a different engine every time a function is called and therefore losing all
+/// the compiled module. This has been designed this way because it allows reusing the engine, as
+/// opposed to building a different engine every time a function is called and therefore losing all
 /// potential optimizations that are already present.
 ///
 /// The registry is needed to convert the params and return values into and from the JIT ABI. Check
@@ -290,15 +290,15 @@
         })
         .map_err(make_deserializer_error)<span class="question-mark">?</span>;
 
-    <span class="comment">// If program has a required initial gas, check if a gas builting exists
-    // and check if the passed gas was enough, if so, deduct the required gas before execution.
+    <span class="comment">// If program has a required initial gas, check if a gas builtin exists and check if the passed
+    // gas was enough, if so, deduct the required gas before execution.
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_initial_gas) = required_initial_gas {
         <span class="kw">for </span>(id, param) <span class="kw">in </span>entry_point.signature.param_types.iter().zip(params.iter()) {
             <span class="kw">if </span>id.debug_name.as_deref() == <span class="prelude-val">Some</span>(<span class="string">&quot;GasBuiltin&quot;</span>) {
                 <span class="kw">let </span>gas_builtin = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>param.cast::&lt;u128&gt;().as_ptr() };
 
                 <span class="kw">if </span>gas_builtin &lt; required_initial_gas {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(make_insuficient_gas_error(
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(make_insufficient_gas_error(
                         required_initial_gas,
                         gas_builtin,
                     ));

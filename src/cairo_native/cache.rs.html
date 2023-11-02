@@ -86,20 +86,16 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
-
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{context::NativeContext, executor::NativeExecutor};
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
-
-<span class="kw">use crate</span>::{context::NativeContext, executor::NativeExecutor};
+<span class="kw">use </span>std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
 
 <span class="doccomment">/// A Cache for programs with the same context.
 </span><span class="kw">pub struct </span>ProgramCache&lt;<span class="lifetime">&#39;a</span>, K: PartialEq + Eq + Hash&gt; {
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>NativeContext,
-    <span class="comment">// Since we already hold a reference to the Context, it doesn&#39;t make sense to use thread-safe refcounting.
-    // Using a Arc&lt;RwLock&lt;T&gt;&gt; here is useless because NativeExecutor is not Send and Sync.
+    <span class="comment">// Since we already hold a reference to the Context, it doesn&#39;t make sense to use thread-safe
+    // reference counting. Using a Arc&lt;RwLock&lt;T&gt;&gt; here is useless because NativeExecutor is neither
+    // Send nor Sync.
     </span>cache: HashMap&lt;K, Rc&lt;RefCell&lt;NativeExecutor&lt;<span class="lifetime">&#39;a</span>&gt;&gt;&gt;&gt;,
 }
 
@@ -136,11 +132,9 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span>std::time::Instant;
-
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::load_cairo;
-
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::load_cairo;
+    <span class="kw">use </span>std::time::Instant;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cache() {

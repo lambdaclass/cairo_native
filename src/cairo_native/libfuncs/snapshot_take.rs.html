@@ -59,7 +59,6 @@
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Snapshot taking libfuncs
 //!
 //! TODO
@@ -98,9 +97,8 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="comment">// TODO: Should this act like dup like it does now? or are there special requirements. So far it seems to work.
-    // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
-
+    <span class="comment">// Handle non-trivially-copyable types (ex. arrays) by invoking their override or just copy the
+    // original value otherwise.
     </span><span class="kw">let </span>original_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>cloned_value = <span class="kw">match </span>metadata
         .get_mut::&lt;SnapshotClonesMeta&lt;TType, TLibfunc&gt;&gt;()

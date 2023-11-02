@@ -3,7 +3,7 @@ which can be <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JI
 compiled (externally) into a binary
 <a href="https://en.wikipedia.org/wiki/Ahead-of-time_compilation">ahead of time</a>.</p>
 <h3 id="usage"><a href="#usage">Usage</a></h3>
-<p>The API containts two structs, <code>NativeContext</code> and <code>NativeExecutor</code>.
+<p>The API contains two structs, <code>NativeContext</code> and <code>NativeExecutor</code>.
 The main purpose of <code>NativeContext</code> is MLIR initialization, compilation and lowering to LLVM.
 <code>NativeExecutor</code> in the other hand is responsible of executing MLIR compiled sierra programs
 from an entrypoint.
@@ -31,7 +31,7 @@ times.</p>
 <span class="comment">// Compile the cairo program to sierra.
 </span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-<span class="comment">// Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+<span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the
 // MLIR initialization and compilation of sierra programs into a MLIR module.
 </span><span class="kw">let </span>native_context = NativeContext::new();
 

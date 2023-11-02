@@ -13,8 +13,8 @@
     D: <a class="trait" href="https://docs.rs/serde/1.0.188/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,
     S: <a class="trait" href="https://docs.rs/serde/1.0.188/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer">Serializer</a>,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Execute a function on an engine loaded with a Sierra program.</p>
 <p>The JIT execution of a Sierra program requires an [<code>ExecutionEngine</code>] already configured with
-the compiled module. This has been designed this way because it allows engine reusal, as opposed
-to building a different engine every time a function is called and therefore losing all
+the compiled module. This has been designed this way because it allows reusing the engine, as
+opposed to building a different engine every time a function is called and therefore losing all
 potential optimizations that are already present.</p>
 <p>The registry is needed to convert the params and return values into and from the JIT ABI. Check
 out <a href="values/index.html" title="mod cairo_native::values">the values module</a> for more information about the de/serialization process.</p>
