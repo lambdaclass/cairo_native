@@ -1150,7 +1150,7 @@
     <span class="attr">#[repr(C)]
     #[derive(Debug)]
     </span><span class="kw">pub struct </span>StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">&#39;a</span>, T&gt; {
-        self_ptr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T,
+        self_ptr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>T,
 
         get_block_hash: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
@@ -1254,7 +1254,7 @@
     <span class="kw">where
         </span>T: StarkNetSyscallHandler + <span class="lifetime">&#39;a</span>,
     {
-        <span class="kw">pub fn </span>new(handler: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>T) -&gt; <span class="self">Self </span>{
+        <span class="kw">pub fn </span>new(handler: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>T) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 self_ptr: handler,
                 get_block_hash: <span class="self">Self</span>::wrap_get_block_hash,

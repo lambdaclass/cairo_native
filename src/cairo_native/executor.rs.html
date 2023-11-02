@@ -77,8 +77,8 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
     <span class="kw">pub fn </span>new(native_module: NativeModule&lt;<span class="lifetime">&#39;m</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>module = native_module.get_module();
-        <span class="kw">let </span>engine = create_engine(module);
+        <span class="kw">let </span>module = native_module.module();
+        <span class="kw">let </span>engine = create_engine(module, native_module.metadata());
         <span class="self">Self </span>{
             engine,
             native_module,
@@ -86,7 +86,7 @@
     }
 
     <span class="kw">pub fn </span>get_program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
-        <span class="self">self</span>.native_module.get_program_registry()
+        <span class="self">self</span>.native_module.program_registry()
     }
 
     <span class="kw">pub fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>NativeModule&lt;<span class="lifetime">&#39;m</span>&gt; {

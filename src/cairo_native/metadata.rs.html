@@ -115,6 +115,19 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Code generation metadata
 //!
 //! The metadata is used for various stuff that would be otherwise difficult or plain impossible
@@ -131,6 +144,7 @@
     collections::{hash_map::Entry, HashMap},
 };
 
+<span class="kw">pub mod </span>debug_utils;
 <span class="kw">pub mod </span>gas;
 <span class="kw">pub mod </span>prime_modulo;
 <span class="kw">pub mod </span>realloc_bindings;
@@ -140,7 +154,8 @@
 <span class="kw">pub mod </span>tail_recursion;
 
 <span class="doccomment">/// Metadata container.
-</span><span class="attr">#[derive(Default, Debug)]
+</span><span class="attr">#[cfg_attr(not(feature = <span class="string">&quot;with-debug-utils&quot;</span>), derive(Default))]
+#[derive(Debug)]
 </span><span class="kw">pub struct </span>MetadataStorage {
     entries: HashMap&lt;TypeId, Box&lt;<span class="kw">dyn </span>Any&gt;&gt;,
 }
@@ -148,9 +163,7 @@
 <span class="kw">impl </span>MetadataStorage {
     <span class="doccomment">/// Create an empty metadata container.
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            entries: HashMap::default(),
-        }
+        <span class="self">Self</span>::default()
     }
 
     <span class="doccomment">/// Insert some metadata and return a mutable reference.
@@ -217,6 +230,19 @@
             .or_insert_with(|| Box::new(meta_gen()))
             .downcast_mut::&lt;T&gt;()
             .unwrap()
+    }
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;with-debug-utils&quot;</span>)]
+</span><span class="kw">impl </span>Default <span class="kw">for </span>MetadataStorage {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>metadata = <span class="self">Self </span>{
+            entries: Default::default(),
+        };
+
+        metadata.insert(debug_utils::DebugUtils::default());
+
+        metadata
     }
 }
 
