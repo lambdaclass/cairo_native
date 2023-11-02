@@ -139,7 +139,7 @@ where
 /// The function accepts a `Function` argument, which provides the function's entry point, signature
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
-/// The [module docs](self) contain more information about the compiliation process.
+/// The [module docs](self) contain more information about the compilation process.
 fn compile_func<TType, TLibfunc>(
     context: &Context,
     module: &Module,

@@ -18,16 +18,16 @@ fn main() {
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-    // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
-    // MLIR initialization and compilation of sierra programs into a MLIR module.
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // Get necessary information for the execution of the program from a given entrypoint:
-    //   * entrypoint function id
-    //   * required initial gas
+    //   - Entrypoint function id
+    //   - Required initial gas
     let name = cairo_native::utils::felt252_short_str("user");
     let entry_point = "hello::hello::greet";
     let params = json!([name]);
@@ -38,7 +38,7 @@ fn main() {
     // Instantiate MLIR executor.
     let native_executor = NativeExecutor::new(native_program);
 
-    // Execute the program
+    // Execute the program.
     native_executor
         .execute(fn_id, params, returns, required_init_gas)
         .unwrap_or_else(|e| match &e.source {
@@ -59,5 +59,5 @@ fn main() {
             e => panic!("{:?}", e),
         });
 
-    println!("Cairo program was compiled and executed succesfully.");
+    println!("Cairo program was compiled and executed successfully.");
 }
