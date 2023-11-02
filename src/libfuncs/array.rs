@@ -1,6 +1,7 @@
 //! # Array libfuncs
 
-// TODO: A future possible improvement would be to put the array behind a double pointer and a reference counter, to avoid unnecesary clones.
+// TODO: A future possible improvement would be to put the array behind a double pointer and a
+//   reference counter, to avoid unnecessary clones.
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{

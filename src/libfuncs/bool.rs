@@ -96,7 +96,7 @@ fn build_bool_binary<'ctx, 'this, TType, TLibfunc>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-    binop: BoolOp,
+    bin_op: BoolOp,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -133,7 +133,7 @@ where
     ));
     let rhs_tag = op.result(0)?.into();
 
-    let op = match binop {
+    let op = match bin_op {
         BoolOp::And => entry.append_operation(arith::andi(lhs_tag, rhs_tag, location)),
         BoolOp::Xor => entry.append_operation(arith::xori(lhs_tag, rhs_tag, location)),
         BoolOp::Or => entry.append_operation(arith::ori(lhs_tag, rhs_tag, location)),

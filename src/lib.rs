@@ -7,7 +7,7 @@
 //!
 //! ## Usage
 //!
-//! The API containts two structs, `NativeContext` and `NativeExecutor`.
+//! The API contains two structs, `NativeContext` and `NativeExecutor`.
 //! The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
 //! `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
 //! from an entrypoint.
@@ -38,7 +38,7 @@
 //! // Compile the cairo program to sierra.
 //! let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 //!
-//! // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+//! // Instantiate a Cairo Native MLIR context. This data structure is responsible for the
 //! // MLIR initialization and compilation of sierra programs into a MLIR module.
 //! let native_context = NativeContext::new();
 //!

@@ -291,7 +291,7 @@ cd build
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir;clang;clang-tools-extra;lld;polly" \
    -DLLVM_BUILD_EXAMPLES=OFF \
-   -DLLVM_TARGETS_TO_BUILD="Native;NVPTX" \
+   -DLLVM_TARGETS_TO_BUILD="Native" \
    -DCMAKE_INSTALL_PREFIX=/opt/llvm-17 \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_PARALLEL_LINK_JOBS=4 \
@@ -342,7 +342,7 @@ make deps
 make build
 ```
 
-Or with your native CPU Architecture for even more perfomance (usually):
+Or with your native CPU Architecture for even more performance (usually):
 ```bash
 make build-native
 ```
@@ -462,7 +462,7 @@ fn main() {
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-    // Instantiate a Cairo Native MLIR contex. This data structure is responsible for the
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the
     // MLIR initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
@@ -486,7 +486,7 @@ fn main() {
     native_executor
         .execute(&fn_id, params, returns, required_init_gas).unwrap();
 
-    println!("Cairo program was compiled and executed succesfully.");
+    println!("Cairo program was compiled and executed successfully.");
 }
 ```
 
@@ -510,8 +510,8 @@ make bench
 ```
 
 The `bench` target will run the `./scripts/bench-hyperfine.sh` script.
-This script runs hyperfine comands to compare the execution time of programs in the `./programs/benches/` folder.
-Each program is compiled and executed via the execution engine with the `sierrajit` command and via the cairo-vm with the `cairo-run` command provided by the `cairo` codebase.
+This script runs hyperfine commands to compare the execution time of programs in the `./programs/benches/` folder.
+Each program is compiled and executed via the execution engine with the `cairo-native-run` command and via the cairo-vm with the `cairo-run` command provided by the `cairo` codebase.
 The `cairo-run` command should be available in the `$PATH` and ideally compiled with `cargo build --release`.
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
@@ -520,7 +520,7 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 # to mlir with llvm dialect
 sierra2mlir program.sierra -o program.mlir
 
-# trranslate all dialects to the llvm dialect
+# translate all dialects to the llvm dialect
 "$MLIR_SYS_170_PREFIX/bin/mlir-opt" \
         --canonicalize \
         --convert-scf-to-cf \

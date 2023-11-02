@@ -36,9 +36,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Should this act like dup like it does now? or are there special requirements. So far it seems to work.
-    // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
-
+    // Handle non-trivially-copyable types (ex. arrays) by invoking their override or just copy the
+    // original value otherwise.
     let original_value = entry.argument(0)?.into();
     let cloned_value = match metadata
         .get_mut::<SnapshotClonesMeta<TType, TLibfunc>>()

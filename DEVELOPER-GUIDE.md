@@ -95,7 +95,7 @@ You can find this functionality under `src/values.rs` and `src/values/{typename}
 
 Serialization is done using `Serde`, and each type provides a `deserialize` and `serialize` function. The inner workings of such functions can be a bit complex due to how the JIT runner works. You need to work with pointers and unsafe rust.
 
-In `values.rs` we should also declare whether the type is complex under `is_complex` in the `ValueBuilder` trait implmentation.
+In `values.rs` we should also declare whether the type is complex under `is_complex` in the `ValueBuilder` trait implementation.
 
 > Complex types are always passed by pointer (both as params and return values) and require a stack allocation. Examples of complex values include structs and enums, but not felts since LLVM considers them integers.
 
@@ -215,7 +215,7 @@ Some commonly used dialects in this project:
 
 #### The arith dialect
 
-It contains arithmetic operations, such as `addi`, `subi` for addition and substraction.
+It contains arithmetic operations, such as `addi`, `subi` for addition and subtraction.
 
 #### The cf dialect
 

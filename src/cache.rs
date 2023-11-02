@@ -1,14 +1,13 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
-
-use cairo_lang_sierra::program::Program;
-
 use crate::{context::NativeContext, executor::NativeExecutor};
+use cairo_lang_sierra::program::Program;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
 
 /// A Cache for programs with the same context.
 pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
-    // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe refcounting.
-    // Using a Arc<RwLock<T>> here is useless because NativeExecutor is not Send and Sync.
+    // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
+    // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
+    // Send nor Sync.
     cache: HashMap<K, Rc<RefCell<NativeExecutor<'a>>>>,
 }
 
@@ -45,11 +44,9 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
 
 #[cfg(test)]
 mod test {
-    use std::time::Instant;
-
-    use crate::utils::test::load_cairo;
-
     use super::*;
+    use crate::utils::test::load_cairo;
+    use std::time::Instant;
 
     #[test]
     fn test_cache() {

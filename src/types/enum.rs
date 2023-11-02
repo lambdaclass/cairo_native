@@ -470,7 +470,7 @@ where
     ))
 }
 
-/// Extract layout for the default enum representation, itsdiscriminant and all its payloads.
+/// Extract layout for the default enum representation, its discriminant and all its payloads.
 pub fn get_layout_for_variants<TType, TLibfunc>(
     registry: &ProgramRegistry<TType, TLibfunc>,
     variants: &[ConcreteTypeId],
