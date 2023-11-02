@@ -1,6 +1,90 @@
 //! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
+//!
+//! ## Example
+//!
+//! ```
+//! # use cairo_lang_sierra::{
+//! #     extensions::{
+//! #         lib_func::SignatureAndTypeConcreteLibfunc,
+//! #         GenericType,
+//! #         GenericLibfunc,
+//! #     },
+//! #     program_registry::ProgramRegistry,
+//! # };
+//! # use cairo_native::{
+//! #     error::{
+//! #         libfuncs::{Error, Result},
+//! #         CoreTypeBuilderError,
+//! #     },
+//! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
+//! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
+//! #     types::TypeBuilder,
+//! #     utils::ProgramRegistryExt,
+//! # };
+//! # use melior::{
+//! #     dialect::llvm,
+//! #     ir::{
+//! #         attribute::DenseI64ArrayAttribute,
+//! #         r#type::IntegerType,
+//! #         Block,
+//! #         Location,
+//! #     },
+//! #     Context,
+//! # };
+//!
+//! pub fn build_array_len<'ctx, 'this, TType, TLibfunc>(
+//!     context: &'ctx Context,
+//!     registry: &ProgramRegistry<TType, TLibfunc>,
+//!     entry: &'this Block<'ctx>,
+//!     location: Location<'ctx>,
+//!     helper: &LibfuncHelper<'ctx, 'this>,
+//!     metadata: &mut MetadataStorage,
+//!     info: &SignatureAndTypeConcreteLibfunc,
+//! ) -> Result<()>
+//! where
+//!     TType: GenericType,
+//!     TLibfunc: GenericLibfunc,
+//!     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+//!     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+//! {
+//!     let array_val = entry.argument(0)?.into();
+//!     let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+//!
+//!     #[cfg(feature = "with-debug-utils")]
+//!     {
+//!         let array_ptr = entry
+//!             .append_operation(llvm::extract_value(
+//!                 context,
+//!                 array_val,
+//!                 DenseI64ArrayAttribute::new(context, &[0]),
+//!                 elem_ty,
+//!                 location,
+//!             ))
+//!             .result(0)?
+//!             .into();
+//!
+//!         metadata.get_mut::<DebugUtils>()
+//!             .unwrap()
+//!             .print_pointer(context, helper, entry, array_ptr, location)?;
+//!     }
+//!
+//!     let array_len = entry
+//!         .append_operation(llvm::extract_value(
+//!             context,
+//!             array_val,
+//!             DenseI64ArrayAttribute::new(context, &[1]),
+//!             IntegerType::new(context, 32).into(),
+//!             location,
+//!         ))
+//!         .result(0)?
+//!         .into();
+//!
+//!     entry.append_operation(helper.br(0, &[array_len], location));
+//!     Ok(())
+//! }
+//! ```
 
 #![cfg(feature = "with-debug-utils")]
 
