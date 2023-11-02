@@ -70,11 +70,15 @@ impl<'m> NativeModule<'m> {
         self.metadata.get::<T>()
     }
 
-    pub fn get_module(&self) -> &Module {
+    pub fn metadata(&self) -> &MetadataStorage {
+        &self.metadata
+    }
+
+    pub fn module(&self) -> &Module {
         &self.module
     }
 
-    pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+    pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
     }
 }

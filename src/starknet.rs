@@ -284,7 +284,7 @@ pub(crate) mod handler {
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarkNetSyscallHandlerCallbacks<'a, T> {
-        self_ptr: &'a T,
+        self_ptr: &'a mut T,
 
         get_block_hash: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
@@ -388,7 +388,7 @@ pub(crate) mod handler {
     where
         T: StarkNetSyscallHandler + 'a,
     {
-        pub fn new(handler: &'a T) -> Self {
+        pub fn new(handler: &'a mut T) -> Self {
             Self {
                 self_ptr: handler,
                 get_block_hash: Self::wrap_get_block_hash,

@@ -16,8 +16,8 @@ pub struct NativeExecutor<'m> {
 
 impl<'m> NativeExecutor<'m> {
     pub fn new(native_module: NativeModule<'m>) -> Self {
-        let module = native_module.get_module();
-        let engine = create_engine(module);
+        let module = native_module.module();
+        let engine = create_engine(module, native_module.metadata());
         Self {
             engine,
             native_module,
@@ -25,7 +25,7 @@ impl<'m> NativeExecutor<'m> {
     }
 
     pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
-        self.native_module.get_program_registry()
+        self.native_module.program_registry()
     }
 
     pub fn get_module(&self) -> &NativeModule<'m> {

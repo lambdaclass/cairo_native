@@ -1,5 +1,9 @@
 //! # Various utilities
 
+use crate::{
+    metadata::MetadataStorage,
+    types::{felt252::PRIME, TypeBuilder},
+};
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
@@ -181,12 +185,18 @@ pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(module: &Module) -> ExecutionEngine {
+pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
+
+    #[cfg(feature = "with-debug-utils")]
+    _metadata
+        .get::<crate::metadata::debug_utils::DebugUtils>()
+        .unwrap()
+        .register_impls(&engine);
 
     engine
 }
@@ -590,10 +600,6 @@ macro_rules! codegen_ret_extr {
         }
     };
 }
-use crate::{
-    metadata::MetadataStorage,
-    types::{felt252::PRIME, TypeBuilder},
-};
 pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]
@@ -750,6 +756,12 @@ pub mod test {
 
         #[cfg(feature = "with-runtime")]
         register_runtime_symbols(&engine);
+
+        #[cfg(feature = "with-debug-utils")]
+        metadata
+            .get::<crate::metadata::debug_utils::DebugUtils>()
+            .unwrap()
+            .register_impls(&engine);
 
         crate::execute::<CoreType, CoreLibfunc, _, _>(
             &engine,

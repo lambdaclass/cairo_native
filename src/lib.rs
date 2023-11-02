@@ -17,6 +17,7 @@
 //! ```
 //! use cairo_native::context::NativeContext;
 //! use cairo_native::executor::NativeExecutor;
+//! use melior::ir::operation::OperationPrintingFlags;
 //! use serde_json::json;
 //! use std::{io::stdout, path::Path};
 //!
@@ -48,7 +49,7 @@
 //! println!(
 //!     "{}",
 //!     native_program
-//!         .get_module()
+//!         .module()
 //!         .as_operation()
 //!         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))
 //!         .expect("MLIR printing failed")

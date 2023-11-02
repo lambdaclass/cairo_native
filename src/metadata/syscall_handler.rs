@@ -10,7 +10,7 @@ pub struct SyscallHandlerMeta {
 }
 
 impl SyscallHandlerMeta {
-    pub fn new<T>(handler_impl: &T) -> Self
+    pub fn new<T>(handler_impl: &mut T) -> Self
     where
         T: StarkNetSyscallHandler,
     {
