@@ -5,20 +5,20 @@
     params: D,
     returns: S,
     required_initial_gas: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.u128.html">u128</a>&gt;
-) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;S::<a class="associatedtype" href="https://docs.rs/serde/1.0.188/serde/ser/trait.Serializer.html#associatedtype.Ok" title="type serde::ser::Serializer::Ok">Ok</a>, <a class="struct" href="error/jit_engine/struct.Error.html" title="struct cairo_native::error::jit_engine::Error">JitRunnerError</a>&lt;'de, TType, TLibfunc, D, S&gt;&gt;<span class="where fmt-newline">where
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;S::<a class="associatedtype" href="https://docs.rs/serde/1.0.190/serde/ser/trait.Serializer.html#associatedtype.Ok" title="type serde::ser::Serializer::Ok">Ok</a>, <a class="struct" href="error/jit_engine/struct.Error.html" title="struct cairo_native::error::jit_engine::Error">JitRunnerError</a>&lt;'de, TType, TLibfunc, D, S&gt;&gt;<span class="where fmt-newline">where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     &lt;TType as GenericType&gt;::Concrete: <a class="trait" href="types/trait.TypeBuilder.html" title="trait cairo_native::types::TypeBuilder">TypeBuilder</a>&lt;TType, TLibfunc&gt; + <a class="trait" href="values/trait.ValueBuilder.html" title="trait cairo_native::values::ValueBuilder">ValueBuilder</a>&lt;TType, TLibfunc&gt;,
     &lt;TLibfunc as GenericLibfunc&gt;::Concrete: <a class="trait" href="libfuncs/trait.LibfuncBuilder.html" title="trait cairo_native::libfuncs::LibfuncBuilder">LibfuncBuilder</a>&lt;TType, TLibfunc&gt;,
-    D: <a class="trait" href="https://docs.rs/serde/1.0.188/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,
-    S: <a class="trait" href="https://docs.rs/serde/1.0.188/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer">Serializer</a>,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Execute a function on an engine loaded with a Sierra program.</p>
+    D: <a class="trait" href="https://docs.rs/serde/1.0.190/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,
+    S: <a class="trait" href="https://docs.rs/serde/1.0.190/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer">Serializer</a>,</span></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Execute a function on an engine loaded with a Sierra program.</p>
 <p>The JIT execution of a Sierra program requires an [<code>ExecutionEngine</code>] already configured with
 the compiled module. This has been designed this way because it allows reusing the engine, as
 opposed to building a different engine every time a function is called and therefore losing all
 potential optimizations that are already present.</p>
 <p>The registry is needed to convert the params and return values into and from the JIT ABI. Check
 out <a href="values/index.html" title="mod cairo_native::values">the values module</a> for more information about the de/serialization process.</p>
-<p>The function’s arguments and return values are passed using a <a href="https://docs.rs/serde/1.0.188/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer"><code>Deserializer</code></a> and a
-<a href="https://docs.rs/serde/1.0.188/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer"><code>Serializer</code></a> respectively. This method provides an easy way to process the values while also
+<p>The function’s arguments and return values are passed using a <a href="https://docs.rs/serde/1.0.190/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer"><code>Deserializer</code></a> and a
+<a href="https://docs.rs/serde/1.0.190/serde/ser/trait.Serializer.html" title="trait serde::ser::Serializer"><code>Serializer</code></a> respectively. This method provides an easy way to process the values while also
 not requiring recompilation every time the function’s signature changes.</p>
 </div></details></section></div></main></body></html>
