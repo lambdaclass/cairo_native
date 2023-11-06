@@ -4,6 +4,7 @@ use std::{
     ptr::{addr_of, NonNull},
 };
 
+#[derive(Debug, Clone)]
 pub struct SyscallHandlerMeta {
     handler: NonNull<()>,
     layout: Layout,
