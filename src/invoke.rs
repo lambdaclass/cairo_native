@@ -3,6 +3,8 @@
 use cairo_felt::Felt252;
 use serde::{ser::SerializeSeq, Serialize};
 
+use crate::{metadata::syscall_handler::SyscallHandlerMeta, utils::felt252_bigint};
+
 #[derive(Debug, Clone)]
 pub enum InvokeArg {
     Felt252(Felt252),
@@ -18,11 +20,11 @@ pub enum InvokeArg {
     Uint128(u128),
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct InvokeContext {
+#[derive(Debug, Default)]
+pub struct InvokeContext<'s> {
     pub gas: Option<u128>,
     // Starknet syscall handler
-    pub system: Option<u64>,
+    pub system: Option<&'s SyscallHandlerMeta>,
     pub bitwise: bool,
     pub range_check: bool,
     pub pedersen: bool,
@@ -70,7 +72,7 @@ impl From<u128> for InvokeArg {
 
 // Serialization
 
-impl Serialize for InvokeContext {
+impl<'s> Serialize for InvokeContext<'s> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -88,12 +90,12 @@ impl Serialize for InvokeContext {
             params_seq.serialize_element(&())?;
         }
 
-        if let Some(system) = self.system {
-            params_seq.serialize_element(&system)?;
-        }
-
         if let Some(gas) = self.gas {
             params_seq.serialize_element(&gas)?;
+        }
+
+        if let Some(system) = self.system {
+            params_seq.serialize_element(&(system.as_ptr().as_ptr() as usize))?;
         }
 
         for arg in &self.args {
@@ -110,7 +112,14 @@ impl Serialize for InvokeArg {
         S: serde::Serializer,
     {
         match self {
-            InvokeArg::Felt252(value) => serializer.serialize_bytes(value.to_be_bytes().as_slice()),
+            InvokeArg::Felt252(value) => {
+                let value = felt252_bigint(value.to_bigint());
+                let mut seq = serializer.serialize_seq(Some(value.len()))?;
+                for val in &value {
+                    seq.serialize_element(val)?;
+                }
+                seq.end()
+            }
             InvokeArg::Array(value) => {
                 let mut seq = serializer.serialize_seq(Some(value.len()))?;
                 for val in value {
