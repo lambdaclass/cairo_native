@@ -4,7 +4,7 @@ use cairo_felt::Felt252;
 use serde::{ser::SerializeSeq, Serialize};
 
 #[derive(Debug, Clone)]
-pub enum InvokeArgs {
+pub enum InvokeArg {
     Felt252(Felt252),
     Array(Vec<Self>),  // all elements need to be same type
     Struct(Vec<Self>), // element types can differ
@@ -27,8 +27,48 @@ pub struct InvokeContext {
     pub range_check: bool,
     pub pedersen: bool,
     // call args
-    pub args: Vec<InvokeArgs>,
+    pub args: Vec<InvokeArg>,
 }
+
+// Conversions
+
+impl From<Felt252> for InvokeArg {
+    fn from(value: Felt252) -> Self {
+        InvokeArg::Felt252(value)
+    }
+}
+
+impl From<u8> for InvokeArg {
+    fn from(value: u8) -> Self {
+        InvokeArg::Uint8(value)
+    }
+}
+
+impl From<u16> for InvokeArg {
+    fn from(value: u16) -> Self {
+        InvokeArg::Uint16(value)
+    }
+}
+
+impl From<u32> for InvokeArg {
+    fn from(value: u32) -> Self {
+        InvokeArg::Uint32(value)
+    }
+}
+
+impl From<u64> for InvokeArg {
+    fn from(value: u64) -> Self {
+        InvokeArg::Uint64(value)
+    }
+}
+
+impl From<u128> for InvokeArg {
+    fn from(value: u128) -> Self {
+        InvokeArg::Uint128(value)
+    }
+}
+
+// Serialization
 
 impl Serialize for InvokeContext {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -64,45 +104,43 @@ impl Serialize for InvokeContext {
     }
 }
 
-impl Serialize for InvokeArgs {
+impl Serialize for InvokeArg {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         match self {
-            InvokeArgs::Felt252(value) => {
-                serializer.serialize_bytes(value.to_be_bytes().as_slice())
-            }
-            InvokeArgs::Array(value) => {
+            InvokeArg::Felt252(value) => serializer.serialize_bytes(value.to_be_bytes().as_slice()),
+            InvokeArg::Array(value) => {
                 let mut seq = serializer.serialize_seq(Some(value.len()))?;
                 for val in value {
                     seq.serialize_element(val)?;
                 }
                 seq.end()
             }
-            InvokeArgs::Struct(value) => {
+            InvokeArg::Struct(value) => {
                 let mut seq = serializer.serialize_seq(Some(value.len()))?;
                 for val in value {
                     seq.serialize_element(val)?;
                 }
                 seq.end()
             }
-            InvokeArgs::Enum { tag, value } => {
+            InvokeArg::Enum { tag, value } => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element(tag)?;
                 seq.serialize_element(value.as_ref())?;
                 seq.end()
             }
-            InvokeArgs::Box(value) => serializer.serialize_some(value.as_ref()),
-            InvokeArgs::Nullable(value) => match value {
+            InvokeArg::Box(value) => serializer.serialize_some(value.as_ref()),
+            InvokeArg::Nullable(value) => match value {
                 Some(value) => serializer.serialize_some(value.as_ref()),
                 None => serializer.serialize_none(),
             },
-            InvokeArgs::Uint8(value) => serializer.serialize_u8(*value),
-            InvokeArgs::Uint16(value) => serializer.serialize_u16(*value),
-            InvokeArgs::Uint32(value) => serializer.serialize_u32(*value),
-            InvokeArgs::Uint64(value) => serializer.serialize_u64(*value),
-            InvokeArgs::Uint128(value) => serializer.serialize_u128(*value),
+            InvokeArg::Uint8(value) => serializer.serialize_u8(*value),
+            InvokeArg::Uint16(value) => serializer.serialize_u16(*value),
+            InvokeArg::Uint32(value) => serializer.serialize_u32(*value),
+            InvokeArg::Uint64(value) => serializer.serialize_u64(*value),
+            InvokeArg::Uint128(value) => serializer.serialize_u128(*value),
         }
     }
 }
