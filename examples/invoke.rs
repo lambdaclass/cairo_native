@@ -305,12 +305,6 @@ fn main() {
     )
     .unwrap();
 
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     let path = Path::new("programs/examples/hello_starknet.cairo");
 
     let contract = compile_path(
@@ -327,17 +321,6 @@ fn main() {
     let sierra_program = contract.extract_sierra_program().unwrap();
     let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
         ProgramRegistry::new(&sierra_program).unwrap();
-
-    // uncomment to save the contract sierra program
-    // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref()).collect();
-    println!("{names:#?}");
-    */
 
     let native_context = NativeContext::new();
 
