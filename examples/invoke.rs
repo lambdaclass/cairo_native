@@ -350,9 +350,7 @@ fn main() {
         range_check: true,
         gas: Some(u64::MAX.into()),
         system: Some(syscall_addr),
-        args: vec![InvokeArg::Struct(vec![InvokeArg::Array(vec![
-            InvokeArg::Felt252(1.into()),
-        ])])],
+        args: vec![InvokeArg::Span(vec![InvokeArg::Felt252(1.into())])],
         ..Default::default()
     };
 

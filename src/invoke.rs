@@ -10,6 +10,7 @@ pub enum InvokeArg {
     Felt252(Felt252),
     Array(Vec<Self>),  // all elements need to be same type
     Struct(Vec<Self>), // element types can differ
+    Span(Vec<Self>),   // like a array, used specially when passing parameters to contracts
     Enum { tag: u64, value: Box<Self> },
     Box(Box<Self>), // can't be null
     Nullable(Option<Box<Self>>),
@@ -133,6 +134,9 @@ impl Serialize for InvokeArg {
                     seq.serialize_element(val)?;
                 }
                 seq.end()
+            }
+            InvokeArg::Span(value) => {
+                InvokeArg::Struct(vec![InvokeArg::Array(value.clone())]).serialize(serializer)
             }
             InvokeArg::Enum { tag, value } => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
