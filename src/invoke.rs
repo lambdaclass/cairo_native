@@ -11,10 +11,12 @@ use cairo_lang_sierra::{
         types::InfoOnlyConcreteType,
         GenericLibfunc, GenericType,
     },
+    ids::ConcreteTypeId,
     program::Function,
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, BigUint};
+use serde::Deserialize;
 use serde::{
     de::{DeserializeSeed, Visitor},
     ser::SerializeSeq,
@@ -182,221 +184,6 @@ impl Serialize for InvokeArg {
     }
 }
 
-pub struct InvokeOutputDeserializer<'a> {
-    pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-    pub function: &'a Function,
-}
-
-/*
-struct U128Visitor;
-impl<'de> Visitor<'de> for U128Visitor {
-    type Value = u128;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("expecting u128")
-    }
-
-    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(v)
-    }
-}
-
-struct SeqVisitor<'a> {
-    gas: &'a mut Option<u128>,
-    buffer: &'a mut Vec<InvokeArg>,
-    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-    types: &'a mut Iter<'a, &'a CoreTypeConcrete>,
-}
-
-struct EnumDeserializer<'a> {
-    pub buffer: &'a mut Vec<InvokeArg>,
-    pub ty: &'a EnumConcreteType,
-    pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-}
-
-struct EnumVisitor<'a> {
-    pub buffer: &'a mut Vec<InvokeArg>,
-    pub ty: &'a EnumConcreteType,
-    pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-}
-
-impl<'a, 'de> Visitor<'de> for EnumVisitor<'a> {
-    type Value = ();
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("expecting enum")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let tag_value: usize = seq.next_element()? .ok_or_else(|| serde::de::Error::custom("expected bitwise"))?;
-        assert!(tag_value <= self.ty.variants.len());
-
-        let payload_ty = self
-        .registry
-        .get_type(&self.ty.variants[tag_value])
-        .unwrap();
-
-        seq.next_element_seed(seed)
-        todo!()
-    }
-}
-
-impl<'a, 'de> DeserializeSeed<'de> for EnumDeserializer<'a> {
-    type Value = ();
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(EnumVisitor {
-            buffer: self.buffer,
-            ty: self.ty,
-            registry: self.registry
-        })
-    }
-}
-
-impl<'a, 'de> Visitor<'de> for SeqVisitor<'a> {
-    type Value = ();
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("expecting u128")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        for ty in self.types.by_ref() {
-            match ty {
-                CoreTypeConcrete::Array(_) => todo!(),
-                CoreTypeConcrete::Bitwise(_) => {
-                    seq.next_element::<()>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected bitwise"))?;
-                }
-                CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
-                CoreTypeConcrete::EcState(_) => todo!(),
-                CoreTypeConcrete::Felt252(_) => {
-                    let value = seq
-                        .next_element::<[u32; 8]>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected felt252"))?;
-                    let felt = BigUint::new(value.to_vec());
-                    let felt = Felt252::from(felt);
-                    self.buffer.push(InvokeArg::Felt252(felt));
-                }
-                CoreTypeConcrete::GasBuiltin(_) => {
-                    let value: u128 = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected gas"))?;
-                    *self.gas = Some(value);
-                }
-                CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-                CoreTypeConcrete::Uint8(_) => self.buffer.push(InvokeArg::Uint8(
-                    seq.next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected u8"))?,
-                )),
-                CoreTypeConcrete::Uint16(_) => self.buffer.push(InvokeArg::Uint16(
-                    seq.next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected u16"))?,
-                )),
-                CoreTypeConcrete::Uint32(_) => self.buffer.push(InvokeArg::Uint32(
-                    seq.next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected u32"))?,
-                )),
-                CoreTypeConcrete::Uint64(_) => self.buffer.push(InvokeArg::Uint64(
-                    seq.next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected u64"))?,
-                )),
-                CoreTypeConcrete::Uint128(_) => self.buffer.push(InvokeArg::Uint128(
-                    seq.next_element()?
-                        .ok_or_else(|| serde::de::Error::custom("expected u128"))?,
-                )),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => {
-                    seq.next_element::<()>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected mul guarantee"))?;
-                }
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
-                CoreTypeConcrete::Sint32(_) => todo!(),
-                CoreTypeConcrete::Sint64(_) => todo!(),
-                CoreTypeConcrete::Sint128(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
-                CoreTypeConcrete::Nullable(_) => todo!(),
-                CoreTypeConcrete::RangeCheck(_) => {
-                    seq.next_element::<()>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected range check"))?;
-                }
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
-                CoreTypeConcrete::Enum(ty) => {
-                    seq.next_element_seed(EnumDeserializer {
-                        registry: self.registry,
-                        buffer: self.buffer,
-                        ty
-                    });
-                    todo!()
-                },
-                CoreTypeConcrete::Struct(_) => todo!(),
-                CoreTypeConcrete::Felt252Dict(_) => todo!(),
-                CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-                CoreTypeConcrete::Pedersen(_) => todo!(),
-                CoreTypeConcrete::Poseidon(_) => todo!(),
-                CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::StarkNet(_) => {
-                    seq.next_element::<usize>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected starknet system"))?;
-                }
-                CoreTypeConcrete::SegmentArena(_) => {
-                    seq.next_element::<()>()?
-                        .ok_or_else(|| serde::de::Error::custom("expected segment arena"))?;
-                }
-                CoreTypeConcrete::Snapshot(_) => todo!(),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<'de, 'a> DeserializeSeed<'de> for InvokeOutputDeserializer<'a> {
-    type Value = InvokeResult;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let mut gas = None;
-        let mut outputs = Vec::new();
-        let types: Vec<&CoreTypeConcrete> = self
-            .function
-            .signature
-            .ret_types
-            .iter()
-            .map(|x| self.registry.get_type(x).unwrap())
-            .collect();
-        let mut types_it = types.iter();
-
-        deserializer.deserialize_seq(SeqVisitor {
-            gas: &mut gas,
-            buffer: &mut outputs,
-            types: &mut types_it,
-            registry: self.registry
-        })?;
-
-        Ok(InvokeResult { gas, outputs })
-    }
-}
-
-*/
-
 /// Deserialize a value from [serde] into InvokeArg.
 pub trait InvokeValueDeserializer<'a, TType, TLibfunc>
 where
@@ -405,7 +192,6 @@ where
     TLibfunc: GenericLibfunc,
 {
     fn new(
-        arena: &'a Bump,
         registry: &'a ProgramRegistry<TType, TLibfunc>,
         info: &'a <TType as GenericType>::Concrete,
     ) -> Self;
@@ -447,7 +233,6 @@ where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
 {
-    arena: &'a Bump,
     registry: &'a ProgramRegistry<TType, TLibfunc>,
     info: &'a <TType as GenericType>::Concrete,
 }
@@ -456,15 +241,10 @@ impl<'a> InvokeValueDeserializer<'a, CoreType, CoreLibfunc>
     for InvokeCoreTypeDeserializer<'a, CoreType, CoreLibfunc>
 {
     fn new(
-        arena: &'a Bump,
         registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
         info: &'a CoreTypeConcrete,
     ) -> Self {
-        Self {
-            arena,
-            registry,
-            info,
-        }
+        Self { registry, info }
     }
 }
 
@@ -473,46 +253,6 @@ impl InvokeValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
     type Serializer<'a> = InvokeCoreTypeSerializer<'a, CoreType, CoreLibfunc>;
 
     type Error = std::convert::Infallible;
-}
-
-struct InvokeArgVisitor;
-
-impl<'de> Visitor<'de> for InvokeArgVisitor {
-    type Value = InvokeArg;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("todo")
-    }
-
-    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(InvokeArg::Uint8(v))
-    }
-}
-
-struct InvokeArgFelt252Visitor;
-
-impl<'de> Visitor<'de> for InvokeArgFelt252Visitor {
-    type Value = InvokeArg;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("todo")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut buff = [0u32; 8];
-
-        for x in &mut buff {
-            *x = seq.next_element()?.unwrap();
-        }
-
-        Ok(InvokeArg::Felt252(todo!()))
-    }
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for InvokeCoreTypeDeserializer<'a, CoreType, CoreLibfunc> {
@@ -529,14 +269,20 @@ impl<'a, 'de> DeserializeSeed<'de> for InvokeCoreTypeDeserializer<'a, CoreType, 
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => todo!(),
             CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => deserializer.deserialize_seq(InvokeArgFelt252Visitor),
+            CoreTypeConcrete::Felt252(_) => {
+                let felt = <[u32; 8]>::deserialize(deserializer)?;
+                let felt = Felt252::from(BigUint::new(felt.to_vec()));
+                Ok(InvokeArg::Felt252(felt))
+            }
             CoreTypeConcrete::GasBuiltin(_) => todo!(),
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => deserializer.deserialize_u8(InvokeArgVisitor),
-            CoreTypeConcrete::Uint16(_) => deserializer.deserialize_u16(InvokeArgVisitor),
-            CoreTypeConcrete::Uint32(_) => deserializer.deserialize_u32(InvokeArgVisitor),
-            CoreTypeConcrete::Uint64(_) => deserializer.deserialize_u64(InvokeArgVisitor),
-            CoreTypeConcrete::Uint128(_) => deserializer.deserialize_u128(InvokeArgVisitor),
+            CoreTypeConcrete::Uint8(_) => Ok(InvokeArg::Uint8(u8::deserialize(deserializer)?)),
+            CoreTypeConcrete::Uint16(_) => Ok(InvokeArg::Uint16(u16::deserialize(deserializer)?)),
+            CoreTypeConcrete::Uint32(_) => Ok(InvokeArg::Uint32(u32::deserialize(deserializer)?)),
+            CoreTypeConcrete::Uint64(_) => Ok(InvokeArg::Uint64(u64::deserialize(deserializer)?)),
+            CoreTypeConcrete::Uint128(_) => {
+                Ok(InvokeArg::Uint128(u128::deserialize(deserializer)?))
+            }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
             CoreTypeConcrete::Sint8(_) => todo!(),
             CoreTypeConcrete::Sint16(_) => todo!(),
@@ -633,5 +379,52 @@ impl<'a> Serialize for InvokeCoreTypeSerializer<'a, CoreType, CoreLibfunc> {
             CoreTypeConcrete::Snapshot(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
+    }
+}
+
+pub struct InvokeArgVisitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+{
+    pub registry: &'a ProgramRegistry<TType, TLibfunc>,
+    pub types: Vec<ConcreteTypeId>,
+}
+
+impl<'a, 'de, TType, TLibfunc> Visitor<'de> for InvokeArgVisitor<'a, TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: InvokeValueBuilder<TType, TLibfunc>,
+{
+    type Value = Vec<InvokeArg>;
+
+    fn expecting(&self, _formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        todo!()
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut values = Vec::new();
+
+        for type_id in &self.types {
+            let ty = self.registry.get_type(type_id).unwrap();
+
+            type ParamDeserializer<'a, TType, TLibfunc> =
+                <<TType as GenericType>::Concrete as InvokeValueBuilder<TType, TLibfunc>>::Deserializer<
+                    'a,
+                >;
+            let deserializer = ParamDeserializer::<TType, TLibfunc>::new(self.registry, ty);
+
+            let value = seq
+                .next_element_seed::<ParamDeserializer<TType, TLibfunc>>(deserializer)?
+                .unwrap();
+
+            values.push(value);
+        }
+
+        Ok(values)
     }
 }
