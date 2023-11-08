@@ -2,10 +2,8 @@ use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcret
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::invoke::{InvokeArg, InvokeArgVisitor, InvokeContext};
+use cairo_native::invoke::{InvokeArg, InvokeContext};
 use cairo_native::utils::find_entry_point;
-use serde::{Deserializer, Serializer};
-use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -37,38 +35,24 @@ fn main() {
     let fn_id = &entry_point_fn.id;
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
+    /*
     let invoke_context = InvokeContext {
         gas: None,
         system: None,
         args: vec![InvokeArg::Felt252(1.into())],
         ..Default::default()
     };
+    */
 
-    let params = json!(invoke_context);
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
-
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
-        .expect("failed to execute the given contract");
-
-    let mut deserializer = serde_json::Deserializer::from_slice(&writer);
-
-    let res = deserializer
-        .deserialize_seq(InvokeArgVisitor {
-            registry: &registry,
-            types: entry_point_fn.signature.ret_types.clone(),
-        })
-        .unwrap();
-
-    /*
-    let res = output_deserializer
-        .deserialize(&mut serde_json::Deserializer::from_slice(&writer))
-        .unwrap();
-    */
-    dbg!(&res);
+    let output: Vec<InvokeArg> = native_executor.execute_args(
+        fn_id,
+        &[InvokeArg::Felt252(1.into())],
+        required_init_gas,
+        None,
+    );
+    dbg!(&output);
 
     /*
         let result = NativeExecutionResult::deserialize_from_ret_types(
@@ -80,5 +64,5 @@ fn main() {
 
     println!();
     println!("Cairo program was compiled and executed successfully.");
-    println!("{res:#?}");
+    println!("{output:#?}");
 }

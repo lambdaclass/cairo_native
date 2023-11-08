@@ -8,6 +8,7 @@ use crate::{
         },
         JitRunnerError,
     },
+    invoke::InvokeArg,
     libfuncs::LibfuncBuilder,
     types::TypeBuilder,
     utils::generate_function_name,
@@ -15,7 +16,10 @@ use crate::{
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        GenericLibfunc, GenericType,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program_registry::ProgramRegistry,
 };
@@ -158,6 +162,255 @@ where
     }
 
     return_seq.end().map_err(make_serializer_error)
+}
+
+/// Execute a function on an engine loaded with a Sierra program.
+///
+/// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
+/// the compiled module. This has been designed this way because it allows reusing the engine, as
+/// opposed to building a different engine every time a function is called and therefore losing all
+/// potential optimizations that are already present.
+///
+/// The registry is needed to convert the params and return values into and from the JIT ABI. Check
+/// out [the values module](crate::values) for more information about the de/serialization process.
+///
+/// The function's arguments and return values are passed using a [`Deserializer`] and a
+/// [`Serializer`] respectively. This method provides an easy way to process the values while also
+/// not requiring recompilation every time the function's signature changes.
+pub fn execute_args(
+    engine: &ExecutionEngine,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    function_id: &FunctionId,
+    params: &[InvokeArg],
+    required_initial_gas: Option<u128>,
+    gas: Option<u128>,
+) -> Vec<InvokeArg>
+// TODO: error handling
+{
+    let arena = Bump::new();
+
+    let entry_point = registry.get_function(function_id).unwrap();
+    debug!(
+        "executing entry_point with the following required parameters: {:?}",
+        entry_point.signature.param_types
+    );
+
+    let mut params_ptrs: Vec<NonNull<()>> = Vec::new();
+
+    let mut params_it = params.iter();
+
+    for param_type_id in &entry_point.signature.param_types {
+        let ty = registry.get_type(param_type_id).unwrap();
+
+        match ty {
+            CoreTypeConcrete::Array(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::SegmentArena(_)
+            | CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::BuiltinCosts(_) => {
+                params_ptrs.push(arena.alloc_layout(Layout::new::<()>()).cast())
+            }
+            CoreTypeConcrete::Box(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => {
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::GasBuiltin(_) => {
+                let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
+                let gas_builtin = ptr.cast::<u128>().as_ptr();
+                let gas = gas.unwrap_or(0);
+
+                // If program has a required initial gas, check if a gas builtin exists and check if the passed
+                // gas was enough, if so, deduct the required gas before execution.
+                if let Some(required_initial_gas) = required_initial_gas {
+                    if gas < required_initial_gas {
+                        panic!("gas");
+                        /* todo: handle
+                        return Err(make_insufficient_gas_error(
+                            required_initial_gas,
+                            gas_builtin,
+                        ));
+                        */
+                    }
+
+                    let starting_gas = gas - required_initial_gas;
+
+                    unsafe { gas_builtin.write(starting_gas) };
+                }
+
+                params_ptrs.push(ptr);
+            }
+            CoreTypeConcrete::Uint8(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Uint16(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Uint32(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Uint64(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Uint128(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Struct(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Span(_) => {
+                // TODO: check the invokearg matches?
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .unwrap()
+                        .to_jit(&arena, registry, param_type_id),
+                );
+            }
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+        }
+    }
+
+    let mut complex_results = entry_point.signature.ret_types.len() > 1;
+    let (layout, offsets) = entry_point.signature.ret_types.iter().fold(
+        (Option::<Layout>::None, Vec::new()),
+        |(acc, mut offsets), id| {
+            let ty = registry.get_type(id).unwrap();
+            let ty_layout = ty
+                .layout(registry) /*.map_err(make_type_builder_error(id)) */
+                .unwrap();
+
+            let (layout, offset) = match acc {
+                Some(layout) => layout.extend(ty_layout).unwrap(),
+                None => (ty_layout, 0),
+            };
+
+            offsets.push(offset);
+            complex_results |= ty.is_complex();
+
+            // Result::<_, JitRunnerError<'de, TType, TLibfunc, D, S>>::Ok((Some(layout), offsets))
+            (Some(layout), offsets)
+        },
+    );
+
+    let layout = layout.unwrap_or(Layout::new::<()>());
+    let ret_ptr = arena.alloc_layout(layout).cast::<()>();
+
+    let function_name = generate_function_name(function_id);
+    let mut io_pointers = if complex_results {
+        let ret_ptr_ptr = arena.alloc(ret_ptr) as *mut NonNull<()>;
+        once(ret_ptr_ptr as *mut ())
+            .chain(params_ptrs.into_iter().map(NonNull::as_ptr))
+            .collect::<Vec<_>>()
+    } else {
+        params_ptrs
+            .into_iter()
+            .map(NonNull::as_ptr)
+            .chain(once(ret_ptr.as_ptr()))
+            .collect::<Vec<_>>()
+    };
+
+    unsafe {
+        engine
+            .invoke_packed(&function_name, &mut io_pointers)
+            .unwrap();
+    }
+
+    let mut returns = Vec::new();
+
+    for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
+        let ty = registry.get_type(type_id).unwrap();
+
+        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
+        let value = InvokeArg::from_jit(ptr, type_id, registry);
+        returns.push(value);
+    }
+
+    returns
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>

@@ -58,3 +58,33 @@ where
 {
     fmt::Debug::fmt(ptr.cast::<u8>().as_ref(), f)
 }
+
+pub unsafe fn from_rust_to_jit<TType, TLibfunc>(
+    arena: &Bump,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _info: &InfoOnlyConcreteType,
+    value: u8,
+) -> NonNull<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
+{
+    let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
+    *ptr.cast::<u8>().as_mut() = value;
+
+    ptr
+}
+
+pub unsafe fn from_jit_to_rust<TType, TLibfunc>(
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    ptr: NonNull<()>,
+    _info: &InfoOnlyConcreteType,
+) -> u8
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
+{
+    *ptr.cast::<u8>().as_ref()
+}
