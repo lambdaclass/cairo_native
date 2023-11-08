@@ -54,12 +54,6 @@ fn main() {
         .execute(fn_id, params, returns, required_init_gas)
         .expect("failed to execute the given contract");
 
-    /*
-    let output_deserializer = InvokeOutputDeserializer {
-        registry: &registry,
-        function: entry_point_fn,
-    };*/
-
     let mut deserializer = serde_json::Deserializer::from_slice(&writer);
 
     let res = deserializer
