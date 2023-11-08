@@ -6,12 +6,13 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::invoke::{InvokeArg, InvokeContext};
+use cairo_native::invoke::{InvokeArg, InvokeContext, InvokeOutputDeserializer};
 use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
 };
+use serde::de::DeserializeSeed;
 use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -364,13 +365,25 @@ fn main() {
         .execute(fn_id, params, returns, required_init_gas)
         .expect("failed to execute the given contract");
 
-    let result = NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result");
+    let output_deserializer = InvokeOutputDeserializer {
+        registry: &program_registry,
+        function: entry_point_fn,
+    };
+
+    let res = output_deserializer
+        .deserialize(&mut serde_json::Deserializer::from_slice(&writer))
+        .unwrap();
+    dbg!(&res);
+
+    /*
+        let result = NativeExecutionResult::deserialize_from_ret_types(
+            &mut serde_json::Deserializer::from_slice(&writer),
+            &ret_types,
+        )
+        .expect("failed to serialize starknet execution result");
+    */
 
     println!();
     println!("Cairo program was compiled and executed successfully.");
-    println!("{result:#?}");
+    println!("{res:#?}");
 }
