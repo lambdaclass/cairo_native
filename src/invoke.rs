@@ -246,7 +246,7 @@ impl InvokeArg {
                         ));
                     }
 
-                    todo!()
+                    InvokeArg::Struct(members)
                 }
                 CoreTypeConcrete::Felt252Dict(_) => todo!(),
                 CoreTypeConcrete::Felt252DictEntry(_) => todo!(),

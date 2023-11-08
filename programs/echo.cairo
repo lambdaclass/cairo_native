@@ -1,3 +1,9 @@
-fn main(x: felt252) -> felt252 {
-    x
+struct A {
+    a: felt252
+}
+
+fn main(x: felt252) -> A {
+    A {
+        a: x
+    }
 }
