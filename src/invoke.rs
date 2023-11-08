@@ -221,7 +221,7 @@ where
     /// Value deserializer from [serde] into the JIT ABI.
     type Deserializer<'a>: InvokeValueDeserializer<'a, TType, TLibfunc>;
     /// Value serializer from the JIT ABI into [serde].
-    type Serializer<'a>: InvokeValueSerializer<'a, TType, TLibfunc>;
+    // type Serializer<'a>: InvokeValueSerializer<'a, TType, TLibfunc>;
 
     /// Error type returned from the de/serializers.
     type Error: std::error::Error;
@@ -250,7 +250,7 @@ impl<'a> InvokeValueDeserializer<'a, CoreType, CoreLibfunc>
 
 impl InvokeValueBuilder<CoreType, CoreLibfunc> for CoreTypeConcrete {
     type Deserializer<'a> = InvokeCoreTypeDeserializer<'a, CoreType, CoreLibfunc>;
-    type Serializer<'a> = InvokeCoreTypeSerializer<'a, CoreType, CoreLibfunc>;
+    // type Serializer<'a> = InvokeCoreTypeSerializer<'a, CoreType, CoreLibfunc>;
 
     type Error = std::convert::Infallible;
 }
@@ -309,6 +309,7 @@ impl<'a, 'de> DeserializeSeed<'de> for InvokeCoreTypeDeserializer<'a, CoreType, 
     }
 }
 
+/*
 /// Serializer for Cairo's [`CoreType`].
 pub struct InvokeCoreTypeSerializer<'a, TType, TLibfunc>
 where
@@ -381,6 +382,7 @@ impl<'a> Serialize for InvokeCoreTypeSerializer<'a, CoreType, CoreLibfunc> {
         }
     }
 }
+*/
 
 pub struct InvokeArgVisitor<'a, TType, TLibfunc>
 where
