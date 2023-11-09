@@ -1,10 +1,6 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
-use std::{
-    alloc::Layout,
-    collections::{BTreeMap, HashMap},
-    ptr::NonNull,
-};
+use std::{alloc::Layout, collections::HashMap, ptr::NonNull};
 
 use bumpalo::Bump;
 use cairo_felt::Felt252;
@@ -20,8 +16,13 @@ use crate::{
     utils::{felt252_bigint, get_integer_layout, next_multiple_of_usize, u32_vec_to_felt},
 };
 
+/// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
+///
+/// They map to the cairo/sierra types.
+///
+/// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
 #[derive(Debug, Clone)]
-pub enum InvokeArg {
+pub enum JITValue {
     Felt252(Felt252),
     Array(Vec<Self>), // all elements need to be same type
     Struct {
@@ -51,58 +52,56 @@ pub struct InvokeContext<'s> {
     pub gas: Option<u128>,
     // Starknet syscall handler
     pub system: Option<&'s SyscallHandlerMeta>,
-    pub bitwise: bool,
-    pub range_check: bool,
-    pub pedersen: bool,
     // call args
-    pub args: Vec<InvokeArg>,
+    pub args: Vec<JITValue>,
 }
 
 #[derive(Debug, Default)]
 pub struct InvokeResult {
     pub gas: Option<u128>,
-    pub outputs: Vec<InvokeArg>,
+    pub outputs: Vec<JITValue>,
 }
 
 // Conversions
 
-impl From<Felt252> for InvokeArg {
+impl From<Felt252> for JITValue {
     fn from(value: Felt252) -> Self {
-        InvokeArg::Felt252(value)
+        JITValue::Felt252(value)
     }
 }
 
-impl From<u8> for InvokeArg {
+impl From<u8> for JITValue {
     fn from(value: u8) -> Self {
-        InvokeArg::Uint8(value)
+        JITValue::Uint8(value)
     }
 }
 
-impl From<u16> for InvokeArg {
+impl From<u16> for JITValue {
     fn from(value: u16) -> Self {
-        InvokeArg::Uint16(value)
+        JITValue::Uint16(value)
     }
 }
 
-impl From<u32> for InvokeArg {
+impl From<u32> for JITValue {
     fn from(value: u32) -> Self {
-        InvokeArg::Uint32(value)
+        JITValue::Uint32(value)
     }
 }
 
-impl From<u64> for InvokeArg {
+impl From<u64> for JITValue {
     fn from(value: u64) -> Self {
-        InvokeArg::Uint64(value)
+        JITValue::Uint64(value)
     }
 }
 
-impl From<u128> for InvokeArg {
+impl From<u128> for JITValue {
     fn from(value: u128) -> Self {
-        InvokeArg::Uint128(value)
+        JITValue::Uint128(value)
     }
 }
 
-impl InvokeArg {
+impl JITValue {
+    /// Allocates the value in the given arena so it can be passed to the JIT engine.
     pub(crate) fn to_jit(
         &self,
         arena: &Bump,
@@ -113,14 +112,14 @@ impl InvokeArg {
 
         unsafe {
             match self {
-                InvokeArg::Felt252(value) => {
+                JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
                     let data = felt252_bigint(value.to_bigint());
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-                InvokeArg::Array(data) => {
+                JITValue::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = ty {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -181,7 +180,7 @@ impl InvokeArg {
                         panic!("wrong type")
                     }
                 }
-                InvokeArg::Struct {
+                JITValue::Struct {
                     fields: members, ..
                 } => {
                     if let CoreTypeConcrete::Struct(info) = ty {
@@ -225,7 +224,7 @@ impl InvokeArg {
                         panic!("wrong type")
                     }
                 }
-                InvokeArg::Enum { tag, value, .. } => {
+                JITValue::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = ty {
                         let tag_value = *tag;
                         assert!(tag_value <= info.variants.len());
@@ -264,7 +263,7 @@ impl InvokeArg {
                         panic!("wrong type")
                     }
                 }
-                InvokeArg::Felt252Dict { value: map, .. } => {
+                JITValue::Felt252Dict { value: map, .. } => {
                     if let CoreTypeConcrete::Felt252Dict(info) = ty {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -311,33 +310,33 @@ impl InvokeArg {
                         panic!("wrong type")
                     }
                 }
-                InvokeArg::Box(_) => todo!(),
-                InvokeArg::Nullable(_) => todo!(),
-                InvokeArg::Uint8(value) => {
+                JITValue::Box(_) => todo!(),
+                JITValue::Nullable(_) => todo!(),
+                JITValue::Uint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
                     *ptr.cast::<u8>().as_mut() = *value;
 
                     ptr
                 }
-                InvokeArg::Uint16(value) => {
+                JITValue::Uint16(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u16>()).cast();
                     *ptr.cast::<u16>().as_mut() = *value;
 
                     ptr
                 }
-                InvokeArg::Uint32(value) => {
+                JITValue::Uint32(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u32>()).cast();
                     *ptr.cast::<u32>().as_mut() = *value;
 
                     ptr
                 }
-                InvokeArg::Uint64(value) => {
+                JITValue::Uint64(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
                     *ptr.cast::<u64>().as_mut() = *value;
 
                     ptr
                 }
-                InvokeArg::Uint128(value) => {
+                JITValue::Uint128(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
                     *ptr.cast::<u128>().as_mut() = *value;
 
@@ -347,11 +346,12 @@ impl InvokeArg {
         }
     }
 
+    /// From the given pointer acquired from the JIT outputs, convert it to a [`Self`]
     pub(crate) fn from_jit(
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> InvokeArg {
+    ) -> JITValue {
         let ty = registry.get_type(type_id).unwrap();
 
         unsafe {
@@ -394,14 +394,13 @@ impl InvokeArg {
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u32; 8]>().as_ref();
                     let data = u32_vec_to_felt(data);
-                    InvokeArg::Felt252(data)
+                    JITValue::Felt252(data)
                 }
-                CoreTypeConcrete::GasBuiltin(_) => unimplemented!(),
-                CoreTypeConcrete::Uint8(_) => InvokeArg::Uint8(*ptr.cast::<u8>().as_ref()),
-                CoreTypeConcrete::Uint16(_) => InvokeArg::Uint16(*ptr.cast::<u16>().as_ref()),
-                CoreTypeConcrete::Uint32(_) => InvokeArg::Uint32(*ptr.cast::<u32>().as_ref()),
-                CoreTypeConcrete::Uint64(_) => InvokeArg::Uint64(*ptr.cast::<u64>().as_ref()),
-                CoreTypeConcrete::Uint128(_) => InvokeArg::Uint128(*ptr.cast::<u128>().as_ref()),
+                CoreTypeConcrete::Uint8(_) => JITValue::Uint8(*ptr.cast::<u8>().as_ref()),
+                CoreTypeConcrete::Uint16(_) => JITValue::Uint16(*ptr.cast::<u16>().as_ref()),
+                CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
+                CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
+                CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
                 CoreTypeConcrete::Sint8(_) => todo!(),
                 CoreTypeConcrete::Sint16(_) => todo!(),
@@ -410,7 +409,6 @@ impl InvokeArg {
                 CoreTypeConcrete::Sint128(_) => todo!(),
                 CoreTypeConcrete::NonZero(_) => todo!(),
                 CoreTypeConcrete::Nullable(_) => todo!(),
-                CoreTypeConcrete::RangeCheck(_) => todo!(),
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
@@ -466,14 +464,14 @@ impl InvokeArg {
                         };
                         layout = Some(new_layout);
 
-                        members.push(InvokeArg::from_jit(
+                        members.push(JITValue::from_jit(
                             NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
                             member_ty,
                             registry,
                         ));
                     }
 
-                    InvokeArg::Struct {
+                    JITValue::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -493,7 +491,7 @@ impl InvokeArg {
 
                     Box::leak(map); // we must leak to avoid a double free
 
-                    InvokeArg::Felt252Dict {
+                    JITValue::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -505,9 +503,11 @@ impl InvokeArg {
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Bitwise(_)
                 | CoreTypeConcrete::BuiltinCosts(_)
+                | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::StarkNet(_)
                 | CoreTypeConcrete::SegmentArena(_) => unimplemented!("handled before"),
                 CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::StarkNet(_) => todo!(),
                 CoreTypeConcrete::Snapshot(_) => todo!(),
                 CoreTypeConcrete::Bytes31(_) => todo!(),
             }

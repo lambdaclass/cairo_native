@@ -1,7 +1,7 @@
 use crate::{
     error::jit_engine::RunnerError,
     execute,
-    invoke::InvokeArg,
+    invoke::JITValue,
     jit_runner::{execute_args, ExecuteResult},
     module::NativeModule,
     utils::create_engine,
@@ -69,7 +69,7 @@ impl<'m> NativeExecutor<'m> {
     pub fn execute_args(
         &self,
         fn_id: &FunctionId,
-        params: &[InvokeArg],
+        params: &[JITValue],
         required_initial_gas: Option<u128>,
         gas: Option<u128>,
     ) -> ExecuteResult {

@@ -2,7 +2,7 @@ use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcret
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::invoke::{InvokeArg, InvokeContext};
+use cairo_native::invoke::{InvokeContext, JITValue};
 use cairo_native::utils::find_entry_point;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -48,7 +48,7 @@ fn main() {
 
     let output = native_executor.execute_args(
         fn_id,
-        &[InvokeArg::Felt252(1.into())],
+        &[JITValue::Felt252(1.into())],
         required_init_gas,
         None,
     );

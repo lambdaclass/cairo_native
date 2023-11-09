@@ -8,7 +8,7 @@ use crate::{
         },
         JitRunnerError,
     },
-    invoke::InvokeArg,
+    invoke::JITValue,
     libfuncs::LibfuncBuilder,
     types::TypeBuilder,
     utils::generate_function_name,
@@ -167,7 +167,7 @@ where
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {
     pub remaining_gas: Option<u128>,
-    pub return_values: Vec<InvokeArg>,
+    pub return_values: Vec<JITValue>,
 }
 
 /// Execute a function on an engine loaded with a Sierra program.
@@ -187,7 +187,7 @@ pub fn execute_args(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    params: &[InvokeArg],
+    params: &[JITValue],
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
 ) -> ExecuteResult
@@ -428,7 +428,7 @@ pub fn execute_args(
                 // ignore returned builtins
             }
             _ => {
-                let value = InvokeArg::from_jit(ptr, type_id, registry);
+                let value = JITValue::from_jit(ptr, type_id, registry);
                 returns.push(value);
             }
         };
