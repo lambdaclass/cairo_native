@@ -1,6 +1,10 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
-use std::{alloc::Layout, ptr::NonNull};
+use std::{
+    alloc::Layout,
+    collections::{BTreeMap, HashMap},
+    ptr::NonNull,
+};
 
 use bumpalo::Bump;
 use cairo_felt::Felt252;
@@ -28,7 +32,10 @@ pub enum InvokeArg {
         tag: usize,
         value: Box<Self>,
         debug_name: Option<String>,
-        variant_debug_name: Option<String>,
+    },
+    Felt252Dict {
+        value: HashMap<Felt252, Self>,
+        debug_name: Option<String>,
     },
     Box(Box<Self>), // can't be null
     Nullable(Option<Box<Self>>),
@@ -113,7 +120,67 @@ impl InvokeArg {
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-                InvokeArg::Array(_) => todo!(),
+                InvokeArg::Array(data) => {
+                    if let CoreTypeConcrete::Array(info) = ty {
+                        let elem_ty = registry.get_type(&info.ty).unwrap();
+                        let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
+
+                        let mut ptr: *mut NonNull<()> =
+                            libc::malloc(elem_layout.size() * data.len()).cast();
+                        let mut len: u32 = 0;
+                        let cap: u32 = data.len().try_into().unwrap();
+
+                        for elem in data {
+                            let elem = elem.to_jit(arena, registry, &info.ty);
+
+                            std::ptr::copy_nonoverlapping(
+                                elem.cast::<u8>().as_ptr(),
+                                NonNull::new(
+                                    ((NonNull::new_unchecked(ptr).as_ptr() as usize)
+                                        + len as usize * elem_layout.size())
+                                        as *mut u8,
+                                )
+                                .unwrap()
+                                .cast()
+                                .as_ptr(),
+                                elem_layout.size(),
+                            );
+
+                            len += 1;
+                        }
+
+                        let target = arena.alloc_layout(
+                            Layout::new::<*mut NonNull<()>>()
+                                .extend(Layout::new::<u32>())
+                                .unwrap()
+                                .0
+                                .extend(Layout::new::<u32>())
+                                .unwrap()
+                                .0,
+                        );
+
+                        *target.cast::<*mut NonNull<()>>().as_mut() = ptr;
+
+                        let (layout, offset) = Layout::new::<*mut NonNull<()>>()
+                            .extend(Layout::new::<u32>())
+                            .unwrap();
+
+                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                            .unwrap()
+                            .cast()
+                            .as_mut() = len;
+
+                        let (_, offset) = layout.extend(Layout::new::<u32>()).unwrap();
+
+                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                            .unwrap()
+                            .cast()
+                            .as_mut() = cap;
+                        target.cast()
+                    } else {
+                        panic!("wrong type")
+                    }
+                }
                 InvokeArg::Struct {
                     fields: members, ..
                 } => {
@@ -197,6 +264,53 @@ impl InvokeArg {
                         panic!("wrong type")
                     }
                 }
+                InvokeArg::Felt252Dict { value: map, .. } => {
+                    if let CoreTypeConcrete::Felt252Dict(info) = ty {
+                        let elem_ty = registry.get_type(&info.ty).unwrap();
+                        let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
+
+                        let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
+
+                        // next key must be called before next_value
+
+                        for (key, value) in map.iter() {
+                            let key = key.to_le_bytes();
+                            let value = value.to_jit(arena, registry, &info.ty);
+
+                            let value_malloc_ptr =
+                                NonNull::new(libc::malloc(elem_layout.size())).unwrap();
+
+                            std::ptr::copy_nonoverlapping(
+                                value.cast::<u8>().as_ptr(),
+                                value_malloc_ptr.cast().as_ptr(),
+                                elem_layout.size(),
+                            );
+
+                            value_map.insert(key, value_malloc_ptr);
+                        }
+
+                        let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> =
+                            arena
+                                .alloc_layout(Layout::new::<
+                                    NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>,
+                                >())
+                                .cast();
+
+                        let map_ptr: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = arena
+                            .alloc_layout(
+                                Layout::new::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
+                                    .pad_to_align(),
+                            )
+                            .cast();
+
+                        std::ptr::write(map_ptr.as_ptr(), value_map);
+                        std::ptr::write(target.as_ptr(), map_ptr);
+
+                        target.cast()
+                    } else {
+                        panic!("wrong type")
+                    }
+                }
                 InvokeArg::Box(_) => todo!(),
                 InvokeArg::Nullable(_) => todo!(),
                 InvokeArg::Uint8(value) => {
@@ -242,8 +356,37 @@ impl InvokeArg {
 
         unsafe {
             match ty {
-                CoreTypeConcrete::Array(_) => todo!(),
-                CoreTypeConcrete::Bitwise(_) => todo!(),
+                CoreTypeConcrete::Array(info) => {
+                    let elem_ty = registry.get_type(&info.ty).unwrap();
+
+                    let elem_layout = elem_ty.layout(registry).unwrap();
+                    let elem_stride = elem_layout.pad_to_align().size();
+
+                    let ptr_layout = Layout::new::<*mut ()>();
+                    let len_layout = crate::utils::get_integer_layout(32);
+
+                    let len_value = *NonNull::new(
+                        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
+                            as *mut (),
+                    )
+                    .unwrap()
+                    .cast::<u32>()
+                    .as_ref();
+
+                    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
+                    let mut array_value = Vec::new();
+
+                    for i in 0..(len_value as usize) {
+                        let cur_elem_ptr = NonNull::new(
+                            ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
+                        )
+                        .unwrap();
+
+                        array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
+                    }
+
+                    Self::Array(array_value)
+                }
                 CoreTypeConcrete::Box(_) => todo!(),
                 CoreTypeConcrete::EcOp(_) => todo!(),
                 CoreTypeConcrete::EcPoint(_) => todo!(),
@@ -254,7 +397,6 @@ impl InvokeArg {
                     InvokeArg::Felt252(data)
                 }
                 CoreTypeConcrete::GasBuiltin(_) => unimplemented!(),
-                CoreTypeConcrete::BuiltinCosts(_) => todo!(),
                 CoreTypeConcrete::Uint8(_) => InvokeArg::Uint8(*ptr.cast::<u8>().as_ref()),
                 CoreTypeConcrete::Uint16(_) => InvokeArg::Uint16(*ptr.cast::<u16>().as_ref()),
                 CoreTypeConcrete::Uint32(_) => InvokeArg::Uint32(*ptr.cast::<u32>().as_ref()),
@@ -308,10 +450,6 @@ impl InvokeArg {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
-                        variant_debug_name: info.variants[tag_value]
-                            .debug_name
-                            .as_ref()
-                            .map(|x| x.to_string()),
                     }
                 }
                 CoreTypeConcrete::Struct(info) => {
@@ -340,14 +478,36 @@ impl InvokeArg {
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
-                CoreTypeConcrete::Felt252Dict(_) => todo!(),
-                CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-                CoreTypeConcrete::Pedersen(_) => todo!(),
-                CoreTypeConcrete::Poseidon(_) => todo!(),
+                CoreTypeConcrete::Felt252Dict(info)
+                | CoreTypeConcrete::SquashedFelt252Dict(info) => {
+                    let ptr = ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
+                    let ptr = *ptr.as_ptr();
+                    let map = Box::from_raw(ptr.as_ptr());
+
+                    let mut output_map = HashMap::with_capacity(map.len());
+
+                    for (key, val_ptr) in map.iter() {
+                        let key = Felt252::from_bytes_le(key.as_slice());
+                        output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                    }
+
+                    Box::leak(map); // we must leak to avoid a double free
+
+                    InvokeArg::Felt252Dict {
+                        value: output_map,
+                        debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
+                    }
+                }
+                CoreTypeConcrete::Felt252DictEntry(_) => {
+                    unimplemented!("shouldn't be possible to return")
+                }
+                CoreTypeConcrete::Pedersen(_)
+                | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::Bitwise(_)
+                | CoreTypeConcrete::BuiltinCosts(_)
+                | CoreTypeConcrete::SegmentArena(_) => unimplemented!("handled before"),
                 CoreTypeConcrete::Span(_) => todo!(),
                 CoreTypeConcrete::StarkNet(_) => todo!(),
-                CoreTypeConcrete::SegmentArena(_) => todo!(),
                 CoreTypeConcrete::Snapshot(_) => todo!(),
                 CoreTypeConcrete::Bytes31(_) => todo!(),
             }
