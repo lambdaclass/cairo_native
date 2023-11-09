@@ -120,7 +120,7 @@ impl JITValue {
                     ptr
                 }
                 JITValue::Array(data) => {
-                    if let CoreTypeConcrete::Array(info) = ty {
+                    if let CoreTypeConcrete::Array(info) = ty { // todo: if its snapshot  cargo r --example starknet
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
@@ -177,7 +177,7 @@ impl JITValue {
                             .as_mut() = cap;
                         target.cast()
                     } else {
-                        panic!("wrong type")
+                        panic!("wrong type: {:?}", type_id.debug_name.as_ref())
                     }
                 }
                 JITValue::Struct {

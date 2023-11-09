@@ -7,12 +7,11 @@ use cairo_native::context::NativeContext;
 use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::invoke::JITValue;
-use cairo_native::utils::{felt252_bigint, find_entry_point_by_idx};
+use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
 };
-use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 

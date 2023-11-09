@@ -1,9 +1,7 @@
 use cairo_felt::Felt252;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::{context::NativeContext, invoke::JITValue};
-use itertools::Itertools;
-use serde_json::json;
-use std::{io::stdout, path::Path};
+use std::path::Path;
 
 fn main() {
     // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.

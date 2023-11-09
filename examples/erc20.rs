@@ -1,18 +1,17 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete};
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
+use cairo_native::invoke::JITValue;
 use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::{felt252_bigint, felt252_short_str},
 };
-use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -350,79 +349,33 @@ fn main() {
         .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
 
-    let syscall_addr = native_program
-        .get_metadata::<SyscallHandlerMeta>()
-        .unwrap()
-        .as_ptr()
-        .as_ptr() as *const () as usize;
-
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
-    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
-        .signature
-        .ret_types
-        .iter()
-        .map(|x| program_registry.get_type(x).unwrap())
-        .collect();
     let fn_id = &entry_point_fn.id;
 
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
-    let params = json!([
-        // pedersen
-        null,
-        // range check
-        null,
-        // gas
-        u64::MAX,
-        // system
-        syscall_addr,
-        // The amount of params change depending on the contract function called
-        // Struct<Span<Array<felt>>>
-        [
-            // Span<Array<felt>>
-            [
-                // contract state
-
-                // name
-                felt252_short_str("name"),   // name
-                felt252_short_str("symbol"), // symbol
-                felt252_bigint(0),           // decimals
-                felt252_bigint(i64::MAX),    // initial supply
-                felt252_bigint(4),           // contract address
-                felt252_bigint(6),           // ??
-            ]
-        ]
-    ]);
+    let params = vec![JITValue::Struct {
+        fields: vec![JITValue::Array(vec![
+            JITValue::Felt252(Felt252::from_bytes_be(b"name")),
+            JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
+            JITValue::Felt252(Felt252::new(0)),
+            JITValue::Felt252(Felt252::new(i64::MAX)),
+            JITValue::Felt252(Felt252::new(4)),
+            JITValue::Felt252(Felt252::new(6)),
+        ])],
+        debug_name: None,
+    }];
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
-
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
+    let result = native_executor
+        .execute(fn_id, &params, required_init_gas, Some(u64::MAX.into()))
         .expect("failed to execute the given contract");
 
-    let result = NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result");
+    let result = NativeExecutionResult::from_execute_result(result);
 
-    // Useful code to print a short felt string returned from the json, in case it panics
-    /*
-    let data = vec![
-        1919251315, 543253604, 1751457840, 1953439860, 1768846368, 809115757, 1163019058, 0,
-    ];
-
-    let value = Felt252::new(BigUint::new(data));
-
-    if let Some(shortstring) = as_cairo_short_string(&value) {
-        println!("[DEBUG]\t{shortstring: <31}\t(raw: {})", value.to_bigint())
-    }
-    */
-
+    println!();
     println!("Cairo program was compiled and executed successfully.");
     println!("{result:#?}");
 }
