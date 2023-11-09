@@ -11,62 +11,32 @@ use serde::{Deserializer, Serializer};
 use std::{alloc::LayoutError, fmt, ops::Deref};
 use thiserror::Error;
 
-pub type RunnerError<'de, D, S> = Box<Error<'de, CoreType, CoreLibfunc, D, S>>;
+pub type RunnerError = Error;
 
 #[derive(Error)]
-pub struct Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    pub source: ErrorImpl<'de, TType, TLibfunc, D, S>,
+    pub source: ErrorImpl,
 }
 
-impl<'de, TType, TLibfunc, D, S> fmt::Display for Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.source, f)
     }
 }
 
-impl<'de, TType, TLibfunc, D, S> Deref for Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
-    type Target = ErrorImpl<'de, TType, TLibfunc, D, S>;
+impl Deref for Error {
+    type Target = ErrorImpl;
 
     fn deref(&self) -> &Self::Target {
         &self.source
     }
 }
 
-impl<'de, TType, TLibfunc, D, S, E> From<E> for Error<'de, TType, TLibfunc, D, S>
+impl<E> From<E> for Error
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-    ErrorImpl<'de, TType, TLibfunc, D, S>: From<E>,
+    ErrorImpl: From<E>,
 {
     fn from(error: E) -> Self {
         Self {
@@ -76,15 +46,9 @@ where
     }
 }
 
-impl<'de, TType, TLibfunc, D, S, E> From<E> for Box<Error<'de, TType, TLibfunc, D, S>>
+impl<E> From<E> for Box<Error>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-    ErrorImpl<'de, TType, TLibfunc, D, S>: From<E>,
+    ErrorImpl: From<E>,
 {
     fn from(error: E) -> Self {
         Self::new(Error::from(error))
@@ -93,15 +57,7 @@ where
 
 // Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn't the case.
-impl<'de, TType, TLibfunc, D, S> fmt::Debug for Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             // .field("backtrace", &self.backtrace)
@@ -111,15 +67,7 @@ where
 }
 
 #[derive(Error)]
-pub enum ErrorImpl<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+pub enum ErrorImpl {
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
     #[error(transparent)]
@@ -130,27 +78,20 @@ where
     #[error("Error building type '{type_id}': {error}")]
     TypeBuilderError {
         type_id: ConcreteTypeId,
-        error: <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+        error: <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
     },
 
-    #[error(transparent)]
-    DeserializeError(D::Error),
-    #[error(transparent)]
-    SerializeError(S::Error),
+    #[error("unexpected value, expected value of type '{0}'")]
+    UnexpectedValue(String),
 
     #[error("not enough gas to run, needed '{needed}' had '{have}'")]
     InsufficientGasError { needed: u128, have: u128 },
+
+    #[error("a syscall handler was expected but was not provided")]
+    MissingSyscallHandler,
 }
 
-impl<'de, TType, TLibfunc, D, S> fmt::Debug for ErrorImpl<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+impl fmt::Debug for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::LayoutError(arg0) => f.debug_tuple("LayoutError").field(arg0).finish(),
@@ -163,8 +104,8 @@ where
                 .field("type_id", type_id)
                 .field("error", error)
                 .finish(),
-            Self::DeserializeError(arg0) => f.debug_tuple("DeserializeError").field(arg0).finish(),
-            Self::SerializeError(arg0) => f.debug_tuple("SerializeError").field(arg0).finish(),
+            Self::UnexpectedValue(arg0) => f.debug_tuple("UnexpectedValue").field(arg0).finish(),
+            Self::MissingSyscallHandler => f.debug_struct("MissingSyscallHandler").finish(),
             Self::InsufficientGasError { needed, have } => f
                 .debug_struct("InsufficientGasError")
                 .field("needed", needed)
@@ -174,48 +115,16 @@ where
     }
 }
 
-pub fn make_deserializer_error<'de, TType, TLibfunc, D, S>(
-    source: D::Error,
-) -> Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
-    ErrorImpl::DeserializeError(source).into()
+pub fn make_unexpected_value_error(expected: String) -> Error {
+    ErrorImpl::UnexpectedValue(expected).into()
 }
 
-pub fn make_serializer_error<'de, TType, TLibfunc, D, S>(
-    source: S::Error,
-) -> Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
-    ErrorImpl::SerializeError(source).into()
-}
-
-pub fn make_type_builder_error<'a, 'de, TType, TLibfunc, D, S>(
+pub fn make_type_builder_error<'a>(
     id: &'a ConcreteTypeId,
 ) -> impl 'a
        + FnOnce(
-    <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
-) -> Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+    <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
+) -> Error {
     move |source| {
         ErrorImpl::TypeBuilderError {
             type_id: id.clone(),
@@ -225,17 +134,6 @@ where
     }
 }
 
-pub fn make_insufficient_gas_error<'de, TType, TLibfunc, D, S>(
-    needed: u128,
-    have: u128,
-) -> Error<'de, TType, TLibfunc, D, S>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+pub fn make_insufficient_gas_error(needed: u128, have: u128) -> Error {
     ErrorImpl::InsufficientGasError { needed, have }.into()
 }

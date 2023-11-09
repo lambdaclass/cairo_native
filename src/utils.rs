@@ -606,6 +606,8 @@ pub(crate) use codegen_ret_extr;
 pub mod test {
     use super::*;
     use crate::{
+        invoke::JITValue,
+        jit_runner::ExecuteResult,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
@@ -673,8 +675,9 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: serde_json::Value,
-    ) -> serde_json::Value {
+        args: Vec<JITValue>,
+        gas: Option<u128>,
+    ) -> ExecuteResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 
@@ -763,7 +766,7 @@ pub mod test {
             .unwrap()
             .register_impls(&engine);
 
-        crate::execute::<CoreType, CoreLibfunc, _, _>(
+        crate::execute(
             &engine,
             &registry,
             &program
@@ -772,9 +775,10 @@ pub mod test {
                 .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
                 .expect("Test program entry point not found.")
                 .id,
-            args,
-            serde_json::value::Serializer,
+            &args,
             required_initial_gas,
+            gas,
+            None,
         )
         .expect("Test program execution failed.")
     }

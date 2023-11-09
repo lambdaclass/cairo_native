@@ -6,6 +6,7 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
+use cairo_native::invoke::JITValue;
 use cairo_native::utils::{felt252_bigint, find_entry_point_by_idx};
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
@@ -345,12 +346,6 @@ fn main() {
         .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
 
-    let syscall_addr = native_program
-        .get_metadata::<SyscallHandlerMeta>()
-        .unwrap()
-        .as_ptr()
-        .as_ptr() as *const () as usize;
-
     // Call the echo function from the contract using the generated wrapper.
 
     let entry_point_fn =
@@ -366,39 +361,18 @@ fn main() {
     let fn_id = &entry_point_fn.id;
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
-    let params = json!([
-        // range check
-        null,
-        // gas
-        u64::MAX,
-        // system
-        syscall_addr,
-        // Struct<Span<Array<felt>>>
-        [
-            // Span<Array<felt>>
-            [
-                // contract state
-                // (empty)
-
-                // function arguments
-                felt252_bigint(1)
-            ]
-        ],
-    ]);
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
+    let params = vec![JITValue::Struct {
+        fields: vec![JITValue::Array(vec![JITValue::Felt252(Felt252::new(1))])],
+        debug_name: None,
+    }];
 
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
+    let result = native_executor
+        .execute(fn_id, &params, required_init_gas, Some(u64::MAX.into()))
         .expect("failed to execute the given contract");
 
-    let result = NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result");
+    let result = NativeExecutionResult::from_execute_result(result);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

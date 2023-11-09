@@ -1,10 +1,6 @@
 use crate::{
-    error::jit_engine::RunnerError,
-    execute,
-    invoke::JITValue,
-    jit_runner::{execute_args, ExecuteResult},
-    module::NativeModule,
-    utils::create_engine,
+    error::jit_engine::RunnerError, execute, invoke::JITValue, jit_runner::ExecuteResult,
+    metadata::syscall_handler::SyscallHandlerMeta, module::NativeModule, utils::create_engine,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -12,7 +8,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;
-use serde::{Deserializer, Serializer};
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct NativeExecutor<'m> {
@@ -43,45 +38,24 @@ impl<'m> NativeExecutor<'m> {
         &mut self.native_module
     }
 
-    pub fn execute<'de, D, S>(
-        &self,
-        fn_id: &FunctionId,
-        params: D,
-        returns: S,
-        required_init_gas: Option<u128>,
-    ) -> Result<S::Ok, RunnerError<'de, D, S>>
-    where
-        D: Deserializer<'de>,
-        S: Serializer,
-    {
-        let registry = self.get_program_registry();
-
-        Ok(execute(
-            &self.engine,
-            registry,
-            fn_id,
-            params,
-            returns,
-            required_init_gas,
-        )?)
-    }
-
-    pub fn execute_args(
+    pub fn execute(
         &self,
         fn_id: &FunctionId,
         params: &[JITValue],
         required_initial_gas: Option<u128>,
         gas: Option<u128>,
-    ) -> ExecuteResult {
+    ) -> Result<ExecuteResult, RunnerError> {
         let registry = self.get_program_registry();
+        let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
 
-        execute_args(
+        execute(
             &self.engine,
             registry,
             fn_id,
             params,
             required_initial_gas,
             gas,
+            syscall_handler,
         )
     }
 }

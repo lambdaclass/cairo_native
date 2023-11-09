@@ -1,4 +1,4 @@
-use crate::utils::u32_vec_to_felt;
+use crate::{invoke::JITValue, utils::u32_vec_to_felt, ExecuteResult};
 use cairo_felt::Felt252;
 use cairo_lang_sierra::extensions::core::CoreTypeConcrete;
 use serde::{
@@ -18,6 +18,53 @@ pub struct NativeExecutionResult {
 }
 
 impl NativeExecutionResult {
+    pub fn from_execute_result(result: ExecuteResult) -> Self {
+        let mut error_msg = None;
+        let mut failure_flag = false;
+
+        assert_eq!(
+            result.return_values.len(),
+            1,
+            "return values length doesnt match 1, which shouldn't happen with starknet contracts"
+        );
+        let return_values = match &result.return_values[0] {
+            JITValue::Enum { tag, value, .. } => {
+                failure_flag = *tag == 0;
+
+                if !failure_flag {
+                    if let JITValue::Struct { fields, .. } = &**value {
+                        if let JITValue::Array(data) = &fields[0] {
+                            let felt_vec: Vec<_> = data
+                                .iter()
+                                .map(|x| {
+                                    if let JITValue::Felt252(f) = x {
+                                        f.clone()
+                                    } else {
+                                        panic!("should be a felt")
+                                    }
+                                })
+                                .collect();
+                            felt_vec
+                        } else {
+                            panic!("wrong type: {:?}", value);
+                        }
+                    } else {
+                        panic!("wrong type: {:?}", value);
+                    }
+                } else {
+                    todo!("{:?}", value)
+                }
+            }
+            _ => panic!("should be a enum"), // todo: handle as error
+        };
+
+        Self {
+            remaining_gas: result.remaining_gas.unwrap_or(0),
+            return_values,
+            failure_flag,
+            error_msg,
+        }
+    }
     /// Deserializes the NativeExecutionResult using the return types.
     ///
     /// The deserializer assumes a order in the incoming data, it expects the return values to be last (which is the case as of cairo 2).

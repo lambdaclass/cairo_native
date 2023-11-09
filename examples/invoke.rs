@@ -46,7 +46,7 @@ fn main() {
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let output = native_executor.execute_args(
+    let output = native_executor.execute(
         fn_id,
         &[JITValue::Felt252(1.into())],
         required_init_gas,

@@ -23,6 +23,7 @@ use cairo_native::{
     context::NativeContext,
     execution_result::NativeExecutionResult,
     executor::NativeExecutor,
+    invoke::JITValue,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -32,6 +33,7 @@ use cairo_native::{
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
     utils::{find_entry_point_by_idx, register_runtime_symbols},
+    ExecuteResult,
 };
 use lambdaworks_math::{
     field::{
@@ -181,8 +183,9 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: serde_json::Value,
-) -> serde_json::Value {
+    args: &[JITValue],
+    gas: Option<u128>,
+) -> ExecuteResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
 
@@ -264,7 +267,7 @@ pub fn run_native_program(
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
+    cairo_native::execute(
         &engine,
         &registry,
         &program
@@ -274,8 +277,9 @@ pub fn run_native_program(
             .expect("Test program entry point not found.")
             .id,
         args,
-        serde_json::value::Serializer,
         required_initial_gas,
+        gas,
+        None,
     )
     .expect("Test program execution failed.")
 }
@@ -305,27 +309,9 @@ pub fn compare_inputless_program(program_path: &str) {
         .find_function("main")
         .expect("function main not found");
 
-    let native_inputs: Vec<_> = entry_point
-        .params
-        .iter()
-        .map(
-            |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
-                "GasBuiltin" => {
-                    json!(u64::MAX as u128)
-                }
-                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
-                    json!(null)
-                }
-                x => {
-                    unimplemented!("unhandled input type: {:?}", x);
-                }
-            },
-        )
-        .collect();
-
     let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
 
-    let result_native = run_native_program(program, "main", json!(native_inputs));
+    let result_native = run_native_program(program, "main", &[], Some(u64::MAX as u128));
 
     compare_outputs(
         &program.1,
@@ -340,7 +326,7 @@ pub fn compare_inputless_program(program_path: &str) {
 pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
     entry_point_function_idx: usize,
-    args: serde_json::Value,
+    args: &[JITValue],
     handler: &mut T,
 ) -> NativeExecutionResult
 where
@@ -356,12 +342,6 @@ where
         .insert_metadata(SyscallHandlerMeta::new(handler))
         .unwrap();
 
-    let syscall_addr = native_program
-        .get_metadata::<SyscallHandlerMeta>()
-        .unwrap()
-        .as_ptr()
-        .as_ptr() as *const () as usize;
-
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
         .signature
@@ -375,38 +355,15 @@ where
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let native_inputs: Vec<_> = entry_point_fn
-        .params
-        .iter()
-        .map(
-            |param| match param.ty.debug_name.as_ref().unwrap().as_str() {
-                "GasBuiltin" => {
-                    json!(u64::MAX as u128)
-                }
-                "Pedersen" | "SegmentArena" | "RangeCheck" | "Bitwise" | "Poseidon" => {
-                    json!(null)
-                }
-                "System" => {
-                    json!(syscall_addr)
-                }
-                // contract state
-                "core::array::Span::<core::felt252>" => args.clone(),
-                x => {
-                    unimplemented!("unhandled input type: {:?}", x);
-                }
-            },
-        )
-        .collect();
-
     let mut writer: Vec<u8> = Vec::new();
     let returns = &mut serde_json::Serializer::new(&mut writer);
 
     native_executor
         .execute(
             entry_point_id,
-            json!(native_inputs),
-            returns,
+            args,
             required_init_gas,
+            Some(u64::MAX as u128),
         )
         .expect("failed to execute the given contract");
 
@@ -427,7 +384,7 @@ pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
     vm_result: &RunResultStarknet,
-    native_result: &serde_json::Value,
+    native_result: &ExecuteResult,
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 
@@ -439,11 +396,7 @@ pub fn compare_outputs(
         .expect("entry point should exist");
 
     let ret_types = &func.signature.ret_types;
-    let mut native_rets = native_result
-        .as_array()
-        .expect("should be an array")
-        .iter()
-        .peekable();
+    let mut native_rets = native_result.return_values.iter().peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
     let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u128 = vm_result
@@ -454,7 +407,7 @@ pub fn compare_outputs(
 
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
-        native_rets: &mut impl Iterator<Item = &'a Value>,
+        native_rets: &mut impl Iterator<Item = &'a JITValue>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         vm_gas: u128,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,

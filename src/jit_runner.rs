@@ -2,14 +2,12 @@
 
 use crate::{
     error::{
-        jit_engine::{
-            make_deserializer_error, make_insufficient_gas_error, make_serializer_error,
-            make_type_builder_error,
-        },
+        jit_engine::{make_insufficient_gas_error, make_type_builder_error, ErrorImpl},
         JitRunnerError,
     },
     invoke::JITValue,
     libfuncs::LibfuncBuilder,
+    metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::generate_function_name,
     values::{ValueBuilder, ValueDeserializer, ValueSerializer},
@@ -41,6 +39,7 @@ use tracing::debug;
 /// The function's arguments and return values are passed using a [`Deserializer`] and a
 /// [`Serializer`] respectively. This method provides an easy way to process the values while also
 /// not requiring recompilation every time the function's signature changes.
+/*
 pub fn execute<'de, TType, TLibfunc, D, S>(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -163,6 +162,7 @@ where
 
     return_seq.end().map_err(make_serializer_error)
 }
+*/
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {
@@ -183,19 +183,18 @@ pub struct ExecuteResult {
 /// The function's arguments and return values are passed using a [`Deserializer`] and a
 /// [`Serializer`] respectively. This method provides an easy way to process the values while also
 /// not requiring recompilation every time the function's signature changes.
-pub fn execute_args(
+pub fn execute(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
     params: &[JITValue],
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
-) -> ExecuteResult
-// TODO: error handling
-{
+    syscall_handler: Option<&SyscallHandlerMeta>,
+) -> Result<ExecuteResult, JitRunnerError> {
     let arena = Bump::new();
 
-    let entry_point = registry.get_function(function_id).unwrap();
+    let entry_point = registry.get_function(function_id)?;
     debug!(
         "executing entry_point with the following required parameters: {:?}",
         entry_point.signature.param_types
@@ -206,7 +205,7 @@ pub fn execute_args(
     let mut params_it = params.iter();
 
     for param_type_id in &entry_point.signature.param_types {
-        let ty = registry.get_type(param_type_id).unwrap();
+        let ty = registry.get_type(param_type_id)?;
 
         match ty {
             CoreTypeConcrete::Array(_) => {
@@ -256,13 +255,7 @@ pub fn execute_args(
                 // gas was enough, if so, deduct the required gas before execution.
                 if let Some(required_initial_gas) = required_initial_gas {
                     if gas < required_initial_gas {
-                        panic!("gas");
-                        /* todo: handle
-                        return Err(make_insufficient_gas_error(
-                            required_initial_gas,
-                            gas_builtin,
-                        ));
-                        */
+                        return Err(make_insufficient_gas_error(required_initial_gas, gas));
                     }
 
                     let starting_gas = gas - required_initial_gas;
@@ -355,20 +348,29 @@ pub fn execute_args(
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
-            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => {
+                let syscall_addr = syscall_handler
+                    .ok_or(JitRunnerError::from(ErrorImpl::MissingSyscallHandler))?
+                    .as_ptr()
+                    .as_ptr() as *const () as usize;
+
+                params_ptrs.push(
+                    arena
+                        .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
+                        .cast(),
+                );
+            }
             CoreTypeConcrete::Snapshot(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 
     let mut complex_results = entry_point.signature.ret_types.len() > 1;
-    let (layout, offsets) = entry_point.signature.ret_types.iter().fold(
+    let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
-            let ty = registry.get_type(id).unwrap();
-            let ty_layout = ty
-                .layout(registry) /*.map_err(make_type_builder_error(id)) */
-                .unwrap();
+            let ty = registry.get_type(id)?;
+            let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
             let (layout, offset) = match acc {
                 Some(layout) => layout.extend(ty_layout).unwrap(),
@@ -378,10 +380,9 @@ pub fn execute_args(
             offsets.push(offset);
             complex_results |= ty.is_complex();
 
-            // Result::<_, JitRunnerError<'de, TType, TLibfunc, D, S>>::Ok((Some(layout), offsets))
-            (Some(layout), offsets)
+            Result::<_, JitRunnerError>::Ok((Some(layout), offsets))
         },
-    );
+    )?;
 
     let layout = layout.unwrap_or(Layout::new::<()>());
     let ret_ptr = arena.alloc_layout(layout).cast::<()>();
@@ -434,10 +435,10 @@ pub fn execute_args(
         };
     }
 
-    ExecuteResult {
+    Ok(ExecuteResult {
         remaining_gas,
         return_values: returns,
-    }
+    })
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>

@@ -92,6 +92,8 @@
 
 pub use self::{compiler::compile, jit_runner::execute};
 
+pub use self::jit_runner::ExecuteResult;
+
 pub mod cache;
 mod compiler;
 pub mod context;
