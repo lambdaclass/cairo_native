@@ -124,7 +124,7 @@ impl JITValue {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
-                        let mut ptr: *mut NonNull<()> =
+                        let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
                         let mut len: u32 = 0;
                         let cap: u32 = data.len().try_into().unwrap();
