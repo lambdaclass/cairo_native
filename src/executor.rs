@@ -1,6 +1,10 @@
 use crate::{
-    error::jit_engine::RunnerError, execute, invoke::InvokeArg, jit_runner::execute_args,
-    module::NativeModule, utils::create_engine,
+    error::jit_engine::RunnerError,
+    execute,
+    invoke::InvokeArg,
+    jit_runner::{execute_args, ExecuteResult},
+    module::NativeModule,
+    utils::create_engine,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -68,7 +72,7 @@ impl<'m> NativeExecutor<'m> {
         params: &[InvokeArg],
         required_initial_gas: Option<u128>,
         gas: Option<u128>,
-    ) -> Vec<InvokeArg> {
+    ) -> ExecuteResult {
         let registry = self.get_program_registry();
 
         execute_args(

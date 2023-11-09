@@ -164,6 +164,12 @@ where
     return_seq.end().map_err(make_serializer_error)
 }
 
+#[derive(Debug, Clone)]
+pub struct ExecuteResult {
+    pub remaining_gas: Option<u128>,
+    pub return_values: Vec<InvokeArg>,
+}
+
 /// Execute a function on an engine loaded with a Sierra program.
 ///
 /// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
@@ -184,7 +190,7 @@ pub fn execute_args(
     params: &[InvokeArg],
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
-) -> Vec<InvokeArg>
+) -> ExecuteResult
 // TODO: error handling
 {
     let arena = Bump::new();
@@ -402,15 +408,36 @@ pub fn execute_args(
 
     let mut returns = Vec::new();
 
+    let mut remaining_gas = None;
+
     for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
         let ty = registry.get_type(type_id).unwrap();
 
         let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
-        let value = InvokeArg::from_jit(ptr, type_id, registry);
-        returns.push(value);
+
+        match ty {
+            CoreTypeConcrete::GasBuiltin(_) => {
+                remaining_gas = Some(*unsafe { ptr.cast::<u128>().as_ref() });
+            }
+            CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::SegmentArena(_)
+            | CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck(_) => {
+                // ignore returned builtins
+            }
+            _ => {
+                let value = InvokeArg::from_jit(ptr, type_id, registry);
+                returns.push(value);
+            }
+        };
     }
 
-    returns
+    ExecuteResult {
+        remaining_gas,
+        return_values: returns,
+    }
 }
 
 struct ArgsVisitor<'a, TType, TLibfunc>
