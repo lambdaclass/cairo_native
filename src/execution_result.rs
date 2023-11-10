@@ -82,6 +82,13 @@ impl NativeExecutionResult {
                                 }
                             })
                             .collect();
+
+                        let str_error =
+                            String::from_utf8(felt_vec.get(0).unwrap().to_be_bytes().to_vec())
+                                .unwrap()
+                                .trim_start_matches('\0')
+                                .to_owned();
+                        error_msg = Some(str_error);
                         felt_vec
                     } else {
                         Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(

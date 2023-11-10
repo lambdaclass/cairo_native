@@ -122,8 +122,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
-        // Ok(())
-        Err(vec![Felt252::new(2)])
+        Ok(())
     }
 
     fn emit_event(
