@@ -1,4 +1,9 @@
-use crate::{invoke::JITValue, utils::u32_vec_to_felt, ExecuteResult};
+use crate::{
+    error::{jit_engine::ErrorImpl, JitRunnerError},
+    invoke::JITValue,
+    utils::u32_vec_to_felt,
+    ExecuteResult,
+};
 use cairo_felt::Felt252;
 use cairo_lang_sierra::extensions::core::CoreTypeConcrete;
 use serde::{
@@ -18,7 +23,7 @@ pub struct NativeExecutionResult {
 }
 
 impl NativeExecutionResult {
-    pub fn from_execute_result(result: ExecuteResult) -> Self {
+    pub fn from_execute_result(result: ExecuteResult) -> Result<Self, JitRunnerError> {
         let mut error_msg = None;
         let mut failure_flag = false;
 
@@ -27,43 +32,79 @@ impl NativeExecutionResult {
             1,
             "return values length doesnt match 1, which shouldn't happen with starknet contracts"
         );
+        dbg!(&result);
         let return_values = match &result.return_values[0] {
             JITValue::Enum { tag, value, .. } => {
-                failure_flag = *tag == 0;
+                failure_flag = *tag != 0;
 
                 if !failure_flag {
                     if let JITValue::Struct { fields, .. } = &**value {
-                        if let JITValue::Array(data) = &fields[0] {
-                            let felt_vec: Vec<_> = data
-                                .iter()
-                                .map(|x| {
-                                    if let JITValue::Felt252(f) = x {
-                                        f.clone()
-                                    } else {
-                                        panic!("should be a felt")
-                                    }
-                                })
-                                .collect();
-                            felt_vec
+                        if let JITValue::Struct { fields, .. } = &fields[0] {
+                            if let JITValue::Array(data) = &fields[0] {
+                                let felt_vec: Vec<_> = data
+                                    .iter()
+                                    .map(|x| {
+                                        if let JITValue::Felt252(f) = x {
+                                            f.clone()
+                                        } else {
+                                            panic!("should always be a felt")
+                                        }
+                                    })
+                                    .collect();
+                                felt_vec
+                            } else {
+                                Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                                    "wrong type, expect: array, value: {:?}",
+                                    value
+                                ))))?
+                            }
                         } else {
-                            panic!("wrong type: {:?}", value);
+                            Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                                "wrong type, expect: struct, value: {:?}",
+                                value
+                            ))))?
                         }
                     } else {
-                        panic!("wrong type: {:?}", value);
+                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                            "wrong type, expect: struct, value: {:?}",
+                            value
+                        ))))?
+                    }
+                } else if let JITValue::Struct { fields, .. } = &**value {
+                    if let JITValue::Array(data) = &fields[1] {
+                        let felt_vec: Vec<_> = data
+                            .iter()
+                            .map(|x| {
+                                if let JITValue::Felt252(f) = x {
+                                    f.clone()
+                                } else {
+                                    panic!("should always be a felt")
+                                }
+                            })
+                            .collect();
+                        felt_vec
+                    } else {
+                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                            "wrong type, expect: array, value: {:?}",
+                            value
+                        ))))?
                     }
                 } else {
-                    todo!("{:?}", value)
+                    Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                        "wrong type, expect: struct, value: {:?}",
+                        value
+                    ))))?
                 }
             }
             _ => panic!("should be a enum"), // todo: handle as error
         };
 
-        Self {
+        Ok(Self {
             remaining_gas: result.remaining_gas.unwrap_or(0),
             return_values,
             failure_flag,
             error_msg,
-        }
+        })
     }
     /// Deserializes the NativeExecutionResult using the return types.
     ///

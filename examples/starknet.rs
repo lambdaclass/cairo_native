@@ -122,7 +122,8 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
-        Ok(())
+        // Ok(())
+        Err(vec![Felt252::new(2)])
     }
 
     fn emit_event(
@@ -304,12 +305,6 @@ fn main() {
     )
     .unwrap();
 
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     let path = Path::new("programs/examples/hello_starknet.cairo");
 
     let contract = compile_path(
@@ -324,19 +319,6 @@ fn main() {
 
     let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
-    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
-        ProgramRegistry::new(&sierra_program).unwrap();
-
-    // uncomment to save the contract sierra program
-    // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref()).collect();
-    println!("{names:#?}");
-    */
 
     let native_context = NativeContext::new();
 
@@ -349,13 +331,6 @@ fn main() {
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
-
-    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
-        .signature
-        .ret_types
-        .iter()
-        .map(|x| program_registry.get_type(x).unwrap())
-        .collect();
 
     let fn_id = &entry_point_fn.id;
     let required_init_gas = native_program.get_required_init_gas(fn_id);
@@ -371,7 +346,7 @@ fn main() {
         .execute(fn_id, &params, required_init_gas, Some(u64::MAX.into()))
         .expect("failed to execute the given contract");
 
-    let result = NativeExecutionResult::from_execute_result(result);
+    let result = NativeExecutionResult::from_execute_result(result).unwrap();
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

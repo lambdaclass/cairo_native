@@ -101,6 +101,15 @@ impl From<u128> for JITValue {
 }
 
 impl JITValue {
+    pub(crate) fn resolve_type<'a>(
+        ty: &'a CoreTypeConcrete,
+        registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+    ) -> &'a CoreTypeConcrete {
+        match ty {
+            CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty).unwrap(),
+            x => x,
+        }
+    }
     /// Allocates the value in the given arena so it can be passed to the JIT engine.
     pub(crate) fn to_jit(
         &self,
@@ -120,7 +129,7 @@ impl JITValue {
                     ptr
                 }
                 JITValue::Array(data) => {
-                    if let CoreTypeConcrete::Array(info) = ty {
+                    if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         // todo: if its snapshot  cargo r --example starknet
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -184,7 +193,7 @@ impl JITValue {
                 JITValue::Struct {
                     fields: members, ..
                 } => {
-                    if let CoreTypeConcrete::Struct(info) = ty {
+                    if let CoreTypeConcrete::Struct(info) = Self::resolve_type(ty, registry) {
                         let mut layout: Option<Layout> = None;
                         let mut data = Vec::with_capacity(info.members.len());
 
@@ -226,7 +235,7 @@ impl JITValue {
                     }
                 }
                 JITValue::Enum { tag, value, .. } => {
-                    if let CoreTypeConcrete::Enum(info) = ty {
+                    if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
                         let tag_value = *tag;
                         assert!(tag_value <= info.variants.len());
 
@@ -265,7 +274,7 @@ impl JITValue {
                     }
                 }
                 JITValue::Felt252Dict { value: map, .. } => {
-                    if let CoreTypeConcrete::Felt252Dict(info) = ty {
+                    if let CoreTypeConcrete::Felt252Dict(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
@@ -507,9 +516,11 @@ impl JITValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::StarkNet(_)
-                | CoreTypeConcrete::SegmentArena(_) => unimplemented!("handled before"),
+                | CoreTypeConcrete::SegmentArena(_) => {
+                    unimplemented!("handled before: {:?}", type_id)
+                }
                 CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::Snapshot(_) => todo!(),
+                CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => todo!(),
             }
         }

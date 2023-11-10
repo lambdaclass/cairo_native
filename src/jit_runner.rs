@@ -420,12 +420,13 @@ pub fn execute(
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(*unsafe { ptr.cast::<u128>().as_ref() });
             }
-            CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::SegmentArena(_)
-            | CoreTypeConcrete::BuiltinCosts(_)
-            | CoreTypeConcrete::Pedersen(_)
+            CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::RangeCheck(_) => {
+            | CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::StarkNet(_)
+            | CoreTypeConcrete::SegmentArena(_) => {
                 // ignore returned builtins
             }
             _ => {
