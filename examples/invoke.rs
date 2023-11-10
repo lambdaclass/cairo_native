@@ -52,7 +52,6 @@ fn main() {
         required_init_gas,
         None,
     );
-    dbg!(&output);
 
     /*
         let result = NativeExecutionResult::deserialize_from_ret_types(
