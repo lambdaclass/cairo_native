@@ -90,6 +90,9 @@
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
 
+#[macro_use]
+extern crate educe;
+
 pub use self::{compiler::compile, jit_runner::execute};
 
 pub use self::jit_runner::ExecuteResult;

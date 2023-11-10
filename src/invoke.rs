@@ -1,6 +1,6 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
-use std::{alloc::Layout, collections::HashMap, ptr::NonNull};
+use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 use bumpalo::Bump;
 use cairo_felt::Felt252;
@@ -9,10 +9,11 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use num_bigint::{BigInt, Sign};
 
 use crate::{
     metadata::syscall_handler::SyscallHandlerMeta,
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, next_multiple_of_usize, u32_vec_to_felt},
 };
 
@@ -21,21 +22,25 @@ use crate::{
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
-#[derive(Debug, Clone)]
+#[derive(Educe, Debug, Clone, Eq)]
+#[educe(PartialEq)]
 pub enum JITValue {
     Felt252(Felt252),
     Array(Vec<Self>), // all elements need to be same type
     Struct {
         fields: Vec<Self>,
+        #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     }, // element types can differ
     Enum {
         tag: usize,
         value: Box<Self>,
+        #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
     Felt252Dict {
         value: HashMap<Felt252, Self>,
+        #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
     Box(Box<Self>), // can't be null
@@ -110,6 +115,7 @@ impl JITValue {
             x => x,
         }
     }
+
     /// Allocates the value in the given arena so it can be passed to the JIT engine.
     pub(crate) fn to_jit(
         &self,
@@ -524,5 +530,15 @@ impl JITValue {
                 CoreTypeConcrete::Bytes31(_) => todo!(),
             }
         }
+    }
+
+    pub fn felt_str(value: &str) -> Self {
+        let value = value.parse::<BigInt>().unwrap();
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+            _ => value.to_biguint().unwrap(),
+        };
+
+        Self::Felt252(Felt252::from(value))
     }
 }

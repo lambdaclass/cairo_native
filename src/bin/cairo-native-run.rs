@@ -141,7 +141,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.outputs {
         Some(StdioOrPath::Stdio) => {
-            cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
+            cairo_native::execute(
                 &engine,
                 &registry,
                 &entry_point.id,

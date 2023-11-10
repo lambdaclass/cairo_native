@@ -675,8 +675,7 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: Vec<JITValue>,
-        gas: Option<u128>,
+        args: &[JITValue],
     ) -> ExecuteResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -777,10 +776,21 @@ pub mod test {
                 .id,
             &args,
             required_initial_gas,
-            gas,
+            Some(u64::MAX.into()),
             None,
         )
         .expect("Test program execution failed.")
+    }
+
+    #[track_caller]
+    pub fn run_program_assert_output(
+        program: &(String, Program),
+        entry_point: &str,
+        args: &[JITValue],
+        outputs: &[JITValue],
+    ) {
+        let result = run_program(program, entry_point, args);
+        assert_eq!(result.return_values.as_slice(), outputs);
     }
 
     // Parse numeric string into felt, wrapping negatives around the prime modulo.

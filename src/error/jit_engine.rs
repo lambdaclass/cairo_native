@@ -1,13 +1,12 @@
-use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
+use crate::types::TypeBuilder;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        GenericLibfunc, GenericType,
+        GenericType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistryError,
 };
-use serde::{Deserializer, Serializer};
 use std::{alloc::LayoutError, fmt, ops::Deref};
 use thiserror::Error;
 

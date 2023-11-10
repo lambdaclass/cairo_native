@@ -146,8 +146,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::{
+        invoke::JITValue,
+        utils::test::{load_cairo, run_program_assert_output},
+    };
 
     #[test]
     fn run_box_unbox() {
@@ -161,8 +163,7 @@ mod test {
                 box_x.unbox()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([2]));
+        run_program_assert_output(&program, "run_test", &[], &[JITValue::Uint32(2)]);
     }
 }
