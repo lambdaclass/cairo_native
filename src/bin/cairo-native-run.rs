@@ -131,12 +131,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
+    /* TODO: fixme
+
     // Initialize arguments and return values.
     let params_input = match args.inputs {
         Some(StdioOrPath::Stdio) => Cow::Owned(io::read_to_string(io::stdin())?),
         Some(StdioOrPath::Path(path)) => Cow::Owned(fs::read_to_string(path)?),
         None => Cow::Borrowed("[]"),
     };
+
     let mut params = serde_json::Deserializer::new(StrRead::new(&params_input));
 
     match args.outputs {
@@ -184,6 +187,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    */
 
     Ok(())
 }

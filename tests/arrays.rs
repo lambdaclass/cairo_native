@@ -2,6 +2,7 @@ use crate::common::{any_felt252, feltn, load_cairo, run_native_program, run_vm_p
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
+use cairo_native::invoke::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
@@ -62,7 +63,11 @@ fn array_get_test() {
         Some(GAS),
     )
     .unwrap();
-    let result_native = run_native_program(program, "run_test", json!([null, feltn(10), feltn(5)]));
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[JITValue::Felt252(10.into()), JITValue::Felt252(5.into())],
+    );
 
     compare_outputs(
         &program.1,
@@ -75,13 +80,13 @@ fn array_get_test() {
 
 proptest! {
     #[test]
-    fn array_get_test_proptest(value in any_felt252(), idx in 0..26) {
+    fn array_get_test_proptest(value in any_felt252(), idx in 0u32..26) {
         let program = &ARRAY_GET;
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(value.clone()),
             Arg::Value(Felt252::new(idx))
         ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", json!([null, feltn(value.to_biguint()), feltn(idx)]));
+        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(value), JITValue::Felt252(idx.into())]);
 
         compare_outputs(
             &program.1,

@@ -184,7 +184,6 @@ pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[JITValue],
-    gas: Option<u128>,
 ) -> ExecuteResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -278,7 +277,7 @@ pub fn run_native_program(
             .id,
         args,
         required_initial_gas,
-        gas,
+        Some(u64::MAX.into()),
         None,
     )
     .expect("Test program execution failed.")
@@ -300,18 +299,14 @@ pub fn run_vm_program(
     )
 }
 
+#[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let entry_point = program
-        .2
-        .find_function("main")
-        .expect("function main not found");
-
     let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
 
-    let result_native = run_native_program(program, "main", &[], Some(u64::MAX as u128));
+    let result_native = run_native_program(program, "main", &[]);
 
     compare_outputs(
         &program.1,
@@ -380,6 +375,7 @@ where
 /// If ignore_gas is false, it will check whether the resulting gas matches.
 ///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
+#[track_caller]
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
@@ -404,45 +400,40 @@ pub fn compare_outputs(
         .as_ref()
         .map(|x| x.to_biguint().try_into().unwrap())
         .unwrap_or(0);
+    let native_gas = native_result.remaining_gas.unwrap_or(0);
+    prop_assert_eq!(vm_gas, native_gas, "gas mismatch");
 
+    #[track_caller]
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
         native_rets: &mut impl Iterator<Item = &'a JITValue>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
-        vm_gas: u128,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<(), TestCaseError> {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
-                let array_container = native_rets
-                    .next()
-                    .expect("native should have next value")
-                    .as_array()
-                    .expect("should be array like");
-                for container in array_container {
-                    check_next_type(
-                        reg.get_type(&info.ty).expect("type should exist"),
-                        &mut [container].into_iter(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                    )?;
+                if let JITValue::Array(data) = native_rets.next().unwrap() {
+                    for value in data {
+                        check_next_type(
+                            reg.get_type(&info.ty).expect("type should exist"),
+                            &mut [value].into_iter(),
+                            vm_rets,
+                            reg,
+                        )?;
+                    }
+                } else {
+                    panic!("invalid type")
                 }
             }
             CoreTypeConcrete::Bitwise(_) => {
-                // runner: ignore
-                // native: null
-                native_rets
-                    .next()
-                    .unwrap()
-                    .as_null()
-                    .expect("should be null");
+                // ignore
             }
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => {
                 // struct with 2 felts
+                /*
                 let mut struct_container = native_rets
                     .next()
                     .unwrap()
@@ -480,6 +471,8 @@ pub fn compare_outputs(
                         }
                     }
                 }
+                */
+                todo!()
             }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
@@ -490,41 +483,16 @@ pub fn compare_outputs(
                 );
                 let vm_value = vm_rets.next().unwrap();
 
-                match native_rets.next().unwrap() {
-                    Value::Number(n) => {
-                        let native_value = BigUint::from_str(&n.to_string()).unwrap();
-                        let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
-                    }
-                    Value::Array(n) => {
-                        let data: Vec<_> = n
-                            .iter()
-                            .map(|x| match x {
-                                Value::Number(n) => n.as_u64().unwrap(),
-                                _ => unreachable!(),
-                            })
-                            .map(|x| x.try_into().unwrap())
-                            .collect();
-                        let native_value = BigUint::from_slice(&data);
-                        let vm_value = BigUint::from_str(vm_value).unwrap();
-                        prop_assert_eq!(vm_value, native_value, "felt value mismatch");
-                    }
-                    _ => {
-                        prop_assert!(false, "invalid felt value type");
-                    }
+                if let JITValue::Felt252(felt) = native_rets.next().unwrap() {
+                    let native_value = felt.to_biguint();
+                    let vm_value = BigUint::from_str(vm_value).unwrap();
+                    prop_assert_eq!(vm_value, native_value, "felt value mismatch");
+                } else {
+                    prop_assert!(false, "invalid felt value type");
                 }
             }
             CoreTypeConcrete::GasBuiltin(_) => {
-                // runner: ignore
-                // native: compare to gas
-                prop_assert!(native_rets.peek().is_some());
-
-                let gas_val: u128 = match native_rets.next().unwrap() {
-                    Value::Number(n) => n.to_string().parse().expect("should parse"),
-                    _ => panic!("wrong gas type"),
-                };
-
-                prop_assert_eq!(vm_gas, gas_val, "gas mismatch");
+                // ignore
             }
             CoreTypeConcrete::BuiltinCosts(_) => todo!(),
             CoreTypeConcrete::Uint8(_) => {
@@ -534,13 +502,11 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u8 = native_rets
-                    .next()
-                    .unwrap()
-                    .as_u64()
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
+                let native_value: u8 = if let JITValue::Uint8(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint16(_) => {
@@ -550,13 +516,11 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u16 = native_rets
-                    .next()
-                    .unwrap()
-                    .as_u64()
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
+                let native_value: u16 = if let JITValue::Uint16(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint32(_) => {
@@ -566,13 +530,11 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u32 = native_rets
-                    .next()
-                    .unwrap()
-                    .as_u64()
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
+                let native_value: u32 = if let JITValue::Uint32(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint64(_) => {
@@ -582,7 +544,11 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u64 = native_rets.next().unwrap().as_u64().unwrap();
+                let native_value: u64 = if let JITValue::Uint64(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128(_) => {
@@ -592,12 +558,10 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u128 = match native_rets.next().unwrap() {
-                    Value::Number(n) => n.to_string().parse().unwrap(),
-                    _ => {
-                        prop_assert!(false, "invalid u128 value type");
-                        unreachable!()
-                    }
+                let native_value: u128 = if let JITValue::Uint128(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
                 };
                 prop_assert_eq!(vm_value, native_value)
             }
@@ -607,11 +571,6 @@ pub fn compare_outputs(
             CoreTypeConcrete::RangeCheck(_) => {
                 // runner: ignore
                 // native: null
-                native_rets
-                    .next()
-                    .unwrap()
-                    .as_null()
-                    .expect("should be null");
             }
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(info) => {
@@ -626,62 +585,65 @@ pub fn compare_outputs(
                    0 is a filler.
                 */
                 prop_assert!(native_rets.peek().is_some());
-                let enum_container = native_rets.next().unwrap().as_array().unwrap();
-                prop_assert_eq!(enum_container.len(), 2);
-                let native_tag = enum_container[0].as_u64().unwrap();
+                if let JITValue::Enum {
+                    tag: native_tag,
+                    value,
+                    ..
+                } = native_rets.next().unwrap()
+                {
+                    let native_tag = *native_tag;
+                    let mut is_bool = false;
 
-                let mut is_bool = false;
+                    if let GenericArg::UserType(id) = &info.info.long_id.generic_args[0] {
+                        is_bool = id.debug_name.as_ref().unwrap().as_str().eq("core::bool");
+                    }
 
-                if let GenericArg::UserType(id) = &info.info.long_id.generic_args[0] {
-                    is_bool = id.debug_name.as_ref().unwrap().as_str().eq("core::bool");
-                }
-
-                let is_panic = match &info.info.long_id.generic_args[0] {
-                    GenericArg::UserType(info) => info
-                        .debug_name
-                        .as_ref()
-                        .unwrap()
-                        .as_str()
-                        .starts_with("core::panics::PanicResult"),
-                    _ => false,
-                };
-
-                if is_bool {
-                    let vn_val = vm_rets.next().unwrap() == "1";
-                    let native_val: bool = native_tag == 1; // 1 = true
-                    prop_assert_eq!(vn_val, native_val, "bool value mismatch");
-                } else if is_panic {
-                    check_next_type(
-                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        &mut [&enum_container[1]].into_iter(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                    )?;
-                } else {
-                    let vm_tag = {
-                        let vm_tag = vm_rets.next().unwrap();
-                        if info.variants.len() > 2 {
-                            casm_variant_to_sierra(
-                                vm_tag.parse::<i64>().unwrap(),
-                                info.variants.len() as i64,
-                            ) as u64
-                        } else {
-                            vm_tag.parse().unwrap()
-                        }
+                    let is_panic = match &info.info.long_id.generic_args[0] {
+                        GenericArg::UserType(info) => info
+                            .debug_name
+                            .as_ref()
+                            .unwrap()
+                            .as_str()
+                            .starts_with("core::panics::PanicResult"),
+                        _ => false,
                     };
-                    prop_assert_eq!(vm_tag, native_tag, "non panic enum tag mismatch");
 
-                    let mut max_tuple_count = 0;
-                    let mut this_variant_count = 0;
+                    if is_bool {
+                        let vn_val = vm_rets.next().unwrap() == "1";
+                        let native_val: bool = native_tag == 1; // 1 = true
+                        prop_assert_eq!(vn_val, native_val, "bool value mismatch");
+                    } else if is_panic {
+                        check_next_type(
+                            reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                            &mut [&**value].into_iter(),
+                            vm_rets,
+                            reg,
+                        )?;
+                    } else {
+                        let vm_tag = {
+                            let vm_tag = vm_rets.next().unwrap();
+                            if info.variants.len() > 2 {
+                                casm_variant_to_sierra(
+                                    vm_tag.parse::<i64>().unwrap(),
+                                    info.variants.len() as i64,
+                                ) as u64
+                            } else {
+                                vm_tag.parse().unwrap()
+                            }
+                        };
+                        prop_assert_eq!(vm_tag, native_tag as u64, "non panic enum tag mismatch");
 
-                    // check if a variant is a struct, we need to skip cairo-vm values if the current
-                    // variant has less elements count than the biggest struct field count.
-                    for (i, x) in info.variants.iter().enumerate() {
-                        let variant_type = reg.get_type(x).unwrap();
+                        let mut max_tuple_count = 0;
+                        let mut this_variant_count = 0;
 
-                        let current_count =
-                            if let CoreTypeConcrete::Struct(struct_type) = variant_type {
+                        // check if a variant is a struct, we need to skip cairo-vm values if the current
+                        // variant has less elements count than the biggest struct field count.
+                        for (i, x) in info.variants.iter().enumerate() {
+                            let variant_type = reg.get_type(x).unwrap();
+
+                            let current_count = if let CoreTypeConcrete::Struct(struct_type) =
+                                variant_type
+                            {
                                 max_tuple_count = max_tuple_count.max(struct_type.members.len());
                                 struct_type.members.len()
                             } else {
@@ -689,68 +651,54 @@ pub fn compare_outputs(
                                 1
                             };
 
-                        if i as u64 == native_tag {
-                            this_variant_count = current_count;
+                            if i == native_tag {
+                                this_variant_count = current_count;
+                            }
                         }
-                    }
 
-                    // can't use skip because changes the iterator type and it's lazy.
-                    for _ in 0..(max_tuple_count - this_variant_count) {
-                        vm_rets.next().expect("should have filler value");
-                    }
+                        // can't use skip because changes the iterator type and it's lazy.
+                        for _ in 0..(max_tuple_count - this_variant_count) {
+                            vm_rets.next().expect("should have filler value");
+                        }
 
-                    check_next_type(
-                        reg.get_type(&info.variants[native_tag as usize]).unwrap(),
-                        &mut [&enum_container[1]].into_iter(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                    )?;
-                }
+                        check_next_type(
+                            reg.get_type(&info.variants[native_tag]).unwrap(),
+                            &mut [&**value].into_iter(),
+                            vm_rets,
+                            reg,
+                        )?;
+                    }
+                } else {
+                    panic!("wrong type")
+                };
             }
             CoreTypeConcrete::Struct(info) => {
-                let struct_container = native_rets.next().unwrap().as_array().unwrap();
-                for (field, container) in info.members.iter().zip(struct_container.iter()) {
-                    check_next_type(
-                        reg.get_type(field).unwrap(),
-                        &mut [container].into_iter(),
-                        vm_rets,
-                        vm_gas,
-                        reg,
-                    )?;
+                if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
+                    for (field, container) in info.members.iter().zip(fields.iter()) {
+                        check_next_type(
+                            reg.get_type(field).unwrap(),
+                            &mut [container].into_iter(),
+                            vm_rets,
+                            reg,
+                        )?;
+                    }
+                } else {
+                    panic!("wrong type")
                 }
             }
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
             CoreTypeConcrete::Pedersen(_) => {
-                // runner: ignore
-                // native: null
-                native_rets
-                    .next()
-                    .unwrap()
-                    .as_null()
-                    .expect("should be null");
+                // ignore
             }
             CoreTypeConcrete::Poseidon(_) => {
-                // runner: ignore
-                // native: null
-                native_rets
-                    .next()
-                    .unwrap()
-                    .as_null()
-                    .expect("should be null");
+                // ignore
             }
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(_) => todo!(),
             CoreTypeConcrete::SegmentArena(_) => {
-                // runner: ignore
-                // native: null
-                native_rets
-                    .next()
-                    .unwrap()
-                    .as_null()
-                    .expect("should be null");
+                // ignore
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
             CoreTypeConcrete::Sint8(_) => todo!(),
@@ -766,7 +714,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(ty, &mut native_rets, &mut vm_rets, vm_gas, &reg)?;
+        check_next_type(ty, &mut native_rets, &mut vm_rets, &reg)?;
     }
 
     Ok(())
