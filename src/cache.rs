@@ -11,6 +11,16 @@ pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     cache: HashMap<K, Rc<RefCell<NativeExecutor<'a>>>>,
 }
 
+impl<'a, K> ProgramCache<'a, K>
+where
+    K: Eq + Hash + PartialEq,
+{
+    // Return the native context.
+    pub const fn context(&self) -> &'a NativeContext {
+        self.context
+    }
+}
+
 impl<'a, K: PartialEq + Eq + Hash> Debug for ProgramCache<'a, K> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ProgramCache")
