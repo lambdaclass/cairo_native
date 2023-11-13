@@ -80,6 +80,9 @@ pub enum ErrorImpl {
         error: <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
     },
 
+    #[error("missing parameter of type '{0}'")]
+    MissingParameter(String),
+
     #[error("unexpected value, expected value of type '{0}'")]
     UnexpectedValue(String),
 
@@ -95,6 +98,7 @@ impl fmt::Debug for ErrorImpl {
         match self {
             Self::LayoutError(arg0) => f.debug_tuple("LayoutError").field(arg0).finish(),
             Self::MlirError(arg0) => f.debug_tuple("MlirError").field(arg0).finish(),
+            Self::MissingParameter(arg0) => f.debug_tuple("MissingParameter").field(arg0).finish(),
             Self::ProgramRegistryError(arg0) => {
                 f.debug_tuple("ProgramRegistryError").field(arg0).finish()
             }
@@ -135,4 +139,14 @@ pub fn make_type_builder_error(
 
 pub fn make_insufficient_gas_error(needed: u128, have: u128) -> Error {
     ErrorImpl::InsufficientGasError { needed, have }.into()
+}
+
+pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Error {
+    ErrorImpl::MissingParameter(
+        ty.debug_name
+            .as_ref()
+            .map(|x| x.to_string())
+            .unwrap_or_else(String::new),
+    )
+    .into()
 }

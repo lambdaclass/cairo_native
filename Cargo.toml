@@ -56,6 +56,7 @@ cairo-lang-sierra-ap-change = "=2.2"
 cairo-lang-utils = "=2.2"
 cairo-lang-starknet = "=2.2"
 educe = "0.4.23"
+num-traits = "0.2"
 
 [dev-dependencies]
 cairo-lang-runner = "=2.2"

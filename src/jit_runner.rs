@@ -2,7 +2,9 @@
 
 use crate::{
     error::{
-        jit_engine::{make_insufficient_gas_error, make_type_builder_error, ErrorImpl},
+        jit_engine::{
+            make_insufficient_gas_error, make_missing_parameter, make_type_builder_error, ErrorImpl,
+        },
         JitRunnerError,
     },
     execution_result::ContractExecutionResult,
@@ -68,11 +70,10 @@ pub fn execute(
 
         match ty {
             CoreTypeConcrete::Array(_) => {
-                // TODO: check the invokearg matches?
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -91,7 +92,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -101,7 +102,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -129,7 +130,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -138,7 +139,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -147,7 +148,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -156,7 +157,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -165,7 +166,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -182,7 +183,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -191,7 +192,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }
@@ -203,7 +204,7 @@ pub fn execute(
                 params_ptrs.push(
                     params_it
                         .next()
-                        .unwrap()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
                         .to_jit(&arena, registry, param_type_id),
                 );
             }

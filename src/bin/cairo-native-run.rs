@@ -1,30 +1,12 @@
-/* TODO: With the new serialization, we need to figure this how this tool should work.
-
+use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    ids::FunctionId,
-    program::Program,
-    program_registry::ProgramRegistry,
-    ProgramParser,
-};
-use cairo_native::{
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::register_runtime_symbols,
-};
+use cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
+use cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
 use clap::Parser;
 use itertools::Itertools;
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
-};
-use serde_json::de::StrRead;
+use num_traits::Num;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -33,7 +15,6 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,9 +29,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Load the program.
-    let program = load_program(Path::new(&args.input))?;
+    let sierra_program = load_program(Path::new(&args.input))?;
 
-    let entry_point = match program
+    let entry_point = match sierra_program
         .funcs
         .iter()
         .find(|x| x.id.debug_name == args.entry_point.debug_name || x.id == args.entry_point)
@@ -63,123 +44,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Initialize MLIR.
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
+    let native_context = NativeContext::new();
 
-    register_all_passes();
+    let native_program = native_context.compile(&sierra_program).unwrap();
+    let required_init_gas = native_program.get_required_init_gas(&entry_point.id);
 
-    // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    // Gas
-    let required_initial_gas = if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(&program, MetadataComputationConfig::default());
-
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(&entry_point.id) };
-        info!(
-            "Initial required gas: {}",
-            required_initial_gas.unwrap_or(0)
-        );
-        // Metadata used to insert another metadata on each statement, so withdraw gas can know how much to withdraw.
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    };
-
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        None,
-    )?;
-
-    // Lower to LLVM.
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager.run(&mut module)?;
-
-    // Create the JIT engine.
-    let engine = ExecutionEngine::new(&module, 3, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_executor = NativeExecutor::new(native_program);
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {
         Some(StdioOrPath::Stdio) => Cow::Owned(io::read_to_string(io::stdin())?),
         Some(StdioOrPath::Path(path)) => Cow::Owned(fs::read_to_string(path)?),
-        None => Cow::Borrowed("[]"),
+        None => Cow::Borrowed(""),
     };
 
-    let mut params = serde_json::Deserializer::new(StrRead::new(&params_input));
+    let params = params_input
+        .split_whitespace()
+        .map(|x| {
+            JITValue::Felt252(
+                Felt252::from_str_radix(x, 10).expect("input parameter is not a valid felt252"),
+            )
+        })
+        .collect_vec();
+
+    let result = native_executor
+        .execute(
+            &entry_point.id,
+            &params,
+            required_init_gas,
+            Some(u64::MAX.into()),
+        )
+        .unwrap();
 
     match args.outputs {
         Some(StdioOrPath::Stdio) => {
-            cairo_native::execute(
-                &engine,
-                &registry,
-                &entry_point.id,
-                &mut params,
-                &mut serde_json::Serializer::pretty(io::stdout()),
-                required_initial_gas,
-            )
-            .unwrap_or_else(|e| match &*e {
-                cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                    panic!(
-                        "Expected inputs with signature: ({})",
-                        entry_point
-                            .signature
-                            .param_types
-                            .iter()
-                            .map(ToString::to_string)
-                            .join(", ")
-                    )
-                }
-                e => panic!("{:?}", e),
-            });
-            println!();
+            println!("{:#?}", result);
         }
         Some(StdioOrPath::Path(path)) => {
             let mut file = File::create(path)?;
-            cairo_native::execute::<CoreType, CoreLibfunc, _, _>(
-                &engine,
-                &registry,
-                &entry_point.id,
-                &mut params,
-                &mut serde_json::Serializer::pretty(&mut file),
-                required_initial_gas,
-            )
-            .unwrap();
-            writeln!(file)?;
+            writeln!(file, "{:#?}", result)?;
         }
         None => {
             if args.print_outputs {
@@ -268,9 +173,4 @@ fn parse_io(input: &str) -> Result<StdioOrPath, String> {
             _ => return Err("Input path expected to have `json` as its extension.".to_string()),
         })
     })
-}
-*/
-
-fn main() {
-    todo!()
 }
