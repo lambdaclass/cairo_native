@@ -4,12 +4,6 @@ use cairo_native::{context::NativeContext, invoke::JITValue};
 use std::path::Path;
 
 fn main() {
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
