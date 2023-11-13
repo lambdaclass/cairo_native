@@ -66,7 +66,7 @@ fn ec_point_from_x_big() {
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x.into())]);
+    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
 
     compare_outputs(
         &program.1,
@@ -84,7 +84,7 @@ fn ec_point_from_x_small() {
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x.into())]);
+    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
 
     compare_outputs(
         &program.1,

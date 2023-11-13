@@ -51,7 +51,6 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use serde_json::{json, Value};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -571,7 +570,7 @@ pub fn compare_outputs(
                         prop_assert_eq!(vn_val, native_val, "bool value mismatch");
                     } else if is_panic {
                         check_next_type(
-                            reg.get_type(&info.variants[native_tag as usize]).unwrap(),
+                            reg.get_type(&info.variants[native_tag]).unwrap(),
                             &mut [&**value].into_iter(),
                             vm_rets,
                             reg,

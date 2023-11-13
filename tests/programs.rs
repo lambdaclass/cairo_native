@@ -1,6 +1,4 @@
-use crate::common::{
-    any_felt252, felt, feltn, get_run_result, load_cairo, run_native_program, run_vm_program,
-};
+use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -9,7 +7,6 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
-use serde_json::json;
 
 mod common;
 mod starknet;
