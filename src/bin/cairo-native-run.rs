@@ -1,3 +1,5 @@
+/* TODO: With the new serialization, we need to figure this how this tool should work.
+
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -131,8 +133,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    /* TODO: fixme
-
     // Initialize arguments and return values.
     let params_input = match args.inputs {
         Some(StdioOrPath::Stdio) => Cow::Owned(io::read_to_string(io::stdin())?),
@@ -187,8 +187,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-
-    */
 
     Ok(())
 }
@@ -270,4 +268,9 @@ fn parse_io(input: &str) -> Result<StdioOrPath, String> {
             _ => return Err("Input path expected to have `json` as its extension.".to_string()),
         })
     })
+}
+*/
+
+fn main() {
+    todo!()
 }

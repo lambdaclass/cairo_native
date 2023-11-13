@@ -14,7 +14,9 @@ use num_bigint::{BigInt, Sign};
 use crate::{
     metadata::syscall_handler::SyscallHandlerMeta,
     types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, next_multiple_of_usize, u32_vec_to_felt},
+    utils::{
+        felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
+    },
 };
 
 /// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
@@ -50,6 +52,7 @@ pub enum JITValue {
     Uint32(u32),
     Uint64(u64),
     Uint128(u128),
+    EcPoint(Felt252, Felt252),
 }
 
 #[derive(Debug, Default)]
@@ -358,6 +361,19 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::EcPoint(a, b) => {
+                    let ptr = arena
+                        .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
+                        .cast();
+
+                    let a = felt252_bigint(a.to_bigint());
+                    let b = felt252_bigint(b.to_bigint());
+                    let data = [a, b];
+
+                    ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
+
+                    ptr
+                }
             }
         }
     }
@@ -405,7 +421,11 @@ impl JITValue {
                 }
                 CoreTypeConcrete::Box(_) => todo!(),
                 CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
+                CoreTypeConcrete::EcPoint(_) => {
+                    let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
+
+                    JITValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
+                }
                 CoreTypeConcrete::EcState(_) => todo!(),
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u32; 8]>().as_ref();

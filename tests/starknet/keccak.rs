@@ -317,12 +317,8 @@ fn keccak_test() {
     let entry_point = contract.entry_points_by_type.external.get(0).unwrap();
 
     let program = contract.extract_sierra_program().unwrap();
-    let result = run_native_starknet_contract(
-        &program,
-        entry_point.function_idx,
-        json!([[]]),
-        &mut SyscallHandler,
-    );
+    let result =
+        run_native_starknet_contract(&program, entry_point.function_idx, &[], &mut SyscallHandler);
 
     assert!(!result.failure_flag);
     assert_eq!(result.remaining_gas, 18446744073709421435);

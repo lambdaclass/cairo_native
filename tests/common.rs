@@ -327,9 +327,6 @@ pub fn run_native_starknet_contract<T>(
 where
     T: StarkNetSyscallHandler,
 {
-    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
-        ProgramRegistry::new(sierra_program).unwrap();
-
     let native_context = NativeContext::new();
 
     let mut native_program = native_context.compile(sierra_program).unwrap();
@@ -338,22 +335,13 @@ where
         .unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
-    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
-        .signature
-        .ret_types
-        .iter()
-        .map(|x| program_registry.get_type(x).unwrap())
-        .collect();
     let entry_point_id = &entry_point_fn.id;
 
     let required_init_gas = native_program.get_required_init_gas(entry_point_id);
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
-
-    native_executor
+    let result = native_executor
         .execute(
             entry_point_id,
             args,
@@ -362,11 +350,8 @@ where
         )
         .expect("failed to execute the given contract");
 
-    NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result")
+    NativeExecutionResult::from_execute_result(result)
+        .expect("failed to serialize starknet execution result")
 }
 
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
@@ -432,47 +417,19 @@ pub fn compare_outputs(
             CoreTypeConcrete::Box(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => todo!(),
             CoreTypeConcrete::EcPoint(_) => {
-                // struct with 2 felts
-                /*
-                let mut struct_container = native_rets
-                    .next()
-                    .unwrap()
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .peekable();
+                let native_data = native_rets.next().unwrap();
 
-                for _ in 0..2 {
-                    prop_assert!(vm_rets.peek().is_some());
-                    prop_assert!(struct_container.peek().is_some());
-                    let vm_value = vm_rets.next().unwrap();
+                if let JITValue::EcPoint(a, b) = native_data {
+                    let vm_a = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
+                    let vm_b = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
 
-                    match struct_container.next().unwrap() {
-                        Value::Number(n) => {
-                            let native_value = BigUint::from_str(&n.to_string()).unwrap();
-                            let vm_value = BigUint::from_str(vm_value).unwrap();
-                            prop_assert_eq!(vm_value, native_value);
-                        }
-                        Value::Array(n) => {
-                            let data: Vec<_> = n
-                                .iter()
-                                .map(|x| match x {
-                                    Value::Number(n) => n.as_u64().unwrap(),
-                                    _ => unreachable!(),
-                                })
-                                .map(|x| x.try_into().unwrap())
-                                .collect();
-                            let native_value = BigUint::from_slice(&data);
-                            let vm_value = BigUint::from_str(vm_value).unwrap();
-                            prop_assert_eq!(vm_value, native_value);
-                        }
-                        _ => {
-                            prop_assert!(false, "invalid felt value type");
-                        }
-                    }
+                    let native_value_a = a.to_biguint();
+                    let native_value_b = b.to_biguint();
+                    prop_assert_eq!(vm_a, native_value_a, "felt value mismatch in ecpoint");
+                    prop_assert_eq!(vm_b, native_value_b, "felt value mismatch in ecpoint");
+                } else {
+                    panic!("invalid type")
                 }
-                */
-                todo!()
             }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {

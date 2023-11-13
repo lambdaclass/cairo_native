@@ -774,7 +774,7 @@ pub mod test {
                 .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
                 .expect("Test program entry point not found.")
                 .id,
-            &args,
+            args,
             required_initial_gas,
             Some(u64::MAX.into()),
             None,

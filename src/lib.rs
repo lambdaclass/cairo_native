@@ -93,7 +93,10 @@
 #[macro_use]
 extern crate educe;
 
-pub use self::{compiler::compile, jit_runner::execute};
+pub use self::{
+    compiler::compile,
+    jit_runner::{execute, execute_contract},
+};
 
 pub use self::jit_runner::ExecuteResult;
 

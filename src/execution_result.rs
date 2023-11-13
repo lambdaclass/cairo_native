@@ -25,7 +25,7 @@ pub struct NativeExecutionResult {
 impl NativeExecutionResult {
     pub fn from_execute_result(result: ExecuteResult) -> Result<Self, JitRunnerError> {
         let mut error_msg = None;
-        let mut failure_flag = false;
+        let failure_flag;
 
         assert_eq!(
             result.return_values.len(),

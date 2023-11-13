@@ -1,7 +1,5 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::execution_result::NativeExecutionResult;
@@ -327,20 +325,6 @@ fn main() {
 
     let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
-    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
-        ProgramRegistry::new(&sierra_program).unwrap();
-
-    // uncomment to save the contract sierra program
-    // std::fs::write("erc20.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref())
-        .collect();
-    println!("{names:#?}");
-    */
 
     let native_context = NativeContext::new();
 

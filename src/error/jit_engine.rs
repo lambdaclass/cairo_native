@@ -118,9 +118,9 @@ pub fn make_unexpected_value_error(expected: String) -> Error {
     ErrorImpl::UnexpectedValue(expected).into()
 }
 
-pub fn make_type_builder_error<'a>(
-    id: &'a ConcreteTypeId,
-) -> impl 'a
+pub fn make_type_builder_error(
+    id: &ConcreteTypeId,
+) -> impl '_
        + FnOnce(
     <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
 ) -> Error {

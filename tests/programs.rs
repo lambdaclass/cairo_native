@@ -4,6 +4,7 @@ use crate::common::{
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
+use cairo_native::invoke::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
@@ -88,17 +89,15 @@ fn fib() {
     let result_vm =
         run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
 
-    let gas: u64 = result_vm
-        .gas_counter
-        .unwrap()
-        .to_bigint()
-        .try_into()
-        .unwrap();
-    let vm_results = get_run_result(&result_vm.value);
-    let vm_result = &vm_results[0];
+    let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(10.into())]);
 
-    let result = run_native_program(&FIB, "run_test", json!([null, GAS, felt("10")]));
-    assert_eq!(result, json!([null, gas, [0, [felt(vm_result)]]]));
+    compare_outputs(
+        &FIB.1,
+        &FIB.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -111,17 +110,16 @@ fn logistic_map() {
     )
     .unwrap();
 
-    let gas: u64 = result_vm
-        .gas_counter
-        .unwrap()
-        .to_bigint()
-        .try_into()
-        .unwrap();
-    let vm_results = get_run_result(&result_vm.value);
-    let fib_result = &vm_results[0];
+    let result_native =
+        run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(1000.into())]);
 
-    let result = run_native_program(&LOGISTIC_MAP, "run_test", json!([null, GAS, felt("1000")]));
-    assert_eq!(result, json!([null, gas, [0, [felt(fib_result)]]]));
+    compare_outputs(
+        &LOGISTIC_MAP.1,
+        &LOGISTIC_MAP.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -149,19 +147,26 @@ fn pedersen() {
     )
     .unwrap();
 
-    let vm_results = get_run_result(&result_vm.value);
-    let vm_result = &vm_results[0];
-
-    let result = run_native_program(
+    let result_native = run_native_program(
         &PEDERSEN,
         "run_test",
-        json!([
-            null,
-            felt("2163739901324492107409690946633517860331020929182861814098856895601180685"),
-            felt("2392090257937917229310563411601744459500735555884672871108624696010915493156")
-        ]),
+        &[
+            JITValue::felt_str(
+                "2163739901324492107409690946633517860331020929182861814098856895601180685",
+            ),
+            JITValue::felt_str(
+                "2392090257937917229310563411601744459500735555884672871108624696010915493156",
+            ),
+        ],
     );
-    assert_eq!(result, json!([null, felt(vm_result)]));
+
+    compare_outputs(
+        &PEDERSEN.1,
+        &PEDERSEN.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -173,7 +178,7 @@ fn factorial() {
         Some(GAS),
     )
     .unwrap();
-    let result_native = run_native_program(&FACTORIAL, "run_test", json!([null, GAS, felt("13")]));
+    let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(13.into())]);
 
     compare_outputs(
         &FACTORIAL.1,
@@ -194,7 +199,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&FIB, "run_test", json!([null, GAS, feltn(n)]));
+        let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(n.into())]);
 
         compare_outputs(
             &FIB.1,
@@ -213,7 +218,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", json!([null, GAS, feltn(n)]));
+        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(n.into())]);
 
         compare_outputs(
             &LOGISTIC_MAP.1,
@@ -232,7 +237,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&FACTORIAL, "run_test", json!([null, GAS, feltn(n)]));
+        let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(n.into())]);
 
         compare_outputs(
             &FACTORIAL.1,
@@ -252,15 +257,7 @@ proptest! {
         )
         .unwrap();
 
-        let mut a = a.to_biguint().to_u32_digits();
-        a.resize(8, 0);
-        let a: [u32; 8] = a.try_into().unwrap();
-
-        let mut b = b.to_biguint().to_u32_digits();
-        b.resize(8, 0);
-        let b: [u32; 8] = b.try_into().unwrap();
-
-        let result_native = run_native_program(&PEDERSEN, "run_test", json!([null, a, b]));
+        let result_native = run_native_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
 
         compare_outputs(
             &PEDERSEN.1,
@@ -280,19 +277,7 @@ proptest! {
         )
         .unwrap();
 
-        let mut a = a.to_biguint().to_u32_digits();
-        a.resize(8, 0);
-        let a: [u32; 8] = a.try_into().unwrap();
-
-        let mut b = b.to_biguint().to_u32_digits();
-        b.resize(8, 0);
-        let b: [u32; 8] = b.try_into().unwrap();
-
-        let mut c = c.to_biguint().to_u32_digits();
-        c.resize(8, 0);
-        let c: [u32; 8] = c.try_into().unwrap();
-
-        let result_native = run_native_program(&POSEIDON, "run_test", json!([null, a, b, c]));
+        let result_native = run_native_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
 
         compare_outputs(
             &POSEIDON.1,
