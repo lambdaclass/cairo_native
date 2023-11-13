@@ -606,7 +606,6 @@ pub(crate) use codegen_ret_extr;
 pub mod test {
     use super::*;
     use crate::{
-        invoke::JITValue,
         jit_runner::ExecutionResult,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
@@ -614,6 +613,7 @@ pub mod test {
             MetadataStorage,
         },
         types::felt252::PRIME,
+        values::JITValue,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,

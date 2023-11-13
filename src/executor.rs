@@ -2,11 +2,11 @@ use crate::{
     error::jit_engine::{ErrorImpl, RunnerError},
     execute, execute_contract,
     execution_result::ContractExecutionResult,
-    invoke::JITValue,
     jit_runner::ExecutionResult,
     metadata::syscall_handler::SyscallHandlerMeta,
     module::NativeModule,
     utils::create_engine,
+    values::JITValue,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},

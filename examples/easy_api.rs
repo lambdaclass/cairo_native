@@ -1,6 +1,7 @@
 use cairo_felt::Felt252;
+use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::{context::NativeContext, invoke::JITValue};
+use cairo_native::values::JITValue;
 use std::path::Path;
 
 fn main() {

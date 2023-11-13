@@ -147,8 +147,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        invoke::JITValue,
         utils::test::{load_cairo, run_program_assert_output},
+        values::JITValue,
     };
 
     #[test]

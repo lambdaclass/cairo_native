@@ -1,7 +1,7 @@
 use crate::common::{load_cairo, run_native_program, run_vm_program};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::invoke::JITValue;
+use cairo_native::values::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;

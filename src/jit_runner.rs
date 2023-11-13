@@ -6,15 +6,17 @@ use crate::{
         JitRunnerError,
     },
     execution_result::ContractExecutionResult,
-    invoke::JITValue,
     metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::generate_function_name,
-    values::ValueBuilder,
+    values::{JITValue, ValueBuilder},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
+    },
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
@@ -282,7 +284,7 @@ pub fn execute(
             | CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::StarkNet(_)
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::EcOp(_)
             | CoreTypeConcrete::SegmentArena(_) => {
                 // ignore returned builtins

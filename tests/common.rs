@@ -23,7 +23,6 @@ use cairo_native::{
     context::NativeContext,
     execution_result::ContractExecutionResult,
     executor::NativeExecutor,
-    invoke::JITValue,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -33,6 +32,7 @@ use cairo_native::{
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
     utils::{find_entry_point_by_idx, register_runtime_symbols},
+    values::JITValue,
     ExecutionResult,
 };
 use lambdaworks_math::{
