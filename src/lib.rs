@@ -98,7 +98,7 @@ pub use self::{
     jit_runner::{execute, execute_contract},
 };
 
-pub use self::jit_runner::ExecuteResult;
+pub use self::jit_runner::ExecutionResult;
 
 pub mod cache;
 mod compiler;

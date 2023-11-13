@@ -21,7 +21,7 @@ use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
-    execution_result::NativeExecutionResult,
+    execution_result::ContractExecutionResult,
     executor::NativeExecutor,
     invoke::JITValue,
     metadata::{
@@ -33,7 +33,7 @@ use cairo_native::{
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
     utils::{find_entry_point_by_idx, register_runtime_symbols},
-    ExecuteResult,
+    ExecutionResult,
 };
 use lambdaworks_math::{
     field::{
@@ -183,7 +183,7 @@ pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[JITValue],
-) -> ExecuteResult {
+) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
 
@@ -322,7 +322,7 @@ pub fn run_native_starknet_contract<T>(
     entry_point_function_idx: usize,
     args: &[JITValue],
     handler: &mut T,
-) -> NativeExecutionResult
+) -> ContractExecutionResult
 where
     T: StarkNetSyscallHandler,
 {
@@ -340,17 +340,9 @@ where
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let result = native_executor
-        .execute(
-            entry_point_id,
-            args,
-            required_init_gas,
-            Some(u64::MAX as u128),
-        )
-        .expect("failed to execute the given contract");
-
-    NativeExecutionResult::from_execute_result(result)
-        .expect("failed to serialize starknet execution result")
+    native_executor
+        .execute_contract(entry_point_id, args, required_init_gas, u64::MAX as u128)
+        .expect("failed to execute the given contract")
 }
 
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
@@ -364,7 +356,7 @@ pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
     vm_result: &RunResultStarknet,
-    native_result: &ExecuteResult,
+    native_result: &ExecutionResult,
 ) -> Result<(), TestCaseError> {
     use proptest::prelude::*;
 

@@ -1,10 +1,7 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::invoke::JITValue;
 use cairo_native::utils::find_entry_point_by_idx;
@@ -336,16 +333,14 @@ fn main() {
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let params = vec![JITValue::Struct {
-        fields: vec![JITValue::Array(vec![JITValue::Felt252(Felt252::new(1))])],
-        debug_name: None,
-    }];
-
     let result = native_executor
-        .execute(fn_id, &params, required_init_gas, Some(u64::MAX.into()))
+        .execute_contract(
+            fn_id,
+            &[JITValue::Felt252(Felt252::new(1))],
+            required_init_gas,
+            u64::MAX.into(),
+        )
         .expect("failed to execute the given contract");
-
-    let result = NativeExecutionResult::from_execute_result(result).unwrap();
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

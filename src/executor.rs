@@ -1,6 +1,12 @@
 use crate::{
-    error::jit_engine::RunnerError, execute, invoke::JITValue, jit_runner::ExecuteResult,
-    metadata::syscall_handler::SyscallHandlerMeta, module::NativeModule, utils::create_engine,
+    error::jit_engine::{ErrorImpl, RunnerError},
+    execute, execute_contract,
+    execution_result::ContractExecutionResult,
+    invoke::JITValue,
+    jit_runner::ExecutionResult,
+    metadata::syscall_handler::SyscallHandlerMeta,
+    module::NativeModule,
+    utils::create_engine,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -38,13 +44,16 @@ impl<'m> NativeExecutor<'m> {
         &mut self.native_module
     }
 
+    /// Execute a program with the given params.
+    ///
+    /// See [`cairo_native::jit_runner::execute`]
     pub fn execute(
         &self,
         fn_id: &FunctionId,
         params: &[JITValue],
         required_initial_gas: Option<u128>,
         gas: Option<u128>,
-    ) -> Result<ExecuteResult, RunnerError> {
+    ) -> Result<ExecutionResult, RunnerError> {
         let registry = self.get_program_registry();
         let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
 
@@ -53,6 +62,33 @@ impl<'m> NativeExecutor<'m> {
             registry,
             fn_id,
             params,
+            required_initial_gas,
+            gas,
+            syscall_handler,
+        )
+    }
+
+    /// Execute a contract with the given calldata.
+    ///
+    /// See [`cairo_native::jit_runner::execute_contract`]
+    pub fn execute_contract(
+        &self,
+        fn_id: &FunctionId,
+        calldata: &[JITValue],
+        required_initial_gas: Option<u128>,
+        gas: u128,
+    ) -> Result<ContractExecutionResult, RunnerError> {
+        let registry = self.get_program_registry();
+        let syscall_handler = self
+            .get_module()
+            .get_metadata::<SyscallHandlerMeta>()
+            .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
+
+        execute_contract(
+            &self.engine,
+            registry,
+            fn_id,
+            calldata,
             required_initial_gas,
             gas,
             syscall_handler,

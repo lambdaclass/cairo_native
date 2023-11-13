@@ -2,7 +2,6 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::invoke::JITValue;
 use cairo_native::utils::find_entry_point_by_idx;
@@ -294,12 +293,6 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() {
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
@@ -339,25 +332,23 @@ fn main() {
 
     let required_init_gas = native_program.get_required_init_gas(fn_id);
 
-    let params = vec![JITValue::Struct {
-        fields: vec![JITValue::Array(vec![
-            JITValue::Felt252(Felt252::from_bytes_be(b"name")),
-            JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
-            JITValue::Felt252(Felt252::new(0)),
-            JITValue::Felt252(Felt252::new(i64::MAX)),
-            JITValue::Felt252(Felt252::new(4)),
-            JITValue::Felt252(Felt252::new(6)),
-        ])],
-        debug_name: None,
-    }];
-
     let native_executor = NativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute(fn_id, &params, required_init_gas, Some(u64::MAX.into()))
+        .execute_contract(
+            fn_id,
+            &[
+                JITValue::Felt252(Felt252::from_bytes_be(b"name")),
+                JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
+                JITValue::Felt252(Felt252::new(0)),
+                JITValue::Felt252(Felt252::new(i64::MAX)),
+                JITValue::Felt252(Felt252::new(4)),
+                JITValue::Felt252(Felt252::new(6)),
+            ],
+            required_init_gas,
+            u64::MAX.into(),
+        )
         .expect("failed to execute the given contract");
-
-    let result = NativeExecutionResult::from_execute_result(result);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

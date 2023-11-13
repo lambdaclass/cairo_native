@@ -607,7 +607,7 @@ pub mod test {
     use super::*;
     use crate::{
         invoke::JITValue,
-        jit_runner::ExecuteResult,
+        jit_runner::ExecutionResult,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
@@ -676,7 +676,7 @@ pub mod test {
         program: &(String, Program),
         entry_point: &str,
         args: &[JITValue],
-    ) -> ExecuteResult {
+    ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 

@@ -5,6 +5,7 @@ use crate::{
         jit_engine::{make_insufficient_gas_error, make_type_builder_error, ErrorImpl},
         JitRunnerError,
     },
+    execution_result::ContractExecutionResult,
     invoke::JITValue,
     metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
@@ -21,8 +22,9 @@ use melior::ExecutionEngine;
 use std::{alloc::Layout, iter::once, ptr::NonNull};
 use tracing::debug;
 
+/// The result of the JIT execution.
 #[derive(Debug, Clone)]
-pub struct ExecuteResult {
+pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
     pub return_values: Vec<JITValue>,
 }
@@ -46,7 +48,7 @@ pub fn execute(
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
     syscall_handler: Option<&SyscallHandlerMeta>,
-) -> Result<ExecuteResult, JitRunnerError> {
+) -> Result<ExecutionResult, JitRunnerError> {
     let arena = Bump::new();
 
     let entry_point = registry.get_function(function_id)?;
@@ -292,7 +294,7 @@ pub fn execute(
         };
     }
 
-    Ok(ExecuteResult {
+    Ok(ExecutionResult {
         remaining_gas,
         return_values: returns,
     })
@@ -309,21 +311,21 @@ pub fn execute_contract(
     function_id: &FunctionId,
     calldata: &[JITValue],
     required_initial_gas: Option<u128>,
-    gas: Option<u128>,
-    syscall_handler: Option<&SyscallHandlerMeta>,
-) -> Result<ExecuteResult, JitRunnerError> {
+    gas: u128,
+    syscall_handler: &SyscallHandlerMeta,
+) -> Result<ContractExecutionResult, JitRunnerError> {
     let params = vec![JITValue::Struct {
         fields: vec![JITValue::Array(calldata.to_vec())],
         debug_name: None,
     }];
 
-    execute(
+    ContractExecutionResult::from_execution_result(execute(
         engine,
         registry,
         function_id,
         &params,
         required_initial_gas,
-        gas,
-        syscall_handler,
-    )
+        Some(gas),
+        Some(syscall_handler),
+    )?)
 }
