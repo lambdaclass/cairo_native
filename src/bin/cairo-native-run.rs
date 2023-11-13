@@ -46,9 +46,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
-    let required_init_gas = native_program.get_required_init_gas(&entry_point.id);
-
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
     let native_executor = NativeExecutor::new(native_program);
@@ -70,12 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect_vec();
 
     let result = native_executor
-        .execute(
-            &entry_point.id,
-            &params,
-            required_init_gas,
-            Some(u64::MAX.into()),
-        )
+        .execute(&entry_point.id, &params, Some(u64::MAX.into()))
         .unwrap();
 
     match args.outputs {

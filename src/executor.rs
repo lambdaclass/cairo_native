@@ -51,11 +51,11 @@ impl<'m> NativeExecutor<'m> {
         &self,
         fn_id: &FunctionId,
         params: &[JITValue],
-        required_initial_gas: Option<u128>,
         gas: Option<u128>,
     ) -> Result<ExecutionResult, RunnerError> {
         let registry = self.get_program_registry();
         let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
+        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
         execute(
             &self.engine,
@@ -75,7 +75,6 @@ impl<'m> NativeExecutor<'m> {
         &self,
         fn_id: &FunctionId,
         calldata: &[JITValue],
-        required_initial_gas: Option<u128>,
         gas: u128,
     ) -> Result<ContractExecutionResult, RunnerError> {
         let registry = self.get_program_registry();
@@ -83,6 +82,7 @@ impl<'m> NativeExecutor<'m> {
             .get_module()
             .get_metadata::<SyscallHandlerMeta>()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
+        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
         execute_contract(
             &self.engine,

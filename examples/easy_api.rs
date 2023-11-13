@@ -5,9 +5,6 @@ use cairo_native::values::JITValue;
 use std::path::Path;
 
 fn main() {
-    #[cfg(not(feature = "with-runtime"))]
-    compile_error!("This example requires the `with-runtime` feature to be active.");
-
     let program_path = Path::new("programs/examples/hello.cairo");
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
@@ -19,20 +16,19 @@ fn main() {
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
 
-    // Get necessary information for the execution of the program from a given entrypoint:
-    //   - Entrypoint function id
-    //   - Required initial gas
-    let params = vec![JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
-    let entry_point = "hello::hello::greet";
-    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
+    // The parameters of the entry point.
+    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
 
-    // Instantiate MLIR executor.
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+
+    // Instantiate the executor.
     let native_executor = NativeExecutor::new(native_program);
 
     // Execute the program.
     let result = native_executor
-        .execute(fn_id, &params, required_init_gas, None)
+        .execute(entry_point_id, params, None)
         .unwrap();
 
     println!("Cairo program was compiled and executed successfully.");

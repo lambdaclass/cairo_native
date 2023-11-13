@@ -27,16 +27,10 @@ fn main() {
     let entry_point_fn = find_entry_point(&sierra_program, "echo::echo::main").unwrap();
 
     let fn_id = &entry_point_fn.id;
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let output = native_executor.execute(
-        fn_id,
-        &[JITValue::Felt252(1.into())],
-        required_init_gas,
-        None,
-    );
+    let output = native_executor.execute(fn_id, &[JITValue::Felt252(1.into())], None);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

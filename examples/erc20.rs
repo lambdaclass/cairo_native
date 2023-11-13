@@ -330,8 +330,6 @@ fn main() {
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
     let fn_id = &entry_point_fn.id;
 
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
-
     let native_executor = NativeExecutor::new(native_program);
 
     let result = native_executor
@@ -345,7 +343,6 @@ fn main() {
                 JITValue::Felt252(Felt252::new(4)),
                 JITValue::Felt252(Felt252::new(6)),
             ],
-            required_init_gas,
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");

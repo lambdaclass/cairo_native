@@ -336,12 +336,10 @@ where
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let required_init_gas = native_program.get_required_init_gas(entry_point_id);
-
     let native_executor = NativeExecutor::new(native_program);
 
     native_executor
-        .execute_contract(entry_point_id, args, required_init_gas, u64::MAX as u128)
+        .execute_contract(entry_point_id, args, u64::MAX as u128)
         .expect("failed to execute the given contract")
 }
 

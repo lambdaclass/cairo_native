@@ -88,7 +88,7 @@ pub fn execute(
                 params_ptrs.push(arena.alloc_layout(Layout::new::<()>()).cast())
             }
             CoreTypeConcrete::Box(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -126,7 +126,7 @@ pub fn execute(
                 params_ptrs.push(ptr);
             }
             CoreTypeConcrete::Uint8(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -135,7 +135,7 @@ pub fn execute(
                 );
             }
             CoreTypeConcrete::Uint16(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -144,7 +144,7 @@ pub fn execute(
                 );
             }
             CoreTypeConcrete::Uint32(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -153,7 +153,7 @@ pub fn execute(
                 );
             }
             CoreTypeConcrete::Uint64(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -162,7 +162,7 @@ pub fn execute(
                 );
             }
             CoreTypeConcrete::Uint128(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -179,7 +179,7 @@ pub fn execute(
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -188,7 +188,7 @@ pub fn execute(
                 );
             }
             CoreTypeConcrete::Struct(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()
@@ -200,7 +200,7 @@ pub fn execute(
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
             CoreTypeConcrete::Span(_) => {
-                // TODO: check the invokearg matches?
+                // TODO: check the JITValue matches?
                 params_ptrs.push(
                     params_it
                         .next()

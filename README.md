@@ -415,78 +415,47 @@ Options:
 
 # API usage example
 
-This is a usage example using the API for an easy Cairo program that requires the least setup to get running. It allows you to compile and execute a program using the JIT. The inputs and outputs in this case are
-serialized using `serde_json` (so the format is JSON).
-
-Do note that, unlike `cairo-run`, `cairo-native` needs all inputs to be passed, even the implicit ones such as builtins. Some examples of these are the `GasBuiltin` (that is basically the gas), `RangeCheck`, etc. Most of them, with the exception of `GasBuiltin` can simply be
-passed as `null`.
-
-If the wrong inputs are passed, an error reports the needed inputs. You can also check the needed inputs by
-compiling the program to sierra and checking the arguments of the entry point you chose, it will look something like:
-
-```
-example::example::main@0([0]: Pedersen, [1]: felt252, [2]: felt252) -> (Pedersen, felt252);
-```
-
-In this case, we take the pedersen builtin and 2 felts. So we pass the following json:
-
-```json
-[null, [1,0,0,0,0,0,0,0],  [2,0,0,0,0,0,0,0]]
-```
-
-The first `null` is the pedersen builtin, in cairo-native most builtins (with the exception of `GasBuiltin`) are not used at all, so `null` works.
-
-The two following inputs are felts encoded as a u32 array of length 8 in little endian order.
-You can use the functions provided on the `cairo_native::utils` module `felt252_str`, `felt252_bigint` and `felt252_short_str` to easily encode felts to this format.
+This is a usage example using the API for an easy Cairo program that requires the least setup to get running. It allows you to compile and execute a program using the JIT.
 
 
-Example code:
+Example code to run a program:
 
 ```rust
+use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use serde_json::json;
-use std::{io::stdout, path::Path};
+use cairo_native::values::JITValue;
+use std::path::Path;
 
 fn main() {
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
-    #[cfg(not(feature = "with-runtime"))]
-    compile_error!("This example requires the `with-runtime` feature to be active.");
-
     let program_path = Path::new("programs/examples/hello.cairo");
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the
-    // MLIR initialization and compilation of sierra programs into a MLIR module.
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
 
-    // Get necessary information for the execution of the program from a given entrypoint:
-    //   * entrypoint function id
-    //   * required initial gas
-    let name = cairo_native::utils::felt252_short_str("user");
-    let entry_point = "hello::hello::greet";
-    let params = json!([name]);
-    let returns = &mut serde_json::Serializer::new(stdout());
-    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-    let required_init_gas = native_program.get_required_init_gas(&fn_id);
+    // The parameters of the entry point.
+    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
 
-    // Instantiate MLIR executor.
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+
+    // Instantiate the executor.
     let native_executor = NativeExecutor::new(native_program);
 
-    // Execute the program
-    native_executor
-        .execute(&fn_id, params, returns, required_init_gas).unwrap();
+    // Execute the program.
+    let result = native_executor
+        .execute(entry_point_id, params, None)
+        .unwrap();
 
     println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
 }
 ```
 
