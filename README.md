@@ -398,6 +398,11 @@ Options:
 ```
 
 `cairo-native-run`:
+
+This tool allows to run programs using the JIT engine, like the `cairo-run` tool, the parameters can only be felt values.
+
+`echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
+
 ```
 Usage: cairo-native-run [OPTIONS] <INPUT> <ENTRY_POINT>
 
@@ -409,14 +414,12 @@ Options:
   -i, --inputs <INPUTS>
   -o, --outputs <OUTPUTS>
   -p, --print-outputs
-  -g, --available-gas <AVAILABLE_GAS>
-  -h, --help                           Print help
+  -h, --help               Print help
 ```
 
 # API usage example
 
 This is a usage example using the API for an easy Cairo program that requires the least setup to get running. It allows you to compile and execute a program using the JIT.
-
 
 Example code to run a program:
 
@@ -667,6 +670,8 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 ```
+
+For more examples, check out the `examples/` directory.
 
 ## Benchmarking
 
