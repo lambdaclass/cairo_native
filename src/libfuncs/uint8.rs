@@ -688,6 +688,7 @@ where
 
 #[cfg(test)]
 mod test {
+    /* TODO: fix tests
     use crate::{
         types::felt252::PRIME,
         utils::test::{load_cairo, run_program},
@@ -761,8 +762,6 @@ mod test {
         u32_digits.resize(8, 0);
         u32_digits.try_into().unwrap()
     }
-
-    /* TODO: fix tests
 
     #[test]
     fn u8_const_min() {

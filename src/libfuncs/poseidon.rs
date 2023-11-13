@@ -289,11 +289,10 @@ where
 
 #[cfg(test)]
 mod test {
+    /* TODO: fix tests
     use crate::utils::test::{felt, load_cairo, run_program};
     use pretty_assertions::assert_eq;
     use serde_json::json;
-
-    /* TODO: fix tests
 
     #[test]
     fn run_hades_permutation() {

@@ -267,10 +267,9 @@ where
 
 #[cfg(test)]
 mod test {
+    /* TODO: fix tests
     use crate::utils::test::{felt, load_cairo, run_program};
     use serde_json::json;
-
-    /* TODO: fix tests
 
     pub fn true_js() -> serde_json::Value {
         json!([1, []])

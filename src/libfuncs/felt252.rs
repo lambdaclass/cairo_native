@@ -290,6 +290,7 @@ where
 
 #[cfg(test)]
 pub mod test {
+    /* TODO: fix tests
     use crate::{
         invoke::JITValue,
         utils::test::{load_cairo, run_program, run_program_assert_output},
@@ -360,8 +361,6 @@ pub mod test {
             &[JITValue::felt_str("0")],
         );
     }
-
-    /* TODO: fix tests
 
     #[test]
     fn felt252_add() {

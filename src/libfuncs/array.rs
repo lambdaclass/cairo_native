@@ -1167,10 +1167,10 @@ where
 
 #[cfg(test)]
 mod test {
+    /* TODO: fix tests
     use crate::utils::test::{load_cairo, run_program};
     use serde_json::json;
 
-    /* TODO: fix tests
     #[test]
     fn run_roundtrip() {
         let program = load_cairo!(

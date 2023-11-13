@@ -617,7 +617,7 @@ pub fn compare_outputs(
                         )?;
                     }
                 } else {
-                    panic!("wrong type")
+                    panic!("wrong type, should be a enum")
                 };
             }
             CoreTypeConcrete::Struct(info) => {
@@ -631,7 +631,7 @@ pub fn compare_outputs(
                         )?;
                     }
                 } else {
-                    panic!("wrong type")
+                    panic!("wrong type, should be a struct")
                 }
             }
             CoreTypeConcrete::Felt252Dict(_) => todo!(),

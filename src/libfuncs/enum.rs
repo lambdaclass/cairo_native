@@ -343,6 +343,8 @@ where
 
 #[cfg(test)]
 mod test {
+    /* TODO: fix tests
+
     use crate::utils::test::{felt, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -405,8 +407,6 @@ mod test {
             }
         };
     }
-
-    /* TODO: fix tests
 
     #[test]
     fn enum_init() {

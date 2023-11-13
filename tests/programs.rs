@@ -274,7 +274,7 @@ proptest! {
         )
         .unwrap();
 
-        let result_native = run_native_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
+        let result_native = run_native_program(&POSEIDON, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
 
         compare_outputs(
             &POSEIDON.1,
