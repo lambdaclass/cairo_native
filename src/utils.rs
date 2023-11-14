@@ -642,6 +642,36 @@ pub mod test {
     }
     pub(crate) use load_cairo;
 
+    // Helper macros for faster testing.
+    macro_rules! jit_struct {
+        ( $($x:expr),* $(,)? ) => {
+            crate::values::JITValue::Struct {
+                fields: vec![$($x), *],
+                debug_name: None
+            }
+        };
+    }
+    macro_rules! jit_enum {
+        ( $tag:expr, $value:expr ) => {
+            crate::values::JITValue::Enum {
+                tag: $tag,
+                value: Box::new($value),
+                debug_name: None,
+            }
+        };
+    }
+    macro_rules! jit_panic {
+        ( $($value:expr)? ) => {
+            crate::utils::test::jit_enum!(1, crate::utils::test::jit_struct!(
+                crate::utils::test::jit_struct!(),
+                $($value), *
+            ))
+        };
+    }
+    pub(crate) use jit_enum;
+    pub(crate) use jit_panic;
+    pub(crate) use jit_struct;
+
     pub fn load_cairo_str(program_str: &str) -> (String, Program) {
         let mut program_file = tempfile::Builder::new()
             .prefix("test_")

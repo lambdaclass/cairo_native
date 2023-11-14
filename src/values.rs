@@ -29,29 +29,30 @@ use crate::{
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
-#[derive(Educe, Debug, Clone, Eq)]
-#[educe(PartialEq)]
+#[derive(Educe, Debug, Clone)]
+#[educe(PartialEq, Eq)]
 pub enum JITValue {
     Felt252(Felt252),
     Array(Vec<Self>), // all elements need to be same type
     Struct {
         fields: Vec<Self>,
         #[educe(PartialEq(ignore))]
+        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     }, // element types can differ
     Enum {
         tag: usize,
         value: Box<Self>,
         #[educe(PartialEq(ignore))]
+        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Felt252Dict {
         value: HashMap<Felt252, Self>,
         #[educe(PartialEq(ignore))]
+        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
-    Box(Box<Self>), // can't be null
-    Nullable(Option<Box<Self>>),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -349,8 +350,6 @@ impl JITValue {
                         )))?
                     }
                 }
-                JITValue::Box(_) => todo!(),
-                JITValue::Nullable(_) => todo!(),
                 JITValue::Uint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
                     *ptr.cast::<u8>().as_mut() = *value;
