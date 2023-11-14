@@ -81,7 +81,16 @@ where
     )?;
 
     let lhs_struct: Value = entry.argument(1)?.into();
-    let rhs_struct: Value = entry.argument(2)?.into();
+    let rhs_struct: Value = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(2)?.into(),
+            DenseI64ArrayAttribute::new(context, &[0]),
+            llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let lhs = (
         entry
