@@ -74,7 +74,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Bitwise(_)
@@ -93,7 +93,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::EcPoint(_) => todo!(),
@@ -103,7 +103,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::GasBuiltin(_) => {
@@ -131,7 +131,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Uint16(_) => {
@@ -140,7 +140,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Uint32(_) => {
@@ -149,7 +149,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Uint64(_) => {
@@ -158,7 +158,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Uint128(_) => {
@@ -167,7 +167,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Sint8(_) => todo!(),
@@ -184,7 +184,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Struct(_) => {
@@ -193,7 +193,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
@@ -205,7 +205,7 @@ pub fn execute(
                     params_it
                         .next()
                         .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id),
+                        .to_jit(&arena, registry, param_type_id)?,
                 );
             }
             CoreTypeConcrete::StarkNet(_) => {

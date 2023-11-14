@@ -1167,9 +1167,11 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::{
+        utils::test::{load_cairo, run_program},
+        values::JITValue,
+    };
+    use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn run_roundtrip() {
@@ -1180,9 +1182,9 @@ mod test {
                 x
             }
         );
-        let result = run_program(&program, "run_test", json!([[1, 2]]));
+        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_values;
 
-        assert_eq!(result, json!([[1, 2]]));
+        assert_eq!(result, &[JITValue::from([1u32, 2u32])]);
     }
 
     #[test]
@@ -1196,9 +1198,9 @@ mod test {
                 numbers
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([[4]]));
+        assert_eq!(result, [[4u32].into()]);
     }
 
     #[test]
@@ -1214,10 +1216,12 @@ mod test {
                 numbers.len()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([3]));
+        assert_eq!(result, [3u32.into()]);
     }
+
+    /* TODO: fix tests
 
     #[test]
     fn run_get() {

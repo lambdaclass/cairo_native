@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    metadata::syscall_handler::SyscallHandlerMeta,
+    error::jit_engine::{ErrorImpl, RunnerError},
     types::{felt252::PRIME, TypeBuilder},
     utils::{
         felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
@@ -60,21 +60,6 @@ pub enum JITValue {
     EcPoint(Felt252, Felt252),
 }
 
-#[derive(Debug, Default)]
-pub struct InvokeContext<'s> {
-    pub gas: Option<u128>,
-    // Starknet syscall handler
-    pub system: Option<&'s SyscallHandlerMeta>,
-    // call args
-    pub args: Vec<JITValue>,
-}
-
-#[derive(Debug, Default)]
-pub struct InvokeResult {
-    pub gas: Option<u128>,
-    pub outputs: Vec<JITValue>,
-}
-
 // Conversions
 
 impl From<Felt252> for JITValue {
@@ -113,6 +98,24 @@ impl From<u128> for JITValue {
     }
 }
 
+impl<T: Into<JITValue> + Clone> From<&[T]> for JITValue {
+    fn from(value: &[T]) -> Self {
+        Self::Array(value.iter().map(|x| x.clone().into()).collect())
+    }
+}
+
+impl<T: Into<JITValue>> From<Vec<T>> for JITValue {
+    fn from(value: Vec<T>) -> Self {
+        Self::Array(value.into_iter().map(|x| x.into()).collect())
+    }
+}
+
+impl<T: Into<JITValue>, const N: usize> From<[T; N]> for JITValue {
+    fn from(value: [T; N]) -> Self {
+        Self::Array(value.into_iter().map(|x| x.into()).collect())
+    }
+}
+
 impl JITValue {
     pub(crate) fn resolve_type<'a>(
         ty: &'a CoreTypeConcrete,
@@ -130,10 +133,10 @@ impl JITValue {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-    ) -> NonNull<()> {
+    ) -> Result<NonNull<()>, RunnerError> {
         let ty = registry.get_type(type_id).unwrap();
 
-        unsafe {
+        Ok(unsafe {
             match self {
                 JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
@@ -154,7 +157,7 @@ impl JITValue {
                         let cap: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
-                            let elem = elem.to_jit(arena, registry, &info.ty);
+                            let elem = elem.to_jit(arena, registry, &info.ty)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -201,7 +204,10 @@ impl JITValue {
                             .as_mut() = cap;
                         target.cast()
                     } else {
-                        panic!("wrong type: {:?}", type_id.debug_name.as_ref())
+                        Err(ErrorImpl::UnexpectedValue(format!(
+                            "expected value of type {:?} but got an array",
+                            type_id.debug_name
+                        )))?
                     }
                 }
                 JITValue::Struct {
@@ -224,7 +230,7 @@ impl JITValue {
                             data.push((
                                 member_layout,
                                 offset,
-                                member.to_jit(arena, registry, member_type_id),
+                                member.to_jit(arena, registry, member_type_id)?,
                             ));
                         }
 
@@ -245,7 +251,10 @@ impl JITValue {
 
                         ptr
                     } else {
-                        panic!("wrong type")
+                        Err(ErrorImpl::UnexpectedValue(format!(
+                            "expected value of type {:?} but got a struct",
+                            type_id.debug_name
+                        )))?
                     }
                 }
                 JITValue::Enum { tag, value, .. } => {
@@ -254,7 +263,7 @@ impl JITValue {
                         assert!(tag_value <= info.variants.len());
 
                         let payload_type_id = &info.variants[tag_value];
-                        let payload = value.to_jit(arena, registry, payload_type_id);
+                        let payload = value.to_jit(arena, registry, payload_type_id)?;
 
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
@@ -284,7 +293,10 @@ impl JITValue {
 
                         ptr
                     } else {
-                        panic!("wrong type")
+                        Err(ErrorImpl::UnexpectedValue(format!(
+                            "expected value of type {:?} but got an enum value",
+                            type_id.debug_name
+                        )))?
                     }
                 }
                 JITValue::Felt252Dict { value: map, .. } => {
@@ -298,7 +310,7 @@ impl JITValue {
 
                         for (key, value) in map.iter() {
                             let key = key.to_le_bytes();
-                            let value = value.to_jit(arena, registry, &info.ty);
+                            let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
                                 NonNull::new(libc::malloc(elem_layout.size())).unwrap();
@@ -331,7 +343,10 @@ impl JITValue {
 
                         target.cast()
                     } else {
-                        panic!("wrong type")
+                        Err(ErrorImpl::UnexpectedValue(format!(
+                            "expected value of type {:?} but got a felt dict",
+                            type_id.debug_name
+                        )))?
                     }
                 }
                 JITValue::Box(_) => todo!(),
@@ -380,7 +395,7 @@ impl JITValue {
                     ptr
                 }
             }
-        }
+        })
     }
 
     /// From the given pointer acquired from the JIT outputs, convert it to a [`Self`]
@@ -570,6 +585,7 @@ impl JITValue {
         }
     }
 
+    /// String to felt
     pub fn felt_str(value: &str) -> Self {
         let value = value.parse::<BigInt>().unwrap();
         let value = match value.sign() {
