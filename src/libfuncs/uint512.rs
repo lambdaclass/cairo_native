@@ -69,7 +69,6 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let i128_ty = IntegerType::new(context, 128).into();
-    let i256_ty = IntegerType::new(context, 256).into();
     let i512_ty = IntegerType::new(context, 512).into();
 
     let guarantee_type = registry.build_type(
