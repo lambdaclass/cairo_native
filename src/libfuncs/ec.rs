@@ -1000,11 +1000,12 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{felt, load_cairo, run_program};
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        values::JITValue,
+    };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use serde_json::json;
 
     lazy_static! {
         static ref EC_POINT_IS_ZERO: (String, Program) = load_cairo! {
@@ -1088,22 +1089,26 @@ mod test {
 
     #[test]
     fn ec_point_is_zero() {
-        let r = |x, y| run_program(&EC_POINT_IS_ZERO, "run_test", json!([[x, y]]));
+        let r = |x, y| {
+            run_program(&EC_POINT_IS_ZERO, "run_test", &[JITValue::EcPoint(x, y)]).return_values
+        };
 
-        assert_eq!(r(felt("0"), felt("0")), json!([[0, []]]));
+        assert_eq!(r(0.into(), 0.into()), [jit_enum!(0, jit_struct!())]);
         assert_eq!(
-            r(felt("0"), felt("1")),
-            json!([[1, [felt("0"), felt("1")]]])
+            r(0.into(), 1.into()),
+            [jit_enum!(1, JITValue::EcPoint(0.into(), 1.into()))]
         );
         assert_eq!(
-            r(felt("1"), felt("0")),
-            json!([[1, [felt("1"), felt("0")]]])
+            r(1.into(), 0.into()),
+            [jit_enum!(1, JITValue::EcPoint(1.into(), 0.into()))]
         );
         assert_eq!(
-            r(felt("1"), felt("1")),
-            json!([[1, [felt("1"), felt("1")]]])
+            r(1.into(), 1.into()),
+            [jit_enum!(1, JITValue::EcPoint(1.into(), 1.into()))]
         );
     }
+
+    /* TODO: fix tests
 
     #[test]
     fn ec_neg() {

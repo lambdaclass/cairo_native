@@ -438,8 +438,7 @@ impl JITValue {
 
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
+                CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
@@ -462,7 +461,7 @@ impl JITValue {
                 CoreTypeConcrete::Sint32(_) => todo!(),
                 CoreTypeConcrete::Sint64(_) => todo!(),
                 CoreTypeConcrete::Sint128(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
+                CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
@@ -559,6 +558,7 @@ impl JITValue {
                 | CoreTypeConcrete::Bitwise(_)
                 | CoreTypeConcrete::BuiltinCosts(_)
                 | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)

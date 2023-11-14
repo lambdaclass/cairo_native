@@ -96,7 +96,14 @@ pub fn execute(
                         .to_jit(&arena, registry, param_type_id)?,
                 );
             }
-            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => {
+                params_ptrs.push(
+                    params_it
+                        .next()
+                        .ok_or_else(|| make_missing_parameter(param_type_id))?
+                        .to_jit(&arena, registry, param_type_id)?,
+                );
+            }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
                 params_ptrs.push(
