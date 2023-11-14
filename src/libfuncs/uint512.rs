@@ -81,16 +81,7 @@ where
     )?;
 
     let lhs_struct: Value = entry.argument(1)?.into();
-    let rhs_struct: Value = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(2)?.into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let rhs_struct: Value = entry.argument(2)?.into();
 
     let lhs = (
         entry
@@ -98,7 +89,7 @@ where
                 context,
                 lhs_struct,
                 DenseI64ArrayAttribute::new(context, &[0]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
@@ -108,7 +99,7 @@ where
                 context,
                 lhs_struct,
                 DenseI64ArrayAttribute::new(context, &[1]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
@@ -118,7 +109,7 @@ where
                 context,
                 lhs_struct,
                 DenseI64ArrayAttribute::new(context, &[2]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
@@ -128,7 +119,7 @@ where
                 context,
                 lhs_struct,
                 DenseI64ArrayAttribute::new(context, &[3]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
@@ -140,7 +131,7 @@ where
                 context,
                 rhs_struct,
                 DenseI64ArrayAttribute::new(context, &[0]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
@@ -150,7 +141,7 @@ where
                 context,
                 rhs_struct,
                 DenseI64ArrayAttribute::new(context, &[1]),
-                i256_ty,
+                i128_ty,
                 location,
             ))
             .result(0)?
