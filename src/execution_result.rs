@@ -49,6 +49,9 @@ impl NativeExecutionResult {
 
                 for ret_type in self.ret_types {
                     match ret_type {
+                        CoreTypeConcrete::Bitwise(_) => {
+                            seq.next_element::<Value>()?;
+                        }
                         CoreTypeConcrete::GasBuiltin(_) => {
                             remaining_gas = seq.next_element()?.unwrap();
                         }
