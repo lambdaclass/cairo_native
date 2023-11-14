@@ -1004,8 +1004,10 @@ mod test {
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
         values::JITValue,
     };
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
+    use num_traits::Num;
 
     lazy_static! {
         static ref EC_POINT_IS_ZERO: (String, Program) = load_cairo! {
@@ -1108,28 +1110,41 @@ mod test {
         );
     }
 
-    /* TODO: fix tests
-
     #[test]
     fn ec_neg() {
-        let r = |x, y| run_program(&EC_NEG, "run_test", json!([[x, y]]));
+        let r = |x, y| run_program(&EC_NEG, "run_test", &[JITValue::EcPoint(x, y)]).return_values;
 
-        assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
-        assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("-1")]]));
-        assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
-        assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("-1")]]));
+        assert_eq!(
+            r(0.into(), 0.into()),
+            [JITValue::EcPoint(0.into(), 0.into())]
+        );
+        assert_eq!(
+            r(0.into(), 1.into()),
+            [JITValue::EcPoint(0.into(), Felt252::new(-1))]
+        );
+        assert_eq!(
+            r(1.into(), 0.into()),
+            [JITValue::EcPoint(1.into(), 0.into())]
+        );
+        assert_eq!(
+            r(1.into(), 1.into()),
+            [JITValue::EcPoint(1.into(), Felt252::new(-1))]
+        );
     }
 
     #[test]
     fn ec_point_from_x() {
-        let r = |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", json!([(), x]));
+        let r =
+            |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", &[JITValue::Felt252(x)]).return_values;
 
-        assert_eq!(r(felt("0")), json!([(), [1, []]]));
-        assert_eq!(
-            r(felt("1234")),
-            json!([(), [0, [felt("1234"), felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")]]])
-        );
+        assert_eq!(r(0.into()), [jit_enum!(1, jit_struct!())]);
+        assert_eq!(r(1234.into()), [jit_enum!(0, JITValue::EcPoint(
+            Felt252::new(1234),
+            Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+        ))]);
     }
+
+    /* TODO: fix tests
 
     #[test]
     fn ec_state_add() {
