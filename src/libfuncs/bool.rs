@@ -267,17 +267,7 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{felt, load_cairo, run_program};
-    use serde_json::json;
-
-    pub fn true_js() -> serde_json::Value {
-        json!([1, []])
-    }
-
-    pub fn false_js() -> serde_json::Value {
-        json!([0, []])
-    }
+    use crate::{utils::test::{load_cairo, run_program, jit_enum, jit_struct}, values::JITValue};
 
     #[test]
     fn run_not() {
@@ -289,11 +279,11 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([true_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
 
     #[test]
@@ -305,17 +295,18 @@ mod test {
                 a && b
             }
         );
-        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
-        assert_eq!(result, json!([true_js()]));
 
-        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
 
     #[test]
@@ -328,17 +319,17 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
 
     #[test]
@@ -351,17 +342,17 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([true_js(), true_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([true_js(), false_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), true_js()]));
-        assert_eq!(result, json!([true_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(&program, "run_test", json!([false_js(), false_js()]));
-        assert_eq!(result, json!([false_js()]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
 
     #[test]
@@ -372,12 +363,10 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([true_js()]));
-        assert_eq!(result, json!([felt("1")]));
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
+        assert_eq!(result, [JITValue::Felt252(1.into())]);
 
-        let result = run_program(&program, "run_test", json!([false_js()]));
-        assert_eq!(result, json!([felt("0")]));
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
+        assert_eq!(result, [JITValue::Felt252(0.into())]);
     }
-
-    */
 }
