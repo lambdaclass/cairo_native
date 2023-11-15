@@ -219,9 +219,7 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
     use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
 
     #[test]
     fn run_withdraw_gas() {
@@ -250,9 +248,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([null, 60000]));
-        assert_eq!(result, json!([null, 44260, [0, [[]]]]));
+        let result = run_program(&program, "run_test", &[]);
+        assert_eq!(result.remaining_gas, Some(18446744073709535875u128));
     }
-
-    */
 }
