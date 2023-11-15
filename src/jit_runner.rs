@@ -3,7 +3,8 @@
 use crate::{
     error::{
         jit_engine::{
-            make_insufficient_gas_error, make_missing_parameter, make_type_builder_error, ErrorImpl,
+            make_insufficient_gas_error, make_missing_parameter, make_type_builder_error,
+            make_unexpected_value_error, ErrorImpl,
         },
         JitRunnerError,
     },
@@ -70,12 +71,15 @@ pub fn execute(
 
         match ty {
             CoreTypeConcrete::Array(_) => {
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Array(_)) {
+                    Err(make_unexpected_value_error("JITValue::Array".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::RangeCheck(_)
@@ -88,30 +92,30 @@ pub fn execute(
                 params_ptrs.push(arena.alloc_layout(Layout::new::<()>()).cast())
             }
             CoreTypeConcrete::Box(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                todo!()
             }
             CoreTypeConcrete::EcPoint(_) => {
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::EcPoint(..)) {
+                    Err(make_unexpected_value_error("JITValue::EcPoint".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::EcState(_) => todo!(),
             CoreTypeConcrete::Felt252(_) => {
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Felt252(_)) {
+                    Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::GasBuiltin(_) => {
                 let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
@@ -133,49 +137,59 @@ pub fn execute(
                 params_ptrs.push(ptr);
             }
             CoreTypeConcrete::Uint8(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint8(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint8".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Uint16(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint16(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint16".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Uint32(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint32(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint32".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Uint64(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint64(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint64".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Uint128(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint128(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint128".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Sint8(_) => todo!(),
             CoreTypeConcrete::Sint16(_) => todo!(),
@@ -186,34 +200,44 @@ pub fn execute(
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Enum { .. }) {
+                    Err(make_unexpected_value_error("JITValue::Enum".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
             CoreTypeConcrete::Struct(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Struct { .. }) {
+                    Err(make_unexpected_value_error("JITValue::Struct".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Felt252Dict { .. }) {
+                    Err(make_unexpected_value_error(
+                        "JITValue::Felt252Dict".to_string(),
+                    ))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
             CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
             CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
             CoreTypeConcrete::Span(_) => {
-                // TODO: check the JITValue matches?
-                params_ptrs.push(
-                    params_it
-                        .next()
-                        .ok_or_else(|| make_missing_parameter(param_type_id))?
-                        .to_jit(&arena, registry, param_type_id)?,
-                );
+                todo!()
             }
             CoreTypeConcrete::StarkNet(_) => {
                 let syscall_addr = syscall_handler

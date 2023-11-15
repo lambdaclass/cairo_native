@@ -117,9 +117,7 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::utils::test::{jit_dict, jit_struct, load_cairo, run_program_assert_output};
 
     #[test]
     fn run_dict_new() {
@@ -132,8 +130,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
-        assert_eq!(result, json!([null, null, 590090, []]));
+        run_program_assert_output(&program, "run_test", &[], &[jit_struct!()]);
     }
 
     #[test]
@@ -147,9 +144,10 @@ mod test {
                 dict.get(2)
             }
         );
-        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
-        assert_eq!(result, json!([null, null, 578950, 1]));
+
+        run_program_assert_output(&program, "run_test", &[], &[1u32.into()]);
     }
+
     #[test]
     fn run_dict_insert_ret_dict() {
         let program = load_cairo!(
@@ -166,16 +164,18 @@ mod test {
                 dict
             }
         );
-        let result = run_program(&program, "run_test", json!([()]));
-        assert_eq!(
-            result,
-            json!([null, {
-                "1": 2,
-                "2": 3,
-                "3": 4,
-                "4": 5,
-                "5": 6,
-            }])
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            &[jit_dict!(
+                1 => 2u32,
+                2 => 3u32,
+                3 => 4u32,
+                4 => 5u32,
+                5 => 6u32,
+            )],
         );
     }
 
@@ -190,24 +190,23 @@ mod test {
             }
         );
 
-        let result = run_program(
+        run_program_assert_output(
             &program,
             "run_test",
-            json!([
-                {
-                    "2": 4
-                },
-            ]),
-        );
-        assert_eq!(
-            result,
-            json!([
-                {
-                    "2": 4
-                },
-            ])
+            &[jit_dict!(
+                1 => 2u32,
+                2 => 3u32,
+                3 => 4u32,
+                4 => 5u32,
+                5 => 6u32,
+            )],
+            &[jit_dict!(
+                1 => 2u32,
+                2 => 3u32,
+                3 => 4u32,
+                4 => 5u32,
+                5 => 6u32,
+            )],
         );
     }
-
-    */
 }

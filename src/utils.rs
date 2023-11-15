@@ -660,6 +660,18 @@ pub mod test {
             }
         };
     }
+    macro_rules! jit_dict {
+        ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
+            crate::values::JITValue::Felt252Dict {
+                value: {
+                    let mut map = std::collections::HashMap::new();
+                    $(map.insert($key.into(), $value.into());)*
+                    map
+                },
+                debug_name: None,
+            }
+        };
+    }
     macro_rules! jit_panic {
         ( $($value:expr)? ) => {
             crate::utils::test::jit_enum!(1, crate::utils::test::jit_struct!(
@@ -668,6 +680,7 @@ pub mod test {
             ))
         };
     }
+    pub(crate) use jit_dict;
     pub(crate) use jit_enum;
     pub(crate) use jit_panic;
     pub(crate) use jit_struct;
