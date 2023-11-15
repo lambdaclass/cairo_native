@@ -157,7 +157,9 @@ where
             Self::Uint256(selector) => self::uint256::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint512(_) => todo!(),
+            Self::Uint512(selector) => self::uint512::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
