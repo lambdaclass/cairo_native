@@ -387,9 +387,7 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::utils::test::{jit_dict, load_cairo, run_program_assert_output};
 
     #[test]
     fn run_dict_insert() {
@@ -404,8 +402,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
-        assert_eq!(result, json!([null, null, 578950, 1])); // 583000 ?
+        run_program_assert_output(&program, "run_test", &[], &[1u32.into()]);
     }
 
     #[test]
@@ -421,8 +418,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 600_000]));
-        assert_eq!(result, json!([null, null, 578950, 4_u64])); // 583000 ?
+        run_program_assert_output(&program, "run_test", &[], &[4u64.into()]);
     }
 
     #[test]
@@ -438,12 +434,13 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([()]));
-        assert_eq!(
-            result,
-            json!([null, {
-                "2": 1
-            }])
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            &[jit_dict!(
+                2 => 1u32
+            )],
         );
     }
 
@@ -476,9 +473,6 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), (), 6_000_000]));
-        assert_eq!(result, json!([null, null, 5892230, 1345432_u32])); // 583000 ?
+        run_program_assert_output(&program, "run_test", &[], &[1345432_u32.into()]);
     }
-
-    */
 }
