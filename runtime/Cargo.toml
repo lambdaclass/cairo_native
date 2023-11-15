@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["rlib", "cdylib", "staticlib"]
 
 [dependencies]
-cairo-felt = "0.8.5"
+cairo-felt = "0.8.2"
 cairo-lang-runner = "2.3.1"
 libc = "0.2"
 starknet-crypto = "0.6"

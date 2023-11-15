@@ -27,7 +27,7 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.14"
-cairo-felt = "0.8.5"
+cairo-felt = "0.8.2"
 cairo-lang-compiler = "2.3.1"
 cairo-lang-defs = "2.3.1"
 cairo-lang-diagnostics = "2.3.1"
