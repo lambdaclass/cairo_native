@@ -475,6 +475,8 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -634,7 +636,9 @@
             <span class="self">Self</span>::Uint256(selector) =&gt; <span class="self">self</span>::uint256::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint512(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Uint512(selector) =&gt; <span class="self">self</span>::uint512::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::Mem(selector) =&gt; <span class="self">self</span>::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
