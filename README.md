@@ -323,7 +323,7 @@ The makefile `deps` target (which you should have ran before) installs LLVM 17 w
 needed environment variables.
 
 ```bash
-./env-macos.sh
+source env-macos.sh
 ```
 
 ### Make commands:
