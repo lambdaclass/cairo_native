@@ -130,6 +130,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
+    #[cfg(feature = "with-debug-utils")]
+    metadata
+        .get::<cairo_native::metadata::debug_utils::DebugUtils>()
+        .unwrap()
+        .register_impls(&engine);
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {

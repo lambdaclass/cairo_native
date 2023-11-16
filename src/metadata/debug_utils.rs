@@ -93,7 +93,7 @@ use melior::{
     dialect::{func, llvm},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        r#type::FunctionType,
+        r#type::{FunctionType, IntegerType},
         Block, Identifier, Location, Module, Region, Value,
     },
     Context, ExecutionEngine,
@@ -103,6 +103,7 @@ use std::collections::HashSet;
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
     BreakpointMarker,
+    PrintI1,
     PrintPointer,
 }
 
@@ -186,12 +187,59 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub(crate) fn register_impls(&self, engine: &ExecutionEngine) {
+    pub fn print_i1<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintI1) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_i1"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[IntegerType::new(context, 1).into()], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_i1"),
+            &[value],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
+    pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
                 engine.register_symbol(
                     "__debug__breakpoint_marker",
                     breakpoint_marker_impl as *const fn() -> () as *mut (),
+                );
+            }
+        }
+
+        if self.active_map.contains(&DebugBinding::PrintI1) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_i1",
+                    print_i1_impl as *const fn(bool) -> () as *mut (),
                 );
             }
         }
@@ -209,6 +257,10 @@ impl DebugUtils {
 
 extern "C" fn breakpoint_marker_impl() {
     println!("[DEBUG] Breakpoint marker.");
+}
+
+extern "C" fn print_i1_impl(value: bool) {
+    println!("[DEBUG] {value}");
 }
 
 extern "C" fn print_pointer_impl(value: *const ()) {
