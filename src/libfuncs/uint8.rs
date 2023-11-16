@@ -813,7 +813,7 @@ mod test {
             let error =
                 Felt252::from_str_radix("608642109794502019480482122260311927", 10).unwrap();
 
-            let add = lhs.checked_sub(rhs);
+            let add = lhs.checked_add(rhs);
 
             match add {
                 Some(result) => {
