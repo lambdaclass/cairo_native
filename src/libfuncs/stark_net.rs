@@ -4373,7 +4373,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program_assert_output};
+    use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -4487,97 +4487,177 @@ mod test {
         );
     }
 
-    /* TODO: fix tests
-
     #[test]
     fn storage_address_from_base_and_offset() {
-        let r = |addr, offset| {
-            run_program(
-                &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
-                "run_program",
-                json!([addr, offset]),
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 0u8.into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 0u8.into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                0u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
             )
-        };
-
-        assert_eq!(r(f("0"), 0u8), json!([f("0")]));
-        assert_eq!(r(f("1"), 0u8), json!([f("1")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                0u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+            .unwrap()
+            .into()],
         );
 
-        assert_eq!(r(f("0"), 1u8), json!([f("1")]));
-        assert_eq!(r(f("1"), 1u8), json!([f("2")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                1u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719489"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 1u8.into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 1u8.into()],
+            &[Felt252::new(2).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                1u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719489",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
 
-        assert_eq!(r(f("0"), 255u8), json!([f("255")]));
-        assert_eq!(r(f("1"), 255u8), json!([f("256")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                255u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719743"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 255u8.into()],
+            &[Felt252::new(255).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 255u8.into()],
+            &[Felt252::new(256).into()],
+        );
+
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                255u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719743",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 
     #[test]
     fn storage_address_to_felt252() {
-        let r = |value| run_program(&STORAGE_ADDRESS_TO_FELT252, "run_program", json!([value]));
-
-        assert_eq!(r(f("0")), json!([f("0")]));
-        assert_eq!(r(f("1")), json!([f("1")]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            ),),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 
     #[test]
     fn storage_address_try_from_felt252() {
-        let r = |value| {
-            run_program(
-                &STORAGE_ADDRESS_TRY_FROM_FELT252,
-                "run_program",
-                json!([(), value]),
-            )
-        };
-
-        assert_eq!(r(f("0")), json!([(), [0, f("0")]]));
-        assert_eq!(r(f("1")), json!([(), [0, f("1")]]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            ),),
-            json!([
-                (),
-                [
-                    0,
-                    f("106710729501573572985208420194530329073740042555888586719488")
-                ]
-            ])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[jit_enum!(0, Felt252::new(0).into())],
         );
-        assert_eq!(r(f("-1"),), json!([(), [1, []]]));
-    }
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[jit_enum!(0, Felt252::new(1).into())],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[jit_enum!(
+                0,
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into()
+            )],
+        );
 
-    */
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(-1).into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+    }
 }
