@@ -266,6 +266,11 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -398,6 +403,11 @@
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;with-runtime&quot;</span>)]
     </span>register_runtime_symbols(<span class="kw-2">&amp;</span>engine);
+    <span class="attr">#[cfg(feature = <span class="string">&quot;with-debug-utils&quot;</span>)]
+    </span>metadata
+        .get::&lt;cairo_native::metadata::debug_utils::DebugUtils&gt;()
+        .unwrap()
+        .register_impls(<span class="kw-2">&amp;</span>engine);
 
     <span class="comment">// Initialize arguments and return values.
     </span><span class="kw">let </span>params_input = <span class="kw">match </span>args.inputs {
