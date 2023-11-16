@@ -610,8 +610,10 @@ pub mod test {
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
+            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
+        starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
         types::felt252::PRIME,
         values::JITValue,
     };
@@ -808,6 +810,12 @@ pub mod test {
             .unwrap()
             .register_impls(&engine);
 
+        let mut handler = TestSyscallHandler;
+        let handler = SyscallHandlerMeta::new(&mut handler);
+
+        metadata.insert(handler).unwrap();
+        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
+
         crate::execute(
             &engine,
             &registry,
@@ -820,7 +828,7 @@ pub mod test {
             args,
             required_initial_gas,
             Some(u64::MAX.into()),
-            None,
+            Some(handler),
         )
         .expect("Test program execution failed.")
     }
@@ -898,5 +906,271 @@ pub mod test {
     #[ignore]
     fn test_alignment_compatibility_felt252() {
         assert_eq!(get_integer_layout(252).align(), 8);
+    }
+
+    #[derive(Debug)]
+    struct TestSyscallHandler;
+
+    impl StarkNetSyscallHandler for TestSyscallHandler {
+        fn get_block_hash(
+            &mut self,
+            _block_number: u64,
+            _gas: &mut u128,
+        ) -> SyscallResult<cairo_felt::Felt252> {
+            Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
+        }
+
+        fn get_execution_info(
+            &mut self,
+            _gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::ExecutionInfo> {
+            Ok(ExecutionInfo {
+                block_info: BlockInfo {
+                    block_number: 1234,
+                    block_timestamp: 2345,
+                    sequencer_address: 3456.into(),
+                },
+                tx_info: TxInfo {
+                    version: 4567.into(),
+                    account_contract_address: 5678.into(),
+                    max_fee: 6789,
+                    signature: vec![1248.into(), 2486.into()],
+                    transaction_hash: 9876.into(),
+                    chain_id: 8765.into(),
+                    nonce: 7654.into(),
+                },
+                caller_address: 6543.into(),
+                contract_address: 5432.into(),
+                entry_point_selector: 4321.into(),
+            })
+        }
+
+        fn deploy(
+            &mut self,
+            class_hash: cairo_felt::Felt252,
+            contract_address_salt: cairo_felt::Felt252,
+            calldata: &[cairo_felt::Felt252],
+            _deploy_from_zero: bool,
+            _gas: &mut u128,
+        ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
+            Ok((
+                class_hash + contract_address_salt,
+                calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+            ))
+        }
+
+        fn replace_class(
+            &mut self,
+            _class_hash: cairo_felt::Felt252,
+            _gas: &mut u128,
+        ) -> SyscallResult<()> {
+            Ok(())
+        }
+
+        fn library_call(
+            &mut self,
+            _class_hash: cairo_felt::Felt252,
+            _function_selector: cairo_felt::Felt252,
+            calldata: &[cairo_felt::Felt252],
+            _gas: &mut u128,
+        ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+            Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        }
+
+        fn call_contract(
+            &mut self,
+            _address: cairo_felt::Felt252,
+            _entry_point_selector: cairo_felt::Felt252,
+            calldata: &[cairo_felt::Felt252],
+            _gas: &mut u128,
+        ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+            Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        }
+
+        fn storage_read(
+            &mut self,
+            _address_domain: u32,
+            address: cairo_felt::Felt252,
+            _gas: &mut u128,
+        ) -> SyscallResult<cairo_felt::Felt252> {
+            Ok(address * &Felt252::new(3))
+        }
+
+        fn storage_write(
+            &mut self,
+            _address_domain: u32,
+            _address: cairo_felt::Felt252,
+            _value: cairo_felt::Felt252,
+            _gas: &mut u128,
+        ) -> SyscallResult<()> {
+            Ok(())
+        }
+
+        fn emit_event(
+            &mut self,
+            _keys: &[cairo_felt::Felt252],
+            _data: &[cairo_felt::Felt252],
+            _gas: &mut u128,
+        ) -> SyscallResult<()> {
+            Ok(())
+        }
+
+        fn send_message_to_l1(
+            &mut self,
+            _to_address: cairo_felt::Felt252,
+            _payload: &[cairo_felt::Felt252],
+            _gas: &mut u128,
+        ) -> SyscallResult<()> {
+            Ok(())
+        }
+
+        fn keccak(
+            &mut self,
+            _input: &[u64],
+            gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::U256> {
+            *gas -= 1000;
+            Ok(U256(Felt252::from(1234567890).to_le_bytes()))
+        }
+
+        fn secp256k1_add(
+            &mut self,
+            _p0: crate::starknet::Secp256k1Point,
+            _p1: crate::starknet::Secp256k1Point,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256k1_get_point_from_x(
+            &self,
+            _x: crate::starknet::U256,
+            _y_parity: bool,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256k1_get_xy(
+            &self,
+            _p: crate::starknet::Secp256k1Point,
+            _gas: &mut u128,
+        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
+            todo!()
+        }
+
+        fn secp256k1_mul(
+            &self,
+            _p: crate::starknet::Secp256k1Point,
+            _m: crate::starknet::U256,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256k1_new(
+            &self,
+            _x: crate::starknet::U256,
+            _y: crate::starknet::U256,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256r1_add(
+            &self,
+            _p0: crate::starknet::Secp256k1Point,
+            _p1: crate::starknet::Secp256k1Point,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256r1_get_point_from_x(
+            &self,
+            _x: crate::starknet::U256,
+            _y_parity: bool,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256r1_get_xy(
+            &self,
+            _p: crate::starknet::Secp256k1Point,
+            _gas: &mut u128,
+        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
+            todo!()
+        }
+
+        fn secp256r1_mul(
+            &self,
+            _p: crate::starknet::Secp256k1Point,
+            _m: crate::starknet::U256,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn secp256r1_new(
+            &mut self,
+            _x: crate::starknet::U256,
+            _y: crate::starknet::U256,
+            _gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            todo!()
+        }
+
+        fn pop_log(&mut self) {
+            todo!()
+        }
+
+        fn set_account_contract_address(&mut self, _contract_address: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_block_number(&mut self, _block_number: u64) {
+            todo!()
+        }
+
+        fn set_block_timestamp(&mut self, _block_timestamp: u64) {
+            todo!()
+        }
+
+        fn set_caller_address(&mut self, _address: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_chain_id(&mut self, _chain_id: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_contract_address(&mut self, _address: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_max_fee(&mut self, _max_fee: u128) {
+            todo!()
+        }
+
+        fn set_nonce(&mut self, _nonce: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_sequencer_address(&mut self, _address: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_signature(&mut self, _signature: &[cairo_felt::Felt252]) {
+            todo!()
+        }
+
+        fn set_transaction_hash(&mut self, _transaction_hash: cairo_felt::Felt252) {
+            todo!()
+        }
+
+        fn set_version(&mut self, _version: cairo_felt::Felt252) {
+            todo!()
+        }
     }
 }

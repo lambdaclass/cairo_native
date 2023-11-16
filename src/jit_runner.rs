@@ -239,17 +239,37 @@ pub fn execute(
             CoreTypeConcrete::Span(_) => {
                 todo!()
             }
-            CoreTypeConcrete::StarkNet(_) => {
-                let syscall_addr = syscall_handler
-                    .ok_or(JitRunnerError::from(ErrorImpl::MissingSyscallHandler))?
-                    .as_ptr()
-                    .as_ptr() as *const () as usize;
+            CoreTypeConcrete::StarkNet(selector) => {
+                match selector {
+                    StarkNetTypeConcrete::StorageAddress(_)
+                    | StarkNetTypeConcrete::StorageBaseAddress(_)
+                    | StarkNetTypeConcrete::ContractAddress(_)
+                    | StarkNetTypeConcrete::ClassHash(_) => {
+                        let next = params_it
+                            .next()
+                            .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                params_ptrs.push(
-                    arena
-                        .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
-                        .cast(),
-                );
+                        if !matches!(next, JITValue::Felt252(_)) {
+                            Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                        }
+
+                        params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+                    }
+                    StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                    StarkNetTypeConcrete::System(_) => {
+                        let syscall_addr = syscall_handler
+                            .ok_or(JitRunnerError::from(ErrorImpl::MissingSyscallHandler))?
+                            .as_ptr()
+                            .as_ptr() as *const ()
+                            as usize;
+
+                        params_ptrs.push(
+                            arena
+                                .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
+                                .cast(),
+                        );
+                    }
+                };
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),

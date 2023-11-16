@@ -4373,16 +4373,11 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
-    };
+    use crate::utils::test::{load_cairo, run_program_assert_output};
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign};
-    use serde_json::json;
-    use std::ops::Neg;
+    use num_traits::Num;
 
     lazy_static! {
         static ref STORAGE_BASE_ADDRESS_FROM_FELT252: (String, Program) = load_cairo! {
@@ -4422,61 +4417,77 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
-
     #[test]
     fn storage_base_address_from_felt252() {
-        let r = |value| {
-            run_program(
-                &STORAGE_BASE_ADDRESS_FROM_FELT252,
-                "run_program",
-                json!([(), value]),
-            )
-        };
-
-        assert_eq!(r(f("0")), json!([(), f("0")]));
-        assert_eq!(r(f("1")), json!([(), f("1")]));
-        assert_eq!(
-            r(f("-1")),
-            json!([
-                (),
-                f("106710729501573572985208420194530329073740042555888586719488")
-            ])
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
         );
-        assert_eq!(
-            r(f(
-                "3618502788666131106986593281521497120414687020801267626233049500247285300992"
-            )),
-            json!([(), f("0")])
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(-1).into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+        );
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "3618502788666131106986593281521497120414687020801267626233049500247285300992",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::new(0).into()],
         );
     }
 
     #[test]
     fn storage_address_from_base() {
-        let r = |value| run_program(&STORAGE_ADDRESS_FROM_BASE, "run_program", json!([value]));
-
-        assert_eq!(r(f("0")), json!([f("0")]));
-        assert_eq!(r(f("1")), json!([f("1")]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
+
+    /* TODO: fix tests
 
     #[test]
     fn storage_address_from_base_and_offset() {
