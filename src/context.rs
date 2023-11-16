@@ -21,9 +21,13 @@ use melior::{
 };
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
+#[derive(Debug, Eq, PartialEq)]
 pub struct NativeContext {
     context: Context,
 }
+
+unsafe impl Send for NativeContext {}
+unsafe impl Sync for NativeContext {}
 
 impl Default for NativeContext {
     fn default() -> Self {
