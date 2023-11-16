@@ -1437,10 +1437,9 @@ mod test {
 
         assert_eq!(
             result,
-            [jit_panic!([JITValue::felt_str(
+            [jit_panic!(JITValue::felt_str(
                 "1637570914057682275393755530660268060279989363"
-            )]
-            .into())]
+            ))]
         );
     }
 }

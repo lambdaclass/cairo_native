@@ -678,7 +678,7 @@ pub mod test {
         ( $($value:expr)? ) => {
             crate::utils::test::jit_enum!(1, crate::utils::test::jit_struct!(
                 crate::utils::test::jit_struct!(),
-                $($value), *
+                [$($value), *].into()
             ))
         };
     }
