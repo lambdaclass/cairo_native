@@ -706,7 +706,6 @@ mod test {
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use num_bigint::ToBigUint;
-    use num_traits::Num;
 
     lazy_static! {
         static ref U32_OVERFLOWING_ADD: (String, Program) = load_cairo! {
@@ -822,8 +821,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u32, rhs: u32) {
             let program = &U32_OVERFLOWING_ADD;
-            let error =
-                Felt252::from_str_radix("155785504323917466144735657540098748279", 10).unwrap();
+            let error = Felt252::from_bytes_be(b"u32_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -875,8 +873,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u32, rhs: u32) {
             let program = &U32_OVERFLOWING_SUB;
-            let error =
-                Felt252::from_str_radix("155785504329508738615720351733824384887", 10).unwrap();
+            let error = Felt252::from_bytes_be(b"u32_sub Overflow");
 
             let add = lhs.checked_sub(rhs);
 
