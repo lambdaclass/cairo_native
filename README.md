@@ -24,7 +24,7 @@ To get started on how to setup and run cairo-native check the [getting started](
 To read more in-depth documentation, visit [this page](https://lambdaclass.notion.site/Documentation-cd2b99eb14344a40837b1740238a918c).
 
 - [Implemented Library Functions](#implemented-library-functions)
-- [Getting started](getting-started)
+- [Getting started](#getting-started)
 - [Command Line Interface](#command-line-interface)
 - [Benchmarking](#benchmarking)
 - [API usage example](#api--usage-example)
@@ -323,7 +323,7 @@ The makefile `deps` target (which you should have ran before) installs LLVM 17 w
 needed environment variables.
 
 ```bash
-./env-macos.sh
+source env-macos.sh
 ```
 
 ### Make commands:

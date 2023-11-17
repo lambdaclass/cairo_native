@@ -406,3 +406,137 @@ where
     ));
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use crate::utils::test::{load_cairo, run_program};
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
+    use num_bigint::BigUint;
+    use num_traits::One;
+    use serde_json::json;
+
+    lazy_static! {
+        static ref UINT512_DIVMOD_U256: (String, Program) = load_cairo! {
+            use core::integer::{u512, u512_safe_divmod_by_u256};
+
+            fn run_test(lhs: u512, rhs: NonZero<u256>) -> (u512, u256) {
+                let (lhs, rhs, _, _, _, _, _) = u512_safe_divmod_by_u256(lhs, rhs);
+                (lhs, rhs)
+            }
+        };
+    }
+
+    #[test]
+    fn u512_safe_divmod_by_u256() {
+        let u512 = |value: BigUint| -> (u128, u128, u128, u128) {
+            assert!(value.bits() <= 512);
+            (
+                (&value & &u128::MAX.into()).try_into().unwrap(),
+                ((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap(),
+                ((&value >> 256u32) & &u128::MAX.into()).try_into().unwrap(),
+                ((&value >> 384u32) & &u128::MAX.into()).try_into().unwrap(),
+            )
+        };
+        let u256 = |value: BigUint| -> (u128, u128) {
+            assert!(value.bits() <= 256);
+            (
+                (&value & &u128::MAX.into()).try_into().unwrap(),
+                ((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap(),
+            )
+        };
+
+        let r = |lhs: BigUint, rhs: BigUint| {
+            run_program(
+                &UINT512_DIVMOD_U256,
+                "run_test",
+                json!([(), u512(lhs), u256(rhs)]),
+            )
+        };
+
+        assert_eq!(
+            r(0u32.into(), 1u32.into()),
+            json!([(), [u512(0u32.into()), u256(0u32.into())]])
+        );
+        assert_eq!(
+            r(0u32.into(), (BigUint::one() << 256u32) - 2u32),
+            json!([(), [u512(0u32.into()), u256(0u32.into())]])
+        );
+        assert_eq!(
+            r(0u32.into(), (BigUint::one() << 256u32) - 1u32),
+            json!([(), [u512(0u32.into()), u256(0u32.into())]])
+        );
+
+        assert_eq!(
+            r(1u32.into(), 1u32.into()),
+            json!([(), [u512(1u32.into()), u256(0u32.into())]])
+        );
+        assert_eq!(
+            r(1u32.into(), (BigUint::one() << 256u32) - 2u32),
+            json!([(), [u512(0u32.into()), u256(1u32.into())]])
+        );
+        assert_eq!(
+            r(1u32.into(), (BigUint::one() << 256u32) - 1u32),
+            json!([(), [u512(0u32.into()), u256(1u32.into())]])
+        );
+
+        assert_eq!(
+            r((BigUint::one() << 512u32) - 2u32, 1u32.into()),
+            json!([
+                (),
+                [u512((BigUint::one() << 512u32) - 2u32), u256(0u32.into())]
+            ])
+        );
+        assert_eq!(
+            r(
+                (BigUint::one() << 512u32) - 2u32,
+                (BigUint::one() << 256u32) - 2u32
+            ),
+            json!([
+                (),
+                [u512((BigUint::one() << 256) + 2u32), u256(2u32.into())]
+            ])
+        );
+        assert_eq!(
+            r(
+                (BigUint::one() << 512u32) - 2u32,
+                (BigUint::one() << 256u32) - 1u32
+            ),
+            json!([
+                (),
+                [
+                    u512(BigUint::one() << 256u32),
+                    u256((BigUint::one() << 256u32) - 2u32)
+                ]
+            ])
+        );
+
+        assert_eq!(
+            r((BigUint::one() << 512u32) - 1u32, 1u32.into()),
+            json!([
+                (),
+                [u512((BigUint::one() << 512u32) - 1u32), u256(0u32.into())]
+            ])
+        );
+        assert_eq!(
+            r(
+                (BigUint::one() << 512u32) - 1u32,
+                (BigUint::one() << 256u32) - 2u32
+            ),
+            json!([
+                (),
+                [u512((BigUint::one() << 256) + 2u32), u256(3u32.into())]
+            ])
+        );
+        assert_eq!(
+            r(
+                (BigUint::one() << 512u32) - 1u32,
+                (BigUint::one() << 256u32) - 1u32
+            ),
+            json!([
+                (),
+                [u512((BigUint::one() << 256) + 1u32), u256(0u32.into())]
+            ])
+        );
+    }
+}
