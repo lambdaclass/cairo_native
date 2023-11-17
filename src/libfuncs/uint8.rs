@@ -811,7 +811,7 @@ mod test {
         fn run(lhs: u8, rhs: u8) {
             let program = &U8_OVERFLOWING_ADD;
             let error =
-                Felt252::from_str_radix("608642109794502019480482122260311927", 10).unwrap();
+                Felt252::from_str_radix("608642104203229548495787928534675319", 10).unwrap();
 
             let add = lhs.checked_add(rhs);
 
