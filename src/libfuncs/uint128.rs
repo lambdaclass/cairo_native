@@ -803,6 +803,7 @@ mod test {
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
+    use num_bigint::ToBigUint;
     use num_traits::Num;
 
     lazy_static! {
@@ -1195,44 +1196,78 @@ mod test {
         run(MAX, MAX);
     }
 
-    /*
-
     #[test]
     fn u128_to_felt252() {
-        let r = |value| run_program(&U128_TO_FELT252, "run_test", json!([value]));
+        let program = &U128_TO_FELT252;
 
-        let max_u128 = felt("340282366920938463463374607431768211455");
-
-        assert_eq!(r(0u128), json!([felt("0")]));
-        assert_eq!(r(1u128), json!([felt("1")]));
-        assert_eq!(r(u128::MAX), json!([max_u128]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u128.into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u128.into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[u128::MAX.into()],
+            &[Felt252::new(u128::MAX).into()],
+        );
     }
 
     #[test]
     fn u128_sqrt() {
-        let r = |value| run_program(&U128_SQRT, "run_test", json!([(), value]));
+        let program = &U128_SQRT;
 
-        assert_eq!(r(0u128), json!([(), 0u64]));
-        assert_eq!(r(u128::MAX), json!([(), u64::MAX]));
+        run_program_assert_output(program, "run_test", &[0u128.into()], &[0u64.into()]);
+        run_program_assert_output(program, "run_test", &[u128::MAX.into()], &[u64::MAX.into()]);
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
             let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            assert_eq!(r(x), json!([(), y]));
+            run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }
     }
 
     #[test]
     fn u128_widemul() {
-        let r = |lhs, rhs| run_program(&U128_WIDEMUL, "run_test", json!([(), lhs, rhs]));
+        let program = &U128_WIDEMUL;
 
-        assert_eq!(r(0, 0), json!([null, [0, 0]]));
-        assert_eq!(r(0, 1), json!([null, [0, 0]]));
-        assert_eq!(r(1, 0), json!([null, [0, 0]]));
-        assert_eq!(r(1, 1), json!([null, [0, 1]]));
-        assert_eq!(r(u128::MAX, u128::MAX), json!([null, [u128::MAX - 1, 1]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u128.into(), 0u128.into()],
+            &[jit_struct!(0u128.into(), 0u128.into())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u128.into(), 1u128.into()],
+            &[jit_struct!(0u128.into(), 0u128.into())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u128.into(), 0u128.into()],
+            &[jit_struct!(0u128.into(), 0u128.into())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u128.into(), 1u128.into()],
+            &[jit_struct!(0u128.into(), 1u128.into())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[u128::MAX.into(), u128::MAX.into()],
+            &[jit_struct!((u128::MAX - 1).into(), 1u128.into())],
+        );
     }
-
-    */
 }
