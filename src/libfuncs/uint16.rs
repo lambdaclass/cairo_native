@@ -990,7 +990,7 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[0u16.into(), 0xFFu16.into()],
+            &[0u16.into(), 0xFFFFu16.into()],
             &[jit_enum!(1, jit_struct!())],
         );
 
@@ -1009,26 +1009,26 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[1u16.into(), 0xFFu16.into()],
+            &[1u16.into(), 0xFFFFu16.into()],
             &[jit_enum!(0, jit_struct!())],
         );
 
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu16.into(), 0u16.into()],
+            &[0xFFFFu16.into(), 0u16.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu16.into(), 1u16.into()],
+            &[0xFFFFu16.into(), 1u16.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu16.into(), 0xFFu16.into()],
+            &[0xFFFFu16.into(), 0xFFFFu16.into()],
             &[jit_enum!(0, jit_struct!())],
         );
     }
