@@ -196,7 +196,13 @@ pub fn execute(
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                params_ptrs.push(next.to_jit(&arena, registry, &info.ty)?);
+            }
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => {
