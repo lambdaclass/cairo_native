@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    error::jit_engine::{ErrorImpl, RunnerError},
+    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
     types::{felt252::PRIME, TypeBuilder},
     utils::{
         felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
@@ -137,7 +137,7 @@ impl JITValue {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
     ) -> Result<NonNull<()>, RunnerError> {
-        let ty = registry.get_type(type_id).unwrap();
+        let ty = registry.get_type(type_id)?;
 
         Ok(unsafe {
             match self {
@@ -151,8 +151,11 @@ impl JITValue {
                 JITValue::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         // todo: if its snapshot  cargo r --example starknet
-                        let elem_ty = registry.get_type(&info.ty).unwrap();
-                        let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
+                        let elem_ty = registry.get_type(&info.ty)?;
+                        let elem_layout = elem_ty
+                            .layout(registry)
+                            .map_err(make_type_builder_error(type_id))?
+                            .pad_to_align();
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
@@ -180,26 +183,23 @@ impl JITValue {
 
                         let target = arena.alloc_layout(
                             Layout::new::<*mut NonNull<()>>()
-                                .extend(Layout::new::<u32>())
-                                .unwrap()
+                                .extend(Layout::new::<u32>())?
                                 .0
-                                .extend(Layout::new::<u32>())
-                                .unwrap()
+                                .extend(Layout::new::<u32>())?
                                 .0,
                         );
 
                         *target.cast::<*mut NonNull<()>>().as_mut() = ptr;
 
-                        let (layout, offset) = Layout::new::<*mut NonNull<()>>()
-                            .extend(Layout::new::<u32>())
-                            .unwrap();
+                        let (layout, offset) =
+                            Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
 
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
                             .as_mut() = len;
 
-                        let (_, offset) = layout.extend(Layout::new::<u32>()).unwrap();
+                        let (_, offset) = layout.extend(Layout::new::<u32>())?;
 
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
@@ -221,11 +221,13 @@ impl JITValue {
                         let mut data = Vec::with_capacity(info.members.len());
 
                         for (member_type_id, member) in info.members.iter().zip(members) {
-                            let member_ty = registry.get_type(member_type_id).unwrap();
-                            let member_layout = member_ty.layout(registry).unwrap();
+                            let member_ty = registry.get_type(member_type_id)?;
+                            let member_layout = member_ty
+                                .layout(registry)
+                                .map_err(make_type_builder_error(type_id))?;
 
                             let (new_layout, offset) = match layout {
-                                Some(layout) => layout.extend(member_layout).unwrap(),
+                                Some(layout) => layout.extend(member_layout)?,
                                 None => (member_layout, 0),
                             };
                             layout = Some(new_layout);

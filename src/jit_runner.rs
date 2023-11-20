@@ -300,7 +300,7 @@ pub fn execute(
             let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
             let (layout, offset) = match acc {
-                Some(layout) => layout.extend(ty_layout).unwrap(),
+                Some(layout) => layout.extend(ty_layout)?,
                 None => (ty_layout, 0),
             };
 
@@ -329,9 +329,7 @@ pub fn execute(
     };
 
     unsafe {
-        engine
-            .invoke_packed(&function_name, &mut io_pointers)
-            .unwrap();
+        engine.invoke_packed(&function_name, &mut io_pointers)?;
     }
 
     let mut returns = Vec::new();
@@ -339,7 +337,7 @@ pub fn execute(
     let mut remaining_gas = None;
 
     for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
-        let ty = registry.get_type(type_id).unwrap();
+        let ty = registry.get_type(type_id)?;
 
         let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
 
