@@ -614,7 +614,6 @@ pub mod test {
             MetadataStorage,
         },
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-        types::felt252::PRIME,
         values::JITValue,
     };
     use cairo_lang_compiler::{
@@ -634,9 +633,8 @@ pub mod test {
         utility::{register_all_dialects, register_all_passes},
         Context, ExecutionEngine,
     };
-    use num_bigint::{BigInt, Sign};
     use pretty_assertions_sorted::assert_eq;
-    use std::{env::var, fs, ops::Neg, path::Path};
+    use std::{env::var, fs, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -843,19 +841,6 @@ pub mod test {
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_values.as_slice(), outputs);
-    }
-
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    pub fn felt(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
     }
 
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.
