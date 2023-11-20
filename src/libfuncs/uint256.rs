@@ -673,10 +673,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{
-            felt, jit_enum, jit_panic, jit_struct, load_cairo, run_program,
-            run_program_assert_output,
-        },
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
         values::JITValue,
     };
     use cairo_felt::Felt252;
