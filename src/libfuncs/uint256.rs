@@ -672,12 +672,18 @@ where
 
 #[cfg(test)]
 mod test {
-    /* TODO: fix tests
-    use crate::utils::test::{felt, load_cairo, run_program};
+    use crate::{
+        utils::test::{
+            felt, jit_enum, jit_panic, jit_struct, load_cairo, run_program,
+            run_program_assert_output,
+        },
+        values::JITValue,
+    };
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
-    use serde_json::json;
+    use num_bigint::{BigUint, ToBigUint};
+    use num_traits::One;
     use std::ops::Shl;
 
     lazy_static! {
@@ -710,78 +716,156 @@ mod test {
         };
     }
 
+    fn u256(value: BigUint) -> JITValue {
+        assert!(value.bits() <= 256);
+        jit_struct!(
+            JITValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            JITValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+        )
+    }
+
     #[test]
     fn u256_is_zero() {
-        let r = |(value_hi, value_lo)| {
-            run_program(&U256_IS_ZERO, "run_test", json!([[value_lo, value_hi]]))
-        };
-
-        assert_eq!(r((0u128, 0u128)), json!([[1, []]]));
-        assert_eq!(r((0u128, 1u128)), json!([[0, []]]));
-        assert_eq!(r((1u128, 0u128)), json!([[0, []]]));
-        assert_eq!(r((1u128, 1u128)), json!([[0, []]]));
+        run_program_assert_output(
+            &U256_IS_ZERO,
+            "run_test",
+            &[u256(0u32.into())],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            &U256_IS_ZERO,
+            "run_test",
+            &[u256(1u32.into())],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            &U256_IS_ZERO,
+            "run_test",
+            &[u256(BigUint::one() << 128u32)],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            &U256_IS_ZERO,
+            "run_test",
+            &[u256((BigUint::one() << 128u32) + 1u32)],
+            &[jit_enum!(0, jit_struct!())],
+        );
     }
 
     #[test]
     fn u256_safe_divmod() {
-        let r = |(lhs_hi, lhs_lo), (rhs_hi, rhs_lo)| {
-            run_program(
+        #[track_caller]
+        fn run(lhs: (u128, u128), rhs: (u128, u128), result: JITValue) {
+            run_program_assert_output(
                 &U256_SAFE_DIVMOD,
                 "run_test",
-                json!([(), [lhs_lo, lhs_hi], [rhs_lo, rhs_hi]]),
+                &[
+                    jit_struct!(lhs.1.into(), lhs.0.into()),
+                    jit_struct!(rhs.1.into(), rhs.0.into()),
+                ],
+                &[result],
             )
-        };
+        }
 
-        let u256_is_zero = json!([felt("2161886914012515606576")]);
+        let u256_is_zero = Felt252::from_bytes_be(b"u256 is 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
-        assert_eq!(r((0, 0), (0, 0)), json!([(), [1, [[], u256_is_zero]]]));
-        assert_eq!(
-            r((0, 0), (0, 1)),
-            json!([(), [0, [[[0u128, 0u128], [0u128, 0u128]]]]])
+        run((0, 0), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run(
+            (0, 0),
+            (0, 1),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(0u128.into(), 0u128.into()),
+                    jit_struct!(0u128.into(), 0u128.into()),
+                ))
+            ),
         );
-        assert_eq!(
-            r((0, 0), (max_value, max_value)),
-            json!([(), [0, [[[0u128, 0u128], [0u128, 0u128]]]]])
+        run(
+            (0, 0),
+            (max_value, max_value),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(0u128.into(), 0u128.into()),
+                    jit_struct!(0u128.into(), 0u128.into()),
+                ))
+            ),
         );
 
-        assert_eq!(r((0, 1), (0, 0)), json!([(), [1, [[], u256_is_zero]]]));
-        assert_eq!(
-            r((0, 1), (0, 1)),
-            json!([(), [0, [[[1u128, 0u128], [0u128, 0u128]]]]])
+        run((0, 1), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run(
+            (0, 1),
+            (0, 1),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(1u128.into(), 0u128.into()),
+                    jit_struct!(0u128.into(), 0u128.into()),
+                ))
+            ),
         );
-        assert_eq!(
-            r((0, 1), (max_value, max_value)),
-            json!([(), [0, [[[0u128, 0u128], [1u128, 0u128]]]]])
+        run(
+            (0, 1),
+            (max_value, max_value),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(0u128.into(), 0u128.into()),
+                    jit_struct!(1u128.into(), 0u128.into()),
+                ))
+            ),
         );
+        run((max_value, max_value), (0, 0), jit_panic!(u256_is_zero));
 
-        assert_eq!(
-            r((max_value, max_value), (0, 0)),
-            json!([(), [1, [[], u256_is_zero]]])
+        run(
+            (max_value, max_value),
+            (0, 1),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(max_value.into(), max_value.into()),
+                    jit_struct!(0u128.into(), 0u128.into()),
+                ))
+            ),
         );
-        assert_eq!(
-            r((max_value, max_value), (0, 1)),
-            json!([(), [0, [[[max_value, max_value], [0u128, 0u128]]]]])
-        );
-        assert_eq!(
-            r((max_value, max_value), (max_value, max_value)),
-            json!([(), [0, [[[1u128, 0u128], [0u128, 0u128]]]]])
+        run(
+            (max_value, max_value),
+            (max_value, max_value),
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    jit_struct!(1u128.into(), 0u128.into()),
+                    jit_struct!(0u128.into(), 0u128.into()),
+                ))
+            ),
         );
     }
 
     #[test]
     fn u256_sqrt() {
-        let r = |hi, lo| run_program(&U256_SQRT, "run_test", json!([(), [lo, hi]]));
+        #[track_caller]
+        fn run(value: (u128, u128), result: JITValue) {
+            run_program_assert_output(
+                &U256_SQRT,
+                "run_test",
+                &[jit_struct!(value.1.into(), value.0.into())],
+                &[result],
+            )
+        }
 
-        assert_eq!(r(0u128, 0u128), json!([(), 0u64]));
-        assert_eq!(r(u128::MAX, u128::MAX), json!([(), u128::MAX]));
+        run((0u128, 0u128), 0u128.into());
+        run((0u128, 1u128), 1u128.into());
+        run((u128::MAX, u128::MAX), u128::MAX.into());
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
-            let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u128 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            assert_eq!(r(0u128, x), json!([(), y]));
+            run((0, x), y.into());
         }
+
         for i in 0..u128::BITS {
             let x = 1u128 << i;
             let y: u128 = x
@@ -792,9 +876,7 @@ mod test {
                 .try_into()
                 .unwrap();
 
-            assert_eq!(r(x, 0u128), json!([(), y]));
+            run((x, 0), y.into());
         }
     }
-
-    */
 }

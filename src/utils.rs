@@ -635,6 +635,7 @@ pub mod test {
         Context, ExecutionEngine,
     };
     use num_bigint::{BigInt, Sign};
+    use pretty_assertions_sorted::assert_eq;
     use std::{env::var, fs, ops::Neg, path::Path};
 
     macro_rules! load_cairo {
