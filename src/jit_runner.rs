@@ -105,7 +105,17 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::EcState(..)) {
+                    Err(make_unexpected_value_error("JITValue::EcState".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
             CoreTypeConcrete::Felt252(_) => {
                 let next = params_it
                     .next()

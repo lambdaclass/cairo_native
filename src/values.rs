@@ -33,7 +33,8 @@ use crate::{
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
     Felt252(Felt252),
-    Array(Vec<Self>), // all elements need to be same type
+    /// all elements need to be same type
+    Array(Vec<Self>),
     Struct {
         fields: Vec<Self>,
         #[educe(PartialEq(ignore))]
@@ -59,6 +60,7 @@ pub enum JITValue {
     Uint64(u64),
     Uint128(u128),
     EcPoint(Felt252, Felt252),
+    EcState(Felt252, Felt252, Felt252, Felt252),
 }
 
 // Conversions
@@ -393,6 +395,21 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::EcState(a, b, c, d) => {
+                    let ptr = arena
+                        .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
+                        .cast();
+
+                    let a = felt252_bigint(a.to_bigint());
+                    let b = felt252_bigint(b.to_bigint());
+                    let c = felt252_bigint(c.to_bigint());
+                    let d = felt252_bigint(d.to_bigint());
+                    let data = [a, b, c, d];
+
+                    ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
+
+                    ptr
+                }
             }
         })
     }
@@ -444,7 +461,16 @@ impl JITValue {
 
                     JITValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
                 }
-                CoreTypeConcrete::EcState(_) => todo!(),
+                CoreTypeConcrete::EcState(_) => {
+                    let data = ptr.cast::<[[u32; 8]; 4]>().as_ref();
+
+                    JITValue::EcState(
+                        u32_vec_to_felt(&data[0]),
+                        u32_vec_to_felt(&data[1]),
+                        u32_vec_to_felt(&data[2]),
+                        u32_vec_to_felt(&data[3]),
+                    )
+                }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u32; 8]>().as_ref();
                     let data = u32_vec_to_felt(data);
