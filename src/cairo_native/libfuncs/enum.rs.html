@@ -430,8 +430,6 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -777,10 +775,10 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{felt, load_cairo, run_program};
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
+    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>serde_json::json;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>ENUM_INIT: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -842,28 +840,26 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>enum_init() {
-        <span class="kw">let </span>r = || run_program(<span class="kw-2">&amp;</span>ENUM_INIT, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
-
-        <span class="macro">assert_eq!</span>(
-            r(),
-            <span class="macro">json!</span>([[
-                [<span class="number">0</span>, felt(<span class="string">&quot;-1&quot;</span>)],
-                [<span class="number">0</span>, felt(<span class="string">&quot;5678&quot;</span>)],
-                [<span class="number">1</span>, <span class="number">90u8</span>],
-                [<span class="number">2</span>, <span class="number">9012u16</span>],
-                [<span class="number">3</span>, <span class="number">34567890u32</span>],
-                [<span class="number">4</span>, <span class="number">1234567890123456u64</span>],
-            ]])
+        run_program_assert_output(
+            <span class="kw-2">&amp;</span>ENUM_INIT,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(-<span class="number">1</span>).into()),
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(<span class="number">5678</span>).into()),
+                <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="number">90u8</span>.into()),
+                <span class="macro">jit_enum!</span>(<span class="number">2</span>, <span class="number">9012u16</span>.into()),
+                <span class="macro">jit_enum!</span>(<span class="number">3</span>, <span class="number">34567890u32</span>.into()),
+                <span class="macro">jit_enum!</span>(<span class="number">4</span>, <span class="number">1234567890123456u64</span>.into()),
+            )],
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>enum_match() {
-        <span class="kw">let </span>result_a = run_program(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="macro">json!</span>([]));
-        <span class="kw">let </span>result_b = run_program(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_b&quot;</span>, <span class="macro">json!</span>([]));
+        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">5</span>).into()]);
 
-        <span class="macro">assert_eq!</span>(result_a, <span class="macro">json!</span>([felt(<span class="string">&quot;5&quot;</span>)]));
-        <span class="macro">assert_eq!</span>(result_b, <span class="macro">json!</span>([<span class="number">5</span>]));
+        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_b&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">5u8</span>.into()]);
     }
 }
 </code></pre></div></section></main></body></html>

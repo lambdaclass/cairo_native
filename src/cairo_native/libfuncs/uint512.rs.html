@@ -536,10 +536,6 @@
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
 <a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u512`-related libfuncs
 //!
 //! TODO
@@ -951,12 +947,14 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{load_cairo, run_program};
+    <span class="kw">use crate</span>::{
+        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        values::JITValue,
+    };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
     <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>num_traits::One;
-    <span class="kw">use </span>serde_json::json;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>UINT512_DIVMOD_U256: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -971,114 +969,108 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u512_safe_divmod_by_u256() {
-        <span class="kw">let </span>u512 = |value: BigUint| -&gt; (u128, u128, u128, u128) {
+        <span class="kw">fn </span>u512(value: BigUint) -&gt; JITValue {
             <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">512</span>);
-            (
-                (<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
-                ((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
-                ((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">256u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
-                ((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">384u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
+            <span class="macro">jit_struct!</span>(
+                JITValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                JITValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                JITValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">256u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                JITValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">384u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
             )
-        };
-        <span class="kw">let </span>u256 = |value: BigUint| -&gt; (u128, u128) {
-            <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
-            (
-                (<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
-                ((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap(),
-            )
-        };
+        }
 
-        <span class="kw">let </span>r = |lhs: BigUint, rhs: BigUint| {
-            run_program(
+        <span class="kw">fn </span>u256(value: BigUint) -&gt; JITValue {
+            <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
+            <span class="macro">jit_struct!</span>(
+                JITValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                JITValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            )
+        }
+
+        <span class="attr">#[track_caller]
+        </span><span class="kw">fn </span>r2(lhs: BigUint, rhs: BigUint, output_u512: BigUint, output_u256: BigUint) {
+            <span class="kw">let </span>lhs = u512(lhs);
+            <span class="kw">let </span>rhs = u256(rhs);
+            <span class="kw">let </span>output_u512 = u512(output_u512);
+            <span class="kw">let </span>output_u256 = u256(output_u256);
+            run_program_assert_output(
                 <span class="kw-2">&amp;</span>UINT512_DIVMOD_U256,
                 <span class="string">&quot;run_test&quot;</span>,
-                <span class="macro">json!</span>([(), u512(lhs), u256(rhs)]),
-            )
-        };
+                <span class="kw-2">&amp;</span>[lhs, rhs],
+                <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(output_u512, output_u256)],
+            );
+        }
 
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0u32</span>.into(), <span class="number">1u32</span>.into()),
-            <span class="macro">json!</span>([(), [u512(<span class="number">0u32</span>.into()), u256(<span class="number">0u32</span>.into())]])
+        r2(<span class="number">0u32</span>.into(), <span class="number">1u32</span>.into(), <span class="number">0u32</span>.into(), <span class="number">0u32</span>.into());
+        r2(
+            <span class="number">0u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+            <span class="number">0u32</span>.into(),
+            <span class="number">0u32</span>.into(),
         );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0u32</span>.into(), (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>),
-            <span class="macro">json!</span>([(), [u512(<span class="number">0u32</span>.into()), u256(<span class="number">0u32</span>.into())]])
-        );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0u32</span>.into(), (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>),
-            <span class="macro">json!</span>([(), [u512(<span class="number">0u32</span>.into()), u256(<span class="number">0u32</span>.into())]])
-        );
-
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">1u32</span>.into(), <span class="number">1u32</span>.into()),
-            <span class="macro">json!</span>([(), [u512(<span class="number">1u32</span>.into()), u256(<span class="number">0u32</span>.into())]])
-        );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">1u32</span>.into(), (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>),
-            <span class="macro">json!</span>([(), [u512(<span class="number">0u32</span>.into()), u256(<span class="number">1u32</span>.into())]])
-        );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">1u32</span>.into(), (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>),
-            <span class="macro">json!</span>([(), [u512(<span class="number">0u32</span>.into()), u256(<span class="number">1u32</span>.into())]])
+        r2(
+            <span class="number">0u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>,
+            <span class="number">0u32</span>.into(),
+            <span class="number">0u32</span>.into(),
         );
 
-        <span class="macro">assert_eq!</span>(
-            r((BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>, <span class="number">1u32</span>.into()),
-            <span class="macro">json!</span>([
-                (),
-                [u512((BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>), u256(<span class="number">0u32</span>.into())]
-            ])
+        r2(<span class="number">1u32</span>.into(), <span class="number">1u32</span>.into(), <span class="number">1u32</span>.into(), <span class="number">0u32</span>.into());
+        r2(
+            <span class="number">1u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+            <span class="number">0u32</span>.into(),
+            <span class="number">1u32</span>.into(),
         );
-        <span class="macro">assert_eq!</span>(
-            r(
-                (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
-                (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32
-            </span>),
-            <span class="macro">json!</span>([
-                (),
-                [u512((BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">2u32</span>), u256(<span class="number">2u32</span>.into())]
-            ])
-        );
-        <span class="macro">assert_eq!</span>(
-            r(
-                (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
-                (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32
-            </span>),
-            <span class="macro">json!</span>([
-                (),
-                [
-                    u512(BigUint::one() &lt;&lt; <span class="number">256u32</span>),
-                    u256((BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>)
-                ]
-            ])
+        r2(
+            <span class="number">1u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>,
+            <span class="number">0u32</span>.into(),
+            <span class="number">1u32</span>.into(),
         );
 
-        <span class="macro">assert_eq!</span>(
-            r((BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>, <span class="number">1u32</span>.into()),
-            <span class="macro">json!</span>([
-                (),
-                [u512((BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>), u256(<span class="number">0u32</span>.into())]
-            ])
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">2u32</span>,
+            <span class="number">2u32</span>.into(),
         );
-        <span class="macro">assert_eq!</span>(
-            r(
-                (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
-                (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32
-            </span>),
-            <span class="macro">json!</span>([
-                (),
-                [u512((BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">2u32</span>), u256(<span class="number">3u32</span>.into())]
-            ])
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
+            <span class="number">1u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
+            <span class="number">0u32</span>.into(),
         );
-        <span class="macro">assert_eq!</span>(
-            r(
-                (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
-                (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32
-            </span>),
-            <span class="macro">json!</span>([
-                (),
-                [u512((BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">1u32</span>), u256(<span class="number">0u32</span>.into())]
-            ])
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">2u32</span>,
+            <span class="number">2u32</span>.into(),
+        );
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>,
+            BigUint::one() &lt;&lt; <span class="number">256u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+        );
+
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
+            <span class="number">1u32</span>.into(),
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
+            <span class="number">0u32</span>.into(),
+        );
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">2u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">2u32</span>,
+            <span class="number">3u32</span>.into(),
+        );
+        r2(
+            (BigUint::one() &lt;&lt; <span class="number">512u32</span>) - <span class="number">1u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256u32</span>) - <span class="number">1u32</span>,
+            (BigUint::one() &lt;&lt; <span class="number">256</span>) + <span class="number">1u32</span>,
+            <span class="number">0u32</span>.into(),
         );
     }
 }

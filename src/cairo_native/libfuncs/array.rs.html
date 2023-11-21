@@ -1425,6 +1425,24 @@
 <a href="#1425" id="1425">1425</a>
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2594,8 +2612,11 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{load_cairo, run_program};
-    <span class="kw">use </span>serde_json::json;
+    <span class="kw">use crate</span>::{
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        values::JITValue,
+    };
+    <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>run_roundtrip() {
@@ -2606,9 +2627,9 @@
                 x
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([[<span class="number">1</span>, <span class="number">2</span>]]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[[<span class="number">1u32</span>, <span class="number">2u32</span>].into()]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([[<span class="number">1</span>, <span class="number">2</span>]]));
+        <span class="macro">assert_eq!</span>(result, <span class="kw-2">&amp;</span>[JITValue::from([<span class="number">1u32</span>, <span class="number">2u32</span>])]);
     }
 
     <span class="attr">#[test]
@@ -2622,9 +2643,9 @@
                 numbers
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([[<span class="number">4</span>]]));
+        <span class="macro">assert_eq!</span>(result, [[<span class="number">4u32</span>].into()]);
     }
 
     <span class="attr">#[test]
@@ -2640,9 +2661,9 @@
                 numbers.len()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([<span class="number">3</span>]));
+        <span class="macro">assert_eq!</span>(result, [<span class="number">3u32</span>.into()]);
     }
 
     <span class="attr">#[test]
@@ -2664,9 +2685,20 @@
                 )
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([null]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([null, [<span class="number">0</span>, [[<span class="number">4</span>, <span class="number">3</span>, <span class="number">2</span>, <span class="number">1</span>]]]]));
+        <span class="macro">assert_eq!</span>(
+            result,
+            [<span class="macro">jit_enum!</span>(
+                <span class="number">0</span>,
+                <span class="macro">jit_struct!</span>(<span class="macro">jit_struct!</span>(
+                    <span class="number">4u32</span>.into(),
+                    <span class="number">3u32</span>.into(),
+                    <span class="number">2u32</span>.into(),
+                    <span class="number">1u32</span>.into()
+                ))
+            )]
+        );
     }
 
     <span class="attr">#[test]
@@ -2708,9 +2740,20 @@
                 )
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([null]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([null, [<span class="number">0</span>, [[<span class="number">20</span>, <span class="number">21</span>, <span class="number">22</span>, <span class="number">23</span>]]]]));
+        <span class="macro">assert_eq!</span>(
+            result,
+            [<span class="macro">jit_enum!</span>(
+                <span class="number">0</span>,
+                <span class="macro">jit_struct!</span>(<span class="macro">jit_struct!</span>(
+                    <span class="number">20u32</span>.into(),
+                    <span class="number">21u32</span>.into(),
+                    <span class="number">22u32</span>.into(),
+                    <span class="number">23u32</span>.into()
+                ))
+            )]
+        );
     }
 
     <span class="attr">#[test]
@@ -2727,9 +2770,9 @@
                 <span class="kw-2">*</span>numbers.at(<span class="number">0</span>)
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([null]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([null, [<span class="number">0</span>, [<span class="number">3</span>]]]));
+        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into()))]);
     }
 
     <span class="attr">#[test]
@@ -2744,9 +2787,9 @@
                 numbers.pop_front()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([[<span class="number">0</span>, <span class="number">4</span>]]));
+        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">4u32</span>.into())]);
 
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
             <span class="kw">use </span>array::ArrayTrait;
@@ -2756,9 +2799,9 @@
                 numbers.pop_front()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([[<span class="number">1</span>, []]]));
+        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
     }
 
     <span class="attr">#[test]
@@ -2776,9 +2819,9 @@
                 }
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([<span class="number">4</span>]));
+        <span class="macro">assert_eq!</span>(result, [<span class="number">4u32</span>.into()]);
     }
 
     <span class="attr">#[test]
@@ -2808,9 +2851,9 @@
             }
 
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([()]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([null, [<span class="number">0</span>, [<span class="number">3</span>]]]));
+        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into()))]);
     }
 
     <span class="attr">#[test]
@@ -2835,20 +2878,13 @@
             }
 
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([()]));
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
 
         <span class="macro">assert_eq!</span>(
             result,
-            <span class="macro">json!</span>([
-                null,
-                [
-                    <span class="number">1</span>,
-                    [
-                        [],
-                        [[<span class="number">1970168947</span>, <span class="number">1713398383</span>, <span class="number">1970544751</span>, <span class="number">1702371439</span>, <span class="number">4812388</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]]
-                    ]
-                ]
-            ])
+            [<span class="macro">jit_panic!</span>(JITValue::felt_str(
+                <span class="string">&quot;1637570914057682275393755530660268060279989363&quot;
+            </span>))]
         );
     }
 }

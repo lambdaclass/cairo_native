@@ -45,13 +45,15 @@
 <a href="#45" id="45">45</a>
 <a href="#46" id="46">46</a>
 <a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
 <span class="kw">use </span>std::{
     alloc::Layout,
     ptr::{addr_of, NonNull},
 };
 
-<span class="kw">pub struct </span>SyscallHandlerMeta {
+<span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>SyscallHandlerMeta {
     handler: NonNull&lt;()&gt;,
     layout: Layout,
 }

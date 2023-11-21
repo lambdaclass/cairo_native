@@ -264,11 +264,6 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Pedersen hashing libfuncs
 //!
 
@@ -508,8 +503,9 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{felt, load_cairo, run_program};
-    <span class="kw">use </span>serde_json::json;
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{load_cairo, run_program_assert_output};
+    <span class="kw">use </span>cairo_felt::Felt252;
+    <span class="kw">use </span>num_traits::Num;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>run_pedersen() {
@@ -521,22 +517,16 @@
             }
         );
 
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([(), felt(<span class="string">&quot;2&quot;</span>), felt(<span class="string">&quot;4&quot;</span>)]));
-        <span class="macro">assert_eq!</span>(
-            result,
-            <span class="macro">json!</span>([
-                null,
-                [
-                    <span class="number">2073478595</span>,
-                    <span class="number">1527108655</span>,
-                    <span class="number">3447441461_i64</span>,
-                    <span class="number">743507103</span>,
-                    <span class="number">1568220342</span>,
-                    <span class="number">867113658</span>,
-                    <span class="number">318777692</span>,
-                    <span class="number">80792501
-                </span>]
-            ])
+        run_program_assert_output(
+            <span class="kw-2">&amp;</span>program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">2</span>).into(), Felt252::new(<span class="number">4</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
+                <span class="string">&quot;2178161520066714737684323463974044933282313051386084149915030950231093462467&quot;</span>,
+                <span class="number">10</span>,
+            )
+            .unwrap()
+            .into()],
         );
     }
 }

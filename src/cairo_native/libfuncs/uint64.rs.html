@@ -1042,6 +1042,54 @@
 <a href="#1042" id="1042">1042</a>
 <a href="#1043" id="1043">1043</a>
 <a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u64`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1744,14 +1792,13 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
+        values::JITValue,
     };
+    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_bigint::{BigInt, Sign, ToBigUint};
-    <span class="kw">use </span>serde_json::json;
-    <span class="kw">use </span>std::ops::Neg;
+    <span class="kw">use </span>num_bigint::ToBigUint;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>U64_OVERFLOWING_ADD: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -1804,18 +1851,7 @@
         };
     }
 
-    <span class="comment">// Parse numeric string into felt, wrapping negatives around the prime modulo.
-    </span><span class="kw">fn </span>f(value: <span class="kw-2">&amp;</span>str) -&gt; [u32; <span class="number">8</span>] {
-        <span class="kw">let </span>value = value.parse::&lt;BigInt&gt;().unwrap();
-        <span class="kw">let </span>value = <span class="kw">match </span>value.sign() {
-            Sign::Minus =&gt; <span class="kw-2">&amp;*</span>PRIME - value.neg().to_biguint().unwrap(),
-            <span class="kw">_ </span>=&gt; value.to_biguint().unwrap(),
-        };
-
-        <span class="kw">let </span><span class="kw-2">mut </span>u32_digits = value.to_u32_digits();
-        u32_digits.resize(<span class="number">8</span>, <span class="number">0</span>);
-        u32_digits.try_into().unwrap()
-    }
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::run_program_assert_output;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_const_min() {
@@ -1824,9 +1860,8 @@
                 <span class="number">0_u64
             </span>}
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([<span class="number">0</span>]));
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into()]);
     }
 
     <span class="attr">#[test]
@@ -1836,9 +1871,8 @@
                 <span class="number">18446744073709551615_u64
             </span>}
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([<span class="number">18446744073709551615u64</span>]));
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[u64::MAX.into()]);
     }
 
     <span class="attr">#[test]
@@ -1850,9 +1884,8 @@
                 <span class="number">2_u64</span>.into()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([]));
 
-        <span class="macro">assert_eq!</span>(result, <span class="macro">json!</span>([[<span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]]));
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">2</span>).into()]);
     }
 
     <span class="attr">#[test]
@@ -1867,222 +1900,285 @@
                 )
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([null]));
 
-        <span class="macro">assert_eq!</span>(
-            result,
-            <span class="macro">json!</span>([null, [[<span class="number">0</span>, <span class="number">18446744073709551615u64</span>], [<span class="number">1</span>, []]]])
+        run_program_assert_output(
+            <span class="kw-2">&amp;</span>program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">18446744073709551615u64</span>.into()),
+                <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+            )],
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_overflowing_add() {
-        <span class="kw">fn </span>run&lt;<span class="kw">const </span>LHS: u64, <span class="kw">const </span>RHS: u64&gt;() -&gt; serde_json::Value {
-            run_program(<span class="kw-2">&amp;</span>U64_OVERFLOWING_ADD, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([(), LHS, RHS]))
+        <span class="attr">#[track_caller]
+        </span><span class="kw">fn </span>run(lhs: u64, rhs: u64) {
+            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_OVERFLOWING_ADD;
+            <span class="kw">let </span>error = Felt252::from_bytes_be(<span class="string">b&quot;u64_add Overflow&quot;</span>);
+
+            <span class="kw">let </span>add = lhs.checked_add(rhs);
+
+            <span class="kw">match </span>add {
+                <span class="prelude-val">Some</span>(result) =&gt; {
+                    run_program_assert_output(
+                        program,
+                        <span class="string">&quot;run_test&quot;</span>,
+                        <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
+                        <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into()))],
+                    );
+                }
+                <span class="prelude-val">None </span>=&gt; {
+                    run_program_assert_output(
+                        program,
+                        <span class="string">&quot;run_test&quot;</span>,
+                        <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
+                        <span class="kw-2">&amp;</span>[<span class="macro">jit_panic!</span>(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        <span class="kw">let </span>add_error = f(<span class="string">&quot;155801121779312277930962096923588980599&quot;</span>);
+        <span class="kw">const </span>MAX: u64 = u64::MAX;
 
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">0</span>, <span class="number">0</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">0</span>]]]));
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">0</span>, <span class="number">1</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">1</span>]]]));
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">0</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551614u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">0</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551615u64</span>]]])
-        );
+        run(<span class="number">0</span>, <span class="number">0</span>);
+        run(<span class="number">0</span>, <span class="number">1</span>);
+        run(<span class="number">0</span>, MAX - <span class="number">1</span>);
+        run(<span class="number">0</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">1</span>, <span class="number">0</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">1</span>]]]));
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">1</span>, <span class="number">1</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">2</span>]]]));
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">1</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551615u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">1</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
+        run(<span class="number">1</span>, <span class="number">0</span>);
+        run(<span class="number">1</span>, <span class="number">1</span>);
+        run(<span class="number">1</span>, MAX - <span class="number">1</span>);
+        run(<span class="number">1</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">0</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551614u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">1</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551615u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
+        run(MAX - <span class="number">1</span>, <span class="number">0</span>);
+        run(MAX - <span class="number">1</span>, <span class="number">1</span>);
+        run(MAX - <span class="number">1</span>, MAX - <span class="number">1</span>);
+        run(MAX - <span class="number">1</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">0</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551615u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">1</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [add_error]]]])
-        );
+        run(MAX, <span class="number">0</span>);
+        run(MAX, <span class="number">1</span>);
+        run(MAX, MAX - <span class="number">1</span>);
+        run(MAX, MAX);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_overflowing_sub() {
-        <span class="kw">fn </span>run&lt;<span class="kw">const </span>LHS: u64, <span class="kw">const </span>RHS: u64&gt;() -&gt; serde_json::Value {
-            run_program(<span class="kw-2">&amp;</span>U64_OVERFLOWING_SUB, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([(), LHS, RHS]))
+        <span class="attr">#[track_caller]
+        </span><span class="kw">fn </span>run(lhs: u64, rhs: u64) {
+            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_OVERFLOWING_SUB;
+            <span class="kw">let </span>error = Felt252::from_bytes_be(<span class="string">b&quot;u64_sub Overflow&quot;</span>);
+
+            <span class="kw">let </span>add = lhs.checked_sub(rhs);
+
+            <span class="kw">match </span>add {
+                <span class="prelude-val">Some</span>(result) =&gt; {
+                    run_program_assert_output(
+                        program,
+                        <span class="string">&quot;run_test&quot;</span>,
+                        <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
+                        <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into()))],
+                    );
+                }
+                <span class="prelude-val">None </span>=&gt; {
+                    run_program_assert_output(
+                        program,
+                        <span class="string">&quot;run_test&quot;</span>,
+                        <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
+                        <span class="kw-2">&amp;</span>[<span class="macro">jit_panic!</span>(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        <span class="kw">let </span>sub_error = f(<span class="string">&quot;155801121784903550401946791117314617207&quot;</span>);
+        <span class="kw">const </span>MAX: u64 = u64::MAX;
 
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">0</span>, <span class="number">0</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">0</span>]]]));
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">0</span>, <span class="number">1</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]]));
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">0</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">0</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]])
-        );
+        run(<span class="number">0</span>, <span class="number">0</span>);
+        run(<span class="number">0</span>, <span class="number">1</span>);
+        run(<span class="number">0</span>, MAX - <span class="number">1</span>);
+        run(<span class="number">0</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">1</span>, <span class="number">0</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">1</span>]]]));
-        <span class="macro">assert_eq!</span>(run::&lt;<span class="number">1</span>, <span class="number">1</span>&gt;(), <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">0</span>]]]));
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">1</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">1</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]])
-        );
+        run(<span class="number">1</span>, <span class="number">0</span>);
+        run(<span class="number">1</span>, <span class="number">1</span>);
+        run(<span class="number">1</span>, MAX - <span class="number">1</span>);
+        run(<span class="number">1</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">0</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551614u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">1</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551613u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">0</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551614</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], [sub_error]]]])
-        );
+        run(MAX - <span class="number">1</span>, <span class="number">0</span>);
+        run(MAX - <span class="number">1</span>, <span class="number">1</span>);
+        run(MAX - <span class="number">1</span>, MAX - <span class="number">1</span>);
+        run(MAX - <span class="number">1</span>, MAX);
 
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">0</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551615u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">1</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">18446744073709551614u64</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">18446744073709551614</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">1</span>]]])
-        );
-        <span class="macro">assert_eq!</span>(
-            run::&lt;<span class="number">18446744073709551615</span>, <span class="number">18446744073709551615</span>&gt;(),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [<span class="number">0</span>]]])
-        );
+        run(MAX, <span class="number">0</span>);
+        run(MAX, <span class="number">1</span>);
+        run(MAX, MAX - <span class="number">1</span>);
+        run(MAX, MAX);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_equal() {
-        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>U64_EQUAL, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([lhs, rhs]));
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_EQUAL;
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">0</span>), <span class="macro">json!</span>([[<span class="number">1</span>, []]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">1</span>), <span class="macro">json!</span>([[<span class="number">0</span>, []]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">0</span>), <span class="macro">json!</span>([[<span class="number">0</span>, []]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">1</span>), <span class="macro">json!</span>([[<span class="number">1</span>, []]]));
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+        );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_is_zero() {
-        <span class="kw">let </span>r = |value| run_program(<span class="kw-2">&amp;</span>U64_IS_ZERO, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([value]));
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_IS_ZERO;
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>), <span class="macro">json!</span>([[<span class="number">1</span>, []]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>), <span class="macro">json!</span>([[<span class="number">0</span>, []]]));
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+        );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_safe_divmod() {
-        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>U64_SAFE_DIVMOD, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([(), lhs, rhs]));
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_IS_ZERO;
 
-        <span class="kw">let </span>u64_is_zero = <span class="macro">json!</span>([f(<span class="string">&quot;8445995464992694320&quot;</span>)]);
-
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">0</span>), <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], u64_is_zero]]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">1</span>), <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">0u64</span>, <span class="number">0u64</span>]]]]));
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0</span>, <span class="number">0xFFFFFFFFFFFFFFFFu64</span>),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">0u64</span>, <span class="number">0u64</span>]]]])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">0</span>), <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], u64_is_zero]]]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">1</span>), <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">1u64</span>, <span class="number">0u64</span>]]]]));
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">1</span>, <span class="number">0xFFFFFFFFFFFFFFFFu64</span>),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">0u64</span>, <span class="number">1u64</span>]]]])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
 
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0xFFFFFFFFFFFFFFFFu64</span>, <span class="number">0</span>),
-            <span class="macro">json!</span>([(), [<span class="number">1</span>, [[], u64_is_zero]]])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0xFFFFFFFFFFFFFFFFu64</span>, <span class="number">1</span>),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">0xFFFFFFFFFFFFFFFFu64</span>, <span class="number">0u64</span>]]]])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
-        <span class="macro">assert_eq!</span>(
-            r(<span class="number">0xFFFFFFFFFFFFFFFFu64</span>, <span class="number">0xFFFFFFFFFFFFFFFFu64</span>),
-            <span class="macro">json!</span>([(), [<span class="number">0</span>, [[<span class="number">1u64</span>, <span class="number">0u64</span>]]]])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into(), <span class="number">0xFFFFFFFFFFFFFFFFu64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_sqrt() {
-        <span class="kw">let </span>r = |value| run_program(<span class="kw-2">&amp;</span>U64_SQRT, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([(), value]));
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_SQRT;
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">0u64</span>), <span class="macro">json!</span>([(), <span class="number">0u32</span>]));
-        <span class="macro">assert_eq!</span>(r(u64::MAX), <span class="macro">json!</span>([(), u32::MAX]));
+        run_program_assert_output(program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into()], <span class="kw-2">&amp;</span>[<span class="number">0u32</span>.into()]);
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[u64::MAX.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0xFFFFFFFFu32</span>.into()],
+        );
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..u64::BITS {
             <span class="kw">let </span>x = <span class="number">1u64 </span>&lt;&lt; i;
-            <span class="kw">let </span>y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            <span class="kw">let </span>y: u32 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            <span class="macro">assert_eq!</span>(r(x), <span class="macro">json!</span>([(), y]));
+            run_program_assert_output(program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[x.into()], <span class="kw-2">&amp;</span>[y.into()]);
         }
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u64_widemul() {
-        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>U64_WIDEMUL, <span class="string">&quot;run_test&quot;</span>, <span class="macro">json!</span>([lhs, rhs]));
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_WIDEMUL;
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">0</span>), <span class="macro">json!</span>([<span class="number">0</span>]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>, <span class="number">1</span>), <span class="macro">json!</span>([<span class="number">0</span>]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">0</span>), <span class="macro">json!</span>([<span class="number">0</span>]));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>, <span class="number">1</span>), <span class="macro">json!</span>([<span class="number">1</span>]));
-        <span class="macro">assert_eq!</span>(
-            r(u64::MAX, u64::MAX),
-            <span class="macro">json!</span>([(u64::MAX <span class="kw">as </span>u128 * u64::MAX <span class="kw">as </span>u128)])
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0u128</span>.into()],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">0u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0u128</span>.into()],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">0u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0u128</span>.into()],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[<span class="number">1u64</span>.into(), <span class="number">1u64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1u128</span>.into()],
+        );
+        run_program_assert_output(
+            program,
+            <span class="string">&quot;run_test&quot;</span>,
+            <span class="kw-2">&amp;</span>[u64::MAX.into(), u64::MAX.into()],
+            <span class="kw-2">&amp;</span>[(u64::MAX <span class="kw">as </span>u128 * u64::MAX <span class="kw">as </span>u128).into()],
         );
     }
 }

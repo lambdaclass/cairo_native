@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compile","execute"],"mod":["cache","context","debug_info","error","execution_result","executor","libfuncs","metadata","module","starknet","types","utils","values"]};
+window.SIDEBAR_ITEMS = {"fn":["compile","execute","execute_contract"],"mod":["cache","context","debug_info","error","execution_result","executor","libfuncs","metadata","module","starknet","types","utils","values"],"struct":["ExecutionResult"]};
