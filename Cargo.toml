@@ -28,13 +28,13 @@ with-runtime = ["cairo-native-runtime"]
 [dependencies]
 bumpalo = "3.14"
 cairo-felt = "0.8.5"
-cairo-lang-compiler = "=2.2"
-cairo-lang-defs = "=2.2"
-cairo-lang-diagnostics = "=2.2"
-cairo-lang-filesystem = "=2.2"
-cairo-lang-lowering = "=2.2"
-cairo-lang-sierra = "=2.2"
-cairo-lang-sierra-generator = "=2.2"
+cairo-lang-compiler = "2.3.1"
+cairo-lang-defs = "2.3.1"
+cairo-lang-diagnostics = "2.3.1"
+cairo-lang-filesystem = "2.3.1"
+cairo-lang-lowering = "2.3.1"
+cairo-lang-sierra = "2.3.1"
+cairo-lang-sierra-generator = "2.3.1"
 educe = "0.4.23"
 id-arena = "2.2"
 itertools = "0.12"
@@ -53,13 +53,13 @@ clap = { version = "4.3", features = ["derive"], optional = true }
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
-cairo-lang-sierra-gas = "=2.2"
-cairo-lang-sierra-ap-change = "=2.2"
-cairo-lang-utils = "=2.2"
-cairo-lang-starknet = "=2.2"
+cairo-lang-sierra-gas = "2.3.1"
+cairo-lang-sierra-ap-change = "2.3.1"
+cairo-lang-utils = "2.3.1"
+cairo-lang-starknet = "2.3.1"
 
 [dev-dependencies]
-cairo-lang-runner = "=2.2"
+cairo-lang-runner = "2.3.1"
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
