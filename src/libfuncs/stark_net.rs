@@ -137,6 +137,7 @@ where
         }
         StarkNetConcreteLibfunc::Testing(_) => todo!(),
         StarkNetConcreteLibfunc::Secp256(_) => todo!(),
+        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => todo!(),
     }
 }
 
