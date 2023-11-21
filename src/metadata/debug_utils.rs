@@ -107,7 +107,7 @@ enum DebugBinding {
     PrintPointer,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DebugUtils {
     active_map: HashSet<DebugBinding>,
 }

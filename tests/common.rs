@@ -22,17 +22,16 @@ use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
     execution_result::ContractExecutionResult,
-    executor::NativeExecutor,
+    executor::NativeJitEngine,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
-        syscall_handler::SyscallHandlerMeta,
         MetadataStorage,
     },
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
     utils::{find_entry_point_by_idx, register_runtime_symbols},
-    values::JITValue,
+    values::JitValue,
     ExecutionResult,
 };
 use lambdaworks_math::{
@@ -182,7 +181,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[JITValue],
+    args: &[JitValue],
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -277,7 +276,6 @@ pub fn run_native_program(
         args,
         required_initial_gas,
         Some(u64::MAX.into()),
-        None,
     )
     .expect("Test program execution failed.")
 }
@@ -320,7 +318,7 @@ pub fn compare_inputless_program(program_path: &str) {
 pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
     entry_point_function_idx: usize,
-    args: &[JITValue],
+    args: &[JitValue],
     handler: &mut T,
 ) -> ContractExecutionResult
 where
@@ -328,18 +326,15 @@ where
 {
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(handler))
-        .unwrap();
+    let native_program = native_context.compile(sierra_program).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     native_executor
-        .execute_contract(entry_point_id, args, u64::MAX as u128)
+        .execute_contract(entry_point_id, args, handler, Some(u64::MAX as u128))
         .expect("failed to execute the given contract")
 }
 
@@ -380,14 +375,14 @@ pub fn compare_outputs(
     #[track_caller]
     fn check_next_type<'a>(
         ty: &CoreTypeConcrete,
-        native_rets: &mut impl Iterator<Item = &'a JITValue>,
+        native_rets: &mut impl Iterator<Item = &'a JitValue>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<(), TestCaseError> {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
-                if let JITValue::Array(data) = native_rets.next().unwrap() {
+                if let JitValue::Array(data) = native_rets.next().unwrap() {
                     for value in data {
                         check_next_type(
                             reg.get_type(&info.ty).expect("type should exist"),
@@ -408,7 +403,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcPoint(_) => {
                 let native_data = native_rets.next().unwrap();
 
-                if let JITValue::EcPoint(a, b) = native_data {
+                if let JitValue::EcPoint(a, b) = native_data {
                     let vm_a = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
                     let vm_b = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
 
@@ -429,7 +424,7 @@ pub fn compare_outputs(
                 );
                 let vm_value = vm_rets.next().unwrap();
 
-                if let JITValue::Felt252(felt) = native_rets.next().unwrap() {
+                if let JitValue::Felt252(felt) = native_rets.next().unwrap() {
                     let native_value = felt.to_biguint();
                     let vm_value = BigUint::from_str(vm_value).unwrap();
                     prop_assert_eq!(vm_value, native_value, "felt value mismatch");
@@ -448,7 +443,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u8 = if let JITValue::Uint8(v) = native_rets.next().unwrap() {
+                let native_value: u8 = if let JitValue::Uint8(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -462,7 +457,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u16 = if let JITValue::Uint16(v) = native_rets.next().unwrap() {
+                let native_value: u16 = if let JitValue::Uint16(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -476,7 +471,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u32 = if let JITValue::Uint32(v) = native_rets.next().unwrap() {
+                let native_value: u32 = if let JitValue::Uint32(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -490,7 +485,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u64 = if let JITValue::Uint64(v) = native_rets.next().unwrap() {
+                let native_value: u64 = if let JitValue::Uint64(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -504,7 +499,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u128 = if let JITValue::Uint128(v) = native_rets.next().unwrap() {
+                let native_value: u128 = if let JitValue::Uint128(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -531,7 +526,7 @@ pub fn compare_outputs(
                    0 is a filler.
                 */
                 prop_assert!(native_rets.peek().is_some());
-                if let JITValue::Enum {
+                if let JitValue::Enum {
                     tag: native_tag,
                     value,
                     ..
@@ -619,7 +614,7 @@ pub fn compare_outputs(
                 };
             }
             CoreTypeConcrete::Struct(info) => {
-                if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
+                if let JitValue::Struct { fields, .. } = native_rets.next().unwrap() {
                     for (field, container) in info.members.iter().zip(fields.iter()) {
                         check_next_type(
                             reg.get_type(field).unwrap(),

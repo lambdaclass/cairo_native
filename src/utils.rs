@@ -185,18 +185,12 @@ pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
+pub fn create_engine(module: &Module) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, 3, &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
-
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
 
     engine
 }
@@ -610,11 +604,10 @@ pub mod test {
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -646,7 +639,7 @@ pub mod test {
     // Helper macros for faster testing.
     macro_rules! jit_struct {
         ( $($x:expr),* $(,)? ) => {
-            crate::values::JITValue::Struct {
+            crate::values::JitValue::Struct {
                 fields: vec![$($x), *],
                 debug_name: None
             }
@@ -654,7 +647,7 @@ pub mod test {
     }
     macro_rules! jit_enum {
         ( $tag:expr, $value:expr ) => {
-            crate::values::JITValue::Enum {
+            crate::values::JitValue::Enum {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
@@ -663,7 +656,7 @@ pub mod test {
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::JITValue::Felt252Dict {
+            crate::values::JitValue::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -719,7 +712,7 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JITValue],
+        args: &[JitValue],
     ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -809,13 +802,7 @@ pub mod test {
             .unwrap()
             .register_impls(&engine);
 
-        let mut handler = TestSyscallHandler;
-        let handler = SyscallHandlerMeta::new(&mut handler);
-
-        metadata.insert(handler).unwrap();
-        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
-
-        crate::execute(
+        crate::jit_runner::execute_inner(
             &engine,
             &registry,
             &program
@@ -827,7 +814,7 @@ pub mod test {
             args,
             required_initial_gas,
             Some(u64::MAX.into()),
-            Some(handler),
+            Some(&mut TestSyscallHandler),
         )
         .expect("Test program execution failed.")
     }
@@ -836,8 +823,8 @@ pub mod test {
     pub fn run_program_assert_output(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JITValue],
-        outputs: &[JITValue],
+        args: &[JitValue],
+        outputs: &[JitValue],
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_values.as_slice(), outputs);

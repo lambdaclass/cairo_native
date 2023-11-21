@@ -680,7 +680,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
@@ -719,11 +719,11 @@ mod test {
         };
     }
 
-    fn u256(value: BigUint) -> JITValue {
+    fn u256(value: BigUint) -> JitValue {
         assert!(value.bits() <= 256);
         jit_struct!(
-            JITValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
-            JITValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
         )
     }
 
@@ -758,7 +758,7 @@ mod test {
     #[test]
     fn u256_safe_divmod() {
         #[track_caller]
-        fn run(lhs: (u128, u128), rhs: (u128, u128), result: JITValue) {
+        fn run(lhs: (u128, u128), rhs: (u128, u128), result: JitValue) {
             run_program_assert_output(
                 &U256_SAFE_DIVMOD,
                 "run_test",
@@ -849,7 +849,7 @@ mod test {
     #[test]
     fn u256_sqrt() {
         #[track_caller]
-        fn run(value: (u128, u128), result: JITValue) {
+        fn run(value: (u128, u128), result: JitValue) {
             run_program_assert_output(
                 &U256_SQRT,
                 "run_test",

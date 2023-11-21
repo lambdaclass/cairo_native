@@ -27,7 +27,7 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.14"
-cairo-felt = "0.8.5"
+cairo-felt = "0.9.1"
 cairo-lang-compiler = "2.3.1"
 cairo-lang-defs = "2.3.1"
 cairo-lang-diagnostics = "2.3.1"
@@ -36,6 +36,7 @@ cairo-lang-lowering = "2.3.1"
 cairo-lang-sierra = "2.3.1"
 cairo-lang-sierra-generator = "2.3.1"
 educe = "0.4.23"
+generator = "0.7.5"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"

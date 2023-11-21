@@ -708,7 +708,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
@@ -850,7 +850,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        &[jit_panic!(JitValue::Felt252(error))],
                     );
                 }
             }
@@ -902,7 +902,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        &[jit_panic!(JitValue::Felt252(error))],
                     );
                 }
             }

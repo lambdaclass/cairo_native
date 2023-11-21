@@ -2,13 +2,12 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
-use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+use cairo_native::executor::NativeJitEngine;
+use cairo_native::starknet::{
+    BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
+use cairo_native::utils::find_entry_point_by_idx;
+use cairo_native::values::JitValue;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -321,29 +320,27 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     let result = native_executor
         .execute_contract(
             fn_id,
             &[
-                JITValue::Felt252(Felt252::from_bytes_be(b"name")),
-                JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
-                JITValue::Felt252(Felt252::new(0)),
-                JITValue::Felt252(Felt252::new(i64::MAX)),
-                JITValue::Felt252(Felt252::new(4)),
-                JITValue::Felt252(Felt252::new(6)),
+                JitValue::Felt252(Felt252::from_bytes_be(b"name")),
+                JitValue::Felt252(Felt252::from_bytes_be(b"symbol")),
+                JitValue::Felt252(Felt252::new(0)),
+                JitValue::Felt252(Felt252::new(i64::MAX)),
+                JitValue::Felt252(Felt252::new(4)),
+                JitValue::Felt252(Felt252::new(6)),
             ],
-            u64::MAX.into(),
+            &mut SyscallHandler,
+            Some(u64::MAX.into()),
         )
         .expect("failed to execute the given contract");
 

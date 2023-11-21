@@ -2,13 +2,12 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
-use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+use cairo_native::executor::NativeJitEngine;
+use cairo_native::starknet::{
+    BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
+use cairo_native::utils::find_entry_point_by_idx;
+use cairo_native::values::JitValue;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -318,10 +317,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 
@@ -330,13 +326,14 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     let result = native_executor
         .execute_contract(
             fn_id,
-            &[JITValue::Felt252(Felt252::new(1))],
-            u64::MAX.into(),
+            &[JitValue::Felt252(Felt252::new(1))],
+            &mut SyscallHandler,
+            Some(u64::MAX.into()),
         )
         .expect("failed to execute the given contract");
 

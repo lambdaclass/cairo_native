@@ -2,10 +2,11 @@ use crate::metadata::{gas::GasMetadata, MetadataStorage};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
+    program::Program,
     program_registry::ProgramRegistry,
 };
 use melior::ir::Module;
-use std::{any::Any, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug};
 
 /// A MLIR module in the context of Cairo Native.
 /// It is conformed by the MLIR module, the Sierra program registry
@@ -13,19 +14,42 @@ use std::{any::Any, fmt::Debug};
 pub struct NativeModule<'m> {
     module: Module<'m>,
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: MetadataStorage,
+
+    initial_gas: HashMap<FunctionId, u128>,
+
+    #[cfg(feature = "with-debug-utils")]
+    pub(crate) debug_utils: crate::metadata::debug_utils::DebugUtils,
 }
 
 impl<'m> NativeModule<'m> {
     pub fn new(
         module: Module<'m>,
+        program: &Program,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: MetadataStorage,
     ) -> Self {
         Self {
             module,
             registry,
-            metadata,
+            initial_gas: metadata
+                .get::<GasMetadata>()
+                .map(|gas_meta| {
+                    program
+                        .funcs
+                        .iter()
+                        .filter_map(|function| {
+                            gas_meta
+                                .get_initial_required_gas(&function.id)
+                                .map(|gas| (function.id.clone(), gas))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            #[cfg(feature = "with-debug-utils")]
+            debug_utils: metadata
+                .get::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .clone(),
         }
     }
 
@@ -33,45 +57,7 @@ impl<'m> NativeModule<'m> {
     /// initial gas to execute it.
     /// If no initial gas is required, `None` is returned.
     pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u128> {
-        if let Some(gas_metadata) = self.metadata.get::<GasMetadata>() {
-            gas_metadata.get_initial_required_gas(fn_id)
-        } else {
-            None
-        }
-    }
-
-    /// Insert some metadata for the program execution and return a mutable reference to it.
-    ///
-    /// The insertion will fail, if there is already some metadata with the same type, in which case
-    /// it'll return `None`.
-    pub fn insert_metadata<T>(&mut self, meta: T) -> Option<&mut T>
-    where
-        T: Any,
-    {
-        self.metadata.insert(meta)
-    }
-
-    /// Removes metadata
-    pub fn remove_metadata<T>(&mut self) -> Option<T>
-    where
-        T: Any,
-    {
-        self.metadata.remove()
-    }
-
-    /// Retrieve a reference to some stored metadata.
-    ///
-    /// The retrieval will fail if there is no metadata with the requested type, in which case it'll
-    /// return `None`.
-    pub fn get_metadata<T>(&self) -> Option<&T>
-    where
-        T: Any,
-    {
-        self.metadata.get::<T>()
-    }
-
-    pub fn metadata(&self) -> &MetadataStorage {
-        &self.metadata
+        self.initial_gas.get(fn_id).copied()
     }
 
     pub fn module(&self) -> &Module {

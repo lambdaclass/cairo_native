@@ -7,16 +7,16 @@
 //!
 //! ## Usage
 //!
-//! The API contains two structs, `NativeContext` and `NativeExecutor`.
+//! The API contains two structs, `NativeContext` and `NativeJitEngine`.
 //! The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
-//! `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
+//! `NativeJitEngine` in the other hand is responsible of executing MLIR compiled sierra programs
 //! from an entrypoint.
 //! Programs and JIT states can be cached in contexts where their execution will be done multiple
 //! times.
 //!
 //! ```
 //! use cairo_native::context::NativeContext;
-//! use cairo_native::executor::NativeExecutor;
+//! use cairo_native::executor::NativeJitEngine;
 //! use melior::ir::operation::OperationPrintingFlags;
 //! use serde_json::json;
 //! use std::{io::stdout, path::Path};
@@ -69,7 +69,7 @@
 //!
 //! // JIT engine initialization. This engine may be cached in memory to keep potential JIT
 //! // optimizations between invocations.
-//! let native_executor = NativeExecutor::new(native_program);
+//! let native_executor = NativeJitEngine::new(native_program);
 //!
 //! // Invoke the function.
 //! native_executor.execute(&fn_id, params, returns, required_init_gas).unwrap();

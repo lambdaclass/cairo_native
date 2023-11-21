@@ -269,7 +269,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JITValue,
+        values::JitValue,
     };
 
     #[test]
@@ -430,10 +430,10 @@ mod test {
 
         let result =
             run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
-        assert_eq!(result, [JITValue::Felt252(1.into())]);
+        assert_eq!(result, [JitValue::Felt252(1.into())]);
 
         let result =
             run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
-        assert_eq!(result, [JITValue::Felt252(0.into())]);
+        assert_eq!(result, [JitValue::Felt252(0.into())]);
     }
 }
