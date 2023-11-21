@@ -170,8 +170,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
 
     #[test]
     fn run_null() {
@@ -187,8 +186,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([]));
-        assert_eq!(result, json!([[]]));
+        run_program_assert_output(&program, "run_test", &[], &[jit_struct!()]);
     }
 
     #[test]
@@ -215,25 +213,7 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([4]));
-        assert_eq!(result, json!([4]));
-
-        let result = run_program(&program, "run_test", json!([0]));
-        assert_eq!(result, json!([99]));
-    }
-
-    #[test]
-    fn run_null_serialize_roundtrip() {
-        let program = load_cairo!(
-            fn run_test(x: Nullable<u8>) -> Nullable<u8> {
-                x
-            }
-        );
-
-        let result = run_program(&program, "run_test", json!([None::<u8>]));
-        assert_eq!(result, json!([None::<u8>]));
-
-        let result = run_program(&program, "run_test", json!([Some(2)]));
-        assert_eq!(result, json!([Some(2)]));
+        run_program_assert_output(&program, "run_test", &[4u8.into()], &[4u8.into()]);
+        run_program_assert_output(&program, "run_test", &[0u8.into()], &[99u8.into()]);
     }
 }

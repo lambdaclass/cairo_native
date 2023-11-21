@@ -1,19 +1,10 @@
+use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use itertools::Itertools;
-use serde_json::json;
-use std::{io::stdout, path::Path};
+use cairo_native::values::JITValue;
+use std::path::Path;
 
 fn main() {
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
-    #[cfg(not(feature = "with-runtime"))]
-    compile_error!("This example requires the `with-runtime` feature to be active.");
-
     let program_path = Path::new("programs/examples/hello.cairo");
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
@@ -25,39 +16,21 @@ fn main() {
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
 
-    // Get necessary information for the execution of the program from a given entrypoint:
-    //   - Entrypoint function id
-    //   - Required initial gas
-    let name = cairo_native::utils::felt252_short_str("user");
-    let entry_point = "hello::hello::greet";
-    let params = json!([name]);
-    let returns = &mut serde_json::Serializer::new(stdout());
-    let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
+    // The parameters of the entry point.
+    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
 
-    // Instantiate MLIR executor.
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+
+    // Instantiate the executor.
     let native_executor = NativeExecutor::new(native_program);
 
     // Execute the program.
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
-        .unwrap_or_else(|e| match &e.source {
-            cairo_native::error::jit_engine::ErrorImpl::DeserializeError(_) => {
-                let registry = native_executor.get_program_registry();
-                panic!(
-                    "Expected inputs with signature: ({})",
-                    registry
-                        .get_function(fn_id)
-                        .unwrap()
-                        .signature
-                        .param_types
-                        .iter()
-                        .map(ToString::to_string)
-                        .join(", ")
-                )
-            }
-            e => panic!("{:?}", e),
-        });
+    let result = native_executor
+        .execute(entry_point_id, params, None)
+        .unwrap();
 
     println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
 }

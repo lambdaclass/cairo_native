@@ -289,9 +289,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{felt, load_cairo, run_program};
-    use pretty_assertions::assert_eq;
-    use serde_json::json;
+    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
+    use cairo_felt::Felt252;
+    use num_traits::Num;
 
     #[test]
     fn run_hades_permutation() {
@@ -303,48 +303,34 @@ mod test {
             }
         );
 
-        let result = run_program(
+        run_program_assert_output(
             &program,
             "run_test",
-            json!([(), felt("2"), felt("4"), felt("4")]),
-        );
-        assert_eq!(
-            result,
-            json!([
-                null,
-                [
-                    [
-                        1451956842u64,
-                        4009088405u64,
-                        2701936287u64,
-                        2751428444u64,
-                        149168921,
-                        2640934343u64,
-                        3983554576u64,
-                        60350433,
-                    ],
-                    [
-                        3195313629u64,
-                        2105130109,
-                        1451822522,
-                        671253646,
-                        2960065512u64,
-                        1827556108,
-                        776192228,
-                        87841256,
-                    ],
-                    [
-                        2919724085u64,
-                        3626733544u64,
-                        1688675005,
-                        3047144720u64,
-                        201114190,
-                        1215855961,
-                        2130126335,
-                        88328284,
-                    ],
-                ]
-            ])
+            &[
+                Felt252::new(2).into(),
+                Felt252::new(4).into(),
+                Felt252::new(4).into(),
+            ],
+            &[jit_struct!(
+                Felt252::from_str_radix(
+                    "1627044480024625333712068603977073585655327747658231320998869768849911913066",
+                    10
+                )
+                .unwrap()
+                .into(),
+                Felt252::from_str_radix(
+                    "2368195581807763724810563135784547417602556730014791322540110420941926079965",
+                    10
+                )
+                .unwrap()
+                .into(),
+                Felt252::from_str_radix(
+                    "2381325839211954898363395375151559373051496038592329842107874845056395867189",
+                    10
+                )
+                .unwrap()
+                .into(),
+            )],
         );
     }
 }

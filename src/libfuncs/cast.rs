@@ -186,10 +186,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use serde_json::json;
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
@@ -234,40 +233,75 @@ mod test {
 
     #[test]
     fn downcast() {
-        let r = |v8, v16, v32, v64, v128| {
-            run_program(&DOWNCAST, "run_test", json!([(), v8, v16, v32, v64, v128]))
-        };
-
-        assert_eq!(
-            r(u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX),
-            json!([
-                (),
-                [
-                    [[1, []], [1, []], [1, []], [1, []], [0, u8::MAX]],
-                    [[1, []], [1, []], [1, []], [0, u16::MAX]],
-                    [[1, []], [1, []], [0, u32::MAX]],
-                    [[1, []], [0, u64::MAX]],
-                    [[0, u128::MAX]],
-                ]
-            ])
+        run_program_assert_output(
+            &DOWNCAST,
+            "run_test",
+            &[
+                u8::MAX.into(),
+                u16::MAX.into(),
+                u32::MAX.into(),
+                u64::MAX.into(),
+                u128::MAX.into(),
+            ],
+            &[jit_struct!(
+                jit_struct!(
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u8::MAX.into()),
+                ),
+                jit_struct!(
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u16::MAX.into()),
+                ),
+                jit_struct!(
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u32::MAX.into()),
+                ),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into()),),
+                jit_struct!(jit_enum!(0, u128::MAX.into()),),
+            )],
         );
     }
 
     #[test]
     fn upcast() {
-        assert_eq!(
-            run_program(
-                &UPCAST,
-                "run_test",
-                json!([u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX])
-            ),
-            json!([[
-                [u8::MAX],
-                [u8::MAX, u16::MAX],
-                [u8::MAX, u16::MAX, u32::MAX],
-                [u8::MAX, u16::MAX, u32::MAX, u64::MAX],
-                [u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX],
-            ]])
+        run_program_assert_output(
+            &UPCAST,
+            "run_test",
+            &[
+                u8::MAX.into(),
+                u16::MAX.into(),
+                u32::MAX.into(),
+                u64::MAX.into(),
+                u128::MAX.into(),
+            ],
+            &[jit_struct!(
+                jit_struct!(u8::MAX.into()),
+                jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
+                jit_struct!(
+                    (u8::MAX as u32).into(),
+                    (u16::MAX as u32).into(),
+                    u32::MAX.into()
+                ),
+                jit_struct!(
+                    (u8::MAX as u64).into(),
+                    (u16::MAX as u64).into(),
+                    (u32::MAX as u64).into(),
+                    u64::MAX.into()
+                ),
+                jit_struct!(
+                    (u8::MAX as u128).into(),
+                    (u16::MAX as u128).into(),
+                    (u32::MAX as u128).into(),
+                    (u64::MAX as u128).into(),
+                    u128::MAX.into()
+                ),
+            )],
         );
     }
 }

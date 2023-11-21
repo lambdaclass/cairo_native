@@ -1,11 +1,19 @@
-use crate::{error::jit_engine::RunnerError, execute, module::NativeModule, utils::create_engine};
+use crate::{
+    error::jit_engine::{ErrorImpl, RunnerError},
+    execute, execute_contract,
+    execution_result::ContractExecutionResult,
+    jit_runner::ExecutionResult,
+    metadata::syscall_handler::SyscallHandlerMeta,
+    module::NativeModule,
+    utils::create_engine,
+    values::JITValue,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;
-use serde::{Deserializer, Serializer};
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct NativeExecutor<'m> {
@@ -36,26 +44,54 @@ impl<'m> NativeExecutor<'m> {
         &mut self.native_module
     }
 
-    pub fn execute<'de, D, S>(
+    /// Execute a program with the given params.
+    ///
+    /// See [`cairo_native::jit_runner::execute`]
+    pub fn execute(
         &self,
         fn_id: &FunctionId,
-        params: D,
-        returns: S,
-        required_init_gas: Option<u128>,
-    ) -> Result<S::Ok, RunnerError<'de, D, S>>
-    where
-        D: Deserializer<'de>,
-        S: Serializer,
-    {
+        params: &[JITValue],
+        gas: Option<u128>,
+    ) -> Result<ExecutionResult, RunnerError> {
         let registry = self.get_program_registry();
+        let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
+        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
-        Ok(execute(
+        execute(
             &self.engine,
             registry,
             fn_id,
             params,
-            returns,
-            required_init_gas,
-        )?)
+            required_initial_gas,
+            gas,
+            syscall_handler,
+        )
+    }
+
+    /// Execute a contract with the given calldata.
+    ///
+    /// See [`cairo_native::jit_runner::execute_contract`]
+    pub fn execute_contract(
+        &self,
+        fn_id: &FunctionId,
+        calldata: &[JITValue],
+        gas: u128,
+    ) -> Result<ContractExecutionResult, RunnerError> {
+        let registry = self.get_program_registry();
+        let syscall_handler = self
+            .get_module()
+            .get_metadata::<SyscallHandlerMeta>()
+            .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
+        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
+
+        execute_contract(
+            &self.engine,
+            registry,
+            fn_id,
+            calldata,
+            required_initial_gas,
+            gas,
+            syscall_handler,
+        )
     }
 }

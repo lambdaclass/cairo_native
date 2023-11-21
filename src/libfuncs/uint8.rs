@@ -689,14 +689,13 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        values::JITValue,
     };
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign, ToBigUint};
-    use serde_json::json;
-    use std::ops::Neg;
+    use num_bigint::ToBigUint;
 
     lazy_static! {
         static ref U8_OVERFLOWING_ADD: (String, Program) = load_cairo! {
@@ -749,19 +748,6 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
-
     #[test]
     fn u8_const_min() {
         let program = load_cairo!(
@@ -769,9 +755,8 @@ mod test {
                 0_u8
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([0]));
+        run_program_assert_output(&program, "run_test", &[], &[0u8.into()]);
     }
 
     #[test]
@@ -781,9 +766,8 @@ mod test {
                 255_u8
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([255]));
+        run_program_assert_output(&program, "run_test", &[], &[u8::MAX.into()]);
     }
 
     #[test]
@@ -795,9 +779,8 @@ mod test {
                 2_u8.into()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([[2, 0, 0, 0, 0, 0, 0, 0]]));
+        run_program_assert_output(&program, "run_test", &[], &[Felt252::new(2).into()]);
     }
 
     #[test]
@@ -809,132 +792,280 @@ mod test {
                 (255.try_into(), 256.try_into())
             }
         );
-        let result = run_program(&program, "run_test", json!([null]));
 
-        assert_eq!(result, json!([null, [[0, 255], [1, []]]]));
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            &[jit_struct!(
+                jit_enum!(0, 255u8.into()),
+                jit_enum!(1, jit_struct!()),
+            )],
+        );
     }
 
     #[test]
     fn u8_overflowing_add() {
-        fn run<const LHS: u8, const RHS: u8>() -> serde_json::Value {
-            run_program(&U8_OVERFLOWING_ADD, "run_test", json!([(), LHS, RHS]))
+        #[track_caller]
+        fn run(lhs: u8, rhs: u8) {
+            let program = &U8_OVERFLOWING_ADD;
+            let error = Felt252::from_bytes_be(b"u8_add Overflow");
+
+            let add = lhs.checked_add(rhs);
+
+            match add {
+                Some(result) => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_enum!(0, jit_struct!(result.into()))],
+                    );
+                }
+                None => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_panic!(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        let add_error = f("608642104203229548495787928534675319");
+        const MAX: u8 = u8::MAX;
 
-        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<0, 1>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<0, 254>(), json!([(), [0, [254]]]));
-        assert_eq!(run::<0, 255>(), json!([(), [0, [255]]]));
+        run(0, 0);
+        run(0, 1);
+        run(0, MAX - 1);
+        run(0, MAX);
 
-        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
-        assert_eq!(run::<1, 254>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<1, 255>(), json!([(), [1, [[], [add_error]]]]));
+        run(1, 0);
+        run(1, 1);
+        run(1, MAX - 1);
+        run(1, MAX);
 
-        assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
-        assert_eq!(run::<254, 1>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<254, 254>(), json!([(), [1, [[], [add_error]]]]));
-        assert_eq!(run::<254, 255>(), json!([(), [1, [[], [add_error]]]]));
+        run(MAX - 1, 0);
+        run(MAX - 1, 1);
+        run(MAX - 1, MAX - 1);
+        run(MAX - 1, MAX);
 
-        assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<255, 1>(), json!([(), [1, [[], [add_error]]]]));
-        assert_eq!(run::<255, 254>(), json!([(), [1, [[], [add_error]]]]));
-        assert_eq!(run::<255, 255>(), json!([(), [1, [[], [add_error]]]]));
+        run(MAX, 0);
+        run(MAX, 1);
+        run(MAX, MAX - 1);
+        run(MAX, MAX);
     }
 
     #[test]
     fn u8_overflowing_sub() {
-        fn run<const LHS: u8, const RHS: u8>() -> serde_json::Value {
-            run_program(&U8_OVERFLOWING_SUB, "run_test", json!([(), LHS, RHS]))
+        #[track_caller]
+        fn run(lhs: u8, rhs: u8) {
+            let program = &U8_OVERFLOWING_SUB;
+            let error = Felt252::from_bytes_be(b"u8_sub Overflow");
+
+            let add = lhs.checked_sub(rhs);
+
+            match add {
+                Some(result) => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_enum!(0, jit_struct!(result.into()))],
+                    );
+                }
+                None => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_panic!(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        let sub_error = f("608642109794502019480482122260311927");
+        const MAX: u8 = u8::MAX;
 
-        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<0, 1>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<0, 254>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<0, 255>(), json!([(), [1, [[], [sub_error]]]]));
+        run(0, 0);
+        run(0, 1);
+        run(0, MAX - 1);
+        run(0, MAX);
 
-        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<1, 1>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<1, 254>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<1, 255>(), json!([(), [1, [[], [sub_error]]]]));
+        run(1, 0);
+        run(1, 1);
+        run(1, MAX - 1);
+        run(1, MAX);
 
-        assert_eq!(run::<254, 0>(), json!([(), [0, [254]]]));
-        assert_eq!(run::<254, 1>(), json!([(), [0, [253]]]));
-        assert_eq!(run::<254, 254>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<254, 255>(), json!([(), [1, [[], [sub_error]]]]));
+        run(MAX - 1, 0);
+        run(MAX - 1, 1);
+        run(MAX - 1, MAX - 1);
+        run(MAX - 1, MAX);
 
-        assert_eq!(run::<255, 0>(), json!([(), [0, [255]]]));
-        assert_eq!(run::<255, 1>(), json!([(), [0, [254]]]));
-        assert_eq!(run::<255, 254>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<255, 255>(), json!([(), [0, [0]]]));
+        run(MAX, 0);
+        run(MAX, 1);
+        run(MAX, MAX - 1);
+        run(MAX, MAX);
     }
 
     #[test]
     fn u8_equal() {
-        let r = |lhs, rhs| run_program(&U8_EQUAL, "run_test", json!([lhs, rhs]));
+        let program = &U8_EQUAL;
 
-        assert_eq!(r(0, 0), json!([[1, []]]));
-        assert_eq!(r(0, 1), json!([[0, []]]));
-        assert_eq!(r(1, 0), json!([[0, []]]));
-        assert_eq!(r(1, 1), json!([[1, []]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 0u8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 0u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 1u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 1u8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
     }
 
     #[test]
     fn u8_is_zero() {
-        let r = |value| run_program(&U8_IS_ZERO, "run_test", json!([value]));
+        let program = &U8_IS_ZERO;
 
-        assert_eq!(r(0), json!([[1, []]]));
-        assert_eq!(r(1), json!([[0, []]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
     }
 
     #[test]
     fn u8_safe_divmod() {
-        let r = |lhs, rhs| run_program(&U8_SAFE_DIVMOD, "run_test", json!([(), lhs, rhs]));
+        let program = &U8_IS_ZERO;
 
-        let u8_is_zero = json!([f("32994284134408240")]);
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 0u8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 1u8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 0xFFu8.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
 
-        assert_eq!(r(0, 0), json!([(), [1, [[], u8_is_zero]]]));
-        assert_eq!(r(0, 1), json!([(), [0, [[0u8, 0u8]]]]));
-        assert_eq!(r(0, 0xFFu8), json!([(), [0, [[0u8, 0u8]]]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 0u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 1u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 0xFFu8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
 
-        assert_eq!(r(1, 0), json!([(), [1, [[], u8_is_zero]]]));
-        assert_eq!(r(1, 1), json!([(), [0, [[1u8, 0u8]]]]));
-        assert_eq!(r(1, 0xFFu8), json!([(), [0, [[0u8, 1u8]]]]));
-
-        assert_eq!(r(0xFFu8, 0), json!([(), [1, [[], u8_is_zero]]]));
-        assert_eq!(r(0xFFu8, 1), json!([(), [0, [[0xFFu8, 0u8]]]]));
-        assert_eq!(r(0xFFu8, 0xFFu8), json!([(), [0, [[1u8, 0u8]]]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFu8.into(), 0u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFu8.into(), 1u8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFu8.into(), 0xFFu8.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
     }
 
     #[test]
     fn u8_sqrt() {
-        let r = |value| run_program(&U8_SQRT, "run_test", json!([(), value]));
+        let program = &U8_SQRT;
 
-        assert_eq!(r(0u8), json!([(), 0u16]));
-        assert_eq!(r(u8::MAX), json!([(), 0x0Fu8]));
+        run_program_assert_output(program, "run_test", &[0u8.into()], &[0u8.into()]);
+        run_program_assert_output(program, "run_test", &[u8::MAX.into()], &[0x0Fu8.into()]);
 
         for i in 0..u8::BITS {
             let x = 1u8 << i;
-            let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u8 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            assert_eq!(r(x), json!([(), y]));
+            run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }
     }
 
     #[test]
     fn u8_widemul() {
-        let r = |lhs, rhs| run_program(&U8_WIDEMUL, "run_test", json!([lhs, rhs]));
+        let program = &U8_WIDEMUL;
 
-        assert_eq!(r(0, 0), json!([0]));
-        assert_eq!(r(0, 1), json!([0]));
-        assert_eq!(r(1, 0), json!([0]));
-        assert_eq!(r(1, 1), json!([1]));
-        assert_eq!(
-            r(u8::MAX, u8::MAX),
-            json!([(u8::MAX as u16 * u8::MAX as u16)])
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 0u8.into()],
+            &[0u16.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u8.into(), 1u8.into()],
+            &[0u16.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 0u8.into()],
+            &[0u16.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u8.into(), 1u8.into()],
+            &[1u16.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[u8::MAX.into(), u8::MAX.into()],
+            &[(u8::MAX as u16 * u8::MAX as u16).into()],
         );
     }
 }

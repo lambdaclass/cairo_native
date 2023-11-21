@@ -21,7 +21,7 @@ required-features = ["build-cli"]
 
 [features]
 default = ["build-cli", "with-runtime"]
-build-cli = ["clap", "serde_json", "tracing-subscriber"]
+build-cli = ["clap", "tracing-subscriber"]
 with-debug-utils = []
 with-runtime = ["cairo-native-runtime"]
 
@@ -35,23 +35,21 @@ cairo-lang-filesystem = "2.3.1"
 cairo-lang-lowering = "2.3.1"
 cairo-lang-sierra = "2.3.1"
 cairo-lang-sierra-generator = "2.3.1"
+educe = "0.4.23"
 id-arena = "2.2"
-itertools = "0.11"
+itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.147"
 melior = { version = "0.12.2", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
-serde = { version = "1.0", features = ["derive"] }
+num-traits = "0.2"
 thiserror = "1.0"
 tracing = "0.1"
 
 # CLI dependencies
 cairo-native-runtime = { path = "runtime", optional = true }
 clap = { version = "4.3", features = ["derive"], optional = true }
-serde_json = { version = "1.0", features = [
-    "arbitrary_precision",
-], optional = true }
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
@@ -64,9 +62,8 @@ cairo-lang-starknet = "2.3.1"
 cairo-lang-runner = "2.3.1"
 lambdaworks-math = "0.1"
 num-traits = "0.2"
-pretty_assertions = "1.4"
+pretty_assertions_sorted = "1.2.3"
 proptest = "1.2"
-serde_json = { version = "1.0", features = ["arbitrary_precision"] }
 tempfile = "3.6"
 test-case = "3.2.1"
 

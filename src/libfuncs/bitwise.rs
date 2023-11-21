@@ -68,10 +68,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::utils::test::{jit_struct, load_cairo, run_program};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use serde_json::json;
 
     lazy_static! {
         static ref BITWISE: (String, Program) = load_cairo! {
@@ -85,63 +84,51 @@ mod test {
 
     #[test]
     fn bitwise() {
-        let r = |lhs, rhs| run_program(&BITWISE, "run_test", json!([(), lhs, rhs]));
+        let r = |lhs, rhs| run_program(&BITWISE, "run_test", &[lhs, rhs]).return_values;
 
         assert_eq!(
             r(
-                0x00000000_00000000_00000000_00000000u128,
-                0x00000000_00000000_00000000_00000000u128,
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0x00000000_00000000_00000000_00000000u128.into(),
             ),
-            json!([
-                (),
-                [
-                    0x00000000_00000000_00000000_00000000u128,
-                    0x00000000_00000000_00000000_00000000u128,
-                    0x00000000_00000000_00000000_00000000u128,
-                ]
-            ])
+            [jit_struct!(
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0x00000000_00000000_00000000_00000000u128.into()
+            )]
         );
         assert_eq!(
             r(
-                0x00000000_00000000_00000000_00000000u128,
-                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
             ),
-            json!([
-                (),
-                [
-                    0x00000000_00000000_00000000_00000000u128,
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                ]
-            ])
+            [jit_struct!(
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
+            )]
         );
         assert_eq!(
             r(
-                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                0x00000000_00000000_00000000_00000000u128,
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0x00000000_00000000_00000000_00000000u128.into(),
             ),
-            json!([
-                (),
-                [
-                    0x00000000_00000000_00000000_00000000u128,
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                ]
-            ])
+            [jit_struct!(
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
+            )]
         );
         assert_eq!(
             r(
-                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
             ),
-            json!([
-                (),
-                [
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                    0x00000000_00000000_00000000_00000000u128,
-                    0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128,
-                ]
-            ])
+            [jit_struct!(
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0x00000000_00000000_00000000_00000000u128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
+            )]
         );
     }
 }
