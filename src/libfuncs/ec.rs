@@ -149,6 +149,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         point_is_zero,
         [0, 1],
         [&[], &[entry.argument(0)?.into()]],
@@ -229,7 +230,7 @@ where
             OperationBuilder::new("arith.select", location)
                 .add_operands(&[y_is_zero, k0, y_neg])
                 .add_results(&[IntegerType::new(context, 252).into()])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -296,7 +297,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -342,6 +343,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result,
         [0, 1],
         [
@@ -410,7 +412,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -427,7 +429,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -513,7 +515,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -530,7 +532,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -547,7 +549,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -642,7 +644,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -659,7 +661,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -690,7 +692,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(is_zero, [0, 1], [&[point], &[]], location));
+    entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[point], &[]], location));
     Ok(())
 }
 
@@ -835,7 +837,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -879,7 +881,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(result, [0, 1], [&[point], &[]], location));
+    entry.append_operation(helper.cond_br(context, result, [0, 1], [&[point], &[]], location));
     Ok(())
 }
 

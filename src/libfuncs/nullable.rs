@@ -143,7 +143,7 @@ where
                 IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
-            .build(),
+            .build()?,
     );
 
     let is_null_ptr = op.result(0)?.into();

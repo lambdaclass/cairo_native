@@ -113,7 +113,7 @@ where
                 )])
                 .add_operands(&[const_1])
                 .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -130,7 +130,7 @@ where
                 )])
                 .add_operands(&[const_1])
                 .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -147,21 +147,21 @@ where
                 )])
                 .add_operands(&[const_1])
                 .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
 
     let op0_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op0, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op0, location).into())
         .result(0)?
         .into();
     let op1_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op1, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op1, location).into())
         .result(0)?
         .into();
     let op2_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op2, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op2, location).into())
         .result(0)?
         .into();
 

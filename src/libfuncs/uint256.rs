@@ -352,7 +352,13 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(val_is_zero, [0, 1], [&[], &[val_struct]], location));
+    entry.append_operation(helper.cond_br(
+        context,
+        val_is_zero,
+        [0, 1],
+        [&[], &[val_struct]],
+        location,
+    ));
     Ok(())
 }
 
@@ -479,7 +485,7 @@ where
                             )])
                             .add_operands(&[arg_value])
                             .add_results(&[i256_ty])
-                            .build(),
+                            .build()?,
                     )
                     .result(0)?
                     .into();
@@ -571,7 +577,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[threshold_is_poison, k0, threshold])
                                         .add_results(&[i256_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();
@@ -592,7 +598,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[is_in_range, large_candidate, result])
                                         .add_results(&[i256_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();

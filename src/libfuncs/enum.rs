@@ -149,14 +149,14 @@ where
             )])
             .add_operands(&[op4.result(0)?.into()])
             .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build(),
+            .build()?,
     );
 
     let op6 = entry.append_operation(
         OperationBuilder::new("llvm.bitcast", location)
             .add_operands(&[op5.result(0)?.into()])
             .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
-            .build(),
+            .build()?,
     );
     entry.append_operation(llvm::store(
         context,
@@ -237,7 +237,7 @@ where
             )])
             .add_operands(&[op0.result(0)?.into()])
             .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build(),
+            .build()?,
     );
     entry.append_operation(llvm::store(
         context,
@@ -295,7 +295,8 @@ where
             "Invalid enum tag.",
             location,
         ));
-        default_block.append_operation(OperationBuilder::new("llvm.unreachable", location).build());
+        default_block
+            .append_operation(OperationBuilder::new("llvm.unreachable", location).build()?);
     }
 
     for (i, (block, (payload_ty, payload_layout))) in
@@ -318,7 +319,7 @@ where
             OperationBuilder::new("llvm.bitcast", location)
                 .add_operands(&[op1.result(0)?.into()])
                 .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
-                .build(),
+                .build()?,
         );
         let op4 = block.append_operation(llvm::load(
             context,

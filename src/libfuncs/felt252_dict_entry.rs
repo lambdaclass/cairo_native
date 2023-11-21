@@ -130,7 +130,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(key_ty, 0)])
-            .build(),
+            .build()?,
     );
 
     let key_ptr = op.result(0)?.into();
@@ -156,7 +156,7 @@ where
     let op = entry.append_operation(
         OperationBuilder::new("llvm.mlir.null", location)
             .add_results(&[result_ptr.r#type()])
-            .build(),
+            .build()?,
     );
 
     let null_ptr = op.result(0)?.into();
@@ -170,7 +170,7 @@ where
                 IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
-            .build(),
+            .build()?,
     );
 
     let is_null_ptr = op.result(0)?.into();
@@ -354,7 +354,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(key_ty, 0)])
-            .build(),
+            .build()?,
     );
 
     let key_ptr = op.result(0)?.into();

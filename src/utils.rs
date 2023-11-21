@@ -528,7 +528,7 @@ macro_rules! mlir_asm {
             let builder = $crate::utils::codegen_signature!( RETS builder => $rets_ty );
 
             #[allow(unused_variables)]
-            let op = $block.append_operation(builder.build());
+            let op = $block.append_operation(builder.build()?);
             $( $crate::utils::codegen_ret_extr!(op => $($ret),+) )?
         };
     )* };
