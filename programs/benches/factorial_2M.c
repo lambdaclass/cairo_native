@@ -10,7 +10,7 @@ typedef struct factorial_return_values
         union {
             uint64_t ok[4];
             struct {
-                void *ptr;
+                void* ptr;
                 uint32_t len;
                 uint32_t cap;
             } err;
@@ -19,8 +19,8 @@ typedef struct factorial_return_values
 } factorial_return_values_t;
 
 
-static void run_bench(factorial_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main")));
+static void run_bench(factorial_return_values_t*, void*, uint64_t)
+__attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main")));
 
 
 int main()
