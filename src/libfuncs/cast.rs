@@ -83,6 +83,7 @@ where
             .into();
 
         entry.append_operation(helper.cond_br(
+            context,
             k0,
             [1, 0],
             [
@@ -131,6 +132,7 @@ where
             .into();
 
         entry.append_operation(helper.cond_br(
+            context,
             is_in_range,
             [0, 1],
             [

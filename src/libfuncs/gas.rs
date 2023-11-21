@@ -113,6 +113,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_enough,
         [0, 1],
         [&[range_check, resulting_gas]; 2],
@@ -176,6 +177,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_enough,
         [0, 1],
         [&[range_check, resulting_gas]; 2],

@@ -114,7 +114,7 @@ where
     let op0 = entry.append_operation(
         OperationBuilder::new("llvm.mlir.null", location)
             .add_results(&[crate::ffi::get_struct_field_type_at(&array_ty, 0)])
-            .build(),
+            .build()?,
     );
     let op1 = entry.append_operation(arith::constant(
         context,
@@ -262,7 +262,7 @@ where
                 OperationBuilder::new("llvm.bitcast", location)
                     .add_operands(&[op_ptr.result(0)?.into()])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             );
             let op11 = block.append_operation(ReallocBindingsMeta::realloc(
                 context,
@@ -274,7 +274,7 @@ where
                 OperationBuilder::new("llvm.bitcast", location)
                     .add_operands(&[op11.result(0)?.into()])
                     .add_results(&[ptr_ty])
-                    .build(),
+                    .build()?,
             );
 
             let op13 = block.append_operation(llvm::insert_value(
@@ -328,7 +328,7 @@ where
             .add_operands(&[op4.result(1)?.into()])
             .add_operands(&[op_length.result(0)?.into()])
             .add_results(&[opaque_ptr_ty])
-            .build(),
+            .build()?,
     );
     entry.append_operation(llvm::store(
         context,
@@ -496,7 +496,7 @@ where
             ])
             .add_operands(&[array_ptr, index_val])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -661,7 +661,7 @@ where
             ])
             .add_operands(&[array_ptr, const_0])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -730,7 +730,7 @@ where
             ])
             .add_operands(&[array_ptr, const_1])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let array_ptr_src = op.result(0)?.into();
 
@@ -762,7 +762,7 @@ where
         OperationBuilder::new("llvm.bitcast", location)
             .add_operands(&[array_ptr])
             .add_results(&[llvm::r#type::opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let array_opaque_ptr = op.result(0)?.into();
 
@@ -775,7 +775,7 @@ where
                 IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
             )])
             .add_operands(&[array_opaque_ptr, array_ptr_src_opaque, elems_size])
-            .build(),
+            .build()?,
     );
 
     let op = block_not_empty.append_operation(llvm::insert_value(
@@ -940,7 +940,7 @@ where
             ])
             .add_operands(&[array_ptr, len])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -1078,7 +1078,7 @@ where
             ])
             .add_operands(&[array_ptr, index_val])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 

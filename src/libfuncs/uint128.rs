@@ -222,7 +222,13 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [1, 0], [&[]; 2], location));
+    entry.append_operation(helper.cond_br(
+        context,
+        op0.result(0)?.into(),
+        [1, 0],
+        [&[]; 2],
+        location,
+    ));
 
     Ok(())
 }
@@ -300,6 +306,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_wide,
         [1, 0],
         [
@@ -345,7 +352,7 @@ where
     ));
     let condition = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
     Ok(())
 }
 
@@ -387,7 +394,7 @@ where
             OperationBuilder::new(op_name, location)
                 .add_operands(&[lhs, rhs])
                 .add_results(&[result_type])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -414,6 +421,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         overflow,
         [1, 0],
         [&[range_check, result], &[range_check, result]],
@@ -496,7 +504,7 @@ where
                             )])
                             .add_operands(&[entry.argument(1)?.into()])
                             .add_results(&[i128_ty])
-                            .build(),
+                            .build()?,
                     )
                     .result(0)?
                     .into();
@@ -588,7 +596,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[threshold_is_poison, k0, threshold])
                                         .add_results(&[i128_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();
@@ -609,7 +617,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[is_in_range, large_candidate, result])
                                         .add_results(&[i128_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();

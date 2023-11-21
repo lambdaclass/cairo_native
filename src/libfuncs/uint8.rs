@@ -154,7 +154,7 @@ where
         OperationBuilder::new(op_name, location)
             .add_operands(&[lhs, rhs])
             .add_results(&[result_type])
-            .build(),
+            .build()?,
     );
     let result = op.result(0)?.into();
 
@@ -177,6 +177,7 @@ where
     let op_overflow = op.result(0)?.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         op_overflow,
         [1, 0],
         [&[range_check, op_result], &[range_check, op_result]],
@@ -211,7 +212,13 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [1, 0], [&[]; 2], location));
+    entry.append_operation(helper.cond_br(
+        context,
+        op0.result(0)?.into(),
+        [1, 0],
+        [&[]; 2],
+        location,
+    ));
 
     Ok(())
 }
@@ -249,7 +256,7 @@ where
     ));
     let condition = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
     Ok(())
 }
@@ -432,7 +439,7 @@ where
                             )])
                             .add_operands(&[entry.argument(1)?.into()])
                             .add_results(&[i8_ty])
-                            .build(),
+                            .build()?,
                     )
                     .result(0)?
                     .into();
@@ -522,7 +529,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[threshold_is_poison, k0, threshold])
                                         .add_results(&[i8_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();
@@ -543,7 +550,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[is_in_range, large_candidate, result])
                                         .add_results(&[i8_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();

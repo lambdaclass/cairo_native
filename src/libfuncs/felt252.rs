@@ -283,7 +283,7 @@ where
     ));
     let condition = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
     Ok(())
 }

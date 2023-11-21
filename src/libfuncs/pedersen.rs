@@ -110,7 +110,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let lhs_ptr = op.result(0)?.into();
 
@@ -126,7 +126,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let rhs_ptr = op.result(0)?.into();
 
@@ -142,7 +142,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let dst_ptr = op.result(0)?.into();
 
@@ -159,7 +159,7 @@ where
             )])
             .add_operands(&[lhs_i256])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let lhs_be = op.result(0)?.into();
 
@@ -171,7 +171,7 @@ where
             )])
             .add_operands(&[rhs_i256])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let rhs_be = op.result(0)?.into();
 
@@ -223,7 +223,7 @@ where
             )])
             .add_operands(&[result_be])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let result = op.result(0)?.into();
 
