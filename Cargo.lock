@@ -414,19 +414,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cairo-felt"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae932292b9ba497a4e892b56aa4e0c6f329a455180fdbdc132700dfe68d9b153"
-dependencies = [
- "lazy_static",
- "num-bigint",
- "num-integer",
- "num-traits 0.2.17",
- "serde",
-]
-
-[[package]]
 name = "cairo-lang-casm"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -628,7 +615,7 @@ dependencies = [
  "ark-secp256k1",
  "ark-secp256r1",
  "ark-std",
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
@@ -751,7 +738,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da74c7c4a2df66b961a982396e0f5221d6594266aed48c76d8c22d5b0d96af5d"
 dependencies = [
  "assert_matches",
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
@@ -782,7 +769,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9217e979f11980609d13d3a5adea8438ec9345709ddfebca975cc9cd1f85201e"
 dependencies = [
  "anyhow",
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-compiler",
  "cairo-lang-defs",
@@ -857,7 +844,7 @@ name = "cairo-native"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "cairo-lang-compiler",
  "cairo-lang-defs",
  "cairo-lang-diagnostics",
@@ -897,7 +884,7 @@ dependencies = [
 name = "cairo-native-runtime"
 version = "0.1.0"
 dependencies = [
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "cairo-lang-runner",
  "libc",
  "starknet-crypto 0.6.1",
@@ -913,7 +900,7 @@ dependencies = [
  "anyhow",
  "bincode 2.0.0-rc.3",
  "bitvec",
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "generic-array",
  "hashbrown 0.14.2",
  "hex",

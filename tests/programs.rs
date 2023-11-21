@@ -1,5 +1,4 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JitValue;
@@ -7,6 +6,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
+use cairo_felt::Felt252;
 
 mod common;
 mod starknet;
