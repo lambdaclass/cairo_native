@@ -305,6 +305,8 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 //!
 //! TODO
@@ -390,6 +392,7 @@
             </span>.into();
 
         entry.append_operation(helper.cond_br(
+            context,
             k0,
             [<span class="number">1</span>, <span class="number">0</span>],
             [
@@ -438,6 +441,7 @@
             </span>.into();
 
         entry.append_operation(helper.cond_br(
+            context,
             is_in_range,
             [<span class="number">0</span>, <span class="number">1</span>],
             [

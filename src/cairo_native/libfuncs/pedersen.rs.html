@@ -376,7 +376,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[const_1])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>lhs_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -392,7 +392,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[const_1])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>rhs_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -408,7 +408,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[const_1])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>dst_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -425,7 +425,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[lhs_i256])
             .add_results(<span class="kw-2">&amp;</span>[i256_ty])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>lhs_be = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -437,7 +437,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[rhs_i256])
             .add_results(<span class="kw-2">&amp;</span>[i256_ty])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>rhs_be = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -489,7 +489,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[result_be])
             .add_results(<span class="kw-2">&amp;</span>[i256_ty])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>result = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 

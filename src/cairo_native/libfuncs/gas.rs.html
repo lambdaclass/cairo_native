@@ -252,6 +252,8 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 //!
 //! TODO
@@ -367,6 +369,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_enough,
         [<span class="number">0</span>, <span class="number">1</span>],
         [<span class="kw-2">&amp;</span>[range_check, resulting_gas]; <span class="number">2</span>],
@@ -430,6 +433,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_enough,
         [<span class="number">0</span>, <span class="number">1</span>],
         [<span class="kw-2">&amp;</span>[range_check, resulting_gas]; <span class="number">2</span>],

@@ -1690,7 +1690,7 @@
             </span><span class="kw">let </span>builder = <span class="macro-nonterminal">$</span><span class="macro">crate::utils::codegen_signature!</span>( <span class="macro-nonterminal">RETS </span>builder =&gt; <span class="macro-nonterminal">$rets_ty </span>);
 
             <span class="attr">#[allow(unused_variables)]
-            </span><span class="kw">let </span>op = <span class="macro-nonterminal">$block</span>.append_operation(builder.build());
+            </span><span class="kw">let </span>op = <span class="macro-nonterminal">$block</span>.append_operation(builder.build()<span class="question-mark">?</span>);
             $( <span class="macro-nonterminal">$</span><span class="macro">crate::utils::codegen_ret_extr!</span>(<span class="macro-nonterminal">op </span>=&gt; $(<span class="macro-nonterminal">$ret</span>),+) )<span class="question-mark">?
         </span>};
     )* };

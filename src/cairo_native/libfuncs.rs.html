@@ -477,6 +477,8 @@
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -796,6 +798,7 @@
     </span><span class="comment">// TODO: Allow one block to be libfunc-internal.
     </span><span class="kw">pub fn </span>cond_br(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         condition: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
         branches: [usize; <span class="number">2</span>],
         results: [<span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;]; <span class="number">2</span>],
@@ -840,7 +843,7 @@
         };
 
         cf::cond_br(
-            <span class="kw">unsafe </span>{ location.context().to_ref() },
+            context,
             condition,
             block_true,
             block_false,
@@ -860,6 +863,7 @@
     /// used later on when required.
     </span><span class="kw">pub fn </span>switch(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         flag: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
         default: (BranchTarget&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;]),
         branches: <span class="kw-2">&amp;</span>[(i64, BranchTarget&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;])],
@@ -916,7 +920,7 @@
         }
 
         cf::switch(
-            <span class="kw">unsafe </span>{ location.context().to_ref() },
+            context,
             <span class="kw-2">&amp;</span>case_values,
             flag,
             flag.r#type(),

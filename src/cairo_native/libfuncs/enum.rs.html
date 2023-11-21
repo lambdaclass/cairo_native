@@ -430,6 +430,7 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -581,14 +582,14 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(enum_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>op6 = entry.append_operation(
         OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
             .add_operands(<span class="kw-2">&amp;</span>[op5.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(concrete_enum_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     entry.append_operation(llvm::store(
         context,
@@ -669,7 +670,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(enum_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     entry.append_operation(llvm::store(
         context,
@@ -727,7 +728,8 @@
             <span class="string">&quot;Invalid enum tag.&quot;</span>,
             location,
         ));
-        default_block.append_operation(OperationBuilder::new(<span class="string">&quot;llvm.unreachable&quot;</span>, location).build());
+        default_block
+            .append_operation(OperationBuilder::new(<span class="string">&quot;llvm.unreachable&quot;</span>, location).build()<span class="question-mark">?</span>);
     }
 
     <span class="kw">for </span>(i, (block, (payload_ty, payload_layout))) <span class="kw">in
@@ -750,7 +752,7 @@
             OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
                 .add_operands(<span class="kw-2">&amp;</span>[op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(concrete_enum_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         );
         <span class="kw">let </span>op4 = block.append_operation(llvm::load(
             context,

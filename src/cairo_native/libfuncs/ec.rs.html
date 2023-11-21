@@ -1374,6 +1374,8 @@
 <a href="#1374" id="1374">1374</a>
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
 //!
 //! TODO
@@ -1525,6 +1527,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         point_is_zero,
         [<span class="number">0</span>, <span class="number">1</span>],
         [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()]],
@@ -1605,7 +1608,7 @@
             OperationBuilder::new(<span class="string">&quot;arith.select&quot;</span>, location)
                 .add_operands(<span class="kw-2">&amp;</span>[y_is_zero, k0, y_neg])
                 .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">252</span>).into()])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1672,7 +1675,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_point_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1718,6 +1721,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result,
         [<span class="number">0</span>, <span class="number">1</span>],
         [
@@ -1786,7 +1790,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_state_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1803,7 +1807,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_point_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1889,7 +1893,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_state_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1906,7 +1910,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(felt252_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1923,7 +1927,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_point_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -2018,7 +2022,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_point_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -2035,7 +2039,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_state_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -2066,7 +2070,7 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    entry.append_operation(helper.cond_br(is_zero, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[point], <span class="kw-2">&amp;</span>[]], location));
+    entry.append_operation(helper.cond_br(context, is_zero, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[point], <span class="kw-2">&amp;</span>[]], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -2211,7 +2215,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[k1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(ec_point_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -2255,7 +2259,7 @@
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    entry.append_operation(helper.cond_br(result, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[point], <span class="kw-2">&amp;</span>[]], location));
+    entry.append_operation(helper.cond_br(context, result, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[point], <span class="kw-2">&amp;</span>[]], location));
     <span class="prelude-val">Ok</span>(())
 }
 

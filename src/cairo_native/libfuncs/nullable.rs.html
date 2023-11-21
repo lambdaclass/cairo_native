@@ -362,7 +362,7 @@
                 IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
             )])
             .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>is_null_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

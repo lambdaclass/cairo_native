@@ -908,7 +908,7 @@
     ));
     <span class="kw">let </span>condition = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    entry.append_operation(helper.cond_br(condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
 
     <span class="prelude-val">Ok</span>(())
 }

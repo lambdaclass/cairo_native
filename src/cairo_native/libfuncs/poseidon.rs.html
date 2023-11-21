@@ -449,7 +449,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[const_1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -466,7 +466,7 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[const_1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -483,21 +483,21 @@
                 )])
                 .add_operands(<span class="kw-2">&amp;</span>[const_1])
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(i256_ty, <span class="number">0</span>)])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
     <span class="kw">let </span>op0_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op0, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op0, location).into())
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
     <span class="kw">let </span>op1_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op1, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op1, location).into())
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
     <span class="kw">let </span>op2_i256 = entry
-        .append_operation(ods::arith::extui(i256_ty, op2, location).into())
+        .append_operation(ods::arith::extui(context, i256_ty, op2, location).into())
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 

@@ -608,7 +608,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[const_1])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(key_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>key_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -634,7 +634,7 @@
     <span class="kw">let </span>op = entry.append_operation(
         OperationBuilder::new(<span class="string">&quot;llvm.mlir.null&quot;</span>, location)
             .add_results(<span class="kw-2">&amp;</span>[result_ptr.r#type()])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>null_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -648,7 +648,7 @@
                 IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
             )])
             .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>is_null_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -832,7 +832,7 @@
             )])
             .add_operands(<span class="kw-2">&amp;</span>[const_1])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(key_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>key_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

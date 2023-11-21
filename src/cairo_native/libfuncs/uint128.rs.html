@@ -1271,6 +1271,14 @@
 <a href="#1271" id="1271">1271</a>
 <a href="#1272" id="1272">1272</a>
 <a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1495,7 +1503,13 @@
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(), [<span class="number">1</span>, <span class="number">0</span>], [<span class="kw-2">&amp;</span>[]; <span class="number">2</span>], location));
+    entry.append_operation(helper.cond_br(
+        context,
+        op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        [<span class="number">1</span>, <span class="number">0</span>],
+        [<span class="kw-2">&amp;</span>[]; <span class="number">2</span>],
+        location,
+    ));
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -1573,6 +1587,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_wide,
         [<span class="number">1</span>, <span class="number">0</span>],
         [
@@ -1618,7 +1633,7 @@
     ));
     <span class="kw">let </span>condition = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    entry.append_operation(helper.cond_br(condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1660,7 +1675,7 @@
             OperationBuilder::new(op_name, location)
                 .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
                 .add_results(<span class="kw-2">&amp;</span>[result_type])
-                .build(),
+                .build()<span class="question-mark">?</span>,
         )
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
@@ -1687,6 +1702,7 @@
         </span>.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         overflow,
         [<span class="number">1</span>, <span class="number">0</span>],
         [<span class="kw-2">&amp;</span>[range_check, result], <span class="kw-2">&amp;</span>[range_check, result]],
@@ -1769,7 +1785,7 @@
                             )])
                             .add_operands(<span class="kw-2">&amp;</span>[entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()])
                             .add_results(<span class="kw-2">&amp;</span>[i128_ty])
-                            .build(),
+                            .build()<span class="question-mark">?</span>,
                     )
                     .result(<span class="number">0</span>)<span class="question-mark">?
                     </span>.into();
@@ -1861,7 +1877,7 @@
                                     OperationBuilder::new(<span class="string">&quot;arith.select&quot;</span>, location)
                                         .add_operands(<span class="kw-2">&amp;</span>[threshold_is_poison, k0, threshold])
                                         .add_results(<span class="kw-2">&amp;</span>[i128_ty])
-                                        .build(),
+                                        .build()<span class="question-mark">?</span>,
                                 )
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();
@@ -1882,7 +1898,7 @@
                                     OperationBuilder::new(<span class="string">&quot;arith.select&quot;</span>, location)
                                         .add_operands(<span class="kw-2">&amp;</span>[is_in_range, large_candidate, result])
                                         .add_results(<span class="kw-2">&amp;</span>[i128_ty])
-                                        .build(),
+                                        .build()<span class="question-mark">?</span>,
                                 )
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();

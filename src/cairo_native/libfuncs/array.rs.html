@@ -1559,7 +1559,7 @@
     <span class="kw">let </span>op0 = entry.append_operation(
         OperationBuilder::new(<span class="string">&quot;llvm.mlir.null&quot;</span>, location)
             .add_results(<span class="kw-2">&amp;</span>[<span class="kw">crate</span>::ffi::get_struct_field_type_at(<span class="kw-2">&amp;</span>array_ty, <span class="number">0</span>)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>op1 = entry.append_operation(arith::constant(
         context,
@@ -1707,7 +1707,7 @@
                 OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
                     .add_operands(<span class="kw-2">&amp;</span>[op_ptr.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
                     .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()<span class="question-mark">?</span>,
             );
             <span class="kw">let </span>op11 = block.append_operation(ReallocBindingsMeta::realloc(
                 context,
@@ -1719,7 +1719,7 @@
                 OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
                     .add_operands(<span class="kw-2">&amp;</span>[op11.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
                     .add_results(<span class="kw-2">&amp;</span>[ptr_ty])
-                    .build(),
+                    .build()<span class="question-mark">?</span>,
             );
 
             <span class="kw">let </span>op13 = block.append_operation(llvm::insert_value(
@@ -1773,7 +1773,7 @@
             .add_operands(<span class="kw-2">&amp;</span>[op4.result(<span class="number">1</span>)<span class="question-mark">?</span>.into()])
             .add_operands(<span class="kw-2">&amp;</span>[op_length.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
             .add_results(<span class="kw-2">&amp;</span>[opaque_ptr_ty])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     entry.append_operation(llvm::store(
         context,
@@ -1941,7 +1941,7 @@
             ])
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr, index_val])
             .add_results(<span class="kw-2">&amp;</span>[opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>elem_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -2106,7 +2106,7 @@
             ])
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr, const_0])
             .add_results(<span class="kw-2">&amp;</span>[opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>elem_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -2175,7 +2175,7 @@
             ])
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr, const_1])
             .add_results(<span class="kw-2">&amp;</span>[opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>array_ptr_src = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -2207,7 +2207,7 @@
         OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr])
             .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>array_opaque_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -2220,7 +2220,7 @@
                 IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
             )])
             .add_operands(<span class="kw-2">&amp;</span>[array_opaque_ptr, array_ptr_src_opaque, elems_size])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>op = block_not_empty.append_operation(llvm::insert_value(
@@ -2385,7 +2385,7 @@
             ])
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr, len])
             .add_results(<span class="kw-2">&amp;</span>[opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>elem_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
@@ -2523,7 +2523,7 @@
             ])
             .add_operands(<span class="kw-2">&amp;</span>[array_ptr, index_val])
             .add_results(<span class="kw-2">&amp;</span>[opaque_pointer(context)])
-            .build(),
+            .build()<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>elem_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
