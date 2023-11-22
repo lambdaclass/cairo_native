@@ -4,15 +4,20 @@ use crate::{
     error::{
         jit_engine::{
             make_insufficient_gas_error, make_missing_parameter, make_type_builder_error,
-            make_unexpected_value_error, ErrorImpl,
+            make_unexpected_value_error,
         },
         JitRunnerError,
     },
     execution_result::ContractExecutionResult,
-    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{
+        handler::{
+            CoroutineState, StarkNetSyscallHandlerCallbacks, StarknetRequest, StarknetResponse,
+        },
+        StarkNetSyscallHandler,
+    },
     types::TypeBuilder,
     utils::generate_function_name,
-    values::{JITValue, ValueBuilder},
+    values::{JitValue, ValueBuilder},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -23,36 +28,32 @@ use cairo_lang_sierra::{
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
+use generator::Gn;
 use melior::ExecutionEngine;
-use std::{alloc::Layout, iter::once, ptr::NonNull};
+use std::{
+    alloc::Layout,
+    iter::once,
+    ptr::{addr_of_mut, NonNull},
+};
 use tracing::debug;
+
+const STACK_SIZE: usize = 65536;
 
 /// The result of the JIT execution.
 #[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
-    pub return_values: Vec<JITValue>,
+    pub return_values: Vec<JitValue>,
 }
 
-/// Execute a function on an engine loaded with a Sierra program.
-///
-/// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
-/// the compiled module. This has been designed this way because it allows reusing the engine, as
-/// opposed to building a different engine every time a function is called and therefore losing all
-/// potential optimizations that are already present.
-///
-/// The registry is needed to convert the params and return values into and from the JIT ABI. Check
-/// out [the values module](crate::values) for more information about the de/serialization process.
-///
-/// The function's arguments and return values are passed around using [`JITValue`].
-pub fn execute(
+pub(crate) fn execute_inner(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    params: &[JITValue],
+    params: &[JitValue],
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
-    syscall_handler: Option<&SyscallHandlerMeta>,
+    syscall_handler: Option<&mut dyn StarkNetSyscallHandler>,
 ) -> Result<ExecutionResult, JitRunnerError> {
     let arena = Bump::new();
 
@@ -66,6 +67,7 @@ pub fn execute(
 
     let mut params_it = params.iter();
 
+    let mut syscall_handler_wrapper = None;
     for param_type_id in &entry_point.signature.param_types {
         let ty = registry.get_type(param_type_id)?;
 
@@ -75,7 +77,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Array(_)) {
+                if !matches!(next, JitValue::Array(_)) {
                     Err(make_unexpected_value_error("JITValue::Array".to_string()))?;
                 }
 
@@ -99,7 +101,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::EcPoint(..)) {
+                if !matches!(next, JitValue::EcPoint(..)) {
                     Err(make_unexpected_value_error("JITValue::EcPoint".to_string()))?;
                 }
 
@@ -110,7 +112,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::EcState(..)) {
+                if !matches!(next, JitValue::EcState(..)) {
                     Err(make_unexpected_value_error("JITValue::EcState".to_string()))?;
                 }
 
@@ -121,7 +123,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Felt252(_)) {
+                if !matches!(next, JitValue::Felt252(_)) {
                     Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
                 }
 
@@ -151,7 +153,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint8(_)) {
+                if !matches!(next, JitValue::Uint8(_)) {
                     Err(make_unexpected_value_error("JITValue::Uint8".to_string()))?;
                 }
 
@@ -162,7 +164,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint16(_)) {
+                if !matches!(next, JitValue::Uint16(_)) {
                     Err(make_unexpected_value_error("JITValue::Uint16".to_string()))?;
                 }
 
@@ -173,7 +175,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint32(_)) {
+                if !matches!(next, JitValue::Uint32(_)) {
                     Err(make_unexpected_value_error("JITValue::Uint32".to_string()))?;
                 }
 
@@ -184,7 +186,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint64(_)) {
+                if !matches!(next, JitValue::Uint64(_)) {
                     Err(make_unexpected_value_error("JITValue::Uint64".to_string()))?;
                 }
 
@@ -195,7 +197,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint128(_)) {
+                if !matches!(next, JitValue::Uint128(_)) {
                     Err(make_unexpected_value_error("JITValue::Uint128".to_string()))?;
                 }
 
@@ -220,7 +222,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Enum { .. }) {
+                if !matches!(next, JitValue::Enum { .. }) {
                     Err(make_unexpected_value_error("JITValue::Enum".to_string()))?;
                 }
 
@@ -231,7 +233,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Struct { .. }) {
+                if !matches!(next, JitValue::Struct { .. }) {
                     Err(make_unexpected_value_error("JITValue::Struct".to_string()))?;
                 }
 
@@ -242,7 +244,7 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Felt252Dict { .. }) {
+                if !matches!(next, JitValue::Felt252Dict { .. }) {
                     Err(make_unexpected_value_error(
                         "JITValue::Felt252Dict".to_string(),
                     ))?;
@@ -265,7 +267,7 @@ pub fn execute(
                             .next()
                             .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                        if !matches!(next, JITValue::Felt252(_)) {
+                        if !matches!(next, JitValue::Felt252(_)) {
                             Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
                         }
 
@@ -273,17 +275,13 @@ pub fn execute(
                     }
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                     StarkNetTypeConcrete::System(_) => {
-                        let syscall_addr = syscall_handler
-                            .ok_or(JitRunnerError::from(ErrorImpl::MissingSyscallHandler))?
-                            .as_ptr()
-                            .as_ptr() as *const ()
-                            as usize;
+                        let mut syscall_handler = syscall_handler_wrapper
+                            .get_or_insert_with(StarkNetSyscallHandlerCallbacks::new);
 
-                        params_ptrs.push(
-                            arena
-                                .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
-                                .cast(),
-                        );
+                        params_ptrs
+                            .push(*arena.alloc(
+                                NonNull::new(addr_of_mut!(syscall_handler)).unwrap().cast(),
+                            ));
                     }
                 };
             }
@@ -328,8 +326,133 @@ pub fn execute(
             .collect::<Vec<_>>()
     };
 
-    unsafe {
-        engine.invoke_packed(&function_name, &mut io_pointers)?;
+    match syscall_handler_wrapper {
+        Some(mut syscall_handler_wrapper) => {
+            let mut coroutine =
+                Gn::<StarknetResponse>::new_scoped_opt_local(STACK_SIZE, |mut scope| unsafe {
+                    syscall_handler_wrapper.scope = addr_of_mut!(scope) as usize as *mut _;
+                    CoroutineState::Finished(engine.invoke_packed(&function_name, &mut io_pointers))
+                });
+
+            let syscall_handler = syscall_handler.unwrap();
+            loop {
+                match coroutine.resume().unwrap() {
+                    CoroutineState::Request(request) => match request {
+                        StarknetRequest::GetBlockHash {
+                            mut gas,
+                            block_number,
+                        } => {
+                            let result = syscall_handler.get_block_hash(block_number, &mut gas);
+                            coroutine.set_para(StarknetResponse::GetBlockHash { gas, result });
+                        }
+                        StarknetRequest::GetExecutionInfo { mut gas } => {
+                            let result = syscall_handler.get_execution_info(&mut gas);
+                            coroutine.set_para(StarknetResponse::GetExecutionInfo { gas, result });
+                        }
+                        StarknetRequest::Deploy {
+                            mut gas,
+                            class_hash,
+                            contract_address_salt,
+                            calldata,
+                            deploy_from_zero,
+                        } => {
+                            let result = syscall_handler.deploy(
+                                class_hash,
+                                contract_address_salt,
+                                &calldata,
+                                deploy_from_zero,
+                                &mut gas,
+                            );
+                            coroutine.set_para(StarknetResponse::Deploy { gas, result });
+                        }
+                        StarknetRequest::ReplaceClass {
+                            mut gas,
+                            class_hash,
+                        } => {
+                            let result = syscall_handler.replace_class(class_hash, &mut gas);
+                            coroutine.set_para(StarknetResponse::ReplaceClass { gas, result });
+                        }
+                        StarknetRequest::LibraryCall {
+                            mut gas,
+                            class_hash,
+                            function_selector,
+                            calldata,
+                        } => {
+                            let result = syscall_handler.library_call(
+                                class_hash,
+                                function_selector,
+                                &calldata,
+                                &mut gas,
+                            );
+                            coroutine.set_para(StarknetResponse::LibraryCall { gas, result });
+                        }
+                        StarknetRequest::CallContract {
+                            mut gas,
+                            address,
+                            entry_point_selector,
+                            calldata,
+                        } => {
+                            let result = syscall_handler.call_contract(
+                                address,
+                                entry_point_selector,
+                                &calldata,
+                                &mut gas,
+                            );
+                            coroutine.set_para(StarknetResponse::CallContract { gas, result });
+                        }
+                        StarknetRequest::StorageRead {
+                            mut gas,
+                            address_domain,
+                            address,
+                        } => {
+                            let result =
+                                syscall_handler.storage_read(address_domain, address, &mut gas);
+                            coroutine.set_para(StarknetResponse::StorageRead { gas, result });
+                        }
+                        StarknetRequest::StorageWrite {
+                            mut gas,
+                            address_domain,
+                            address,
+                            value,
+                        } => {
+                            let result = syscall_handler.storage_write(
+                                address_domain,
+                                address,
+                                value,
+                                &mut gas,
+                            );
+                            coroutine.set_para(StarknetResponse::StorageWrite { gas, result });
+                        }
+                        StarknetRequest::EmitEvent {
+                            mut gas,
+                            keys,
+                            data,
+                        } => {
+                            let result = syscall_handler.emit_event(&keys, &data, &mut gas);
+                            coroutine.set_para(StarknetResponse::EmitEvent { gas, result });
+                        }
+                        StarknetRequest::SendMessageToL1 {
+                            mut gas,
+                            to_address,
+                            payload,
+                        } => {
+                            let result =
+                                syscall_handler.send_message_to_l1(to_address, &payload, &mut gas);
+                            coroutine.set_para(StarknetResponse::SendMessageToL1 { gas, result });
+                        }
+                        StarknetRequest::Keccak { mut gas, input } => {
+                            let result = syscall_handler.keccak(&input, &mut gas);
+                            coroutine.set_para(StarknetResponse::Keccak { gas, result });
+                        }
+                    },
+                    CoroutineState::Finished(result) => {
+                        assert!(coroutine.is_done());
+                        break result;
+                    }
+                }
+            }?
+        }
+        None => unsafe { engine.invoke_packed(&function_name, &mut io_pointers)? },
     }
 
     let mut returns = Vec::new();
@@ -356,7 +479,7 @@ pub fn execute(
                 // ignore returned builtins
             }
             _ => {
-                let value = JITValue::from_jit(ptr, type_id, registry);
+                let value = JitValue::from_jit(ptr, type_id, registry);
                 returns.push(value);
             }
         };
@@ -368,32 +491,65 @@ pub fn execute(
     })
 }
 
+/// Execute a function on an engine loaded with a Sierra program.
+///
+/// The JIT execution of a Sierra program requires an [`ExecutionEngine`] already configured with
+/// the compiled module. This has been designed this way because it allows reusing the engine, as
+/// opposed to building a different engine every time a function is called and therefore losing all
+/// potential optimizations that are already present.
+///
+/// The registry is needed to convert the params and return values into and from the JIT ABI. Check
+/// out [the values module](crate::values) for more information about the de/serialization process.
+///
+/// The function's arguments and return values are passed around using [`JITValue`].
+pub fn execute(
+    engine: &ExecutionEngine,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    function_id: &FunctionId,
+    params: &[JitValue],
+    required_initial_gas: Option<u128>,
+    gas: Option<u128>,
+) -> Result<ExecutionResult, JitRunnerError> {
+    execute_inner(
+        engine,
+        registry,
+        function_id,
+        params,
+        required_initial_gas,
+        gas,
+        None,
+    )
+}
+
 /// Utility function to make it easier to execute contracts. Please see the [`execute`] for more information about program execution.
 ///
 /// To call a contract, the calldata needs to be inside a struct inside a array, this helper function does that for you.
 ///
 /// The calldata passed should all be felt252 values.
-pub fn execute_contract(
+pub fn execute_contract<T>(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    calldata: &[JITValue],
+    calldata: &[JitValue],
     required_initial_gas: Option<u128>,
-    gas: u128,
-    syscall_handler: &SyscallHandlerMeta,
-) -> Result<ContractExecutionResult, JitRunnerError> {
-    let params = vec![JITValue::Struct {
-        fields: vec![JITValue::Array(calldata.to_vec())],
+    gas: Option<u128>,
+    syscall_handler: &mut T,
+) -> Result<ContractExecutionResult, JitRunnerError>
+where
+    T: StarkNetSyscallHandler,
+{
+    let params = vec![JitValue::Struct {
+        fields: vec![JitValue::Array(calldata.to_vec())],
         debug_name: None,
     }];
 
-    ContractExecutionResult::from_execution_result(execute(
+    ContractExecutionResult::from_execution_result(execute_inner(
         engine,
         registry,
         function_id,
         &params,
         required_initial_gas,
-        Some(gas),
+        gas,
         Some(syscall_handler),
     )?)
 }

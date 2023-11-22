@@ -219,9 +219,9 @@ pub trait StarkNetSyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
+    use generator::Scope;
     use std::{
         alloc::Layout,
-        fmt::Debug,
         mem::{size_of, ManuallyDrop},
         ptr::NonNull,
     };
@@ -282,24 +282,36 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
-    #[derive(Debug)]
-    pub struct StarkNetSyscallHandlerCallbacks<'a, T> {
-        self_ptr: &'a mut T,
+    pub struct StarkNetSyscallHandlerCallbacks {
+        pub scope: *mut Scope<
+            'static,
+            StarknetResponse,
+            CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+        >,
 
         get_block_hash: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             block_number: u64,
         ),
         get_execution_info: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
         ),
         deploy: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
@@ -308,13 +320,19 @@ pub(crate) mod handler {
         ),
         replace_class: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             _gas: &mut u128,
             class_hash: &Felt252Abi,
         ),
         library_call: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             function_selector: &Felt252Abi,
@@ -322,7 +340,10 @@ pub(crate) mod handler {
         ),
         call_contract: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address: &Felt252Abi,
             entry_point_selector: &Felt252Abi,
@@ -331,14 +352,20 @@ pub(crate) mod handler {
 
         storage_read: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address_domain: u32,
             address: &Felt252Abi,
         ),
         storage_write: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address_domain: u32,
             address: &Felt252Abi,
@@ -346,30 +373,36 @@ pub(crate) mod handler {
         ),
         emit_event: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             keys: *const (*const Felt252Abi, u32, u32),
             data: *const (*const Felt252Abi, u32, u32),
         ),
         send_message_to_l1: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             to_address: &Felt252Abi,
             data: *const (*const Felt252Abi, u32, u32),
         ),
         keccak: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<U256>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             _gas: &mut u128,
             input: *const (*const u64, u32, u32),
         ),
     }
 
-    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
-    where
-        T: 'a,
-    {
+    impl StarkNetSyscallHandlerCallbacks {
         // Callback field indices.
         pub const CALL_CONTRACT: usize = field_offset!(Self, call_contract) >> 3;
         pub const DEPLOY: usize = field_offset!(Self, deploy) >> 3;
@@ -384,13 +417,10 @@ pub(crate) mod handler {
         pub const STORAGE_WRITE: usize = field_offset!(Self, storage_write) >> 3;
     }
 
-    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
-    where
-        T: StarkNetSyscallHandler + 'a,
-    {
-        pub fn new(handler: &'a mut T) -> Self {
+    impl StarkNetSyscallHandlerCallbacks {
+        pub fn new() -> Self {
             Self {
-                self_ptr: handler,
+                scope: std::ptr::null_mut(),
                 get_block_hash: Self::wrap_get_block_hash,
                 get_execution_info: Self::wrap_get_execution_info,
                 deploy: Self::wrap_deploy,
@@ -430,12 +460,25 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_get_block_hash(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             block_number: u64,
         ) {
-            let result = ptr.get_block_hash(block_number, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::GetBlockHash {
+                    gas: *gas,
+                    block_number,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::GetBlockHash { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -449,11 +492,23 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
         ) {
-            let result = ptr.get_execution_info(gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::GetExecutionInfo {
+                    gas: *gas,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::GetExecutionInfo { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -516,7 +571,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_deploy(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
@@ -548,14 +606,21 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.deploy(
-                class_hash,
-                contract_address_salt,
-                &calldata,
-                deploy_from_zero,
-                gas,
-            );
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::Deploy {
+                    gas: *gas,
+                    class_hash,
+                    contract_address_salt,
+                    calldata,
+                    deploy_from_zero,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::Deploy { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => {
                     let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
@@ -573,7 +638,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_replace_class(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             class_hash: &Felt252Abi,
         ) {
@@ -582,8 +650,19 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.replace_class(class_hash, gas);
 
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::ReplaceClass {
+                    gas: *gas,
+                    class_hash,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::ReplaceClass { result, gas } => (result, gas),
+                _ => panic!(),
+            };
+
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -597,7 +676,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_library_call(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             function_selector: &Felt252Abi,
@@ -628,8 +710,20 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.library_call(class_hash, function_selector, &calldata, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::LibraryCall {
+                    gas: *gas,
+                    class_hash,
+                    function_selector,
+                    calldata,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::LibraryCall { result, gas } => (result, gas),
+                _ => todo!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => {
                     let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
@@ -647,7 +741,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_call_contract(
             result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address: &Felt252Abi,
             entry_point_selector: &Felt252Abi,
@@ -678,8 +775,20 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.call_contract(address, entry_point_selector, &calldata, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::CallContract {
+                    gas: *gas,
+                    address,
+                    entry_point_selector,
+                    calldata,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::CallContract { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => {
                     let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
@@ -697,7 +806,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_storage_read(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address_domain: u32,
             address: &Felt252Abi,
@@ -707,8 +819,20 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.storage_read(address_domain, address, gas);
 
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::StorageRead {
+                    gas: *gas,
+                    address_domain,
+                    address,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::StorageRead { result, gas } => (result, gas),
+                _ => panic!(),
+            };
+
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(res) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -722,7 +846,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_storage_write(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             address_domain: u32,
             address: &Felt252Abi,
@@ -738,8 +865,21 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let result = ptr.storage_write(address_domain, address, value, gas);
 
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::StorageWrite {
+                    gas: *gas,
+                    address_domain,
+                    address,
+                    value,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::StorageWrite { result, gas } => (result, gas),
+                _ => panic!(),
+            };
+
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -753,7 +893,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_emit_event(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             keys: *const (*const Felt252Abi, u32, u32),
             data: *const (*const Felt252Abi, u32, u32),
@@ -786,8 +929,20 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.emit_event(&keys, &data, gas);
+            // let result = ptr.emit_event(&keys, &data, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::EmitEvent {
+                    gas: *gas,
+                    keys,
+                    data,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::EmitEvent { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -801,7 +956,10 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_send_message_to_l1(
             result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             to_address: &Felt252Abi,
             payload: *const (*const Felt252Abi, u32, u32),
@@ -825,8 +983,19 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.send_message_to_l1(to_address, &payload, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::SendMessageToL1 {
+                    gas: *gas,
+                    to_address,
+                    payload,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::SendMessageToL1 { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -840,18 +1009,31 @@ pub(crate) mod handler {
 
         extern "C" fn wrap_keccak(
             result_ptr: &mut SyscallResultAbi<U256>,
-            ptr: &mut T,
+            scope: &mut Scope<
+                StarknetResponse,
+                CoroutineState<Result<(), melior::Error>, StarknetRequest>,
+            >,
             gas: &mut u128,
             input: *const (*const u64, u32, u32),
         ) {
             let input = unsafe {
                 let len = (*input).1 as usize;
 
-                std::slice::from_raw_parts((*input).0, len)
+                std::slice::from_raw_parts((*input).0, len).to_vec()
             };
 
-            let result = ptr.keccak(input, gas);
+            let result = scope
+                .yield_(CoroutineState::Request(StarknetRequest::Keccak {
+                    gas: *gas,
+                    input,
+                }))
+                .unwrap();
+            let (result, next_gas) = match result {
+                StarknetResponse::Keccak { result, gas } => (result, gas),
+                _ => panic!(),
+            };
 
+            *gas = next_gas;
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -862,5 +1044,116 @@ pub(crate) mod handler {
                 Err(e) => Self::wrap_error(&e),
             };
         }
+    }
+
+    pub enum CoroutineState<Result, Request> {
+        Request(Request),
+        Finished(Result),
+    }
+
+    pub enum StarknetRequest {
+        GetBlockHash {
+            gas: u128,
+            block_number: u64,
+        },
+        GetExecutionInfo {
+            gas: u128,
+        },
+        Deploy {
+            gas: u128,
+            class_hash: Felt252,
+            contract_address_salt: Felt252,
+            calldata: Vec<Felt252>,
+            deploy_from_zero: bool,
+        },
+        ReplaceClass {
+            gas: u128,
+            class_hash: Felt252,
+        },
+        LibraryCall {
+            gas: u128,
+            class_hash: Felt252,
+            function_selector: Felt252,
+            calldata: Vec<Felt252>,
+        },
+        CallContract {
+            gas: u128,
+            address: Felt252,
+            entry_point_selector: Felt252,
+            calldata: Vec<Felt252>,
+        },
+        StorageRead {
+            gas: u128,
+            address_domain: u32,
+            address: Felt252,
+        },
+        StorageWrite {
+            gas: u128,
+            address_domain: u32,
+            address: Felt252,
+            value: Felt252,
+        },
+        EmitEvent {
+            gas: u128,
+            keys: Vec<Felt252>,
+            data: Vec<Felt252>,
+        },
+        SendMessageToL1 {
+            gas: u128,
+            to_address: Felt252,
+            payload: Vec<Felt252>,
+        },
+        Keccak {
+            gas: u128,
+            input: Vec<u64>,
+        },
+    }
+
+    #[allow(clippy::large_enum_variant)]
+    pub enum StarknetResponse {
+        GetBlockHash {
+            gas: u128,
+            result: SyscallResult<Felt252>,
+        },
+        GetExecutionInfo {
+            gas: u128,
+            result: SyscallResult<ExecutionInfo>,
+        },
+        Deploy {
+            gas: u128,
+            result: SyscallResult<(Felt252, Vec<Felt252>)>,
+        },
+        ReplaceClass {
+            gas: u128,
+            result: SyscallResult<()>,
+        },
+        LibraryCall {
+            gas: u128,
+            result: SyscallResult<Vec<Felt252>>,
+        },
+        CallContract {
+            gas: u128,
+            result: SyscallResult<Vec<Felt252>>,
+        },
+        StorageRead {
+            gas: u128,
+            result: SyscallResult<Felt252>,
+        },
+        StorageWrite {
+            gas: u128,
+            result: SyscallResult<()>,
+        },
+        EmitEvent {
+            gas: u128,
+            result: SyscallResult<()>,
+        },
+        SendMessageToL1 {
+            gas: u128,
+            result: SyscallResult<()>,
+        },
+        Keccak {
+            gas: u128,
+            result: SyscallResult<U256>,
+        },
     }
 }

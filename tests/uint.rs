@@ -1,7 +1,7 @@
 use crate::common::{load_cairo, run_native_program, run_vm_program};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
@@ -451,7 +451,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -471,7 +471,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -491,7 +491,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -511,7 +511,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -531,7 +531,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
 
         compare_outputs(
             &program.1,
@@ -553,7 +553,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -573,7 +573,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -593,7 +593,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -613,7 +613,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -633,7 +633,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
 
         compare_outputs(
             &program.1,
@@ -655,7 +655,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -675,7 +675,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -695,7 +695,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -715,7 +715,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -735,7 +735,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
 
         compare_outputs(
             &program.1,
@@ -757,7 +757,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -777,7 +777,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -797,7 +797,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -817,7 +817,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -837,7 +837,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
 
         compare_outputs(
             &program.1,
@@ -859,7 +859,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -879,7 +879,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -899,7 +899,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -919,7 +919,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
 
         compare_outputs(
             &program.1,
@@ -939,7 +939,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
 
         compare_outputs(
             &program.1,

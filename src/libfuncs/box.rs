@@ -148,7 +148,7 @@ where
 mod test {
     use crate::{
         utils::test::{load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
 
     #[test]
@@ -164,6 +164,6 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[JITValue::Uint32(2)]);
+        run_program_assert_output(&program, "run_test", &[], &[JitValue::Uint32(2)]);
     }
 }

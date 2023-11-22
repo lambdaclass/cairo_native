@@ -1,7 +1,7 @@
 use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JITValue;
+use cairo_native::executor::NativeJitEngine;
+use cairo_native::values::JitValue;
 use std::path::Path;
 
 fn main() {
@@ -17,14 +17,14 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+    let params = &[JitValue::Felt252(Felt252::from_bytes_be(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     // Execute the program.
     let result = native_executor

@@ -426,7 +426,7 @@ Example code to run a program:
 ```rust
 use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::NativeJitEngine;
 use cairo_native::values::JITValue;
 use std::path::Path;
 
@@ -450,7 +450,7 @@ fn main() {
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     // Execute the program.
     let result = native_executor
@@ -469,7 +469,7 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::NativeJitEngine;
 use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::values::JITValue;
 use cairo_native::{
@@ -511,7 +511,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = NativeJitEngine::new(native_program);
 
     let result = native_executor
         .execute_contract(

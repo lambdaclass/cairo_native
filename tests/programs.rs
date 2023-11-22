@@ -2,7 +2,7 @@ use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program}
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
@@ -86,7 +86,7 @@ fn fib() {
     let result_vm =
         run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
 
-    let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(10.into())]);
+    let result_native = run_native_program(&FIB, "run_test", &[JitValue::Felt252(10.into())]);
 
     compare_outputs(
         &FIB.1,
@@ -108,7 +108,7 @@ fn logistic_map() {
     .unwrap();
 
     let result_native =
-        run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(1000.into())]);
+        run_native_program(&LOGISTIC_MAP, "run_test", &[JitValue::Felt252(1000.into())]);
 
     compare_outputs(
         &LOGISTIC_MAP.1,
@@ -148,10 +148,10 @@ fn pedersen() {
         &PEDERSEN,
         "run_test",
         &[
-            JITValue::felt_str(
+            JitValue::felt_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
             ),
-            JITValue::felt_str(
+            JitValue::felt_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             ),
         ],
@@ -175,7 +175,7 @@ fn factorial() {
         Some(GAS),
     )
     .unwrap();
-    let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(13.into())]);
+    let result_native = run_native_program(&FACTORIAL, "run_test", &[JitValue::Felt252(13.into())]);
 
     compare_outputs(
         &FACTORIAL.1,
@@ -196,7 +196,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(&FIB, "run_test", &[JitValue::Felt252(n.into())]);
 
         compare_outputs(
             &FIB.1,
@@ -215,7 +215,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", &[JitValue::Felt252(n.into())]);
 
         compare_outputs(
             &LOGISTIC_MAP.1,
@@ -234,7 +234,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(&FACTORIAL, "run_test", &[JitValue::Felt252(n.into())]);
 
         compare_outputs(
             &FACTORIAL.1,
@@ -254,7 +254,7 @@ proptest! {
         )
         .unwrap();
 
-        let result_native = run_native_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(&PEDERSEN, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
 
         compare_outputs(
             &PEDERSEN.1,
@@ -274,7 +274,7 @@ proptest! {
         )
         .unwrap();
 
-        let result_native = run_native_program(&POSEIDON, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
+        let result_native = run_native_program(&POSEIDON, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)]);
 
         compare_outputs(
             &POSEIDON.1,

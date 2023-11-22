@@ -1,14 +1,14 @@
-use crate::{context::NativeContext, executor::NativeExecutor};
+use crate::{context::NativeContext, executor::NativeJitEngine};
 use cairo_lang_sierra::program::Program;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
 
 /// A Cache for programs with the same context.
 pub struct ProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
-    // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
+    // reference counting. Using a Arc<RwLock<T>> here is useless because NativeJitEngine is neither
     // Send nor Sync.
-    cache: HashMap<K, Rc<RefCell<NativeExecutor<'a>>>>,
+    cache: HashMap<K, Rc<NativeJitEngine<'a>>>,
 }
 
 impl<'a, K> ProgramCache<'a, K>
@@ -35,20 +35,15 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
         }
     }
 
-    pub fn get(&self, key: K) -> Option<Rc<RefCell<NativeExecutor<'a>>>> {
+    pub fn get(&self, key: K) -> Option<Rc<NativeJitEngine<'a>>> {
         self.cache.get(&key).cloned()
     }
 
-    pub fn compile_and_insert(
-        &mut self,
-        key: K,
-        program: &Program,
-    ) -> Rc<RefCell<NativeExecutor<'a>>> {
+    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> Rc<NativeJitEngine<'a>> {
         let module = self.context.compile(program).expect("should compile");
-        let executor = NativeExecutor::new(module);
-        self.cache
-            .insert(key.clone(), Rc::new(RefCell::new(executor)));
-        self.cache.get_mut(&key).cloned().unwrap()
+        let executor = NativeJitEngine::new(module);
+        self.cache.insert(key.clone(), Rc::new(executor));
+        self.cache.get(&key).cloned().unwrap()
     }
 }
 

@@ -371,7 +371,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::CALL_CONTRACT.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -868,7 +868,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::STORAGE_READ.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1220,7 +1220,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::STORAGE_WRITE.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1805,7 +1805,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::EMIT_EVENT.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2095,7 +2095,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::GET_BLOCK_HASH.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2383,7 +2383,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::GET_EXECUTION_INFO.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2808,7 +2808,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::DEPLOY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3169,7 +3169,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::KECCAK.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3550,7 +3550,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::LIBRARY_CALL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3873,7 +3873,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::REPLACE_CLASS.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -4228,7 +4228,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::SEND_MESSAGE_TO_L1.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),

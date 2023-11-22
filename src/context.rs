@@ -76,7 +76,7 @@ impl NativeContext {
 
         self.lower_to_llvm(&mut module)?;
 
-        Ok(NativeModule::new(module, registry, metadata))
+        Ok(NativeModule::new(module, program, registry, metadata))
     }
 
     fn lower_to_llvm(&self, module: &mut Module) -> Result<(), CompileError> {
