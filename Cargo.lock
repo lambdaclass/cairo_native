@@ -866,6 +866,7 @@ dependencies = [
  "lambdaworks-math",
  "lazy_static",
  "libc",
+ "llvm-sys",
  "melior",
  "mlir-sys",
  "num-bigint",
@@ -1833,6 +1834,20 @@ name = "linux-raw-sys"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da2479e8c062e40bf0066ffa0bc823de0a9368974af99c9f6df941d2c231e03f"
+
+[[package]]
+name = "llvm-sys"
+version = "170.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46e01f7c4a977a4880a4366f3d2d5889cd83400f7af306fb2d0a2298fb3185b2"
+dependencies = [
+ "anyhow",
+ "cc",
+ "lazy_static",
+ "libc",
+ "regex",
+ "semver",
+]
 
 [[package]]
 name = "lock_api"
