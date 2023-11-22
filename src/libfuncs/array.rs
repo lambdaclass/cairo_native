@@ -114,7 +114,7 @@ where
     let op0 = entry.append_operation(
         OperationBuilder::new("llvm.mlir.null", location)
             .add_results(&[crate::ffi::get_struct_field_type_at(&array_ty, 0)])
-            .build(),
+            .build()?,
     );
     let op1 = entry.append_operation(arith::constant(
         context,
@@ -262,7 +262,7 @@ where
                 OperationBuilder::new("llvm.bitcast", location)
                     .add_operands(&[op_ptr.result(0)?.into()])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             );
             let op11 = block.append_operation(ReallocBindingsMeta::realloc(
                 context,
@@ -274,7 +274,7 @@ where
                 OperationBuilder::new("llvm.bitcast", location)
                     .add_operands(&[op11.result(0)?.into()])
                     .add_results(&[ptr_ty])
-                    .build(),
+                    .build()?,
             );
 
             let op13 = block.append_operation(llvm::insert_value(
@@ -328,7 +328,7 @@ where
             .add_operands(&[op4.result(1)?.into()])
             .add_operands(&[op_length.result(0)?.into()])
             .add_results(&[opaque_ptr_ty])
-            .build(),
+            .build()?,
     );
     entry.append_operation(llvm::store(
         context,
@@ -496,7 +496,7 @@ where
             ])
             .add_operands(&[array_ptr, index_val])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -661,7 +661,7 @@ where
             ])
             .add_operands(&[array_ptr, const_0])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -730,7 +730,7 @@ where
             ])
             .add_operands(&[array_ptr, const_1])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let array_ptr_src = op.result(0)?.into();
 
@@ -762,7 +762,7 @@ where
         OperationBuilder::new("llvm.bitcast", location)
             .add_operands(&[array_ptr])
             .add_results(&[llvm::r#type::opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let array_opaque_ptr = op.result(0)?.into();
 
@@ -775,7 +775,7 @@ where
                 IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
             )])
             .add_operands(&[array_opaque_ptr, array_ptr_src_opaque, elems_size])
-            .build(),
+            .build()?,
     );
 
     let op = block_not_empty.append_operation(llvm::insert_value(
@@ -940,7 +940,7 @@ where
             ])
             .add_operands(&[array_ptr, len])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -1078,7 +1078,7 @@ where
             ])
             .add_operands(&[array_ptr, index_val])
             .add_results(&[opaque_pointer(context)])
-            .build(),
+            .build()?,
     );
     let elem_ptr = op.result(0)?.into();
 
@@ -1167,8 +1167,11 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
-    use serde_json::json;
+    use crate::{
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        values::JITValue,
+    };
+    use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn run_roundtrip() {
@@ -1179,9 +1182,9 @@ mod test {
                 x
             }
         );
-        let result = run_program(&program, "run_test", json!([[1, 2]]));
+        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_values;
 
-        assert_eq!(result, json!([[1, 2]]));
+        assert_eq!(result, &[JITValue::from([1u32, 2u32])]);
     }
 
     #[test]
@@ -1195,9 +1198,9 @@ mod test {
                 numbers
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([[4]]));
+        assert_eq!(result, [[4u32].into()]);
     }
 
     #[test]
@@ -1213,9 +1216,9 @@ mod test {
                 numbers.len()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([3]));
+        assert_eq!(result, [3u32.into()]);
     }
 
     #[test]
@@ -1237,9 +1240,20 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", json!([null]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([null, [0, [[4, 3, 2, 1]]]]));
+        assert_eq!(
+            result,
+            [jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    4u32.into(),
+                    3u32.into(),
+                    2u32.into(),
+                    1u32.into()
+                ))
+            )]
+        );
     }
 
     #[test]
@@ -1281,9 +1295,20 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", json!([null]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([null, [0, [[20, 21, 22, 23]]]]));
+        assert_eq!(
+            result,
+            [jit_enum!(
+                0,
+                jit_struct!(jit_struct!(
+                    20u32.into(),
+                    21u32.into(),
+                    22u32.into(),
+                    23u32.into()
+                ))
+            )]
+        );
     }
 
     #[test]
@@ -1300,9 +1325,9 @@ mod test {
                 *numbers.at(0)
             }
         );
-        let result = run_program(&program, "run_test", json!([null]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([null, [0, [3]]]));
+        assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
     }
 
     #[test]
@@ -1317,9 +1342,9 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([[0, 4]]));
+        assert_eq!(result, [jit_enum!(0, 4u32.into())]);
 
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -1329,9 +1354,9 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([[1, []]]));
+        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
     }
 
     #[test]
@@ -1349,9 +1374,9 @@ mod test {
                 }
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([4]));
+        assert_eq!(result, [4u32.into()]);
     }
 
     #[test]
@@ -1381,9 +1406,9 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", json!([()]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
-        assert_eq!(result, json!([null, [0, [3]]]));
+        assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
     }
 
     #[test]
@@ -1408,20 +1433,13 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", json!([()]));
+        let result = run_program(&program, "run_test", &[]).return_values;
 
         assert_eq!(
             result,
-            json!([
-                null,
-                [
-                    1,
-                    [
-                        [],
-                        [[1970168947, 1713398383, 1970544751, 1702371439, 4812388, 0, 0, 0]]
-                    ]
-                ]
-            ])
+            [jit_panic!(JITValue::felt_str(
+                "1637570914057682275393755530660268060279989363"
+            ))]
         );
     }
 }

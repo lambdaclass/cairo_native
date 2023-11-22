@@ -1,18 +1,14 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
+use cairo_native::values::JITValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-    utils::{felt252_bigint, felt252_short_str},
 };
-use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -297,12 +293,6 @@ impl StarkNetSyscallHandler for SyscallHandler {
 }
 
 fn main() {
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     #[cfg(not(feature = "with-runtime"))]
     compile_error!("This example requires the `with-runtime` feature to be active.");
 
@@ -328,20 +318,6 @@ fn main() {
 
     let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
-    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
-        ProgramRegistry::new(&sierra_program).unwrap();
-
-    // uncomment to save the contract sierra program
-    // std::fs::write("erc20.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref())
-        .collect();
-    println!("{names:#?}");
-    */
 
     let native_context = NativeContext::new();
 
@@ -350,79 +326,28 @@ fn main() {
         .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
 
-    let syscall_addr = native_program
-        .get_metadata::<SyscallHandlerMeta>()
-        .unwrap()
-        .as_ptr()
-        .as_ptr() as *const () as usize;
-
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
-    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
-        .signature
-        .ret_types
-        .iter()
-        .map(|x| program_registry.get_type(x).unwrap())
-        .collect();
     let fn_id = &entry_point_fn.id;
-
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
-
-    let params = json!([
-        // pedersen
-        null,
-        // range check
-        null,
-        // gas
-        u64::MAX,
-        // system
-        syscall_addr,
-        // The amount of params change depending on the contract function called
-        // Struct<Span<Array<felt>>>
-        [
-            // Span<Array<felt>>
-            [
-                // contract state
-
-                // name
-                felt252_short_str("name"),   // name
-                felt252_short_str("symbol"), // symbol
-                felt252_bigint(0),           // decimals
-                felt252_bigint(i64::MAX),    // initial supply
-                felt252_bigint(4),           // contract address
-                felt252_bigint(6),           // ??
-            ]
-        ]
-    ]);
 
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
-
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
+    let result = native_executor
+        .execute_contract(
+            fn_id,
+            &[
+                JITValue::Felt252(Felt252::from_bytes_be(b"name")),
+                JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
+                JITValue::Felt252(Felt252::new(0)),
+                JITValue::Felt252(Felt252::new(i64::MAX)),
+                JITValue::Felt252(Felt252::new(4)),
+                JITValue::Felt252(Felt252::new(6)),
+            ],
+            u64::MAX.into(),
+        )
         .expect("failed to execute the given contract");
 
-    let result = NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result");
-
-    // Useful code to print a short felt string returned from the json, in case it panics
-    /*
-    let data = vec![
-        1919251315, 543253604, 1751457840, 1953439860, 1768846368, 809115757, 1163019058, 0,
-    ];
-
-    let value = Felt252::new(BigUint::new(data));
-
-    if let Some(shortstring) = as_cairo_short_string(&value) {
-        println!("[DEBUG]\t{shortstring: <31}\t(raw: {})", value.to_bigint())
-    }
-    */
-
+    println!();
     println!("Cairo program was compiled and executed successfully.");
     println!("{result:#?}");
 }

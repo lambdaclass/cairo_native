@@ -317,6 +317,7 @@ where
     // TODO: Allow one block to be libfunc-internal.
     pub fn cond_br(
         &self,
+        context: &'ctx Context,
         condition: Value<'ctx, 'this>,
         branches: [usize; 2],
         results: [&[Value<'ctx, 'this>]; 2],
@@ -361,7 +362,7 @@ where
         };
 
         cf::cond_br(
-            unsafe { location.context().to_ref() },
+            context,
             condition,
             block_true,
             block_false,
@@ -381,6 +382,7 @@ where
     /// used later on when required.
     pub fn switch(
         &self,
+        context: &'ctx Context,
         flag: Value<'ctx, 'this>,
         default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
         branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
@@ -437,7 +439,7 @@ where
         }
 
         cf::switch(
-            unsafe { location.context().to_ref() },
+            context,
             &case_values,
             flag,
             flag.r#type(),

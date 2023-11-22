@@ -110,7 +110,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let lhs_ptr = op.result(0)?.into();
 
@@ -126,7 +126,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let rhs_ptr = op.result(0)?.into();
 
@@ -142,7 +142,7 @@ where
             )])
             .add_operands(&[const_1])
             .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build(),
+            .build()?,
     );
     let dst_ptr = op.result(0)?.into();
 
@@ -159,7 +159,7 @@ where
             )])
             .add_operands(&[lhs_i256])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let lhs_be = op.result(0)?.into();
 
@@ -171,7 +171,7 @@ where
             )])
             .add_operands(&[rhs_i256])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let rhs_be = op.result(0)?.into();
 
@@ -223,7 +223,7 @@ where
             )])
             .add_operands(&[result_be])
             .add_results(&[i256_ty])
-            .build(),
+            .build()?,
     );
     let result = op.result(0)?.into();
 
@@ -237,8 +237,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{felt, load_cairo, run_program};
-    use serde_json::json;
+    use crate::utils::test::{load_cairo, run_program_assert_output};
+    use cairo_felt::Felt252;
+    use num_traits::Num;
 
     #[test]
     fn run_pedersen() {
@@ -250,22 +251,16 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", json!([(), felt("2"), felt("4")]));
-        assert_eq!(
-            result,
-            json!([
-                null,
-                [
-                    2073478595,
-                    1527108655,
-                    3447441461_i64,
-                    743507103,
-                    1568220342,
-                    867113658,
-                    318777692,
-                    80792501
-                ]
-            ])
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[Felt252::new(2).into(), Felt252::new(4).into()],
+            &[Felt252::from_str_radix(
+                "2178161520066714737684323463974044933282313051386084149915030950231093462467",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 }

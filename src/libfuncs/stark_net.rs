@@ -221,7 +221,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -244,7 +244,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -272,7 +272,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[address_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -301,7 +301,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[entry_point_selector_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -340,7 +340,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[calldata_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -401,7 +401,7 @@ where
                 entry_point_selector_arg_ptr,
                 calldata_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -455,7 +455,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -490,7 +490,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -518,6 +518,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -589,6 +590,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_in_range,
         [0, 1],
         [
@@ -674,6 +676,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_in_range,
         [0, 1],
         [
@@ -784,7 +787,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -807,7 +810,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -835,7 +838,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[address_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -894,7 +897,7 @@ where
                 entry.argument(2)?.into(),
                 address_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -948,7 +951,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -983,7 +986,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -1011,6 +1014,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -1106,7 +1110,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1129,7 +1133,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1157,7 +1161,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[address_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1185,7 +1189,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[value_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1246,7 +1250,7 @@ where
                 address_arg_ptr,
                 value_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -1300,7 +1304,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -1335,7 +1339,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -1363,6 +1367,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -1455,7 +1460,7 @@ where
             OperationBuilder::new("arith.select", location)
                 .add_operands(&[is_within_limit, entry.argument(1)?.into(), limited_value])
                 .add_results(&[IntegerType::new(context, 252).into()])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1573,6 +1578,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         is_in_range,
         [0, 1],
         [
@@ -1668,7 +1674,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1691,7 +1697,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1730,7 +1736,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[keys_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1769,7 +1775,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[data_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -1828,7 +1834,7 @@ where
                 keys_arg_ptr,
                 data_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -1882,7 +1888,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -1917,7 +1923,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -1945,6 +1951,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -2036,7 +2043,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2059,7 +2066,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2116,7 +2123,7 @@ where
                 gas_builtin_ptr,
                 entry.argument(2)?.into(),
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -2170,7 +2177,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2205,7 +2212,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2233,6 +2240,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -2324,7 +2332,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2347,7 +2355,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2397,7 +2405,7 @@ where
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
             .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -2451,7 +2459,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2486,7 +2494,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2514,6 +2522,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -2648,7 +2657,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2671,7 +2680,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2699,7 +2708,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[class_hash_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2728,7 +2737,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[contract_address_salt_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2767,7 +2776,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[calldata_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -2839,7 +2848,7 @@ where
                     .result(0)?
                     .into(),
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -2893,7 +2902,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2928,7 +2937,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -2957,6 +2966,7 @@ where
 
     entry.append_operation(
         helper.cond_br(
+            context,
             result_tag,
             [1, 0],
             [
@@ -3072,7 +3082,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3095,7 +3105,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3130,7 +3140,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[input_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3181,7 +3191,7 @@ where
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
             .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, input_arg_ptr])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -3235,7 +3245,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -3270,7 +3280,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -3298,6 +3308,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -3389,7 +3400,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3412,7 +3423,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3440,7 +3451,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[class_hash_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3469,7 +3480,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[function_selector_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3508,7 +3519,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[calldata_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3569,7 +3580,7 @@ where
                 function_selector_arg_ptr,
                 calldata_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -3623,7 +3634,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -3658,7 +3669,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -3686,6 +3697,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -3781,7 +3793,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3804,7 +3816,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3832,7 +3844,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[class_hash_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -3883,7 +3895,7 @@ where
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
             .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -3937,7 +3949,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -3972,7 +3984,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -4000,6 +4012,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -4095,7 +4108,7 @@ where
                 ])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -4118,7 +4131,7 @@ where
                     IntegerType::new(context, 128).into(),
                     0,
                 )])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -4146,7 +4159,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[to_address_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -4185,7 +4198,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[payload_arg_ptr_ty])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -4244,7 +4257,7 @@ where
                 to_address_arg_ptr,
                 payload_arg_ptr,
             ])
-            .build(),
+            .build()?,
     );
 
     let result = entry
@@ -4298,7 +4311,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -4333,7 +4346,7 @@ where
                     ])
                     .add_operands(&[result_ptr])
                     .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build(),
+                    .build()?,
             )
             .result(0)?
             .into();
@@ -4361,6 +4374,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result_tag,
         [1, 0],
         [
@@ -4374,15 +4388,11 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
-    };
+    use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign};
-    use serde_json::json;
-    use std::ops::Neg;
+    use num_traits::Num;
 
     lazy_static! {
         static ref STORAGE_BASE_ADDRESS_FROM_FELT252: (String, Program) = load_cairo! {
@@ -4422,149 +4432,247 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
-
     #[test]
     fn storage_base_address_from_felt252() {
-        let r = |value| {
-            run_program(
-                &STORAGE_BASE_ADDRESS_FROM_FELT252,
-                "run_program",
-                json!([(), value]),
-            )
-        };
-
-        assert_eq!(r(f("0")), json!([(), f("0")]));
-        assert_eq!(r(f("1")), json!([(), f("1")]));
-        assert_eq!(
-            r(f("-1")),
-            json!([
-                (),
-                f("106710729501573572985208420194530329073740042555888586719488")
-            ])
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
         );
-        assert_eq!(
-            r(f(
-                "3618502788666131106986593281521497120414687020801267626233049500247285300992"
-            )),
-            json!([(), f("0")])
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(-1).into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+        );
+        run_program_assert_output(
+            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "3618502788666131106986593281521497120414687020801267626233049500247285300992",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::new(0).into()],
         );
     }
 
     #[test]
     fn storage_address_from_base() {
-        let r = |value| run_program(&STORAGE_ADDRESS_FROM_BASE, "run_program", json!([value]));
-
-        assert_eq!(r(f("0")), json!([f("0")]));
-        assert_eq!(r(f("1")), json!([f("1")]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 
     #[test]
     fn storage_address_from_base_and_offset() {
-        let r = |addr, offset| {
-            run_program(
-                &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
-                "run_program",
-                json!([addr, offset]),
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 0u8.into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 0u8.into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                0u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
             )
-        };
-
-        assert_eq!(r(f("0"), 0u8), json!([f("0")]));
-        assert_eq!(r(f("1"), 0u8), json!([f("1")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                0u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+            .unwrap()
+            .into()],
         );
 
-        assert_eq!(r(f("0"), 1u8), json!([f("1")]));
-        assert_eq!(r(f("1"), 1u8), json!([f("2")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                1u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719489"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 1u8.into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 1u8.into()],
+            &[Felt252::new(2).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                1u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719489",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
 
-        assert_eq!(r(f("0"), 255u8), json!([f("255")]));
-        assert_eq!(r(f("1"), 255u8), json!([f("256")]));
-        assert_eq!(
-            r(
-                f("106710729501573572985208420194530329073740042555888586719488"),
-                255u8
-            ),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719743"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(0).into(), 255u8.into()],
+            &[Felt252::new(255).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[Felt252::new(1).into(), 255u8.into()],
+            &[Felt252::new(256).into()],
+        );
+
+        run_program_assert_output(
+            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            "run_program",
+            &[
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into(),
+                255u8.into(),
+            ],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719743",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 
     #[test]
     fn storage_address_to_felt252() {
-        let r = |value| run_program(&STORAGE_ADDRESS_TO_FELT252, "run_program", json!([value]));
-
-        assert_eq!(r(f("0")), json!([f("0")]));
-        assert_eq!(r(f("1")), json!([f("1")]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            ),),
-            json!([f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            )])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[Felt252::new(0).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[Felt252::new(1).into()],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TO_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
         );
     }
 
     #[test]
     fn storage_address_try_from_felt252() {
-        let r = |value| {
-            run_program(
-                &STORAGE_ADDRESS_TRY_FROM_FELT252,
-                "run_program",
-                json!([(), value]),
-            )
-        };
-
-        assert_eq!(r(f("0")), json!([(), [0, f("0")]]));
-        assert_eq!(r(f("1")), json!([(), [0, f("1")]]));
-        assert_eq!(
-            r(f(
-                "106710729501573572985208420194530329073740042555888586719488"
-            ),),
-            json!([
-                (),
-                [
-                    0,
-                    f("106710729501573572985208420194530329073740042555888586719488")
-                ]
-            ])
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(0).into()],
+            &[jit_enum!(0, Felt252::new(0).into())],
         );
-        assert_eq!(r(f("-1"),), json!([(), [1, []]]));
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(1).into()],
+            &[jit_enum!(0, Felt252::new(1).into())],
+        );
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::from_str_radix(
+                "106710729501573572985208420194530329073740042555888586719488",
+                10,
+            )
+            .unwrap()
+            .into()],
+            &[jit_enum!(
+                0,
+                Felt252::from_str_radix(
+                    "106710729501573572985208420194530329073740042555888586719488",
+                    10,
+                )
+                .unwrap()
+                .into()
+            )],
+        );
+
+        run_program_assert_output(
+            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            "run_program",
+            &[Felt252::new(-1).into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
     }
 }

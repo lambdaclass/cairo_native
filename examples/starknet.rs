@@ -1,17 +1,14 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::execution_result::NativeExecutionResult;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::{felt252_bigint, find_entry_point_by_idx};
+use cairo_native::utils::find_entry_point_by_idx;
+use cairo_native::values::JITValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
 };
-use serde_json::json;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -304,12 +301,6 @@ fn main() {
     )
     .unwrap();
 
-    // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-    std::env::set_var(
-        "CARGO_MANIFEST_DIR",
-        format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-    );
-
     let path = Path::new("programs/examples/hello_starknet.cairo");
 
     let contract = compile_path(
@@ -324,19 +315,6 @@ fn main() {
 
     let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
-    let program_registry: ProgramRegistry<CoreType, CoreLibfunc> =
-        ProgramRegistry::new(&sierra_program).unwrap();
-
-    // uncomment to save the contract sierra program
-    // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
-
-    /* uncomment to find all the functions in the program you can call
-    let names: Vec<_> = sierra_program
-        .funcs
-        .iter()
-        .map(|x| x.id.debug_name.as_ref()).collect();
-    println!("{names:#?}");
-    */
 
     let native_context = NativeContext::new();
 
@@ -345,60 +323,22 @@ fn main() {
         .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
 
-    let syscall_addr = native_program
-        .get_metadata::<SyscallHandlerMeta>()
-        .unwrap()
-        .as_ptr()
-        .as_ptr() as *const () as usize;
-
     // Call the echo function from the contract using the generated wrapper.
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
 
-    let ret_types: Vec<&CoreTypeConcrete> = entry_point_fn
-        .signature
-        .ret_types
-        .iter()
-        .map(|x| program_registry.get_type(x).unwrap())
-        .collect();
-
     let fn_id = &entry_point_fn.id;
-    let required_init_gas = native_program.get_required_init_gas(fn_id);
 
-    let params = json!([
-        // range check
-        null,
-        // gas
-        u64::MAX,
-        // system
-        syscall_addr,
-        // Struct<Span<Array<felt>>>
-        [
-            // Span<Array<felt>>
-            [
-                // contract state
-                // (empty)
-
-                // function arguments
-                felt252_bigint(1)
-            ]
-        ],
-    ]);
     let native_executor = NativeExecutor::new(native_program);
 
-    let mut writer: Vec<u8> = Vec::new();
-    let returns = &mut serde_json::Serializer::new(&mut writer);
-
-    native_executor
-        .execute(fn_id, params, returns, required_init_gas)
+    let result = native_executor
+        .execute_contract(
+            fn_id,
+            &[JITValue::Felt252(Felt252::new(1))],
+            u64::MAX.into(),
+        )
         .expect("failed to execute the given contract");
-
-    let result = NativeExecutionResult::deserialize_from_ret_types(
-        &mut serde_json::Deserializer::from_slice(&writer),
-        &ret_types,
-    )
-    .expect("failed to serialize starknet execution result");
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

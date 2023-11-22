@@ -149,6 +149,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         point_is_zero,
         [0, 1],
         [&[], &[entry.argument(0)?.into()]],
@@ -229,7 +230,7 @@ where
             OperationBuilder::new("arith.select", location)
                 .add_operands(&[y_is_zero, k0, y_neg])
                 .add_results(&[IntegerType::new(context, 252).into()])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -296,7 +297,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -342,6 +343,7 @@ where
         .into();
 
     entry.append_operation(helper.cond_br(
+        context,
         result,
         [0, 1],
         [
@@ -410,7 +412,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -427,7 +429,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -513,7 +515,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -530,7 +532,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -547,7 +549,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -642,7 +644,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -659,7 +661,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -690,7 +692,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(is_zero, [0, 1], [&[point], &[]], location));
+    entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[point], &[]], location));
     Ok(())
 }
 
@@ -835,7 +837,7 @@ where
                 )])
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build(),
+                .build()?,
         )
         .result(0)?
         .into();
@@ -879,7 +881,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(result, [0, 1], [&[point], &[]], location));
+    entry.append_operation(helper.cond_br(context, result, [0, 1], [&[point], &[]], location));
     Ok(())
 }
 
@@ -1000,10 +1002,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{felt, load_cairo, run_program};
+    use std::ops::Neg;
+
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
+        values::JITValue,
+    };
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use serde_json::json;
+    use num_traits::Num;
 
     lazy_static! {
         static ref EC_POINT_IS_ZERO: (String, Program) = load_cairo! {
@@ -1087,287 +1095,284 @@ mod test {
 
     #[test]
     fn ec_point_is_zero() {
-        let r = |x, y| run_program(&EC_POINT_IS_ZERO, "run_test", json!([[x, y]]));
+        let r = |x, y| {
+            run_program(&EC_POINT_IS_ZERO, "run_test", &[JITValue::EcPoint(x, y)]).return_values
+        };
 
-        assert_eq!(r(felt("0"), felt("0")), json!([[0, []]]));
+        assert_eq!(r(0.into(), 0.into()), [jit_enum!(0, jit_struct!())]);
         assert_eq!(
-            r(felt("0"), felt("1")),
-            json!([[1, [felt("0"), felt("1")]]])
+            r(0.into(), 1.into()),
+            [jit_enum!(1, JITValue::EcPoint(0.into(), 1.into()))]
         );
         assert_eq!(
-            r(felt("1"), felt("0")),
-            json!([[1, [felt("1"), felt("0")]]])
+            r(1.into(), 0.into()),
+            [jit_enum!(1, JITValue::EcPoint(1.into(), 0.into()))]
         );
         assert_eq!(
-            r(felt("1"), felt("1")),
-            json!([[1, [felt("1"), felt("1")]]])
+            r(1.into(), 1.into()),
+            [jit_enum!(1, JITValue::EcPoint(1.into(), 1.into()))]
         );
     }
 
     #[test]
     fn ec_neg() {
-        let r = |x, y| run_program(&EC_NEG, "run_test", json!([[x, y]]));
+        let r = |x, y| run_program(&EC_NEG, "run_test", &[JITValue::EcPoint(x, y)]).return_values;
 
-        assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
-        assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("-1")]]));
-        assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
-        assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("-1")]]));
+        assert_eq!(
+            r(0.into(), 0.into()),
+            [JITValue::EcPoint(0.into(), 0.into())]
+        );
+        assert_eq!(
+            r(0.into(), 1.into()),
+            [JITValue::EcPoint(0.into(), Felt252::new(-1))]
+        );
+        assert_eq!(
+            r(1.into(), 0.into()),
+            [JITValue::EcPoint(1.into(), 0.into())]
+        );
+        assert_eq!(
+            r(1.into(), 1.into()),
+            [JITValue::EcPoint(1.into(), Felt252::new(-1))]
+        );
     }
 
     #[test]
     fn ec_point_from_x() {
-        let r = |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", json!([(), x]));
+        let r =
+            |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", &[JITValue::Felt252(x)]).return_values;
 
-        assert_eq!(r(felt("0")), json!([(), [1, []]]));
-        assert_eq!(
-            r(felt("1234")),
-            json!([(), [0, [felt("1234"), felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")]]])
-        );
+        assert_eq!(r(0.into()), [jit_enum!(1, jit_struct!())]);
+        assert_eq!(r(1234.into()), [jit_enum!(0, JITValue::EcPoint(
+            Felt252::new(1234),
+            Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+        ))]);
     }
 
     #[test]
     fn ec_state_add() {
-        let r = |state_x, state_y, state_z, state_w, point_x, point_y| {
-            run_program(
-                &EC_STATE_ADD,
-                "run_test",
-                json!([[state_x, state_y, state_z, state_w], [point_x, point_y]]),
-            )
-        };
-
-        assert_eq!(
-            r(
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt("1234"),
-                felt(
-                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
+        run_program_assert_output(&EC_STATE_ADD, "run_test", &[
+            JITValue::EcState(
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
             ),
-            json!([[
-                felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
-                felt(
-                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                )
-            ]])
-        );
+            JITValue::EcPoint(
+                Felt252::from_str_radix("1234", 10).unwrap(),
+                Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+            )
+        ], &[
+            JITValue::EcState(
+                Felt252::from_str_radix("763975897824944497806946001227010133599886598340174017198031710397718335159", 10).unwrap(),
+                Felt252::from_str_radix("2805180267536471620369715068237762638204710971142209985448115065526708105983", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
+            )
+        ]);
     }
 
     #[test]
     fn ec_state_add_mul() {
-        let r = |state_x, state_y, state_z, state_w, scalar, point_x, point_y| {
-            run_program(
-                &EC_STATE_ADD_MUL,
-                "run_test",
-                json!([
-                    (),
-                    [state_x, state_y, state_z, state_w],
-                    scalar,
-                    [point_x, point_y]
-                ]),
+        run_program_assert_output(&EC_STATE_ADD_MUL, "run_test", &[
+            JITValue::EcState(
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
+            ),
+            Felt252::new(1).into(), // scalar
+            JITValue::EcPoint(
+                Felt252::from_str_radix("1234", 10).unwrap(),
+                Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
             )
-        };
+        ], &[
+            JITValue::EcState(
+                Felt252::from_str_radix("763975897824944497806946001227010133599886598340174017198031710397718335159", 10).unwrap(),
+                Felt252::from_str_radix("2805180267536471620369715068237762638204710971142209985448115065526708105983", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
+            )
+        ]);
 
-        assert_eq!(
-            r(
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt("1"),
-                felt("1234"),
-                felt(
-                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
+        run_program_assert_output(&EC_STATE_ADD_MUL, "run_test", &[
+            JITValue::EcState(
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
             ),
-            json!([(), [
-                felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
-                felt(
-                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                )
-            ]])
-        );
-
-        assert_eq!(
-            r(
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt("2"),
-                felt("1234"),
-                felt(
-                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
-            ),
-            json!([(), [
-                felt("3016674370847061744386893405108272070153695046160622325692702034987910716850"),
-                felt(
-                    "898133181809473419542838028331350248951548889944002871647069130998202992502"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                )
-            ]])
-        );
+            Felt252::new(2).into(), // scalar
+            JITValue::EcPoint(
+                Felt252::from_str_radix("1234", 10).unwrap(),
+                Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+            )
+        ], &[
+            JITValue::EcState(
+                Felt252::from_str_radix("3016674370847061744386893405108272070153695046160622325692702034987910716850", 10).unwrap(),
+                Felt252::from_str_radix("898133181809473419542838028331350248951548889944002871647069130998202992502", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
+            )
+        ]);
     }
 
     #[test]
     fn ec_state_finalize() {
-        let r = |x, y, z, w| run_program(&EC_STATE_FINALIZE, "run_test", json!([[x, y, z, w]]));
-
-        assert_eq!(
-            r(
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-            ),
-            json!([[1, []]])
+        run_program_assert_output(
+            &EC_STATE_FINALIZE,
+            "run_test",
+            &[JITValue::EcState(
+                Felt252::from_str_radix(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450",
+                    10,
+                )
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179",
+                    10,
+                )
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450",
+                    10,
+                )
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179",
+                    10,
+                )
+                .unwrap(),
+            )],
+            &[jit_enum!(1, jit_struct!())],
         );
-        assert_eq!(
-            r(
-                felt("763975897824944497806946001227010133599886598340174017198031710397718335159"),
-                felt(
-                    "2805180267536471620369715068237762638204710971142209985448115065526708105983"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
+        run_program_assert_output(&EC_STATE_FINALIZE, "run_test", &[
+            JITValue::EcState(
+                Felt252::from_str_radix("763975897824944497806946001227010133599886598340174017198031710397718335159", 10).unwrap(),
+                Felt252::from_str_radix("2805180267536471620369715068237762638204710971142209985448115065526708105983", 10).unwrap(),
+                Felt252::from_str_radix("3151312365169595090315724863753927489909436624354740709748557281394568342450", 10).unwrap(),
+                Felt252::from_str_radix("2835232394579952276045648147338966184268723952674536708929458753792035266179", 10).unwrap()
             ),
-            json!([[0, [
-                felt("1234"),
-                felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
-            ]]])
-        );
+        ], &[
+            jit_enum!(0, JITValue::EcPoint(
+                    Felt252::new(1234),
+                    Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+                )
+            )
+        ]);
     }
 
     #[test]
     fn ec_state_init() {
-        assert_eq!(
-            run_program(&EC_STATE_INIT, "run_test", json!([])),
-            json!([[
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
-                ),
-                felt(
-                    "3151312365169595090315724863753927489909436624354740709748557281394568342450"
-                ),
-                felt(
-                    "2835232394579952276045648147338966184268723952674536708929458753792035266179"
+        run_program_assert_output(
+            &EC_STATE_INIT,
+            "run_test",
+            &[],
+            &[JITValue::EcState(
+                Felt252::from_str_radix(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450",
+                    10,
                 )
-            ]]),
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179",
+                    10,
+                )
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "3151312365169595090315724863753927489909436624354740709748557281394568342450",
+                    10,
+                )
+                .unwrap(),
+                Felt252::from_str_radix(
+                    "2835232394579952276045648147338966184268723952674536708929458753792035266179",
+                    10,
+                )
+                .unwrap(),
+            )],
         );
     }
 
     #[test]
     fn ec_point_try_new_nz() {
-        let r = |x, y| run_program(&EC_POINT_TRY_NEW_NZ, "run_test", json!([x, y]));
-
-        assert_eq!(r(felt("0"), felt("0")), json!([[1, []]]));
-        assert_eq!(
-            r(
-                felt("1234"),
-                felt(
-                    "1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
-            ),
-            json!([[0, [
-                felt("1234"),
-                felt("1301976514684871091717790968549291947487646995000837413367950573852273027507")
-            ]]])
+        run_program_assert_output(
+            &EC_POINT_TRY_NEW_NZ,
+            "run_test",
+            &[
+                Felt252::from_str_radix("0", 10).unwrap().into(),
+                Felt252::from_str_radix("0", 10).unwrap().into(),
+            ],
+            &[jit_enum!(1, jit_struct!())],
         );
-        assert_eq!(
-            r(
-                felt("1234"),
-                felt(
-                    "-1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
-            ),
-            json!([[0, [
-                felt("1234"),
-                felt(
-                    "-1301976514684871091717790968549291947487646995000837413367950573852273027507"
-                )
-            ]]])
+        run_program_assert_output(
+            &EC_POINT_TRY_NEW_NZ,
+            "run_test",
+            &[
+                Felt252::from_str_radix("1234", 10).unwrap().into(),
+                Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap().into()
+            ],
+            &[
+                jit_enum!(0, JITValue::EcPoint(
+                    Felt252::from_str_radix("1234", 10).unwrap(),
+                    Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap()
+                ))
+            ],
+        );
+        run_program_assert_output(
+            &EC_POINT_TRY_NEW_NZ,
+            "run_test",
+            &[  Felt252::from_str_radix("1234", 10).unwrap().into(),
+                Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap().neg().into()
+                ],
+            &[
+                jit_enum!(0, JITValue::EcPoint(
+                    Felt252::from_str_radix("1234", 10).unwrap(),
+                    Felt252::from_str_radix("1301976514684871091717790968549291947487646995000837413367950573852273027507", 10).unwrap().neg()
+                ))
+            ],
         );
     }
 
     #[test]
     fn ec_point_unwrap() {
-        let r = |x, y| run_program(&EC_POINT_UNWRAP, "run_test", json!([[x, y]]));
+        fn parse(x: &str) -> Felt252 {
+            if let Some(x) = x.strip_prefix('-') {
+                Felt252::from_str_radix(x, 10).unwrap().neg()
+            } else {
+                Felt252::from_str_radix(x, 10).unwrap()
+            }
+        }
 
-        assert_eq!(r(felt("0"), felt("0")), json!([[felt("0"), felt("0")]]));
-        assert_eq!(r(felt("0"), felt("1")), json!([[felt("0"), felt("1")]]));
-        assert_eq!(r(felt("0"), felt("-1")), json!([[felt("0"), felt("-1")]]));
-        assert_eq!(r(felt("1"), felt("0")), json!([[felt("1"), felt("0")]]));
-        assert_eq!(r(felt("1"), felt("1")), json!([[felt("1"), felt("1")]]));
-        assert_eq!(r(felt("1"), felt("-1")), json!([[felt("1"), felt("-1")]]));
-        assert_eq!(r(felt("-1"), felt("0")), json!([[felt("-1"), felt("0")]]));
-        assert_eq!(r(felt("-1"), felt("1")), json!([[felt("-1"), felt("1")]]));
-        assert_eq!(r(felt("-1"), felt("-1")), json!([[felt("-1"), felt("-1")]]));
+        #[track_caller]
+        fn run(a: &str, b: &str, ea: &str, eb: &str) {
+            run_program_assert_output(
+                &EC_POINT_UNWRAP,
+                "run_test",
+                &[JITValue::EcPoint(parse(a), parse(b))],
+                &[jit_struct!(parse(ea).into(), parse(eb).into())],
+            );
+        }
+
+        run("0", "0", "0", "0");
+        run("0", "1", "0", "1");
+        run("0", "-1", "0", "-1");
+        run("1", "0", "1", "0");
+        run("1", "1", "1", "1");
+        run("1", "-1", "1", "-1");
+        run("-1", "0", "-1", "0");
+        run("-1", "1", "-1", "1");
+        run("-1", "-1", "-1", "-1");
     }
 
     #[test]
     fn ec_point_zero() {
-        assert_eq!(
-            run_program(&EC_POINT_ZERO, "run_test", json!([])),
-            json!([[felt("0"), felt("0")]]),
+        run_program_assert_output(
+            &EC_POINT_ZERO,
+            "run_test",
+            &[],
+            &[JITValue::EcPoint(
+                Felt252::from_str_radix("0", 10).unwrap(),
+                Felt252::from_str_radix("0", 10).unwrap().neg(),
+            )],
         );
     }
 }

@@ -5,7 +5,7 @@
 #
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION=2.3.0
+CAIRO_2_VERSION=2.3.1
 
 check-llvm:
 ifndef MLIR_SYS_170_PREFIX
@@ -86,7 +86,8 @@ endif
 ifeq ($(UNAME), Darwin)
 deps: build-cairo-2-compiler-macos deps-macos
 endif
-	-ln -s cairo2/corelib corelib || true
+	-rm -rf corelib
+	-ln -s cairo2/corelib corelib
 
 deps-macos: build-cairo-2-compiler-macos
 	-brew install llvm@17 --quiet

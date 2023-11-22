@@ -5,7 +5,6 @@ use cairo_native::starknet::{
     BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
 use lazy_static::lazy_static;
-use serde_json::json;
 use std::path::Path;
 
 use crate::common::run_native_starknet_contract;
@@ -309,20 +308,13 @@ lazy_static! {
 
 #[test]
 fn keccak_test() {
-    // uncomment to save the contract sierra program
-    // std::fs::write("echo.sierra", sierra_program.to_string()).unwrap();
-
     let contract = &KECCAK_CONTRACT;
 
     let entry_point = contract.entry_points_by_type.external.get(0).unwrap();
 
     let program = contract.extract_sierra_program().unwrap();
-    let result = run_native_starknet_contract(
-        &program,
-        entry_point.function_idx,
-        json!([[]]),
-        &mut SyscallHandler,
-    );
+    let result =
+        run_native_starknet_contract(&program, entry_point.function_idx, &[], &mut SyscallHandler);
 
     assert!(!result.failure_flag);
     assert_eq!(result.remaining_gas, 18446744073709421435);

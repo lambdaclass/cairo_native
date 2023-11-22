@@ -3,26 +3,36 @@
 use crate::{
     error::{
         jit_engine::{
-            make_deserializer_error, make_insufficient_gas_error, make_serializer_error,
-            make_type_builder_error,
+            make_insufficient_gas_error, make_missing_parameter, make_type_builder_error,
+            make_unexpected_value_error, ErrorImpl,
         },
         JitRunnerError,
     },
-    libfuncs::LibfuncBuilder,
+    execution_result::ContractExecutionResult,
+    metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::generate_function_name,
-    values::{ValueBuilder, ValueDeserializer, ValueSerializer},
+    values::{JITValue, ValueBuilder},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
-    ids::{ConcreteTypeId, FunctionId},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
+    },
+    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;
-use serde::{de::Visitor, ser::SerializeSeq, Deserializer, Serializer};
-use std::{alloc::Layout, fmt, iter::once, ptr::NonNull};
+use std::{alloc::Layout, iter::once, ptr::NonNull};
 use tracing::debug;
+
+/// The result of the JIT execution.
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    pub remaining_gas: Option<u128>,
+    pub return_values: Vec<JITValue>,
+}
 
 /// Execute a function on an engine loaded with a Sierra program.
 ///
@@ -34,25 +44,16 @@ use tracing::debug;
 /// The registry is needed to convert the params and return values into and from the JIT ABI. Check
 /// out [the values module](crate::values) for more information about the de/serialization process.
 ///
-/// The function's arguments and return values are passed using a [`Deserializer`] and a
-/// [`Serializer`] respectively. This method provides an easy way to process the values while also
-/// not requiring recompilation every time the function's signature changes.
-pub fn execute<'de, TType, TLibfunc, D, S>(
+/// The function's arguments and return values are passed around using [`JITValue`].
+pub fn execute(
     engine: &ExecutionEngine,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    params: D,
-    returns: S,
+    params: &[JITValue],
     required_initial_gas: Option<u128>,
-) -> Result<S::Ok, JitRunnerError<'de, TType, TLibfunc, D, S>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    D: Deserializer<'de>,
-    S: Serializer,
-{
+    gas: Option<u128>,
+    syscall_handler: Option<&SyscallHandlerMeta>,
+) -> Result<ExecutionResult, JitRunnerError> {
     let arena = Bump::new();
 
     let entry_point = registry.get_function(function_id)?;
@@ -61,35 +62,233 @@ where
         entry_point.signature.param_types
     );
 
-    let params = params
-        .deserialize_seq(ArgsVisitor {
-            arena: &arena,
-            registry,
-            params: &entry_point.signature.param_types,
-        })
-        .map_err(make_deserializer_error)?;
+    let mut params_ptrs: Vec<NonNull<()>> = Vec::new();
 
-    // If program has a required initial gas, check if a gas builtin exists and check if the passed
-    // gas was enough, if so, deduct the required gas before execution.
-    if let Some(required_initial_gas) = required_initial_gas {
-        for (id, param) in entry_point.signature.param_types.iter().zip(params.iter()) {
-            if id.debug_name.as_deref() == Some("GasBuiltin") {
-                let gas_builtin = unsafe { *param.cast::<u128>().as_ptr() };
+    let mut params_it = params.iter();
 
-                if gas_builtin < required_initial_gas {
-                    return Err(make_insufficient_gas_error(
-                        required_initial_gas,
-                        gas_builtin,
-                    ));
+    for param_type_id in &entry_point.signature.param_types {
+        let ty = registry.get_type(param_type_id)?;
+
+        match ty {
+            CoreTypeConcrete::Array(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Array(_)) {
+                    Err(make_unexpected_value_error("JITValue::Array".to_string()))?;
                 }
 
-                let starting_gas = gas_builtin - required_initial_gas;
-
-                unsafe {
-                    // update gas with the starting gas
-                    param.cast::<u128>().as_ptr().write(starting_gas);
-                }
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
+            CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::SegmentArena(_)
+            | CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::EcOp(_)
+            | CoreTypeConcrete::BuiltinCosts(_) => {
+                params_ptrs.push(arena.alloc_layout(Layout::new::<()>()).cast())
+            }
+            CoreTypeConcrete::Box(_) => {
+                todo!()
+            }
+            CoreTypeConcrete::EcPoint(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::EcPoint(..)) {
+                    Err(make_unexpected_value_error("JITValue::EcPoint".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::EcState(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::EcState(..)) {
+                    Err(make_unexpected_value_error("JITValue::EcState".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Felt252(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Felt252(_)) {
+                    Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::GasBuiltin(_) => {
+                let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
+                let gas_builtin = ptr.cast::<u128>().as_ptr();
+                let gas = gas.unwrap_or(0);
+
+                // If program has a required initial gas, check if a gas builtin exists and check if the passed
+                // gas was enough, if so, deduct the required gas before execution.
+                if let Some(required_initial_gas) = required_initial_gas {
+                    if gas < required_initial_gas {
+                        return Err(make_insufficient_gas_error(required_initial_gas, gas));
+                    }
+
+                    let starting_gas = gas - required_initial_gas;
+
+                    unsafe { gas_builtin.write(starting_gas) };
+                }
+
+                params_ptrs.push(ptr);
+            }
+            CoreTypeConcrete::Uint8(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint8(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint8".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Uint16(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint16(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint16".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Uint32(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint32(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint32".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Uint64(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint64(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint64".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Uint128(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Uint128(_)) {
+                    Err(make_unexpected_value_error("JITValue::Uint128".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => todo!(),
+            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                params_ptrs.push(next.to_jit(&arena, registry, &info.ty)?);
+            }
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Enum { .. }) {
+                    Err(make_unexpected_value_error("JITValue::Enum".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Struct(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Struct { .. }) {
+                    Err(make_unexpected_value_error("JITValue::Struct".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Felt252Dict(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Felt252Dict { .. }) {
+                    Err(make_unexpected_value_error(
+                        "JITValue::Felt252Dict".to_string(),
+                    ))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Span(_) => {
+                todo!()
+            }
+            CoreTypeConcrete::StarkNet(selector) => {
+                match selector {
+                    StarkNetTypeConcrete::StorageAddress(_)
+                    | StarkNetTypeConcrete::StorageBaseAddress(_)
+                    | StarkNetTypeConcrete::ContractAddress(_)
+                    | StarkNetTypeConcrete::ClassHash(_) => {
+                        let next = params_it
+                            .next()
+                            .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                        if !matches!(next, JITValue::Felt252(_)) {
+                            Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                        }
+
+                        params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+                    }
+                    StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                    StarkNetTypeConcrete::System(_) => {
+                        let syscall_addr = syscall_handler
+                            .ok_or(JitRunnerError::from(ErrorImpl::MissingSyscallHandler))?
+                            .as_ptr()
+                            .as_ptr() as *const ()
+                            as usize;
+
+                        params_ptrs.push(
+                            arena
+                                .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
+                                .cast(),
+                        );
+                    }
+                };
+            }
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 
@@ -108,7 +307,7 @@ where
             offsets.push(offset);
             complex_results |= ty.is_complex();
 
-            Result::<_, JitRunnerError<'de, TType, TLibfunc, D, S>>::Ok((Some(layout), offsets))
+            Result::<_, JitRunnerError>::Ok((Some(layout), offsets))
         },
     )?;
 
@@ -119,10 +318,10 @@ where
     let mut io_pointers = if complex_results {
         let ret_ptr_ptr = arena.alloc(ret_ptr) as *mut NonNull<()>;
         once(ret_ptr_ptr as *mut ())
-            .chain(params.into_iter().map(NonNull::as_ptr))
+            .chain(params_ptrs.into_iter().map(NonNull::as_ptr))
             .collect::<Vec<_>>()
     } else {
-        params
+        params_ptrs
             .into_iter()
             .map(NonNull::as_ptr)
             .chain(once(ret_ptr.as_ptr()))
@@ -133,89 +332,68 @@ where
         engine.invoke_packed(&function_name, &mut io_pointers)?;
     }
 
-    let mut return_seq = returns
-        .serialize_seq(Some(entry_point.signature.ret_types.len()))
-        .map_err(make_serializer_error)?;
+    let mut returns = Vec::new();
 
-    for (id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
-        let ty = registry.get_type(id)?;
-        type ParamSerializer<'a, TType, TLibfunc> =
-            <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Serializer<'a>;
+    let mut remaining_gas = None;
 
-        return_seq
-            .serialize_element(&<ParamSerializer<TType, TLibfunc> as ValueSerializer<
-                TType,
-                TLibfunc,
-            >>::new(
-                // ret_ptr.map_addr(|addr| unsafe { addr.unchecked_add(offset) }),
-                NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap(),
-                registry,
-                ty,
-            ))
-            .map_err(make_serializer_error)?;
+    for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
+        let ty = registry.get_type(type_id)?;
 
-        // TODO: Drop if necessary (ex. arrays).
+        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
+
+        match ty {
+            CoreTypeConcrete::GasBuiltin(_) => {
+                remaining_gas = Some(*unsafe { ptr.cast::<u128>().as_ref() });
+            }
+            CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+            | CoreTypeConcrete::EcOp(_)
+            | CoreTypeConcrete::SegmentArena(_) => {
+                // ignore returned builtins
+            }
+            _ => {
+                let value = JITValue::from_jit(ptr, type_id, registry);
+                returns.push(value);
+            }
+        };
     }
 
-    return_seq.end().map_err(make_serializer_error)
+    Ok(ExecutionResult {
+        remaining_gas,
+        return_values: returns,
+    })
 }
 
-struct ArgsVisitor<'a, TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
-{
-    arena: &'a Bump,
-    registry: &'a ProgramRegistry<TType, TLibfunc>,
-    params: &'a [ConcreteTypeId],
-}
+/// Utility function to make it easier to execute contracts. Please see the [`execute`] for more information about program execution.
+///
+/// To call a contract, the calldata needs to be inside a struct inside a array, this helper function does that for you.
+///
+/// The calldata passed should all be felt252 values.
+pub fn execute_contract(
+    engine: &ExecutionEngine,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    function_id: &FunctionId,
+    calldata: &[JITValue],
+    required_initial_gas: Option<u128>,
+    gas: u128,
+    syscall_handler: &SyscallHandlerMeta,
+) -> Result<ContractExecutionResult, JitRunnerError> {
+    let params = vec![JITValue::Struct {
+        fields: vec![JITValue::Array(calldata.to_vec())],
+        debug_name: None,
+    }];
 
-impl<'a, 'de, TType, TLibfunc> Visitor<'de> for ArgsVisitor<'a, TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: ValueBuilder<TType, TLibfunc>,
-{
-    type Value = Vec<NonNull<()>>;
-
-    fn expecting(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        todo!()
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut param_ptr_list = Vec::with_capacity(self.params.len());
-        for (idx, param_type_id) in self.params.iter().enumerate() {
-            let param_ty = self.registry.get_type(param_type_id).unwrap();
-
-            type ParamDeserializer<'a, TType, TLibfunc> =
-                <<TType as GenericType>::Concrete as ValueBuilder<TType, TLibfunc>>::Deserializer<
-                    'a,
-                >;
-            let deserializer =
-                ParamDeserializer::<TType, TLibfunc>::new(self.arena, self.registry, param_ty);
-
-            let ptr = seq
-                .next_element_seed::<ParamDeserializer<TType, TLibfunc>>(deserializer)?
-                .unwrap_or_else(|| {
-                    let param_list: Vec<_> = self
-                        .params
-                        .iter()
-                        .map(|x| x.debug_name.as_ref().unwrap().as_str()).collect();
-
-                    panic!(
-                        "Missing input parameter of type '{}' (param index {idx}), required parameters: {:?}",
-                        param_type_id.debug_name.as_ref().unwrap().as_str(),
-                        param_list
-                    );
-                });
-
-            param_ptr_list.push(ptr);
-        }
-
-        Ok(param_ptr_list)
-    }
+    ContractExecutionResult::from_execution_result(execute(
+        engine,
+        registry,
+        function_id,
+        &params,
+        required_initial_gas,
+        Some(gas),
+        Some(syscall_handler),
+    )?)
 }

@@ -154,7 +154,7 @@ where
         OperationBuilder::new(op_name, location)
             .add_operands(&[lhs, rhs])
             .add_results(&[result_type])
-            .build(),
+            .build()?,
     );
     let result = op.result(0)?.into();
 
@@ -177,6 +177,7 @@ where
     let op_overflow = op.result(0)?.into();
 
     entry.append_operation(helper.cond_br(
+        context,
         op_overflow,
         [1, 0],
         [&[range_check, op_result], &[range_check, op_result]],
@@ -211,7 +212,13 @@ where
         location,
     ));
 
-    entry.append_operation(helper.cond_br(op0.result(0)?.into(), [1, 0], [&[]; 2], location));
+    entry.append_operation(helper.cond_br(
+        context,
+        op0.result(0)?.into(),
+        [1, 0],
+        [&[]; 2],
+        location,
+    ));
 
     Ok(())
 }
@@ -249,7 +256,7 @@ where
     ));
     let condition = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(condition, [0, 1], [&[], &[arg0]], location));
+    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
     Ok(())
 }
@@ -433,7 +440,7 @@ where
                             )])
                             .add_operands(&[entry.argument(1)?.into()])
                             .add_results(&[i32_ty])
-                            .build(),
+                            .build()?,
                     )
                     .result(0)?
                     .into();
@@ -525,7 +532,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[threshold_is_poison, k0, threshold])
                                         .add_results(&[i32_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();
@@ -546,7 +553,7 @@ where
                                     OperationBuilder::new("arith.select", location)
                                         .add_operands(&[is_in_range, large_candidate, result])
                                         .add_results(&[i32_ty])
-                                        .build(),
+                                        .build()?,
                                 )
                                 .result(0)?
                                 .into();
@@ -699,14 +706,13 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        types::felt252::PRIME,
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
+        values::JITValue,
     };
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigInt, Sign, ToBigUint};
-    use serde_json::json;
-    use std::ops::Neg;
+    use num_bigint::ToBigUint;
 
     lazy_static! {
         static ref U32_OVERFLOWING_ADD: (String, Program) = load_cairo! {
@@ -759,18 +765,7 @@ mod test {
         };
     }
 
-    // Parse numeric string into felt, wrapping negatives around the prime modulo.
-    fn f(value: &str) -> [u32; 8] {
-        let value = value.parse::<BigInt>().unwrap();
-        let value = match value.sign() {
-            Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-            _ => value.to_biguint().unwrap(),
-        };
-
-        let mut u32_digits = value.to_u32_digits();
-        u32_digits.resize(8, 0);
-        u32_digits.try_into().unwrap()
-    }
+    use crate::utils::test::run_program_assert_output;
 
     #[test]
     fn u32_const_min() {
@@ -779,9 +774,8 @@ mod test {
                 0_u32
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([0]));
+        run_program_assert_output(&program, "run_test", &[], &[0u32.into()]);
     }
 
     #[test]
@@ -791,9 +785,8 @@ mod test {
                 4294967295_u32
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([4294967295u32]));
+        run_program_assert_output(&program, "run_test", &[], &[u32::MAX.into()]);
     }
 
     #[test]
@@ -805,9 +798,8 @@ mod test {
                 2_u32.into()
             }
         );
-        let result = run_program(&program, "run_test", json!([]));
 
-        assert_eq!(result, json!([[2, 0, 0, 0, 0, 0, 0, 0]]));
+        run_program_assert_output(&program, "run_test", &[], &[Felt252::new(2).into()]);
     }
 
     #[test]
@@ -819,153 +811,280 @@ mod test {
                 (4294967295.try_into(), 4294967296.try_into())
             }
         );
-        let result = run_program(&program, "run_test", json!([null]));
 
-        assert_eq!(result, json!([null, [[0, 4294967295u32], [1, []]]]));
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            &[jit_struct!(
+                jit_enum!(0, 4294967295u32.into()),
+                jit_enum!(1, jit_struct!()),
+            )],
+        );
     }
 
     #[test]
     fn u32_overflowing_add() {
-        fn run<const LHS: u32, const RHS: u32>() -> serde_json::Value {
-            run_program(&U32_OVERFLOWING_ADD, "run_test", json!([(), LHS, RHS]))
+        #[track_caller]
+        fn run(lhs: u32, rhs: u32) {
+            let program = &U32_OVERFLOWING_ADD;
+            let error = Felt252::from_bytes_be(b"u32_add Overflow");
+
+            let add = lhs.checked_add(rhs);
+
+            match add {
+                Some(result) => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_enum!(0, jit_struct!(result.into()))],
+                    );
+                }
+                None => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_panic!(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        let add_error = f("155785504323917466144735657540098748279");
+        const MAX: u32 = u32::MAX;
 
-        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<0, 1>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<0, 4294967294>(), json!([(), [0, [4294967294u32]]]));
-        assert_eq!(run::<0, 4294967295>(), json!([(), [0, [4294967295u32]]]));
+        run(0, 0);
+        run(0, 1);
+        run(0, MAX - 1);
+        run(0, MAX);
 
-        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<1, 1>(), json!([(), [0, [2]]]));
-        assert_eq!(run::<1, 4294967294>(), json!([(), [0, [4294967295u32]]]));
-        assert_eq!(run::<1, 4294967295>(), json!([(), [1, [[], [add_error]]]]));
+        run(1, 0);
+        run(1, 1);
+        run(1, MAX - 1);
+        run(1, MAX);
 
-        assert_eq!(run::<4294967294, 0>(), json!([(), [0, [4294967294u32]]]));
-        assert_eq!(run::<4294967294, 1>(), json!([(), [0, [4294967295u32]]]));
-        assert_eq!(
-            run::<4294967294, 4294967294>(),
-            json!([(), [1, [[], [add_error]]]])
-        );
-        assert_eq!(
-            run::<4294967294, 4294967295>(),
-            json!([(), [1, [[], [add_error]]]])
-        );
+        run(MAX - 1, 0);
+        run(MAX - 1, 1);
+        run(MAX - 1, MAX - 1);
+        run(MAX - 1, MAX);
 
-        assert_eq!(run::<4294967295, 0>(), json!([(), [0, [4294967295u32]]]));
-        assert_eq!(run::<4294967295, 1>(), json!([(), [1, [[], [add_error]]]]));
-        assert_eq!(
-            run::<4294967295, 4294967294>(),
-            json!([(), [1, [[], [add_error]]]])
-        );
-        assert_eq!(
-            run::<4294967295, 4294967295>(),
-            json!([(), [1, [[], [add_error]]]])
-        );
+        run(MAX, 0);
+        run(MAX, 1);
+        run(MAX, MAX - 1);
+        run(MAX, MAX);
     }
 
     #[test]
     fn u32_overflowing_sub() {
-        fn run<const LHS: u32, const RHS: u32>() -> serde_json::Value {
-            run_program(&U32_OVERFLOWING_SUB, "run_test", json!([(), LHS, RHS]))
+        #[track_caller]
+        fn run(lhs: u32, rhs: u32) {
+            let program = &U32_OVERFLOWING_SUB;
+            let error = Felt252::from_bytes_be(b"u32_sub Overflow");
+
+            let add = lhs.checked_sub(rhs);
+
+            match add {
+                Some(result) => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_enum!(0, jit_struct!(result.into()))],
+                    );
+                }
+                None => {
+                    run_program_assert_output(
+                        program,
+                        "run_test",
+                        &[lhs.into(), rhs.into()],
+                        &[jit_panic!(JITValue::Felt252(error))],
+                    );
+                }
+            }
         }
 
-        let sub_error = f("155785504329508738615720351733824384887");
+        const MAX: u32 = u32::MAX;
 
-        assert_eq!(run::<0, 0>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<0, 1>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<0, 4294967294>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<0, 4294967295>(), json!([(), [1, [[], [sub_error]]]]));
+        run(0, 0);
+        run(0, 1);
+        run(0, MAX - 1);
+        run(0, MAX);
 
-        assert_eq!(run::<1, 0>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<1, 1>(), json!([(), [0, [0]]]));
-        assert_eq!(run::<1, 4294967294>(), json!([(), [1, [[], [sub_error]]]]));
-        assert_eq!(run::<1, 4294967295>(), json!([(), [1, [[], [sub_error]]]]));
+        run(1, 0);
+        run(1, 1);
+        run(1, MAX - 1);
+        run(1, MAX);
 
-        assert_eq!(run::<4294967294, 0>(), json!([(), [0, [4294967294u32]]]));
-        assert_eq!(run::<4294967294, 1>(), json!([(), [0, [4294967293u32]]]));
-        assert_eq!(run::<4294967294, 4294967294>(), json!([(), [0, [0]]]));
-        assert_eq!(
-            run::<4294967294, 4294967295>(),
-            json!([(), [1, [[], [sub_error]]]])
-        );
+        run(MAX - 1, 0);
+        run(MAX - 1, 1);
+        run(MAX - 1, MAX - 1);
+        run(MAX - 1, MAX);
 
-        assert_eq!(run::<4294967295, 0>(), json!([(), [0, [4294967295u32]]]));
-        assert_eq!(run::<4294967295, 1>(), json!([(), [0, [4294967294u32]]]));
-        assert_eq!(run::<4294967295, 4294967294>(), json!([(), [0, [1]]]));
-        assert_eq!(run::<4294967295, 4294967295>(), json!([(), [0, [0]]]));
+        run(MAX, 0);
+        run(MAX, 1);
+        run(MAX, MAX - 1);
+        run(MAX, MAX);
     }
 
     #[test]
     fn u32_equal() {
-        let r = |lhs, rhs| run_program(&U32_EQUAL, "run_test", json!([lhs, rhs]));
+        let program = &U32_EQUAL;
 
-        assert_eq!(r(0, 0), json!([[1, []]]));
-        assert_eq!(r(0, 1), json!([[0, []]]));
-        assert_eq!(r(1, 0), json!([[0, []]]));
-        assert_eq!(r(1, 1), json!([[1, []]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 0u32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 0u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 1u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 1u32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
     }
 
     #[test]
     fn u32_is_zero() {
-        let r = |value| run_program(&U32_IS_ZERO, "run_test", json!([value]));
+        let program = &U32_IS_ZERO;
 
-        assert_eq!(r(0), json!([[1, []]]));
-        assert_eq!(r(1), json!([[0, []]]));
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
     }
 
     #[test]
     fn u32_safe_divmod() {
-        let r = |lhs, rhs| run_program(&U32_SAFE_DIVMOD, "run_test", json!([(), lhs, rhs]));
+        let program = &U32_IS_ZERO;
 
-        let u32_is_zero = json!([f("8445148841039306800")]);
-
-        assert_eq!(r(0, 0), json!([(), [1, [[], u32_is_zero]]]));
-        assert_eq!(r(0, 1), json!([(), [0, [[0u32, 0u32]]]]));
-        assert_eq!(r(0, 0xFFFFFFFFu32), json!([(), [0, [[0u32, 0u32]]]]));
-
-        assert_eq!(r(1, 0), json!([(), [1, [[], u32_is_zero]]]));
-        assert_eq!(r(1, 1), json!([(), [0, [[1u32, 0u32]]]]));
-        assert_eq!(r(1, 0xFFFFFFFFu32), json!([(), [0, [[0u32, 1u32]]]]));
-
-        assert_eq!(r(0xFFFFFFFFu32, 0), json!([(), [1, [[], u32_is_zero]]]));
-        assert_eq!(
-            r(0xFFFFFFFFu32, 1),
-            json!([(), [0, [[0xFFFFFFFFu32, 0u32]]]])
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 0u32.into()],
+            &[jit_enum!(1, jit_struct!())],
         );
-        assert_eq!(
-            r(0xFFFFFFFFu32, 0xFFFFFFFFu32),
-            json!([(), [0, [[1u32, 0u32]]]])
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 1u32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 0xFFFFFFFFu32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 0u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 1u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 0xFFFFFFFFu32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFFFFFFFu32.into(), 0u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFFFFFFFu32.into(), 1u32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0xFFFFFFFFu32.into(), 0xFFFFFFFFu32.into()],
+            &[jit_enum!(0, jit_struct!())],
         );
     }
 
     #[test]
     fn u32_sqrt() {
-        let r = |value| run_program(&U32_SQRT, "run_test", json!([(), value]));
+        let program = &U32_SQRT;
 
-        assert_eq!(r(0u32), json!([(), 0u16]));
-        assert_eq!(r(u32::MAX), json!([(), u16::MAX]));
+        run_program_assert_output(program, "run_test", &[0u32.into()], &[0u16.into()]);
+        run_program_assert_output(program, "run_test", &[u32::MAX.into()], &[0xFFFFu16.into()]);
 
         for i in 0..u32::BITS {
             let x = 1u32 << i;
-            let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u16 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            assert_eq!(r(x), json!([(), y]));
+            run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }
     }
 
     #[test]
     fn u32_widemul() {
-        let r = |lhs, rhs| run_program(&U32_WIDEMUL, "run_test", json!([lhs, rhs]));
+        let program = &U32_WIDEMUL;
 
-        assert_eq!(r(0, 0), json!([0]));
-        assert_eq!(r(0, 1), json!([0]));
-        assert_eq!(r(1, 0), json!([0]));
-        assert_eq!(r(1, 1), json!([1]));
-        assert_eq!(
-            r(u32::MAX, u32::MAX),
-            json!([(u32::MAX as u64 * u32::MAX as u64)])
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 0u32.into()],
+            &[0u64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0u32.into(), 1u32.into()],
+            &[0u64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 0u32.into()],
+            &[0u64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1u32.into(), 1u32.into()],
+            &[1u64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[u32::MAX.into(), u32::MAX.into()],
+            &[(u32::MAX as u64 * u32::MAX as u64).into()],
         );
     }
 }
