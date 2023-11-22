@@ -18,14 +18,16 @@ extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigne
 
 // Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
 // This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
-extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module, LLVMContextRef context) {
-    mlir::Operation *moduleOp = unwrap(module);
+extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module,
+                                          LLVMContextRef context) {
+  mlir::Operation *moduleOp = unwrap(module);
 
-    llvm::LLVMContext *ctx = reinterpret_cast<llvm::LLVMContext*>(context);
+  llvm::LLVMContext *ctx = llvm::unwrap(context);
 
-    std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR(moduleOp, *ctx);
+  std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR(
+      moduleOp, *ctx);
 
-    LLVMModuleRef moduleRef = reinterpret_cast<LLVMModuleRef>(const_cast<llvm::Module*>(llvmModule.release()));
+  LLVMModuleRef moduleRef = llvm::wrap(llvmModule.release());
 
-    return moduleRef;
+  return moduleRef;
 }
