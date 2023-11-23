@@ -1,14 +1,33 @@
-use llvm_sys::prelude::{LLVMContextRef, LLVMModuleRef};
-use melior::ir::{Type, TypeLike};
+use llvm_sys::{
+    core::{LLVMContextCreate, LLVMDisposeMessage},
+    prelude::{LLVMContextRef, LLVMModuleRef},
+    target::{
+        LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
+        LLVM_InitializeAllTargets,
+    },
+    target_machine::{
+        LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
+        LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures, LLVMGetHostCPUName,
+        LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetMachineEmitToFile, LLVMTargetRef,
+    },
+};
+use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::MlirOperation;
-use std::ffi::c_void;
+use std::{
+    error::Error,
+    ffi::{c_void, CStr, CString},
+    fmt::Display,
+    mem::MaybeUninit,
+    ptr::{addr_of_mut, null_mut},
+    sync::OnceLock,
+};
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
     /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
     /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
-    pub fn mlirTranslateModuleToLLVMIR(
+    fn mlirTranslateModuleToLLVMIR(
         module_operation_ptr: MlirOperation,
         llvm_context: LLVMContextRef,
     ) -> LLVMModuleRef;
@@ -20,4 +39,103 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
 
     ty_ptr.ptr = unsafe { LLVMStructType_getFieldTypeAt(ty_ptr.ptr, index as u32) };
     unsafe { Type::from_raw(ty_ptr) }
+}
+
+#[derive(Debug, Clone)]
+pub struct LLVMCompileError(String);
+
+impl Error for LLVMCompileError {}
+
+impl Display for LLVMCompileError {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Make sure to call
+pub fn module_to_shared_library(module: Module<'_>) -> Result<(), LLVMCompileError> {
+    static INITIALIZED: OnceLock<()> = OnceLock::new();
+
+    INITIALIZED.get_or_init(|| {
+        unsafe {
+            LLVM_InitializeAllTargets();
+            LLVM_InitializeAllTargetInfos();
+            LLVM_InitializeAllTargetMCs();
+            LLVM_InitializeAllAsmPrinters();
+        }
+        ()
+    });
+
+    unsafe {
+        let llvm_context = LLVMContextCreate();
+
+        let op = module.as_operation().to_raw();
+
+        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context);
+
+        let mut null = null_mut();
+        let mut error_buffer = addr_of_mut!(null);
+
+        let target_triple = LLVMGetDefaultTargetTriple();
+        let target_cpu = LLVMGetHostCPUName();
+        let target_cpu_features = LLVMGetHostCPUFeatures();
+
+        let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
+
+        if LLVMGetTargetFromTriple(target_triple, target.as_mut_ptr(), error_buffer) != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            LLVMDisposeMessage(*error_buffer);
+            Err(LLVMCompileError(err))?;
+        } else if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
+            error_buffer = addr_of_mut!(null);
+        }
+
+        let target = target.assume_init();
+
+        let machine = LLVMCreateTargetMachine(
+            target,
+            target_triple.cast(),
+            target_cpu.cast(),
+            target_cpu_features.cast(),
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+            LLVMRelocMode::LLVMRelocDefault,
+            LLVMCodeModel::LLVMCodeModelDefault,
+        );
+
+        let filename = CString::new("program.o").unwrap();
+        let ok = LLVMTargetMachineEmitToFile(
+            machine,
+            llvm_module,
+            filename.as_ptr().cast_mut(),
+            LLVMCodeGenFileType::LLVMObjectFile,
+            error_buffer,
+        );
+
+        if ok != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            LLVMDisposeMessage(*error_buffer);
+            Err(LLVMCompileError(err))?;
+        } else if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
+            error_buffer = addr_of_mut!(null);
+        }
+
+        /*
+        let llvm_location = PathBuf::from(std::env::var("MLIR_SYS_170_PREFIX").unwrap());
+        let clang_location = llvm_location.join("bin").join("clang");
+
+        let mut clang = std::process::Command::new(clang_location);
+        let mut proc = clang.args(["--shared", "-x assembler", "-Wno-override-module", "-", "-o -"]).spawn().unwrap();
+        proc.stdin.as_mut().unwrap().write_all(data).unwrap();
+        let output = proc.wait_with_output().unwrap();
+
+        std::fs::write("output.s", output.stdout).unwrap();
+        */
+        todo!()
+    }
+    todo!()
 }
