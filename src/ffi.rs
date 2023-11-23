@@ -11,7 +11,7 @@ use llvm_sys::{
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
         LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures,
-        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetMachineEmitToFile,
+        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
 };
@@ -19,7 +19,7 @@ use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::MlirOperation;
 use std::{
     error::Error,
-    ffi::{c_void, CStr, CString},
+    ffi::{c_void, CStr},
     fmt::Display,
     io::Write,
     mem::MaybeUninit,
@@ -59,7 +59,7 @@ impl Display for LLVMCompileError {
 }
 
 /// Make sure to call
-pub fn module_to_object(module: Module<'_>) -> Result<Vec<u8>, LLVMCompileError> {
+pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -124,7 +124,6 @@ pub fn module_to_object(module: Module<'_>) -> Result<Vec<u8>, LLVMCompileError>
             Err(LLVMCompileError(err))?;
         } else if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
-            error_buffer = addr_of_mut!(null);
         }
 
         let out_buf = out_buf.assume_init();
@@ -145,6 +144,7 @@ pub fn module_to_object(module: Module<'_>) -> Result<Vec<u8>, LLVMCompileError>
 }
 
 pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
+    // todo: error handling
     let args: &[&str] = {
         #[cfg(target_os = "macos")]
         {
@@ -154,9 +154,8 @@ pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
                 "-dynamic",
                 "-dylib",
                 "-L/usr/local/lib",
-                "-syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
-                "-lSystem",
-                "- -o -",
+                "-",
+                "-o -",
             ]
         }
         #[cfg(target_os = "linux")]
