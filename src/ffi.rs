@@ -21,6 +21,7 @@ use std::{
     error::Error,
     ffi::{c_void, CStr, CString},
     fmt::Display,
+    io::Write,
     mem::MaybeUninit,
     ptr::{addr_of_mut, null_mut},
     sync::OnceLock,
@@ -143,17 +144,34 @@ pub fn module_to_object(module: Module<'_>) -> Result<Vec<u8>, LLVMCompileError>
     }
 }
 
-pub fn object_to_shared_lib(object: &[u8]) -> &[u8] {
-    /*
-    let llvm_location = PathBuf::from(std::env::var("MLIR_SYS_170_PREFIX").unwrap());
-    let clang_location = llvm_location.join("bin").join("clang");
+pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
+    let args: &[&str] = {
+        #[cfg(target_os = "macos")]
+        {
+            &[
+                "-demangle",
+                "-no_deduplicate",
+                "-dynamic",
+                "-dylib",
+                "-L/usr/local/lib",
+                "-syslibroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+                "-lSystem",
+                "- -o -",
+            ]
+        }
+        #[cfg(target_os = "linux")]
+        {
+            &["-shared", "-lc", "-L/lib", "-L/usr/lib", "- -o -"]
+        }
+        #[cfg(target_os = "windows")]
+        {
+            unimplemented!()
+        }
+    };
 
-    let mut clang = std::process::Command::new(clang_location);
-    let mut proc = clang.args(["--shared", "-x assembler", "-Wno-override-module", "-", "-o -"]).spawn().unwrap();
-    proc.stdin.as_mut().unwrap().write_all(data).unwrap();
+    let mut linker = std::process::Command::new("ld");
+    let mut proc = linker.args(args.iter()).spawn().unwrap();
+    proc.stdin.as_mut().unwrap().write_all(object).unwrap();
     let output = proc.wait_with_output().unwrap();
-
-    std::fs::write("output.s", output.stdout).unwrap();
-    */
-    todo!()
+    output.stdout
 }
