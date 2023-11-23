@@ -1,14 +1,18 @@
 use llvm_sys::{
-    core::{LLVMContextCreate, LLVMDisposeMessage},
-    prelude::{LLVMContextRef, LLVMModuleRef},
+    core::{
+        LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
+        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
+    },
+    prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
         LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
         LLVM_InitializeAllTargets,
     },
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
-        LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures, LLVMGetHostCPUName,
-        LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetMachineEmitToFile, LLVMTargetRef,
+        LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures,
+        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetMachineEmitToFile,
+        LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
 };
 use melior::ir::{Module, Type, TypeLike};
@@ -54,17 +58,14 @@ impl Display for LLVMCompileError {
 }
 
 /// Make sure to call
-pub fn module_to_shared_library(module: Module<'_>) -> Result<(), LLVMCompileError> {
+pub fn module_to_object(module: Module<'_>) -> Result<Vec<u8>, LLVMCompileError> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
-    INITIALIZED.get_or_init(|| {
-        unsafe {
-            LLVM_InitializeAllTargets();
-            LLVM_InitializeAllTargetInfos();
-            LLVM_InitializeAllTargetMCs();
-            LLVM_InitializeAllAsmPrinters();
-        }
-        ()
+    INITIALIZED.get_or_init(|| unsafe {
+        LLVM_InitializeAllTargets();
+        LLVM_InitializeAllTargetInfos();
+        LLVM_InitializeAllTargetMCs();
+        LLVM_InitializeAllAsmPrinters();
     });
 
     unsafe {
@@ -105,13 +106,14 @@ pub fn module_to_shared_library(module: Module<'_>) -> Result<(), LLVMCompileErr
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
-        let filename = CString::new("program.o").unwrap();
-        let ok = LLVMTargetMachineEmitToFile(
+        let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
+
+        let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
-            filename.as_ptr().cast_mut(),
             LLVMCodeGenFileType::LLVMObjectFile,
             error_buffer,
+            out_buf.as_mut_ptr(),
         );
 
         if ok != 0 {
@@ -124,18 +126,34 @@ pub fn module_to_shared_library(module: Module<'_>) -> Result<(), LLVMCompileErr
             error_buffer = addr_of_mut!(null);
         }
 
-        /*
-        let llvm_location = PathBuf::from(std::env::var("MLIR_SYS_170_PREFIX").unwrap());
-        let clang_location = llvm_location.join("bin").join("clang");
+        let out_buf = out_buf.assume_init();
 
-        let mut clang = std::process::Command::new(clang_location);
-        let mut proc = clang.args(["--shared", "-x assembler", "-Wno-override-module", "-", "-o -"]).spawn().unwrap();
-        proc.stdin.as_mut().unwrap().write_all(data).unwrap();
-        let output = proc.wait_with_output().unwrap();
+        let out_buf_start: *const u8 = LLVMGetBufferStart(out_buf).cast();
+        let out_buf_size = LLVMGetBufferSize(out_buf);
 
-        std::fs::write("output.s", output.stdout).unwrap();
-        */
-        todo!()
+        // keep it in rust side
+        let data = std::slice::from_raw_parts(out_buf_start, out_buf_size).to_vec();
+
+        LLVMDisposeMemoryBuffer(out_buf);
+        LLVMDisposeTargetMachine(machine);
+        LLVMDisposeModule(llvm_module);
+        LLVMContextDispose(llvm_context);
+
+        Ok(data)
     }
+}
+
+pub fn object_to_shared_lib(object: &[u8]) -> &[u8] {
+    /*
+    let llvm_location = PathBuf::from(std::env::var("MLIR_SYS_170_PREFIX").unwrap());
+    let clang_location = llvm_location.join("bin").join("clang");
+
+    let mut clang = std::process::Command::new(clang_location);
+    let mut proc = clang.args(["--shared", "-x assembler", "-Wno-override-module", "-", "-o -"]).spawn().unwrap();
+    proc.stdin.as_mut().unwrap().write_all(data).unwrap();
+    let output = proc.wait_with_output().unwrap();
+
+    std::fs::write("output.s", output.stdout).unwrap();
+    */
     todo!()
 }
