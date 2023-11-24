@@ -17,6 +17,7 @@ use cairo_native::{
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use clap::Parser;
+use dlopen2::raw::Library;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -27,6 +28,7 @@ use melior::{
 use std::{
     ffi::OsStr,
     fs,
+    mem::ManuallyDrop,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -35,15 +37,61 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Input .sierra or .cairo program.
+    /// Input .sierra or .cairo program to know the types to use in the shared library.
     input: PathBuf,
 
-    /// Output file, .so on linux, .dylib on macOS
-    output: PathBuf,
+    /// Input compiled library
+    lib: PathBuf,
+
+    sym: String,
 
     /// Whether the program is a contract.
     #[arg(short, long)]
     starknet: bool,
+}
+
+/*
+typedef struct factorial_return_values
+{
+    unsigned __int128 remaining_gas;
+    struct {
+        uint8_t discriminant;
+        union {
+            uint64_t ok[4];
+            struct {
+                void* ptr;
+                uint32_t len;
+                uint32_t cap;
+            } err;
+        };
+    } result;
+} factorial_return_values_t;
+ */
+
+#[derive(Debug)]
+#[repr(C)]
+struct ResultError {
+    ptr: *const (),
+    len: u32,
+    cap: u32,
+}
+
+#[repr(C)]
+union ResultUnion {
+    ok: [u64; 4],
+    error: ManuallyDrop<ResultError>,
+}
+
+#[repr(C)]
+struct ResultEnum {
+    discriminant: u8,
+    reuslt: ResultUnion,
+}
+
+#[repr(C)]
+struct ReturnValues {
+    remaining_gas: u128,
+    result: ResultEnum,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -62,47 +110,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (program, debug_info) =
         load_program(Path::new(&args.input), Some(&context), args.starknet)?;
 
-    // Initialize MLIR.
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_llvm_translations(&context);
-
-    // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        debug_info.as_ref(),
-    )?;
-
-    // lower to llvm dialect
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    pass_manager.run(&mut module)?;
-
-    let object = cairo_native::module_to_object(&module)?;
-    cairo_native::object_to_shared_lib(&object, &args.output)?;
+    let lib = Library::open(args.input)?;
+    let sym: extern "C" fn() -> ReturnValues = unsafe { lib.symbol(&args.sym).unwrap() };
 
     Ok(())
 }
