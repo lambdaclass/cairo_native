@@ -304,11 +304,12 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_170_PREFIX` and `TABLEGEN_170_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_170_PREFIX`, `LLVM_SYS_170_PREFIX` and `TABLEGEN_170_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-17
 export MLIR_SYS_170_PREFIX=/usr/lib/llvm-17
+export LLVM_SYS_170_PREFIX=/usr/lib/llvm-17
 export TABLEGEN_170_PREFIX=/usr/lib/llvm-17
 ```
 
@@ -685,6 +686,7 @@ For more examples, check out the `examples/` directory.
 You need to setup some environment variables:
 ```bash
 $MLIR_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
+$LLVM_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
 $TABLEGEN_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
 ```
 
