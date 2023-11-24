@@ -59,7 +59,6 @@ cairo-lang-sierra-gas = "2.3.1"
 cairo-lang-sierra-ap-change = "2.3.1"
 cairo-lang-utils = "2.3.1"
 cairo-lang-starknet = "2.3.1"
-dlopen2 = "0.6.1"
 
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
