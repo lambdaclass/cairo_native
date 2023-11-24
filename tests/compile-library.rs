@@ -1,16 +1,6 @@
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
     program_registry::ProgramRegistry,
-    ProgramParser,
-};
-use cairo_lang_starknet::{
-    contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
-    plugin::StarkNetPlugin,
 };
 use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
 use common::load_cairo;
@@ -21,7 +11,7 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
-use std::{error::Error, path::Path};
+use std::error::Error;
 use tempfile::NamedTempFile;
 
 mod common;
