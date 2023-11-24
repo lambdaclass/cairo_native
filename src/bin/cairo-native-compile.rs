@@ -20,21 +20,35 @@ use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
+    pass::{self, PassManager},
     utility::{register_all_dialects, register_all_llvm_translations},
-    Context, pass::{self, PassManager},
+    Context,
 };
 use std::{
     ffi::OsStr,
     fs,
-    io::Write,
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Input .sierra or .cairo program.
+    input: PathBuf,
+
+    /// Output file, .so on linux, .dylib on macOS
+    output: PathBuf,
+
+    /// Whether the program is a contract.
+    #[arg(short, long)]
+    starknet: bool,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments.
-    let args = CmdLine::parse();
+    let args = Args::parse();
 
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
@@ -88,12 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pass_manager.run(&mut module)?;
 
     let object = cairo_native::module_to_object(&module)?;
-    let shared_lib = cairo_native::object_to_shared_lib(&object);
-
-    match args.output {
-        CompilerOutput::Stdout => std::io::stdout().lock().write_all(&shared_lib)?,
-        CompilerOutput::Path(path) => fs::write(path, &shared_lib)?,
-    }
+    cairo_native::object_to_shared_lib(&object, &args.output)?;
 
     Ok(())
 }

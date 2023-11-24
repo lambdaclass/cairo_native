@@ -23,9 +23,11 @@ use std::{
     fmt::Display,
     io::Write,
     mem::MaybeUninit,
+    path::Path,
     ptr::{addr_of_mut, null_mut},
     sync::OnceLock,
 };
+use tempfile::NamedTempFile;
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -102,8 +104,8 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
-            LLVMRelocMode::LLVMRelocDefault,
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
@@ -143,8 +145,12 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
     }
 }
 
-pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
-    // todo: error handling
+pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
+    // linker seems to need a file and doesn't accept stdin
+    let mut file = NamedTempFile::new()?;
+    file.write_all(object)?;
+    let file = file.into_temp_path();
+
     let args: &[&str] = {
         #[cfg(target_os = "macos")]
         {
@@ -154,13 +160,24 @@ pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
                 "-dynamic",
                 "-dylib",
                 "-L/usr/local/lib",
-                "-",
-                "-o -",
+                &file.display().to_string(),
+                "-o",
+                &output_filename.display().to_string(),
             ]
         }
         #[cfg(target_os = "linux")]
         {
-            &["-shared", "-lc", "-L/lib", "-L/usr/lib", "- -o -"]
+            &[
+                "--hash-style=gnu",
+                "--eh-frame-hdr",
+                "-shared",
+                "-o",
+                &output_filename.display().to_string(),
+                "-L/lib/../lib64",
+                "-L/usr/lib/../lib64",
+                "-lc",
+                &file.display().to_string(),
+            ]
         }
         #[cfg(target_os = "windows")]
         {
@@ -169,8 +186,7 @@ pub fn object_to_shared_lib(object: &[u8]) -> Vec<u8> {
     };
 
     let mut linker = std::process::Command::new("ld");
-    let mut proc = linker.args(args.iter()).spawn().unwrap();
-    proc.stdin.as_mut().unwrap().write_all(object).unwrap();
-    let output = proc.wait_with_output().unwrap();
-    output.stdout
+    let proc = linker.args(args.iter()).spawn()?;
+    proc.wait_with_output()?;
+    Ok(())
 }

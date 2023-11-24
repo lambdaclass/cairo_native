@@ -16,8 +16,6 @@ extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigne
     return type.getBody()[index].getAsOpaquePointer();
 }
 
-// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
-// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
 extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module,
                                           LLVMContextRef context) {
   mlir::Operation *moduleOp = unwrap(module);

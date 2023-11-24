@@ -46,6 +46,8 @@ num-bigint = "0.4.4"
 num-traits = "0.2"
 thiserror = "1.0"
 tracing = "0.1"
+llvm-sys = "170.0.0"
+tempfile = "3.6"
 
 # CLI dependencies
 cairo-native-runtime = { path = "runtime", optional = true }
@@ -57,7 +59,6 @@ cairo-lang-sierra-gas = "2.3.1"
 cairo-lang-sierra-ap-change = "2.3.1"
 cairo-lang-utils = "2.3.1"
 cairo-lang-starknet = "2.3.1"
-llvm-sys = "170.0.0"
 
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
@@ -78,6 +79,14 @@ opt-level = 3
 [profile.release]
 lto = true
 codegen-units = 1
+
+# Set the settings for build scripts and proc-macros.
+[profile.dev.build-override]
+opt-level = 3
+
+# On dev optimize dependencies a bit so it's not as slow.
+[profile.dev.package."*"]
+opt-level = 1
 
 [workspace]
 members = ["runtime"]
