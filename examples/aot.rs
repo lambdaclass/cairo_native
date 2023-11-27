@@ -1,19 +1,99 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
-use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+use cairo_lang_sierra::{
+    extensions::core::{CoreLibfunc, CoreType},
+    program_registry::ProgramRegistry,
 };
-use std::path::Path;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use cairo_lang_starknet::contract_class::compile_path;
+use cairo_native::{
+    aot,
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_entry_point_by_idx,
+};
+use melior::{
+    dialect::DialectRegistry,
+    ir::{Location, Module},
+    pass::{self, PassManager},
+    utility::{register_all_dialects, register_all_llvm_translations},
+    Context,
+};
+use std::{error::Error, path::Path};
+use tempfile::NamedTempFile;
 
 #[derive(Debug)]
 struct SyscallHandler;
+
+pub fn main() -> Result<(), Box<dyn Error>> {
+    let path = Path::new("programs/examples/hello_starknet.cairo");
+
+    let contract = compile_path(
+        path,
+        None,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
+    let sierra_program = contract.extract_sierra_program().unwrap();
+
+    // Load the program.
+    let context = Context::new();
+
+    // Initialize MLIR.
+    context.append_dialect_registry(&{
+        let registry = DialectRegistry::new();
+        register_all_dialects(&registry);
+        registry
+    });
+    context.load_all_available_dialects();
+    register_all_llvm_translations(&context);
+
+    // Compile the program.
+    let mut module = Module::new(Location::unknown(&context));
+    let mut metadata = MetadataStorage::new();
+    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
+
+    // Make the runtime library available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+    cairo_native::compile::<CoreType, CoreLibfunc>(
+        &context,
+        &module,
+        &sierra_program,
+        &registry,
+        &mut metadata,
+        None,
+    )?;
+
+    // lower to llvm dialect
+    let pass_manager = PassManager::new(&context);
+    pass_manager.enable_verifier(true);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.run(&mut module)?;
+
+    let object = cairo_native::module_to_object(&module)?;
+
+    let file = NamedTempFile::new()?.into_temp_path();
+    cairo_native::object_to_shared_lib(&object, &file)?;
+
+    let entry_point_fn =
+        find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
+
+    aot::call_contract_library(&file, entry_point_fn, &mut SyscallHandler)?;
+
+    Ok(())
+}
 
 impl StarkNetSyscallHandler for SyscallHandler {
     fn get_block_hash(
@@ -290,59 +370,4 @@ impl StarkNetSyscallHandler for SyscallHandler {
     fn set_version(&mut self, _version: cairo_felt::Felt252) {
         todo!()
     }
-}
-
-fn main() {
-    // Configure logging and error handling.
-    tracing::subscriber::set_global_default(
-        FmtSubscriber::builder()
-            .with_env_filter(EnvFilter::from_default_env())
-            .finish(),
-    )
-    .unwrap();
-
-    let path = Path::new("programs/examples/hello_starknet.cairo");
-
-    let contract = compile_path(
-        path,
-        None,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let entry_point = contract.entry_points_by_type.external.get(0).unwrap();
-    let sierra_program = contract.extract_sierra_program().unwrap();
-
-    let native_context = NativeContext::new();
-
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
-
-    // Call the echo function from the contract using the generated wrapper.
-
-    let entry_point_fn =
-        find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
-
-    dbg!(&entry_point_fn.signature);
-
-    let fn_id = &entry_point_fn.id;
-
-    let native_executor = NativeExecutor::new(native_program);
-
-    let result = native_executor
-        .execute_contract(
-            fn_id,
-            &[JITValue::Felt252(Felt252::new(1))],
-            u64::MAX.into(),
-        )
-        .expect("failed to execute the given contract");
-
-    println!();
-    println!("Cairo program was compiled and executed successfully.");
-    println!("{result:#?}");
 }

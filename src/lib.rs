@@ -100,6 +100,7 @@ pub use self::{
 
 pub use self::jit_runner::ExecutionResult;
 
+pub mod aot;
 pub mod cache;
 mod compiler;
 pub mod context;

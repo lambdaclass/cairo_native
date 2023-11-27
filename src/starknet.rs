@@ -11,7 +11,7 @@ pub type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 #[derive(Debug, Clone)]
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
-struct Felt252Abi(pub [u8; 32]);
+pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(Debug, Clone)]
@@ -237,21 +237,21 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
-    union SyscallResultAbi<T> {
-        ok: ManuallyDrop<SyscallResultAbiOk<T>>,
-        err: ManuallyDrop<SyscallResultAbiErr>,
+    pub(crate) union SyscallResultAbi<T> {
+        pub ok: ManuallyDrop<SyscallResultAbiOk<T>>,
+        pub err: ManuallyDrop<SyscallResultAbiErr>,
     }
 
     #[repr(C)]
-    struct SyscallResultAbiOk<T> {
-        tag: u8,
-        payload: ManuallyDrop<T>,
+    pub(crate) struct SyscallResultAbiOk<T> {
+        pub tag: u8,
+        pub payload: ManuallyDrop<T>,
     }
 
     #[repr(C)]
-    struct SyscallResultAbiErr {
-        tag: u8,
-        payload: (NonNull<Felt252Abi>, u32, u32),
+    pub(crate) struct SyscallResultAbiErr {
+        pub tag: u8,
+        pub payload: (NonNull<Felt252Abi>, u32, u32),
     }
 
     #[repr(C)]
