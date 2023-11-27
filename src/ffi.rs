@@ -160,9 +160,11 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-dynamic",
                 "-dylib",
                 "-L/usr/local/lib",
+                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
                 &file.display().to_string(),
                 "-o",
                 &output_filename.display().to_string(),
+                "-lSystem",
             ]
         }
         #[cfg(target_os = "linux")]
