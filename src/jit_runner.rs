@@ -134,14 +134,17 @@ pub fn execute(
 
                 // If program has a required initial gas, check if a gas builtin exists and check if the passed
                 // gas was enough, if so, deduct the required gas before execution.
-                if let Some(required_initial_gas) = required_initial_gas {
-                    if gas < required_initial_gas {
-                        return Err(make_insufficient_gas_error(required_initial_gas, gas));
-                    }
+                unsafe {
+                    gas_builtin.write(match required_initial_gas {
+                        Some(required_initial_gas) => {
+                            if gas < required_initial_gas {
+                                return Err(make_insufficient_gas_error(required_initial_gas, gas));
+                            }
 
-                    let starting_gas = gas - required_initial_gas;
-
-                    unsafe { gas_builtin.write(starting_gas) };
+                            gas - required_initial_gas
+                        }
+                        None => gas,
+                    });
                 }
 
                 params_ptrs.push(ptr);
