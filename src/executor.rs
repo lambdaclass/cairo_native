@@ -82,14 +82,16 @@ impl<'m> NativeExecutor<'m> {
             .get_module()
             .get_metadata::<SyscallHandlerMeta>()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
-        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
+
+        // Note: It appears this isn't being checked when running contracts on the VM.
+        // let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
         execute_contract(
             &self.engine,
             registry,
             fn_id,
             calldata,
-            required_initial_gas,
+            None,
             gas,
             syscall_handler,
         )
