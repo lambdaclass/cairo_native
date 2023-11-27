@@ -95,6 +95,8 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::{ErrorImpl, RunnerError},
     execute, execute_contract,
@@ -179,14 +181,16 @@
             </span>.get_module()
             .get_metadata::&lt;SyscallHandlerMeta&gt;()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_initial_gas = <span class="self">self</span>.native_module.get_required_init_gas(fn_id);
 
-        execute_contract(
+        <span class="comment">// Note: It appears this isn&#39;t being checked when running contracts on the VM.
+        // let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
+
+        </span>execute_contract(
             <span class="kw-2">&amp;</span><span class="self">self</span>.engine,
             registry,
             fn_id,
             calldata,
-            required_initial_gas,
+            <span class="prelude-val">None</span>,
             gas,
             syscall_handler,
         )

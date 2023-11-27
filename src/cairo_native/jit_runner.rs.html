@@ -397,6 +397,9 @@
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT runner
 
 </span><span class="kw">use crate</span>::{
@@ -533,14 +536,17 @@
 
                 <span class="comment">// If program has a required initial gas, check if a gas builtin exists and check if the passed
                 // gas was enough, if so, deduct the required gas before execution.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_initial_gas) = required_initial_gas {
-                    <span class="kw">if </span>gas &lt; required_initial_gas {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(make_insufficient_gas_error(required_initial_gas, gas));
-                    }
+                </span><span class="kw">unsafe </span>{
+                    gas_builtin.write(<span class="kw">match </span>required_initial_gas {
+                        <span class="prelude-val">Some</span>(required_initial_gas) =&gt; {
+                            <span class="kw">if </span>gas &lt; required_initial_gas {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(make_insufficient_gas_error(required_initial_gas, gas));
+                            }
 
-                    <span class="kw">let </span>starting_gas = gas - required_initial_gas;
-
-                    <span class="kw">unsafe </span>{ gas_builtin.write(starting_gas) };
+                            gas - required_initial_gas
+                        }
+                        <span class="prelude-val">None </span>=&gt; gas,
+                    });
                 }
 
                 params_ptrs.push(ptr);
