@@ -116,3 +116,4 @@ pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
+pub use ffi::{module_to_object, object_to_shared_lib, LLVMCompileError};
