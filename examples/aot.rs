@@ -1,26 +1,13 @@
 use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program_registry::ProgramRegistry,
-};
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::{
     aot,
     context::NativeContext,
-    metadata::{debug_utils::DebugUtils, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::find_entry_point_by_idx,
 };
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_llvm_translations},
-    Context,
-};
 use std::{error::Error, path::Path};
-use tempfile::NamedTempFile;
 
 #[derive(Debug)]
 struct SyscallHandler;
@@ -48,9 +35,6 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
     let mlir = native_program.module().as_operation().to_string();
     std::fs::write("aot.mlir", mlir)?;
-
-    let mut metadata = MetadataStorage::new();
-    metadata.insert(DebugUtils::default());
 
     let object = cairo_native::module_to_object(native_program.module())?;
 

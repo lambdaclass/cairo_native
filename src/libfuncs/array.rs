@@ -193,22 +193,6 @@ where
         ptr_ty,
         location,
     ));
-    let op_ptr_casted = entry
-        .append_operation(llvm::bitcast(
-            op_ptr.result(0)?.into(),
-            opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    metadata.get_mut::<DebugUtils>().unwrap().print_pointer(
-        context,
-        helper,
-        entry,
-        op_ptr_casted,
-        location,
-    )?;
-    dbg!("called");
     let op_length = entry.append_operation(llvm::extract_value(
         context,
         entry.argument(0)?.into(),
