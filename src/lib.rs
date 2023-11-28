@@ -15,64 +15,42 @@
 //! times.
 //!
 //! ```
+//! use cairo_felt::Felt252;
 //! use cairo_native::context::NativeContext;
 //! use cairo_native::executor::NativeExecutor;
-//! use melior::ir::operation::OperationPrintingFlags;
-//! use serde_json::json;
-//! use std::{io::stdout, path::Path};
-//!
-//! // FIXME: Remove when cairo adds an easy to use API for setting the corelibs path.
-//! std::env::set_var(
-//!     "CARGO_MANIFEST_DIR",
-//!     format!("{}/a", std::env::var("CARGO_MANIFEST_DIR").unwrap()),
-//! );
-//!
-//! #[cfg(not(feature = "with-runtime"))]
-//! compile_error!("This example requires the `with-runtime` feature to be active.");
-//!
-//! let name = cairo_native::utils::felt252_short_str("user");
-//!
-//! let program_path = Path::new("programs/examples/hello.cairo");
-
-//!
-//! // Compile the cairo program to sierra.
-//! let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
-//!
-//! // Instantiate a Cairo Native MLIR context. This data structure is responsible for the
-//! // MLIR initialization and compilation of sierra programs into a MLIR module.
-//! let native_context = NativeContext::new();
-//!
-//! // Compile the sierra program into a MLIR module. The MLIR program lowering into LLVM is done here too.
-//! let native_program = native_context.compile(&sierra_program).expect("Compilation from Cairo to MLIR failed");
-//!
-//! // Print the resulting MLIR program.
-//! println!(
-//!     "{}",
-//!     native_program
-//!         .module()
-//!         .as_operation()
-//!         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))
-//!         .expect("MLIR printing failed")
-//! );
-//!
-//! // At this point we could stop here, but let's continue with the JIT execution for the sake of
-//! // completion.
-//!
-//! // Get necessary information for the execution of the program from a given entrypoint:
-//! //   * entrypoint function id
-//! //   * required initial gas
-//! let entry_point = "hello::hello::greet";
-//! let params = json!([name]);
-//! let returns = &mut serde_json::Serializer::new(stdout());
-//! let fn_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-//! let required_init_gas = native_program.get_required_init_gas(&fn_id);
-//!
-//! // JIT engine initialization. This engine may be cached in memory to keep potential JIT
-//! // optimizations between invocations.
-//! let native_executor = NativeExecutor::new(native_program);
-//!
-//! // Invoke the function.
-//! native_executor.execute(&fn_id, params, returns, required_init_gas).unwrap();
+//! use cairo_native::values::JITValue;
+//! use std::path::Path;
+//! 
+//! fn main() {
+//!     let program_path = Path::new("programs/examples/hello.cairo");
+//!     // Compile the cairo program to sierra.
+//!     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+//! 
+//!     // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+//!     // initialization and compilation of sierra programs into a MLIR module.
+//!     let native_context = NativeContext::new();
+//! 
+//!     // Compile the sierra program into a MLIR module.
+//!     let native_program = native_context.compile(&sierra_program).unwrap();
+//! 
+//!     // The parameters of the entry point.
+//!     let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+//! 
+//!     // Find the entry point id by its name.
+//!     let entry_point = "hello::hello::greet";
+//!     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+//! 
+//!     // Instantiate the executor.
+//!     let native_executor = NativeExecutor::new(native_program);
+//! 
+//!     // Execute the program.
+//!     let result = native_executor
+//!         .execute(entry_point_id, params, None)
+//!         .unwrap();
+//! 
+//!     println!("Cairo program was compiled and executed successfully.");
+//!     println!("{:?}", result);
+//! }
 //!
 //! ```
 //!
