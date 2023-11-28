@@ -1,15 +1,26 @@
 use std::{
+    alloc::Layout,
     error::Error,
     mem::ManuallyDrop,
     path::Path,
-    ptr::{addr_of, addr_of_mut},
+    ptr::{addr_of, addr_of_mut, NonNull},
 };
 
-use cairo_lang_sierra::program::{GenFunction, StatementIdx};
+use bumpalo::Bump;
+use cairo_lang_sierra::{
+    extensions::core::{CoreLibfunc, CoreType},
+    program::{GenFunction, StatementIdx},
+    program_registry::ProgramRegistry,
+};
 
-use crate::starknet::{
-    handler::{SyscallResultAbi, SyscallResultAbiErr, SyscallResultAbiOk},
-    Felt252Abi, StarkNetSyscallHandler,
+use crate::{
+    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{
+        handler::{SyscallResultAbi, SyscallResultAbiErr, SyscallResultAbiOk},
+        Felt252Abi, StarkNetSyscallHandler,
+    },
+    utils::{felt252_bigint, get_integer_layout},
+    values::JITValue,
 };
 
 #[derive(Debug)]
@@ -53,10 +64,11 @@ struct RetValue {
     return_values: RetEnum,
 }
 
-pub fn call_contract_library(
+pub fn call_contract_library<T: StarkNetSyscallHandler>(
     path: &Path,
     entry_point: &GenFunction<StatementIdx>,
-    syscall_handler: &mut dyn StarkNetSyscallHandler,
+    syscall_handler: &mut T,
+    reg: &ProgramRegistry<CoreType, CoreLibfunc>,
 ) -> Result<(), Box<dyn Error>> {
     dbg!(&entry_point.signature);
     let symbol: &str = entry_point.id.debug_name.as_deref().unwrap();
@@ -75,26 +87,45 @@ pub fn call_contract_library(
         // (%arg0: !llvm.ptr, %arg1: !llvm.array<0 x i8>, %arg2: i128, %arg3: !llvm.ptr, %arg4: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>)
         // attributes {llvm.emit_c_interface, sym_visibility = "public"} {
 
-        let syscall_ptr = addr_of_mut!(*syscall_handler).cast();
-        dbg!(syscall_ptr);
+        let arena = Bump::new();
+
+        let ty = &entry_point.params[3].ty;
+        dbg!(ty);
+
+        let calldata = JITValue::Struct {
+            fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
+            debug_name: None,
+        }
+        .to_jit(&arena, reg, ty)
+        .unwrap();
+
+        let syscall_handler_meta = SyscallHandlerMeta::new(syscall_handler);
+
+        let syscall_addr = syscall_handler_meta.as_ptr().as_ptr() as *const () as usize;
+
+        let syscall_alloc = arena.alloc(syscall_addr as *mut ());
+
+        let gas_ptr: *mut u128 = arena.alloc_layout(Layout::new::<u128>()).as_ptr().cast();
+        gas_ptr.write(u64::MAX.into());
 
         let func: libloading::Symbol<
             unsafe extern "C" fn(
-                range_check: (),
-                gas_builtin: &u128,
+                range_check: *const (),
+                gas_builtin: *mut u128,
                 syscall_handler: *mut (),
-                calldata: Calldata,
+                calldata: *mut (),
             ) -> *mut RetValue,
         > = lib.get(format!("_mlir_ciface_{}", symbol).as_bytes())?;
 
         let gas: u128 = u64::MAX.into();
-        let result = func((), &gas, syscall_ptr, calldata);
+        let range_check = arena.alloc_layout(Layout::new::<()>()).as_ptr().cast();
+        let result = func(range_check, gas_ptr, syscall_alloc.cast(), calldata.as_ptr().cast());
 
         // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
 
         println!("{:#010b}", (*result).return_values.tag);
 
-        dbg!(gas);
+        dbg!(*gas_ptr);
         dbg!((*result).gas);
         dbg!(gas == (*result).gas);
         dbg!(gas.saturating_sub((*result).gas));

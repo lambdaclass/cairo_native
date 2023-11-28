@@ -44,7 +44,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
 
-    aot::call_contract_library(libpath, entry_point_fn, &mut SyscallHandler)?;
+    let reg = native_program.program_registry();
+    aot::call_contract_library(libpath, entry_point_fn, &mut SyscallHandler, reg)?;
 
     Ok(())
 }

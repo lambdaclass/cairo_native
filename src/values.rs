@@ -150,7 +150,6 @@ impl JITValue {
                 }
                 JITValue::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
-                        // todo: if its snapshot  cargo r --example starknet
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty
                             .layout(registry)
