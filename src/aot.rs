@@ -36,13 +36,13 @@ pub struct Calldata {
 struct RetEnum {
     tag: u8,
     // data exists if tag == 0
-    data: RetEnumData
+    data: RetEnumData,
 }
 
 #[repr(C)]
 union RetEnumData {
     ok: (),
-    err: (*const Felt252Abi, u32, u32)
+    err: (*const Felt252Abi, u32, u32),
 }
 
 #[repr(C)]
@@ -66,9 +66,7 @@ pub fn call_contract_library(
     let felt = Felt252Abi([1; 32]);
     let payload = (addr_of!(felt), 1, 1);
 
-    let calldata = Calldata {
-        calldata: payload,
-    };
+    let calldata = Calldata { calldata: payload };
 
     unsafe {
         let lib = libloading::Library::new(path)?;
@@ -90,12 +88,7 @@ pub fn call_contract_library(
         > = lib.get(format!("_mlir_ciface_{}", symbol).as_bytes())?;
 
         let gas: u128 = u64::MAX.into();
-        let result = func(
-            (),
-            &gas,
-            syscall_ptr,
-            calldata,
-        );
+        let result = func((), &gas, syscall_ptr, calldata);
 
         // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
 

@@ -189,7 +189,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
         }
     };
 
-    dbg!(args);
     let mut linker = std::process::Command::new("ld");
     let proc = linker.args(args.iter()).output()?;
     if proc.status.success() {
