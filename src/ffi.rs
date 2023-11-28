@@ -161,10 +161,12 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-dylib",
                 "-L/usr/local/lib",
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
+                "-L/Users/edgar/Documents/cairo_sierra_to_mlir/target/debug/",
                 &file.display().to_string(),
                 "-o",
                 &output_filename.display().to_string(),
                 "-lSystem",
+                "-lcairo_native_runtime",
             ]
         }
         #[cfg(target_os = "linux")]
@@ -187,8 +189,13 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
         }
     };
 
+    dbg!(args);
     let mut linker = std::process::Command::new("ld");
-    let proc = linker.args(args.iter()).spawn()?;
-    proc.wait_with_output()?;
-    Ok(())
+    let proc = linker.args(args.iter()).output()?;
+    if proc.status.success() {
+        Ok(())
+    } else {
+        let msg = String::from_utf8_lossy(&proc.stderr);
+        panic!("error linking:\n{}", msg);
+    }
 }

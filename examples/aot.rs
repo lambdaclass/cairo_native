@@ -7,7 +7,8 @@ use cairo_lang_sierra::{
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::{
     aot,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    context::NativeContext,
+    metadata::{debug_utils::DebugUtils, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
     utils::find_entry_point_by_idx,
 };
@@ -26,6 +27,7 @@ struct SyscallHandler;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let path = Path::new("programs/examples/hello_starknet.cairo");
+    let libpath = Path::new("aot.so");
 
     let contract = compile_path(
         path,
@@ -40,57 +42,25 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
 
-    // Load the program.
-    let context = Context::new();
+    let native_context = NativeContext::new();
 
-    // Initialize MLIR.
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_llvm_translations(&context);
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
-    // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
+    let mlir = native_program.module().as_operation().to_string();
+    std::fs::write("aot.mlir", mlir)?;
+
     let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&sierra_program)?;
+    metadata.insert(DebugUtils::default());
 
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+    let object = cairo_native::module_to_object(native_program.module())?;
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        &sierra_program,
-        &registry,
-        &mut metadata,
-        None,
-    )?;
-
-    // lower to llvm dialect
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    pass_manager.run(&mut module)?;
-
-    let object = cairo_native::module_to_object(&module)?;
-
-    let file = NamedTempFile::new()?.into_temp_path();
-    cairo_native::object_to_shared_lib(&object, &file)?;
+    //let file = NamedTempFile::new()?.into_temp_path();
+    cairo_native::object_to_shared_lib(&object, libpath)?;
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
 
-    aot::call_contract_library(&file, entry_point_fn, &mut SyscallHandler)?;
+    aot::call_contract_library(libpath, entry_point_fn, &mut SyscallHandler)?;
 
     Ok(())
 }

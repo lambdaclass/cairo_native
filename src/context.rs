@@ -16,7 +16,7 @@ use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
     pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_passes},
+    utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
 
@@ -104,5 +104,6 @@ pub fn initialize_mlir() -> Context {
     });
     context.load_all_available_dialects();
     register_all_passes();
+    register_all_llvm_translations(&context);
     context
 }

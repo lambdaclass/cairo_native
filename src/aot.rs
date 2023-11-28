@@ -15,7 +15,7 @@ use crate::starknet::{
 #[derive(Debug)]
 #[repr(C)]
 struct ResultError {
-    ptr: *const (),
+    ptr: *const Felt252Abi,
     len: u32,
     cap: u32,
 }
@@ -31,6 +31,7 @@ pub fn call_contract_library(
     entry_point: &GenFunction<StatementIdx>,
     syscall_handler: &mut dyn StarkNetSyscallHandler,
 ) -> Result<(), Box<dyn Error>> {
+    dbg!(&entry_point.signature);
     let symbol: &str = entry_point.id.debug_name.as_deref().unwrap();
 
     // todo: verify signature matches that of a contract, so unsafe is "safe"
@@ -51,7 +52,7 @@ pub fn call_contract_library(
                 syscall_handler: *mut (),
                 calldata: Calldata,
             ) -> SyscallResultAbi<()>,
-        > = lib.get(symbol.as_bytes())?;
+        > = lib.get(format!("_mlir_ciface_{}", symbol).as_bytes())?;
 
         let mut gas: u128 = u64::MAX.into();
         let x = func(
@@ -61,6 +62,7 @@ pub fn call_contract_library(
             calldata,
         );
         dbg!(x.ok.tag);
+        dbg!(x.err.tag);
     }
     Ok(())
 }

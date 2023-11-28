@@ -86,8 +86,8 @@ codegen-units = 1
 opt-level = 3
 
 # On dev optimize dependencies a bit so it's not as slow.
-#[profile.dev.package."*"]
-#opt-level = 1
+[profile.dev.package."*"]
+opt-level = 1
 
 [workspace]
 members = ["runtime"]
