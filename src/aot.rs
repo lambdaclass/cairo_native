@@ -70,15 +70,15 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
     syscall_handler: &mut T,
     reg: &ProgramRegistry<CoreType, CoreLibfunc>,
 ) -> Result<(), Box<dyn Error>> {
-    dbg!(&entry_point.signature);
+    // dbg!(&entry_point.signature);
     let symbol: &str = entry_point.id.debug_name.as_deref().unwrap();
 
     // todo: verify signature matches that of a contract, so unsafe is "safe"
 
-    let felt = Felt252Abi([1; 32]);
-    let payload = (addr_of!(felt), 1, 1);
+    //let felt = Felt252Abi([1; 32]);
+    //let payload = (addr_of!(felt), 1, 1);
 
-    let calldata = Calldata { calldata: payload };
+    //let calldata = Calldata { calldata: payload };
 
     unsafe {
         let lib = libloading::Library::new(path)?;
@@ -90,14 +90,20 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         let arena = Bump::new();
 
         let ty = &entry_point.params[3].ty;
-        dbg!(ty);
+        // dbg!(ty);
 
         let calldata = JITValue::Struct {
-            fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
+            fields: vec![JITValue::Array(vec![
+                JITValue::Felt252(1.into()),
+                JITValue::Felt252(1.into()),
+                JITValue::Felt252(1.into()),
+            ])],
             debug_name: None,
         }
         .to_jit(&arena, reg, ty)
         .unwrap();
+
+        dbg!(&calldata);
 
         let syscall_handler_meta = SyscallHandlerMeta::new(syscall_handler);
 
@@ -119,7 +125,12 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
 
         let gas: u128 = u64::MAX.into();
         let range_check = arena.alloc_layout(Layout::new::<()>()).as_ptr().cast();
-        let result = func(range_check, gas_ptr, syscall_alloc.cast(), calldata.as_ptr().cast());
+        let result = func(
+            range_check,
+            gas_ptr,
+            syscall_alloc.cast(),
+            calldata.as_ptr().cast(),
+        );
 
         // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
 

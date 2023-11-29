@@ -686,6 +686,11 @@ where
 
     let new_elem_ptr = op.result(0)?.into();
 
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block_not_empty, location)?;
+
     let op = block_not_empty.append_operation(llvm::load(
         context,
         elem_ptr,
@@ -698,6 +703,11 @@ where
     ));
     let elem_value = op.result(0)?.into();
 
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block_not_empty, location)?;
+
     block_not_empty.append_operation(llvm::store(
         context,
         elem_value,
@@ -708,6 +718,11 @@ where
             IntegerType::new(context, 64).into(),
         ))),
     ));
+
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block_not_empty, location)?;
 
     let op = block_not_empty.append_operation(arith::constant(
         context,

@@ -14,7 +14,7 @@ struct SyscallHandler;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let path = Path::new("programs/examples/hello_starknet.cairo");
-    let libpath = Path::new("aot.so");
+    let libpath = Path::new("./aot.so");
 
     let contract = compile_path(
         path,

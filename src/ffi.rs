@@ -104,7 +104,7 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
@@ -161,7 +161,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-dylib",
                 "-L/usr/local/lib",
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
-                "-L/Users/edgar/Documents/cairo_sierra_to_mlir/target/debug/",
+                "-L/Users/edgar/Documents/cairo_sierra_to_mlir/target/debug/", // change me
                 &file.display().to_string(),
                 "-o",
                 &output_filename.display().to_string(),
@@ -175,11 +175,15 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "--hash-style=gnu",
                 "--eh-frame-hdr",
                 "-shared",
-                "-o",
-                &output_filename.display().to_string(),
+                "-L/data2/edgar/work/native/target/debug", // change me
+                "-rpath=/data2/edgar/work/native/target/debug", // change me
+                "-rpath-link=/data2/edgar/work/native/target/debug", // change me
                 "-L/lib/../lib64",
                 "-L/usr/lib/../lib64",
+                "-o",
+                &output_filename.display().to_string(),
                 "-lc",
+                "-lcairo_native_runtime",
                 &file.display().to_string(),
             ]
         }

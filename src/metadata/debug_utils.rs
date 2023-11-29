@@ -93,6 +93,7 @@ use melior::{
     dialect::{func, llvm},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::{FunctionType, IntegerType},
         Block, Identifier, Location, Module, Region, Value,
     },
@@ -145,6 +146,18 @@ impl DebugUtils {
             location,
         ));
 
+        Ok(())
+    }
+
+    pub fn debug_breakpoint_trap<'c, 'a>(
+        &mut self,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
         Ok(())
     }
 
