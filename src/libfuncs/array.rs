@@ -703,11 +703,6 @@ where
     ));
     let elem_value = op.result(0)?.into();
 
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(block_not_empty, location)?;
-
     block_not_empty.append_operation(llvm::store(
         context,
         elem_value,
@@ -718,11 +713,6 @@ where
             IntegerType::new(context, 64).into(),
         ))),
     ));
-
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(block_not_empty, location)?;
 
     let op = block_not_empty.append_operation(arith::constant(
         context,
@@ -783,6 +773,11 @@ where
 
     let array_ptr_src_opaque = array_ptr_src;
 
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block_not_empty, location)?;
+
     block_not_empty.append_operation(
         OperationBuilder::new("llvm.intr.memmove", location)
             .add_attributes(&[(
@@ -792,6 +787,11 @@ where
             .add_operands(&[array_opaque_ptr, array_ptr_src_opaque, elems_size])
             .build()?,
     );
+
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block_not_empty, location)?;
 
     let op = block_not_empty.append_operation(llvm::insert_value(
         context,

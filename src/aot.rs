@@ -93,11 +93,7 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         // dbg!(ty);
 
         let calldata = JITValue::Struct {
-            fields: vec![JITValue::Array(vec![
-                JITValue::Felt252(1.into()),
-                JITValue::Felt252(1.into()),
-                JITValue::Felt252(1.into()),
-            ])],
+            fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
             debug_name: None,
         }
         .to_jit(&arena, reg, ty)
@@ -110,12 +106,15 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         let syscall_addr = syscall_handler_meta.as_ptr().as_ptr() as *const () as usize;
 
         let syscall_alloc = arena.alloc(syscall_addr as *mut ());
+        let return_value = libc::malloc(8094);
+        return_value.cast::<u32>().write(0xbeef);
 
         let gas_ptr: *mut u128 = arena.alloc_layout(Layout::new::<u128>()).as_ptr().cast();
         gas_ptr.write(u64::MAX.into());
 
         let func: libloading::Symbol<
             unsafe extern "C" fn(
+                return_value: *mut (),
                 range_check: *const (),
                 gas_builtin: *mut u128,
                 syscall_handler: *mut (),
@@ -125,7 +124,9 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
 
         let gas: u128 = u64::MAX.into();
         let range_check = arena.alloc_layout(Layout::new::<()>()).as_ptr().cast();
+        // segfaults due to a memmove on the calldata pointer (?)
         let result = func(
+            return_value.cast(),
             range_check,
             gas_ptr,
             syscall_alloc.cast(),

@@ -204,7 +204,6 @@ impl JITValue {
                             .unwrap()
                             .cast()
                             .as_mut() = cap;
-                        dbg!(&target);
                         target.cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
