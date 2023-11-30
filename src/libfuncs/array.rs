@@ -9,7 +9,7 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
@@ -686,10 +686,12 @@ where
 
     let new_elem_ptr = op.result(0)?.into();
 
+    /*
     metadata
         .get_mut::<DebugUtils>()
         .unwrap()
         .debug_breakpoint_trap(block_not_empty, location)?;
+    */
 
     let op = block_not_empty.append_operation(llvm::load(
         context,
@@ -773,10 +775,12 @@ where
 
     let array_ptr_src_opaque = array_ptr_src;
 
+    /*
     metadata
         .get_mut::<DebugUtils>()
         .unwrap()
         .debug_breakpoint_trap(block_not_empty, location)?;
+    */
 
     block_not_empty.append_operation(
         OperationBuilder::new("llvm.intr.memmove", location)
@@ -788,10 +792,12 @@ where
             .build()?,
     );
 
+    /*
     metadata
         .get_mut::<DebugUtils>()
         .unwrap()
         .debug_breakpoint_trap(block_not_empty, location)?;
+    */
 
     let op = block_not_empty.append_operation(llvm::insert_value(
         context,

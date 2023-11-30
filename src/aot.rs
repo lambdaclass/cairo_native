@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{
     alloc::Layout,
     error::Error,
@@ -57,11 +58,27 @@ union RetEnumData {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 struct RetValue {
     range_check: (),
     gas: u128,
     syscall_handler: *const (),
     return_values: RetEnum,
+}
+
+impl fmt::Debug for RetEnum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let res = if self.tag == 0 {
+            Result::Ok(())
+        } else {
+            Result::Err(unsafe { self.data.err })
+        };
+
+        f.debug_struct("RetEnum")
+            .field("tag", &self.tag)
+            .field("data", &res)
+            .finish()
+    }
 }
 
 pub fn call_contract_library<T: StarkNetSyscallHandler>(
@@ -106,47 +123,43 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         let syscall_addr = syscall_handler_meta.as_ptr().as_ptr() as *const () as usize;
 
         let syscall_alloc = arena.alloc(syscall_addr as *mut ());
-        let return_value = libc::malloc(8094);
-        return_value.cast::<u32>().write(0xbeef);
+        let return_value = arena.alloc_layout(Layout::new::<RetValue>()).cast();
 
         let gas_ptr: *mut u128 = arena.alloc_layout(Layout::new::<u128>()).as_ptr().cast();
-        gas_ptr.write(u64::MAX.into());
+        gas_ptr.write(10000000000);
 
         let func: libloading::Symbol<
             unsafe extern "C" fn(
-                return_value: *mut (),
-                range_check: *const (),
-                gas_builtin: *mut u128,
+                return_value: *mut RetValue,
+                range_check: (),
+                gas_builtin: u128,
                 syscall_handler: *mut (),
                 calldata: *mut (),
-            ) -> *mut RetValue,
-        > = lib.get(format!("_mlir_ciface_{}", symbol).as_bytes())?;
+            ),
+        > = lib.get(format!("_mlir_ciface_{}\0", symbol).as_bytes())?;
 
-        let gas: u128 = u64::MAX.into();
-        let range_check = arena.alloc_layout(Layout::new::<()>()).as_ptr().cast();
-        // segfaults due to a memmove on the calldata pointer (?)
-        let result = func(
-            return_value.cast(),
-            range_check,
-            gas_ptr,
+        let gas: u128 = 10000000000;
+        func(
+            return_value.as_ptr(),
+            (),
+            gas,
             syscall_alloc.cast(),
             calldata.as_ptr().cast(),
         );
 
         // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
 
-        println!("{:#010b}", (*result).return_values.tag);
+        let return_value = return_value.as_ptr();
 
-        dbg!(*gas_ptr);
-        dbg!((*result).gas);
-        dbg!(gas == (*result).gas);
-        dbg!(gas.saturating_sub((*result).gas));
-        dbg!((*result).syscall_handler);
-        dbg!((*result).return_values.tag);
-        dbg!((*result).return_values.tag & 0x1);
+        println!("{:#010b}", (*return_value).return_values.tag);
 
-        let x = (*result).return_values.data.err;
-        dbg!(x);
+        let res_data = return_value.as_ref().unwrap();
+        dbg!(return_value);
+        dbg!(res_data);
+        dbg!(gas == (*return_value).gas);
+        dbg!(gas.saturating_sub((*return_value).gas));
+
+        std::mem::forget(arena);
     }
     Ok(())
 }

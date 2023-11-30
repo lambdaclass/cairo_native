@@ -5,8 +5,8 @@ use llvm_sys::{
     },
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
-        LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
-        LLVM_InitializeAllTargets,
+        LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
+        LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
     },
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
@@ -69,6 +69,7 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
         LLVM_InitializeAllTargetInfos();
         LLVM_InitializeAllTargetMCs();
         LLVM_InitializeAllAsmPrinters();
+        LLVM_InitializeAllAsmParsers();
     });
 
     unsafe {
