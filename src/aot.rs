@@ -161,9 +161,9 @@ pub fn call_contract_library<T: StarkNetSyscallHandler + Debug>(
         let func: libloading::Symbol<
             unsafe extern "C" fn(
                 return_value: *mut RetValue,
-                range_check: (),
+                range_check: [u8; 0],
                 gas_builtin: u128,
-                syscall_handler: *mut (),
+                syscall_handler: *mut std::ffi::c_void,
                 calldata: Calldata,
             ),
         > = lib.get(format!("_mlir_ciface_{}\0", symbol).as_bytes())?;
@@ -171,7 +171,7 @@ pub fn call_contract_library<T: StarkNetSyscallHandler + Debug>(
         let gas: u128 = 10000000000;
         func(
             return_value.as_ptr(),
-            (),
+            [],
             gas,
             syscall_addr.cast(),
             calldata,
