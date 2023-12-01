@@ -151,10 +151,13 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
 
         let syscall_handler_meta = SyscallHandlerMeta::new(syscall_handler);
 
+        dbg!(syscall_handler_meta.as_ptr().as_ptr());
         let syscall_addr = syscall_handler_meta.as_ptr().as_ptr() as *const () as usize;
 
         let syscall_alloc = arena.alloc(syscall_addr as *mut ());
+        dbg!(&syscall_alloc);
         let return_value = arena.alloc_layout(Layout::new::<RetValue>()).cast();
+        dbg!(return_value);
 
         let gas_ptr: *mut u128 = arena.alloc_layout(Layout::new::<u128>()).as_ptr().cast();
         gas_ptr.write(10000000000);
@@ -187,7 +190,6 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         let res_data = return_value.as_ref().unwrap();
         dbg!(return_value);
         dbg!(res_data);
-        dbg!(gas == (*return_value).gas);
         dbg!(gas.saturating_sub((*return_value).gas));
 
         std::mem::forget(arena);
