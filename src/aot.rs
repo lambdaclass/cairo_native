@@ -2,9 +2,9 @@ use core::fmt;
 use std::{
     alloc::Layout,
     error::Error,
-    mem::ManuallyDrop,
+    mem::{size_of, ManuallyDrop},
     path::Path,
-    ptr::{addr_of, addr_of_mut, NonNull},
+    ptr::{addr_of, addr_of_mut, null_mut, NonNull},
 };
 
 use bumpalo::Bump;
@@ -16,10 +16,7 @@ use cairo_lang_sierra::{
 
 use crate::{
     metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{
-        handler::{SyscallResultAbi, SyscallResultAbiErr, SyscallResultAbiOk},
-        Felt252Abi, StarkNetSyscallHandler,
-    },
+    starknet::StarkNetSyscallHandler,
     utils::{felt252_bigint, get_integer_layout},
     values::JITValue,
 };
@@ -31,6 +28,11 @@ struct ResultError {
     len: u32,
     cap: u32,
 }
+
+/// Binary representation of a `felt252` (in MLIR).
+#[derive(Debug, Clone)]
+#[repr(transparent)]
+pub struct Felt252Abi(pub [u8; 32]);
 
 #[derive(Debug)]
 #[repr(C)]
@@ -92,10 +94,39 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
 
     // todo: verify signature matches that of a contract, so unsafe is "safe"
 
-    //let felt = Felt252Abi([1; 32]);
-    //let payload = (addr_of!(felt), 1, 1);
+    let felt: *mut Felt252Abi = unsafe {
+        libc::realloc(
+            null_mut(),
+            Layout::array::<Felt252Abi>(1)
+                .unwrap()
+                .pad_to_align()
+                .size(),
+        )
+        .cast()
+    };
 
-    //let calldata = Calldata { calldata: payload };
+    unsafe {
+        felt.write(Felt252Abi([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 6,
+        ]));
+    }
+    /*
+       let felt = [
+           Felt252Abi([
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+               0, 0, 6,
+           ]),
+           Felt252Abi([
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+               0, 0, 6,
+           ]),
+       ]
+       .as_slice();
+    */
+    let payload = (felt.cast_const(), 1u32, 1u32);
+
+    let calldata = Calldata { calldata: payload };
 
     unsafe {
         let lib = libloading::Library::new(path)?;
@@ -109,7 +140,7 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         let ty = &entry_point.params[3].ty;
         // dbg!(ty);
 
-        let calldata = JITValue::Struct {
+        let calldata2 = JITValue::Struct {
             fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
             debug_name: None,
         }
@@ -134,7 +165,7 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
                 range_check: (),
                 gas_builtin: u128,
                 syscall_handler: *mut (),
-                calldata: *mut (),
+                calldata: Calldata,
             ),
         > = lib.get(format!("_mlir_ciface_{}\0", symbol).as_bytes())?;
 
@@ -144,7 +175,7 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
             (),
             gas,
             syscall_alloc.cast(),
-            calldata.as_ptr().cast(),
+            calldata,
         );
 
         // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
