@@ -1,6 +1,7 @@
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
 use std::{
     alloc::Layout,
+    fmt::Debug,
     ptr::{addr_of, NonNull},
 };
 
@@ -11,7 +12,7 @@ pub struct SyscallHandlerMeta {
 }
 
 impl SyscallHandlerMeta {
-    pub fn new<T>(handler_impl: &mut T) -> Self
+    pub fn new<T: Debug>(handler_impl: &mut T) -> Self
     where
         T: StarkNetSyscallHandler,
     {
@@ -22,8 +23,12 @@ impl SyscallHandlerMeta {
             )
         };
 
+        let callbacks = StarkNetSyscallHandlerCallbacks::new(handler_impl);
+
+        std::fs::write("output.log", format!("{:#?}", &callbacks)).unwrap();
+
         unsafe {
-            *handler.as_mut() = StarkNetSyscallHandlerCallbacks::new(handler_impl);
+            *handler.as_mut() = callbacks;
         }
 
         Self {

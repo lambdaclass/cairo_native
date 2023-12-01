@@ -775,21 +775,6 @@ where
 
     let array_ptr_src_opaque = array_ptr_src;
 
-    metadata.get_mut::<DebugUtils>().unwrap().print_pointer(
-        context,
-        helper,
-        block_not_empty,
-        array_opaque_ptr,
-        location,
-    )?;
-    metadata.get_mut::<DebugUtils>().unwrap().print_pointer(
-        context,
-        helper,
-        block_not_empty,
-        array_ptr_src_opaque,
-        location,
-    )?;
-
     block_not_empty.append_operation(
         OperationBuilder::new("llvm.intr.memmove", location)
             .add_attributes(&[(

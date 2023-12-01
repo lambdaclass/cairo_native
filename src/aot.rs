@@ -2,6 +2,7 @@ use core::fmt;
 use std::{
     alloc::Layout,
     error::Error,
+    fmt::Debug,
     mem::{size_of, ManuallyDrop},
     path::Path,
     ptr::{addr_of, addr_of_mut, null_mut, NonNull},
@@ -83,7 +84,7 @@ impl fmt::Debug for RetEnum {
     }
 }
 
-pub fn call_contract_library<T: StarkNetSyscallHandler>(
+pub fn call_contract_library<T: StarkNetSyscallHandler + Debug>(
     path: &Path,
     entry_point: &GenFunction<StatementIdx>,
     syscall_handler: &mut T,
@@ -137,9 +138,10 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
 
         let arena = Bump::new();
 
-        let ty = &entry_point.params[3].ty;
+        //let ty = &entry_point.params[3].ty;
         // dbg!(ty);
 
+        /*
         let calldata2 = JITValue::Struct {
             fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
             debug_name: None,
@@ -147,20 +149,14 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
         .to_jit(&arena, reg, ty)
         .unwrap();
 
+        */
+
         dbg!(&calldata);
 
         let syscall_handler_meta = SyscallHandlerMeta::new(syscall_handler);
+        let syscall_addr = syscall_handler_meta.as_ptr().as_ptr();
 
-        dbg!(syscall_handler_meta.as_ptr().as_ptr());
-        let syscall_addr = syscall_handler_meta.as_ptr().as_ptr() as *const () as usize;
-
-        let syscall_alloc = arena.alloc(syscall_addr as *mut ());
-        dbg!(&syscall_alloc);
         let return_value = arena.alloc_layout(Layout::new::<RetValue>()).cast();
-        dbg!(return_value);
-
-        let gas_ptr: *mut u128 = arena.alloc_layout(Layout::new::<u128>()).as_ptr().cast();
-        gas_ptr.write(10000000000);
 
         let func: libloading::Symbol<
             unsafe extern "C" fn(
@@ -177,11 +173,9 @@ pub fn call_contract_library<T: StarkNetSyscallHandler>(
             return_value.as_ptr(),
             (),
             gas,
-            syscall_alloc.cast(),
+            syscall_addr.cast(),
             calldata,
         );
-
-        // fix tag, because in llvm we use tag as a i1, the padding bytes may have garbage
 
         let return_value = return_value.as_ptr();
 
