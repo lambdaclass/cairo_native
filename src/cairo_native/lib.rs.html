@@ -116,6 +116,7 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="comment">// # Cairo Sierra to MLIR compiler and JIT engine
 </span><span class="doccomment">//!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
@@ -234,4 +235,5 @@
 <span class="kw">pub mod </span>types;
 <span class="kw">pub mod </span>utils;
 <span class="kw">pub mod </span>values;
+<span class="kw">pub use </span>ffi::{module_to_object, object_to_shared_lib, LLVMCompileError};
 </code></pre></div></section></main></body></html>

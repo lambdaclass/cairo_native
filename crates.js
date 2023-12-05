@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["cairo_native","cairo_native_dump","cairo_native_run","cairo_native_runtime"];
+window.ALL_CRATES = ["cairo_native","cairo_native_compile","cairo_native_dump","cairo_native_run","cairo_native_runtime"];
