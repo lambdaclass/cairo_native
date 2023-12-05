@@ -1005,7 +1005,10 @@ mod test {
     use std::ops::Neg;
 
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
+        utils::{
+            run_native_or_vm_program,
+            test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        },
         values::JITValue,
     };
     use cairo_felt::Felt252;
@@ -1096,7 +1099,17 @@ mod test {
     #[test]
     fn ec_point_is_zero() {
         let r = |x, y| {
-            run_program(&EC_POINT_IS_ZERO, "run_test", &[JITValue::EcPoint(x, y)]).return_values
+            run_native_or_vm_program(
+                &EC_POINT_IS_ZERO,
+                "run_test",
+                Some(&[JITValue::EcPoint(x, y)]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
         };
 
         assert_eq!(r(0.into(), 0.into()), [jit_enum!(0, jit_struct!())]);
@@ -1116,7 +1129,19 @@ mod test {
 
     #[test]
     fn ec_neg() {
-        let r = |x, y| run_program(&EC_NEG, "run_test", &[JITValue::EcPoint(x, y)]).return_values;
+        let r = |x, y| {
+            run_native_or_vm_program(
+                &EC_NEG,
+                "run_test",
+                Some(&[JITValue::EcPoint(x, y)]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
+        };
 
         assert_eq!(
             r(0.into(), 0.into()),
@@ -1138,8 +1163,19 @@ mod test {
 
     #[test]
     fn ec_point_from_x() {
-        let r =
-            |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", &[JITValue::Felt252(x)]).return_values;
+        let r = |x| {
+            run_native_or_vm_program(
+                &EC_POINT_FROM_X_NZ,
+                "run_test",
+                Some(&[JITValue::Felt252(x)]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
+        };
 
         assert_eq!(r(0.into()), [jit_enum!(1, jit_struct!())]);
         assert_eq!(r(1234.into()), [jit_enum!(0, JITValue::EcPoint(

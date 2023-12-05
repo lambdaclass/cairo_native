@@ -268,7 +268,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        utils::{
+            run_native_or_vm_program,
+            test::{jit_enum, jit_struct, load_cairo},
+        },
         values::JITValue,
     };
 
@@ -282,12 +285,30 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
+        let result = run_native_or_vm_program(
+            &program,
+            "run_test",
+            Some(&[jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
+        )
+        .right()
+        .unwrap()
+        .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
+        let result = run_native_or_vm_program(
+            &program,
+            "run_test",
+            Some(&[jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
+        )
+        .right()
+        .unwrap()
+        .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
 
@@ -301,35 +322,55 @@ mod test {
             }
         );
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
@@ -344,35 +385,55 @@ mod test {
             }
         );
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
@@ -387,35 +448,55 @@ mod test {
             }
         );
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
 
-        let result = run_program(
+        let result = run_native_or_vm_program(
             &program,
             "run_test",
-            &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
+            Some(&[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
         )
+        .right()
+        .unwrap()
         .return_values;
         assert_eq!(result, [jit_enum!(0, jit_struct!())]);
     }
@@ -428,12 +509,30 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
+        let result = run_native_or_vm_program(
+            &program,
+            "run_test",
+            Some(&[jit_enum!(1, jit_struct!())]),
+            None,
+            None,
+            None,
+        )
+        .right()
+        .unwrap()
+        .return_values;
         assert_eq!(result, [JITValue::Felt252(1.into())]);
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
+        let result = run_native_or_vm_program(
+            &program,
+            "run_test",
+            Some(&[jit_enum!(0, jit_struct!())]),
+            None,
+            None,
+            None,
+        )
+        .right()
+        .unwrap()
+        .return_values;
         assert_eq!(result, [JITValue::Felt252(0.into())]);
     }
 }

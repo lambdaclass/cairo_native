@@ -291,7 +291,10 @@ where
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{load_cairo, run_program, run_program_assert_output},
+        utils::{
+            run_native_or_vm_program,
+            test::{load_cairo, run_program_assert_output},
+        },
         values::JITValue,
     };
     use cairo_lang_sierra::program::Program;
@@ -383,7 +386,17 @@ pub mod test {
         );
 
         fn r(lhs: JITValue, rhs: JITValue) -> Vec<JITValue> {
-            run_program(&FELT252_ADD, "run_test", &[lhs, rhs]).return_values
+            run_native_or_vm_program(
+                &FELT252_ADD,
+                "run_test",
+                Some(&[lhs, rhs]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
         }
 
         assert_eq!(
@@ -453,7 +466,19 @@ pub mod test {
 
     #[test]
     fn felt252_sub() {
-        let r = |lhs, rhs| run_program(&FELT252_SUB, "run_test", &[lhs, rhs]).return_values;
+        let r = |lhs, rhs| {
+            run_native_or_vm_program(
+                &FELT252_SUB,
+                "run_test",
+                Some(&[lhs, rhs]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
+        };
 
         assert_eq!(
             r(JITValue::felt_str("0"), JITValue::felt_str("0")),
@@ -526,7 +551,19 @@ pub mod test {
 
     #[test]
     fn felt252_mul() {
-        let r = |lhs, rhs| run_program(&FELT252_MUL, "run_test", &[lhs, rhs]).return_values;
+        let r = |lhs, rhs| {
+            run_native_or_vm_program(
+                &FELT252_MUL,
+                "run_test",
+                Some(&[lhs, rhs]),
+                None,
+                None,
+                None,
+            )
+            .right()
+            .unwrap()
+            .return_values
+        };
 
         assert_eq!(
             r(JITValue::felt_str("0"), JITValue::felt_str("0")),
@@ -599,23 +636,33 @@ pub mod test {
 
     #[test]
     fn felt252_const() {
+        let result_type =
+            run_native_or_vm_program(&FELT252_CONST, "run_test", Some(&[]), None, None, None)
+                .right()
+                .unwrap()
+                .return_values;
         assert_eq!(
-            run_program(&FELT252_CONST, "run_test", &[]).return_values,
+            result_type,
             vec![JITValue::Struct {
                 fields: vec![
                     JITValue::felt_str("0"),
                     JITValue::felt_str("1"),
                     JITValue::felt_str("-2"),
-                    JITValue::felt_str("-1")
+                    JITValue::felt_str("-1"),
                 ],
-                debug_name: None
+                debug_name: None,
             }]
         );
     }
 
     #[test]
     fn felt252_is_zero() {
-        let r = |x| run_program(&FELT252_IS_ZERO, "run_test", &[x]).return_values;
+        let r = |x| {
+            run_native_or_vm_program(&FELT252_IS_ZERO, "run_test", Some(&[x]), None, None, None)
+                .right()
+                .unwrap()
+                .return_values
+        };
 
         assert_eq!(r(JITValue::felt_str("0")), vec![JITValue::felt_str("1")]);
         assert_eq!(r(JITValue::felt_str("1")), vec![JITValue::felt_str("0")]);

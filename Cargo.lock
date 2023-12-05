@@ -861,6 +861,7 @@ dependencies = [
  "cc",
  "clap",
  "educe",
+ "either",
  "id-arena",
  "itertools 0.12.0",
  "lambdaworks-math",

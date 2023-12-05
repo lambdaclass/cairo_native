@@ -48,6 +48,8 @@ thiserror = "1.0"
 tracing = "0.1"
 llvm-sys = "170.0.0"
 tempfile = "3.6"
+either = "1.8"
+cairo-lang-runner = "2.3.1"
 
 # CLI dependencies
 cairo-native-runtime = { path = "runtime", optional = true }

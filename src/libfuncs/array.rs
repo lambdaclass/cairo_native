@@ -1168,7 +1168,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        utils::{
+            run_native_or_vm_program,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo},
+        },
         values::JITValue,
     };
     use pretty_assertions_sorted::assert_eq;
@@ -1182,7 +1185,17 @@ mod test {
                 x
             }
         );
-        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_values;
+        let result = run_native_or_vm_program(
+            &program,
+            "run_test",
+            Some(&[[1u32, 2u32].into()]),
+            None,
+            None,
+            None,
+        )
+        .right()
+        .unwrap()
+        .return_values;
 
         assert_eq!(result, &[JITValue::from([1u32, 2u32])]);
     }
@@ -1198,7 +1211,10 @@ mod test {
                 numbers
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [[4u32].into()]);
     }
@@ -1216,7 +1232,10 @@ mod test {
                 numbers.len()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [3u32.into()]);
     }
@@ -1240,7 +1259,10 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(
             result,
@@ -1295,7 +1317,10 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(
             result,
@@ -1325,7 +1350,10 @@ mod test {
                 *numbers.at(0)
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
     }
@@ -1342,7 +1370,10 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [jit_enum!(0, 4u32.into())]);
 
@@ -1354,7 +1385,10 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [jit_enum!(1, jit_struct!())]);
     }
@@ -1374,7 +1408,10 @@ mod test {
                 }
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [4u32.into()]);
     }
@@ -1406,7 +1443,10 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
     }
@@ -1433,7 +1473,10 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_native_or_vm_program(&&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap()
+            .return_values;
 
         assert_eq!(
             result,

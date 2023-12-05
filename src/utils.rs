@@ -12,6 +12,7 @@ use cairo_lang_sierra::{
     program::{GenFunction, Program, StatementIdx},
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
+
 use melior::{
     ir::{Module, Type},
     Context, ExecutionEngine,
@@ -26,7 +27,18 @@ use std::{
     ptr::NonNull,
     sync::Arc,
 };
+use cairo_lang_runner::Arg;
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
+use either::{Either, Left, Right};
+use melior::{
+    ir::Location,
+    dialect::DialectRegistry
+};
 use thiserror::Error;
+use cairo_lang_runner::{RunResultStarknet, StarknetState,SierraCasmRunner};
+use crate::metadata::gas::GasMetadata;
+use crate::ExecutionResult;
+use crate::error::jit_engine::RunnerError;
 
 /// Generate a function name.
 ///
@@ -602,37 +614,436 @@ macro_rules! codegen_ret_extr {
 }
 pub(crate) use codegen_ret_extr;
 
+
+
+use crate::{
+    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+};
+
+
+
+use melior::pass::{self, PassManager};
+use melior::utility::{register_all_dialects, register_all_passes};
+use crate::metadata::gas::MetadataComputationConfig;
+use crate::metadata::runtime_bindings::RuntimeBindingsMeta;
+use crate::metadata::syscall_handler::SyscallHandlerMeta;
+use crate::values::JITValue;
+
+
+#[derive(Debug)]
+pub struct TestSyscallHandler;
+
+impl StarkNetSyscallHandler for TestSyscallHandler {
+    fn get_block_hash(
+        &mut self,
+        _block_number: u64,
+        _gas: &mut u128,
+    ) -> SyscallResult<cairo_felt::Felt252> {
+        Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
+    }
+
+    fn get_execution_info(
+        &mut self,
+        _gas: &mut u128,
+    ) -> SyscallResult<crate::starknet::ExecutionInfo> {
+        Ok(ExecutionInfo {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxInfo {
+                version: 4567.into(),
+                account_contract_address: 5678.into(),
+                max_fee: 6789,
+                signature: vec![1248.into(), 2486.into()],
+                transaction_hash: 9876.into(),
+                chain_id: 8765.into(),
+                nonce: 7654.into(),
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
+    }
+
+    fn deploy(
+        &mut self,
+        class_hash: cairo_felt::Felt252,
+        contract_address_salt: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
+        _deploy_from_zero: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
+        Ok((
+            class_hash + contract_address_salt,
+            calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+        ))
+    }
+
+    fn replace_class(
+        &mut self,
+        _class_hash: cairo_felt::Felt252,
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        Ok(())
+    }
+
+    fn library_call(
+        &mut self,
+        _class_hash: cairo_felt::Felt252,
+        _function_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
+        _gas: &mut u128,
+    ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+    }
+
+    fn call_contract(
+        &mut self,
+        _address: cairo_felt::Felt252,
+        _entry_point_selector: cairo_felt::Felt252,
+        calldata: &[cairo_felt::Felt252],
+        _gas: &mut u128,
+    ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+    }
+
+    fn storage_read(
+        &mut self,
+        _address_domain: u32,
+        address: cairo_felt::Felt252,
+        _gas: &mut u128,
+    ) -> SyscallResult<cairo_felt::Felt252> {
+        Ok(address * &Felt252::new(3))
+    }
+
+    fn storage_write(
+        &mut self,
+        _address_domain: u32,
+        _address: cairo_felt::Felt252,
+        _value: cairo_felt::Felt252,
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        Ok(())
+    }
+
+    fn emit_event(
+        &mut self,
+        _keys: &[cairo_felt::Felt252],
+        _data: &[cairo_felt::Felt252],
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        Ok(())
+    }
+
+    fn send_message_to_l1(
+        &mut self,
+        _to_address: cairo_felt::Felt252,
+        _payload: &[cairo_felt::Felt252],
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        Ok(())
+    }
+
+    fn keccak(&mut self, _input: &[u64], gas: &mut u128) -> SyscallResult<crate::starknet::U256> {
+        *gas -= 1000;
+        Ok(U256(Felt252::from(1234567890).to_le_bytes()))
+    }
+
+    fn secp256k1_add(
+        &mut self,
+        _p0: crate::starknet::Secp256k1Point,
+        _p1: crate::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_get_point_from_x(
+        &self,
+        _x: crate::starknet::U256,
+        _y_parity: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_get_xy(
+        &self,
+        _p: crate::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
+        todo!()
+    }
+
+    fn secp256k1_mul(
+        &self,
+        _p: crate::starknet::Secp256k1Point,
+        _m: crate::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_new(
+        &self,
+        _x: crate::starknet::U256,
+        _y: crate::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_add(
+        &self,
+        _p0: crate::starknet::Secp256k1Point,
+        _p1: crate::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_get_point_from_x(
+        &self,
+        _x: crate::starknet::U256,
+        _y_parity: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_get_xy(
+        &self,
+        _p: crate::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
+        todo!()
+    }
+
+    fn secp256r1_mul(
+        &self,
+        _p: crate::starknet::Secp256k1Point,
+        _m: crate::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_new(
+        &mut self,
+        _x: crate::starknet::U256,
+        _y: crate::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn pop_log(&mut self) {
+        todo!()
+    }
+
+    fn set_account_contract_address(&mut self, _contract_address: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_block_number(&mut self, _block_number: u64) {
+        todo!()
+    }
+
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
+        todo!()
+    }
+
+    fn set_caller_address(&mut self, _address: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_chain_id(&mut self, _chain_id: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_contract_address(&mut self, _address: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_max_fee(&mut self, _max_fee: u128) {
+        todo!()
+    }
+
+    fn set_nonce(&mut self, _nonce: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_sequencer_address(&mut self, _address: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_signature(&mut self, _signature: &[cairo_felt::Felt252]) {
+        todo!()
+    }
+
+    fn set_transaction_hash(&mut self, _transaction_hash: cairo_felt::Felt252) {
+        todo!()
+    }
+
+    fn set_version(&mut self, _version: cairo_felt::Felt252) {
+        todo!()
+    }
+}
+
+pub(crate) fn prepare_pass_manager(context: &Context) -> PassManager {
+    let pass_manager = PassManager::new(&context);
+
+    pass_manager.enable_verifier(true);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+
+    pass_manager
+}
+
+// Passing parameters in wrapped with Option make running via VM, otherwise run NativeStarknet
+#[cfg(test)]
+pub fn run_native_or_vm_program(
+    program: &(String, Program),
+    entry_point: &str,
+    args_native: Option<&[JITValue]>,
+    args_vm: Option<&[Arg]>,
+    // Running VM program
+    sierra_casm_runner: Option<SierraCasmRunner>,
+    gas: Option<usize>,
+) -> Either<ExecutionResult, Result<RunResultStarknet, RunnerError>> {
+    if sierra_casm_runner.is_some() && gas.is_some() {
+        let runner = &sierra_casm_runner.unwrap();
+        Left(runner.run_function_with_starknet_context(
+            runner.find_function(entry_point).unwrap(),
+            args_vm.unwrap(),
+            gas,
+            StarknetState::default(),
+        ))
+    } else {
+        let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
+        let program = &program.1;
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
+            .expect("Could not create the test program registry.");
+
+        let entry_point_id = &program
+            .funcs
+            .iter()
+            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+            .expect("Test program entry point not found.")
+            .id;
+
+        let context = Context::new();
+        context.append_dialect_registry(&{
+            let registry = DialectRegistry::new();
+            register_all_dialects(&registry);
+            registry
+        });
+        context.load_all_available_dialects();
+        register_all_passes();
+
+        let mut module = Module::new(Location::unknown(&context));
+
+        let mut metadata = MetadataStorage::new();
+
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+        // Gas
+        let required_initial_gas = if program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+        {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
+            metadata.insert(gas_metadata).unwrap();
+            required_initial_gas
+        } else {
+            None
+        };
+
+        crate::compile::<CoreType, CoreLibfunc>(
+            &context,
+            &module,
+            program,
+            &registry,
+            &mut metadata,
+            None,
+        )
+        .expect("Could not compile test program to MLIR.");
+
+        assert!(
+            module.as_operation().verify(),
+            "Test program generated invalid MLIR:\n{}",
+            module.as_operation()
+        );
+
+        let pass_manager = prepare_pass_manager(&context);
+
+        pass_manager
+            .run(&mut module)
+            .expect("Could not apply passes to the compiled test program.");
+
+        let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+        #[cfg(feature = "with-runtime")]
+        register_runtime_symbols(&engine);
+
+        #[cfg(feature = "with-debug-utils")]
+        metadata
+            .get::<crate::metadata::debug_utils::DebugUtils>()
+            .unwrap()
+            .register_impls(&engine);
+
+        let mut handler = TestSyscallHandler;
+        let handler = SyscallHandlerMeta::new(&mut handler);
+
+        metadata.insert(handler).unwrap();
+        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
+
+        Right(
+            crate::execute(
+                &engine,
+                &registry,
+                &program
+                    .funcs
+                    .iter()
+                    .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+                    .expect("Test program entry point not found.")
+                    .id,
+                args_native.unwrap(),
+                required_initial_gas,
+                Some(u64::MAX.into()),
+                Some(handler),
+            )
+            .expect("Test program execution failed."),
+        )
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
     use crate::{
-        jit_runner::ExecutionResult,
-        metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
-            MetadataStorage,
-        },
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
         values::JITValue,
     };
-    use cairo_lang_compiler::{
-        compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-        project::setup_project, CompilerConfig,
-    };
+    use cairo_lang_compiler::db::RootDatabase;
+    use cairo_lang_compiler::diagnostics::DiagnosticsReporter;
+    use cairo_lang_compiler::project::setup_project;
+    use cairo_lang_compiler::{compile_prepared_db, CompilerConfig};
     use cairo_lang_filesystem::db::init_dev_corelib;
-    use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
-        program::Program,
-        program_registry::ProgramRegistry,
-    };
-    use melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        pass::{self, PassManager},
-        utility::{register_all_dialects, register_all_passes},
-        Context, ExecutionEngine,
-    };
+    use cairo_lang_sierra::program::Program;
     use pretty_assertions_sorted::assert_eq;
     use std::{env::var, fs, path::Path};
 
@@ -716,122 +1127,6 @@ pub mod test {
         (module_name.to_string(), (*program).clone())
     }
 
-    pub fn run_program(
-        program: &(String, Program),
-        entry_point: &str,
-        args: &[JITValue],
-    ) -> ExecutionResult {
-        let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
-        let program = &program.1;
-
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-            .expect("Could not create the test program registry.");
-
-        let entry_point_id = &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-            .expect("Test program entry point not found.")
-            .id;
-
-        let context = Context::new();
-        context.append_dialect_registry(&{
-            let registry = DialectRegistry::new();
-            register_all_dialects(&registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
-
-        let mut module = Module::new(Location::unknown(&context));
-
-        let mut metadata = MetadataStorage::new();
-
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-        // Gas
-        let required_initial_gas = if program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-        {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-            metadata.insert(gas_metadata).unwrap();
-            required_initial_gas
-        } else {
-            None
-        };
-
-        crate::compile::<CoreType, CoreLibfunc>(
-            &context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )
-        .expect("Could not compile test program to MLIR.");
-
-        assert!(
-            module.as_operation().verify(),
-            "Test program generated invalid MLIR:\n{}",
-            module.as_operation()
-        );
-
-        let pass_manager = PassManager::new(&context);
-        pass_manager.enable_verifier(true);
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-        pass_manager
-            .run(&mut module)
-            .expect("Could not apply passes to the compiled test program.");
-
-        let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-        #[cfg(feature = "with-runtime")]
-        register_runtime_symbols(&engine);
-
-        #[cfg(feature = "with-debug-utils")]
-        metadata
-            .get::<crate::metadata::debug_utils::DebugUtils>()
-            .unwrap()
-            .register_impls(&engine);
-
-        let mut handler = TestSyscallHandler;
-        let handler = SyscallHandlerMeta::new(&mut handler);
-
-        metadata.insert(handler).unwrap();
-        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
-
-        crate::execute(
-            &engine,
-            &registry,
-            &program
-                .funcs
-                .iter()
-                .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-                .expect("Test program entry point not found.")
-                .id,
-            args,
-            required_initial_gas,
-            Some(u64::MAX.into()),
-            Some(handler),
-        )
-        .expect("Test program execution failed.")
-    }
-
     #[track_caller]
     pub fn run_program_assert_output(
         program: &(String, Program),
@@ -839,8 +1134,18 @@ pub mod test {
         args: &[JITValue],
         outputs: &[JITValue],
     ) {
-        let result = run_program(program, entry_point, args);
-        assert_eq!(result.return_values.as_slice(), outputs);
+        let result_execution =
+            run_native_or_vm_program(program, entry_point, Some(args), None, None, None);
+
+        assert!(
+            result_execution.is_right(),
+            "Has to be Native Execution return type"
+        );
+
+        assert_eq!(
+            result_execution.right().unwrap().return_values.as_slice(),
+            outputs
+        );
     }
 
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.
@@ -892,271 +1197,5 @@ pub mod test {
     #[ignore]
     fn test_alignment_compatibility_felt252() {
         assert_eq!(get_integer_layout(252).align(), 8);
-    }
-
-    #[derive(Debug)]
-    struct TestSyscallHandler;
-
-    impl StarkNetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(
-            &mut self,
-            _block_number: u64,
-            _gas: &mut u128,
-        ) -> SyscallResult<cairo_felt::Felt252> {
-            Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
-        }
-
-        fn get_execution_info(
-            &mut self,
-            _gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::ExecutionInfo> {
-            Ok(ExecutionInfo {
-                block_info: BlockInfo {
-                    block_number: 1234,
-                    block_timestamp: 2345,
-                    sequencer_address: 3456.into(),
-                },
-                tx_info: TxInfo {
-                    version: 4567.into(),
-                    account_contract_address: 5678.into(),
-                    max_fee: 6789,
-                    signature: vec![1248.into(), 2486.into()],
-                    transaction_hash: 9876.into(),
-                    chain_id: 8765.into(),
-                    nonce: 7654.into(),
-                },
-                caller_address: 6543.into(),
-                contract_address: 5432.into(),
-                entry_point_selector: 4321.into(),
-            })
-        }
-
-        fn deploy(
-            &mut self,
-            class_hash: cairo_felt::Felt252,
-            contract_address_salt: cairo_felt::Felt252,
-            calldata: &[cairo_felt::Felt252],
-            _deploy_from_zero: bool,
-            _gas: &mut u128,
-        ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
-            Ok((
-                class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
-            ))
-        }
-
-        fn replace_class(
-            &mut self,
-            _class_hash: cairo_felt::Felt252,
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn library_call(
-            &mut self,
-            _class_hash: cairo_felt::Felt252,
-            _function_selector: cairo_felt::Felt252,
-            calldata: &[cairo_felt::Felt252],
-            _gas: &mut u128,
-        ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-            Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
-        }
-
-        fn call_contract(
-            &mut self,
-            _address: cairo_felt::Felt252,
-            _entry_point_selector: cairo_felt::Felt252,
-            calldata: &[cairo_felt::Felt252],
-            _gas: &mut u128,
-        ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
-            Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
-        }
-
-        fn storage_read(
-            &mut self,
-            _address_domain: u32,
-            address: cairo_felt::Felt252,
-            _gas: &mut u128,
-        ) -> SyscallResult<cairo_felt::Felt252> {
-            Ok(address * &Felt252::new(3))
-        }
-
-        fn storage_write(
-            &mut self,
-            _address_domain: u32,
-            _address: cairo_felt::Felt252,
-            _value: cairo_felt::Felt252,
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn emit_event(
-            &mut self,
-            _keys: &[cairo_felt::Felt252],
-            _data: &[cairo_felt::Felt252],
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn send_message_to_l1(
-            &mut self,
-            _to_address: cairo_felt::Felt252,
-            _payload: &[cairo_felt::Felt252],
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn keccak(
-            &mut self,
-            _input: &[u64],
-            gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::U256> {
-            *gas -= 1000;
-            Ok(U256(Felt252::from(1234567890).to_le_bytes()))
-        }
-
-        fn secp256k1_add(
-            &mut self,
-            _p0: crate::starknet::Secp256k1Point,
-            _p1: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256k1_get_point_from_x(
-            &self,
-            _x: crate::starknet::U256,
-            _y_parity: bool,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256k1_get_xy(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
-            todo!()
-        }
-
-        fn secp256k1_mul(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _m: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256k1_new(
-            &self,
-            _x: crate::starknet::U256,
-            _y: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_add(
-            &self,
-            _p0: crate::starknet::Secp256k1Point,
-            _p1: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_get_point_from_x(
-            &self,
-            _x: crate::starknet::U256,
-            _y_parity: bool,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_get_xy(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
-            todo!()
-        }
-
-        fn secp256r1_mul(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _m: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_new(
-            &mut self,
-            _x: crate::starknet::U256,
-            _y: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn pop_log(&mut self) {
-            todo!()
-        }
-
-        fn set_account_contract_address(&mut self, _contract_address: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_block_number(&mut self, _block_number: u64) {
-            todo!()
-        }
-
-        fn set_block_timestamp(&mut self, _block_timestamp: u64) {
-            todo!()
-        }
-
-        fn set_caller_address(&mut self, _address: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_chain_id(&mut self, _chain_id: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_contract_address(&mut self, _address: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_max_fee(&mut self, _max_fee: u128) {
-            todo!()
-        }
-
-        fn set_nonce(&mut self, _nonce: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_sequencer_address(&mut self, _address: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_signature(&mut self, _signature: &[cairo_felt::Felt252]) {
-            todo!()
-        }
-
-        fn set_transaction_hash(&mut self, _transaction_hash: cairo_felt::Felt252) {
-            todo!()
-        }
-
-        fn set_version(&mut self, _version: cairo_felt::Felt252) {
-            todo!()
-        }
     }
 }

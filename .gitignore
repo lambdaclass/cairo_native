@@ -24,3 +24,4 @@ corelib
 
 cairo-*.tar
 /cairo2
+.idea

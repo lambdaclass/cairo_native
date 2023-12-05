@@ -68,7 +68,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_struct, load_cairo, run_program};
+    use crate::utils::{
+        run_native_or_vm_program,
+        test::{jit_struct, load_cairo},
+    };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
 
@@ -84,7 +87,12 @@ mod test {
 
     #[test]
     fn bitwise() {
-        let r = |lhs, rhs| run_program(&BITWISE, "run_test", &[lhs, rhs]).return_values;
+        let r = |lhs, rhs| {
+            run_native_or_vm_program(&BITWISE, "run_test", Some(&[lhs, rhs]), None, None, None)
+                .right()
+                .unwrap()
+                .return_values
+        };
 
         assert_eq!(
             r(

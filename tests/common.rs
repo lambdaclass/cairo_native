@@ -19,6 +19,7 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_native::utils::run_native_or_vm_program;
 use cairo_native::{
     context::NativeContext,
     execution_result::ContractExecutionResult,
@@ -105,7 +106,7 @@ pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     }
 }
 
-pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) {
+pub fn load_cairo_str(program_str: &str) -> ((String, Program), SierraCasmRunner) {
     let mut program_file = tempfile::Builder::new()
         .prefix("test_")
         .suffix(".cairo")
@@ -141,10 +142,10 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     let runner =
         SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
 
-    (module_name.to_string(), program, runner)
+    ((module_name.to_string(), program), runner)
 }
 
-pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
+pub fn load_cairo_path(program_path: &str) -> ((String, Program), SierraCasmRunner) {
     let program_file = Path::new(program_path);
 
     let mut db = RootDatabase::default();
@@ -175,141 +176,30 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     let runner =
         SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
 
-    (module_name.to_string(), program, runner)
-}
-
-/// Runs the program using cairo-native JIT.
-pub fn run_native_program(
-    program: &(String, Program, SierraCasmRunner),
-    entry_point: &str,
-    args: &[JITValue],
-) -> ExecutionResult {
-    let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
-    let program = &program.1;
-
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-        .expect("Could not create the test program registry.");
-
-    let entry_point_id = &program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-        .expect("Test program entry point not found.")
-        .id;
-
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_passes();
-
-    let mut module = Module::new(Location::unknown(&context));
-
-    let mut metadata = MetadataStorage::new();
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    // Gas
-    let required_initial_gas = if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    };
-
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        program,
-        &registry,
-        &mut metadata,
-        None,
-    )
-    .expect("Could not compile test program to MLIR.");
-
-    assert!(
-        module.as_operation().verify(),
-        "Test program generated invalid MLIR:\n{}",
-        module.as_operation()
-    );
-
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager
-        .run(&mut module)
-        .expect("Could not apply passes to the compiled test program.");
-
-    let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-
-    cairo_native::execute(
-        &engine,
-        &registry,
-        &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-            .expect("Test program entry point not found.")
-            .id,
-        args,
-        required_initial_gas,
-        Some(u64::MAX.into()),
-        None,
-    )
-    .expect("Test program execution failed.")
-}
-
-/// Runs the program on the cairo-vm
-pub fn run_vm_program(
-    program: &(String, Program, SierraCasmRunner),
-    entry_point: &str,
-    args: &[Arg],
-    gas: Option<usize>,
-) -> Result<RunResultStarknet, RunnerError> {
-    let runner = &program.2;
-    runner.run_function_with_starknet_context(
-        runner.find_function(entry_point).unwrap(),
-        args,
-        gas,
-        StarknetState::default(),
-    )
+    ((module_name.to_string(), program), runner)
 }
 
 #[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
-    let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
-    let program = &program;
+    let (program, sierra_casm_runner)= load_cairo_path(program_path);
 
-    let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
+    let result_vm = run_native_or_vm_program(
+        program,
+        "main",
+        None,
+        Some(&[]),
+        sierra_casm_runner,
+        Some(GAS as usize),
+    )
+    .left()
+    .unwrap().unwrap();
 
-    let result_native = run_native_program(program, "main", &[]);
+    let result_native =
+        run_native_or_vm_program(program, "main", Some(&[]), None, None, None).right().unwrap();
 
     compare_outputs(
-        &program.1,
-        &program.2.find_function("main").unwrap().id,
+        &program.0.1,
+        &program.1.find_function("main").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -556,7 +446,8 @@ pub fn compare_outputs(
 
                     if is_bool {
                         let vn_val = vm_rets.next().unwrap() == "1";
-                        let native_val: bool = native_tag == 1; // 1 = true
+                        let native_val: bool = native_tag == 1;
+                        // 1 = true
                         prop_assert_eq!(vn_val, native_val, "bool value mismatch");
                     } else if is_panic {
                         check_next_type(
@@ -666,7 +557,8 @@ pub fn compare_outputs(
     Ok(())
 }
 
-pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64); // this is equal to 10633823966279327296825105735305134080
+pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64);
+// this is equal to 10633823966279327296825105735305134080
 pub const FIELD_LOW: u128 = 1;
 
 /// Returns a [`Strategy`] that generates any valid Felt252

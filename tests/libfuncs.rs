@@ -1,6 +1,5 @@
 mod common;
-use crate::common::{compare_outputs, run_native_program, run_vm_program};
-use common::load_cairo;
+use crate::common::{compare_outputs, load_cairo};
 
 #[test]
 fn enum_init() {
@@ -31,7 +30,7 @@ fn enum_init() {
 
     let result_vm = run_vm_program(&program, "run_test", &[], None).unwrap();
 
-    let result_native = run_native_program(&program, "run_test", &[]);
+    let result_native = run_native_or_vm_program(&program, "run_test", &[]);
     compare_outputs(
         &program.1,
         &program.2.find_function("run_test").unwrap().id,
@@ -77,7 +76,7 @@ fn enum_match() {
 
     let result_vm = run_vm_program(&program, "match_a", &[], None).unwrap();
 
-    let result_native = run_native_program(&program, "match_a", &[]);
+    let result_native = run_native_or_vm_program(&program, "match_a", &[]);
 
     compare_outputs(
         &program.1,
@@ -89,7 +88,7 @@ fn enum_match() {
 
     let result_vm = run_vm_program(&program, "match_b", &[], None).unwrap();
 
-    let result_native = run_native_program(&program, "match_b", &[]);
+    let result_native = run_native_or_vm_program(&program, "match_b", &[]);
 
     compare_outputs(
         &program.1,

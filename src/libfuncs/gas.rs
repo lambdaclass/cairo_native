@@ -221,12 +221,12 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::utils::{run_native_or_vm_program, test::load_cairo};
 
     #[test]
     fn run_withdraw_gas() {
         #[rustfmt::skip]
-        let program = load_cairo!(
+            let program = load_cairo!(
             use gas::withdraw_gas;
 
             fn run_test() {
@@ -250,7 +250,9 @@ mod test {
             }
         );
 
-        let result = run_program(&program, "run_test", &[]);
+        let result = run_native_or_vm_program(&program, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap();
         assert_eq!(result.remaining_gas, Some(18446744073709535875u128));
     }
 }
