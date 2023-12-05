@@ -97,7 +97,6 @@ fn fib() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -136,7 +135,6 @@ fn logistic_map() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -190,7 +188,6 @@ fn pedersen() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -236,7 +233,6 @@ fn factorial() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -275,7 +271,7 @@ proptest! {
         Some(&[Arg::Value(Felt252::new(n))]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
@@ -303,7 +299,7 @@ let program = &LOGISTIC_MAP;
         Some(&[Arg::Value(Felt252::new(n))]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
@@ -331,7 +327,7 @@ let program = &LOGISTIC_MAP;
         Some(&[Arg::Value(Felt252::new(n))]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
@@ -347,9 +343,7 @@ let program = &LOGISTIC_MAP;
 
     #[test]
     fn pedersen_proptest(a in any_felt252(), b in any_felt252()) {
-
-
-        let program = &FIB;
+        let program = &PEDERSEN;
 
     let (program_for_args, sierra_casm_runner) =
         ((program.0.clone(), program.1.clone()), program.2.borrow());
@@ -361,7 +355,7 @@ let program = &LOGISTIC_MAP;
         Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]), None, None, None).right().unwrap();
@@ -387,13 +381,13 @@ let program = &LOGISTIC_MAP;
         &program_for_args,
         "run_test",
         None,
-        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some( &[Arg::Value(a.clone()), Arg::Value(b.clone()), Arg::Value(c.clone())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
-        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]), None, None, None).right().unwrap();
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]), None, None, None).right().unwrap();
 
     compare_outputs(
         &program_for_args.1,

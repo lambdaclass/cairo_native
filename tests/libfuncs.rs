@@ -42,7 +42,6 @@ fn enum_init() {
         None,
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native =
@@ -105,7 +104,6 @@ fn enum_match() {
         None,
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native =
@@ -130,7 +128,6 @@ fn enum_match() {
         None,
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native =

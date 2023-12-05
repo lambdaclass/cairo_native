@@ -459,7 +459,7 @@ proptest! {
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -491,7 +491,7 @@ proptest! {
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -522,7 +522,7 @@ proptest! {
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -553,7 +553,7 @@ proptest! {
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -583,7 +583,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();
@@ -616,7 +616,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -647,7 +647,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -678,7 +678,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -709,7 +709,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -738,7 +738,7 @@ let (program_for_args, sierra_casm_runner) =
         Some(&[Arg::Value(a.into())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
 
     let result_native =
@@ -771,7 +771,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -802,7 +802,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -833,7 +833,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -864,7 +864,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -894,7 +894,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();
@@ -927,7 +927,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -958,7 +958,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -989,7 +989,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1020,7 +1020,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1049,7 +1049,7 @@ let (program_for_args, sierra_casm_runner) =
             Arg::Value(a.into())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();
@@ -1082,7 +1082,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1113,7 +1113,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1144,7 +1144,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1175,7 +1175,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -1205,7 +1205,7 @@ let (program_for_args, sierra_casm_runner) =
         ]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();

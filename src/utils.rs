@@ -887,7 +887,8 @@ impl StarkNetSyscallHandler for TestSyscallHandler {
 }
 
 pub fn prepare_pass_manager(context: &Context) -> PassManager {
-    let pass_manager = PassManager::new(&context);
+
+    let pass_manager = PassManager::new(context);
 
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -902,8 +903,6 @@ pub fn prepare_pass_manager(context: &Context) -> PassManager {
     pass_manager
 }
 
-// Passing parameters in wrapped with Option make running via VM, otherwise run NativeStarknet
-// #[cfg(test)]
 pub fn run_native_or_vm_program(
     program: &(String, Program),
     entry_point: &str,
@@ -912,17 +911,16 @@ pub fn run_native_or_vm_program(
     // Running VM program
     sierra_casm_runner: Option<SierraCasmRunner>,
     gas: Option<usize>,
-) -> Either<Result<RunResultStarknet, RunnerError>, ExecutionResult> {
-    if sierra_casm_runner.is_some() {
-        let runner = &sierra_casm_runner.unwrap();
-        Left(Ok(runner
+) -> Either<RunResultStarknet, ExecutionResult> {
+    if let Some(runner ) = sierra_casm_runner {
+        Left(runner
             .run_function_with_starknet_context(
                 runner.find_function(entry_point).unwrap(),
                 args_vm.unwrap(),
                 gas,
                 StarknetState::default(),
             )
-            .expect("Test program execution failed.")))
+            .expect("Test program execution failed."))
     } else {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;

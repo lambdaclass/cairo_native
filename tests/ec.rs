@@ -56,7 +56,6 @@ fn ec_point_zero() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native =
@@ -96,7 +95,6 @@ fn ec_point_from_x_big() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -137,7 +135,6 @@ fn ec_point_from_x_small() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -175,7 +172,7 @@ proptest! {
         Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
@@ -204,7 +201,7 @@ proptest! {
         Some(&[Arg::Value(a.clone())]),
         Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a)]), None, None, None).right().unwrap();

@@ -189,17 +189,18 @@ pub fn run_native_or_vm_program(
     // Running VM program
     sierra_casm_runner: Option<&SierraCasmRunner>,
     gas: Option<usize>,
-) -> Either<Result<RunResultStarknet, RunnerError>, ExecutionResult> {
-    if sierra_casm_runner.is_some() {
-        let runner = sierra_casm_runner.unwrap();
-        Left(Ok(runner
+) -> Either<RunResultStarknet, ExecutionResult> {
+
+    if let Some(runner) = sierra_casm_runner {
+        let args_vm = args_vm.unwrap();
+        Left(runner
             .run_function_with_starknet_context(
                 runner.find_function(entry_point).unwrap(),
-                args_vm.unwrap(),
+                args_vm,
                 gas,
                 StarknetState::default(),
             )
-            .expect("Test program execution failed.")))
+            .expect("Test program execution failed."))
     } else {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -270,7 +271,7 @@ pub fn run_native_or_vm_program(
 
         #[cfg(feature = "with-runtime")]
         register_runtime_symbols(&engine);
-
+        let args_native = args_native.unwrap();
         Right(
             cairo_native::execute(
                 &engine,
@@ -281,7 +282,7 @@ pub fn run_native_or_vm_program(
                     .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
                     .expect("Test program entry point not found.")
                     .id,
-                args_native.unwrap(),
+                args_native,
                 required_initial_gas,
                 Some(u64::MAX.into()),
                 None,
@@ -307,7 +308,6 @@ pub fn compare_inputless_program(program_path: &str) {
         Some(GAS as usize),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native =
@@ -317,12 +317,12 @@ pub fn compare_inputless_program(program_path: &str) {
 
     compare_outputs(
         &program_for_args.1,
-        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &sierra_casm_runner.find_function("main").unwrap().id,
         &result_vm,
         &result_native,
-    )
-    .unwrap();
+    ).expect("compare error");
 }
+
 
 /// Runs the program using cairo-native JIT.
 pub fn run_native_starknet_contract<T>(

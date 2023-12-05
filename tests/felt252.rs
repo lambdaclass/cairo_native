@@ -71,7 +71,6 @@ proptest! {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -111,7 +110,6 @@ proptest! {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -150,7 +148,6 @@ proptest! {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(

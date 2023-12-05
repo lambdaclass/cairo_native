@@ -69,7 +69,6 @@ fn array_get_test() {
         Some(GAS),
     )
     .left()
-    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
@@ -109,7 +108,7 @@ Some( &[
             Arg::Value(Felt252::new(idx))
         ])     ,  Some(sierra_casm_runner),
         Some(GAS),
-    ).left().unwrap().unwrap();
+    ).left().unwrap();
 
     let result_native =
         run_native_or_vm_program(&program_for_args, "run_test",        Some(&[JITValue::Felt252(value), JITValue::Felt252(idx.into())]), None, None, None).right().unwrap();
