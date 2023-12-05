@@ -38,6 +38,7 @@ mod common;
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]
+#[test_case("tests/cases/uint/u512_safe_divmod_by_u256.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
