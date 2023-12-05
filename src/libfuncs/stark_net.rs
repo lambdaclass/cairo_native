@@ -59,7 +59,9 @@ where
         StarkNetConcreteLibfunc::CallContract(info) => {
             build_call_contract(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ClassHashConst(_) => todo!(),
+        StarkNetConcreteLibfunc::ClassHashConst(info) => {
+            build_class_hash_const(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ClassHashTryFromFelt252(info) => {
             build_class_hash_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
@@ -527,6 +529,39 @@ where
         ],
         location,
     ));
+    Ok(())
+}
+
+pub fn build_class_hash_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndConstConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let value = match info.c.sign() {
+        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        _ => info.c.to_biguint().unwrap(),
+    };
+
+    let value = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 
