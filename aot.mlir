@@ -23,7 +23,7 @@ module attributes {llvm.data_layout = ""} {
     %11 = llvm.mlir.constant(4070 : i128) : i128
     %12 = llvm.mlir.constant(1 : i64) : i64
     %13 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
-    %14 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
+    %14 = llvm.alloca %12 x !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> {alignment = 16 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
     %15 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
     %16 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
     %17 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
@@ -32,11 +32,11 @@ module attributes {llvm.data_layout = ""} {
     %20 = llvm.call_intrinsic "llvm.usub.sat"(%arg1, %11) : (i128, i128) -> i128  {intrin = "llvm.usub.sat"}
     llvm.cond_br %19, ^bb1(%arg3 : !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>), ^bb5(%2, %13, %13, %20 : i252, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, i128)
   ^bb1(%21: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>):  // pred: ^bb0
-    %22 = llvm.call @"core::Felt252Serde::deserialize"(%21) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
-    %23 = llvm.extractvalue %22[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    %24 = llvm.extractvalue %22[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    llvm.store %24, %14 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
-    %25 = llvm.extractvalue %24[0] : !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> 
+    %22 = llvm.call @"core::Felt252Serde::deserialize"(%21) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
+    %23 = llvm.extractvalue %22[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    %24 = llvm.extractvalue %22[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    llvm.store %24, %14 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
+    %25 = llvm.extractvalue %24[0] : !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> 
     llvm.switch %25 : i1, ^bb2 [
       0: ^bb4,
       1: ^bb5(%1, %15, %15, %20 : i252, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, i128)
@@ -46,9 +46,9 @@ module attributes {llvm.data_layout = ""} {
   ^bb3:  // pred: ^bb2
     llvm.unreachable
   ^bb4:  // pred: ^bb1
-    %26 = llvm.bitcast %14 : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    %27 = llvm.load %26 : !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    %28 = llvm.extractvalue %27[2] : !llvm.struct<(i1, array<7 x i8>, i252)> 
+    %26 = llvm.bitcast %14 : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    %27 = llvm.load %26 : !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    %28 = llvm.extractvalue %27[2] : !llvm.struct<(i1, array<15 x i8>, i252)> 
     %29 = llvm.extractvalue %23[0] : !llvm.struct<(struct<(ptr<i252>, i32, i32)>)> 
     %30 = llvm.extractvalue %29[1] : !llvm.struct<(ptr<i252>, i32, i32)> 
     %31 = llvm.icmp "eq" %30, %9 : i32
@@ -156,7 +156,7 @@ module attributes {llvm.data_layout = ""} {
     %11 = llvm.mlir.constant(17470 : i128) : i128
     %12 = llvm.mlir.constant(1 : i64) : i64
     %13 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
-    %14 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
+    %14 = llvm.alloca %12 x !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> {alignment = 16 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
     %15 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
     %16 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
     %17 = llvm.alloca %12 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
@@ -167,11 +167,11 @@ module attributes {llvm.data_layout = ""} {
     %22 = llvm.call_intrinsic "llvm.usub.sat"(%arg1, %11) : (i128, i128) -> i128  {intrin = "llvm.usub.sat"}
     llvm.cond_br %21, ^bb1(%arg3 : !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>), ^bb5(%3, %13, %13, %22 : i252, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, i128)
   ^bb1(%23: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>):  // pred: ^bb0
-    %24 = llvm.call @"core::Felt252Serde::deserialize"(%23) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
-    %25 = llvm.extractvalue %24[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    %26 = llvm.extractvalue %24[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    llvm.store %26, %14 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
-    %27 = llvm.extractvalue %26[0] : !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> 
+    %24 = llvm.call @"core::Felt252Serde::deserialize"(%23) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
+    %25 = llvm.extractvalue %24[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    %26 = llvm.extractvalue %24[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    llvm.store %26, %14 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
+    %27 = llvm.extractvalue %26[0] : !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> 
     llvm.switch %27 : i1, ^bb2 [
       0: ^bb4,
       1: ^bb5(%2, %15, %15, %22 : i252, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>, i128)
@@ -181,9 +181,9 @@ module attributes {llvm.data_layout = ""} {
   ^bb3:  // pred: ^bb2
     llvm.unreachable
   ^bb4:  // pred: ^bb1
-    %28 = llvm.bitcast %14 : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    %29 = llvm.load %28 : !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    %30 = llvm.extractvalue %29[2] : !llvm.struct<(i1, array<7 x i8>, i252)> 
+    %28 = llvm.bitcast %14 : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    %29 = llvm.load %28 : !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    %30 = llvm.extractvalue %29[2] : !llvm.struct<(i1, array<15 x i8>, i252)> 
     %31 = llvm.extractvalue %25[0] : !llvm.struct<(struct<(ptr<i252>, i32, i32)>)> 
     %32 = llvm.extractvalue %31[1] : !llvm.struct<(ptr<i252>, i32, i32)> 
     %33 = llvm.icmp "eq" %32, %9 : i32
@@ -289,7 +289,7 @@ module attributes {llvm.data_layout = ""} {
     llvm.store %0, %arg0 : !llvm.struct<(array<0 x i8>, i128, ptr, struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>)>, !llvm.ptr
     llvm.return
   }
-  llvm.func @"core::Felt252Serde::deserialize"(%arg0: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> attributes {llvm.emit_c_interface, sym_visibility = "public"} {
+  llvm.func @"core::Felt252Serde::deserialize"(%arg0: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> attributes {llvm.emit_c_interface, sym_visibility = "public"} {
     %0 = llvm.mlir.constant(true) : i1
     %1 = llvm.mlir.constant(false) : i1
     %2 = llvm.mlir.constant(1 : i32) : i32
@@ -298,8 +298,8 @@ module attributes {llvm.data_layout = ""} {
     %5 = llvm.mlir.constant(1 : i64) : i64
     %6 = llvm.alloca %5 x !llvm.struct<(i1, array<7 x i8>, ptr, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, ptr, array<0 x i8>)>>
     %7 = llvm.alloca %5 x !llvm.struct<(i1, array<7 x i8>, ptr, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, ptr, array<0 x i8>)>>
-    %8 = llvm.alloca %5 x !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
-    %9 = llvm.alloca %5 x !llvm.struct<(i1, array<7 x i8>, i252, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
+    %8 = llvm.alloca %5 x !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> {alignment = 16 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
+    %9 = llvm.alloca %5 x !llvm.struct<(i1, array<15 x i8>, i252, array<0 x i8>)> {alignment = 16 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
     %10 = llvm.alloca %5 x !llvm.struct<(i1, array<7 x i8>, ptr, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, ptr, array<0 x i8>)>>
     %11 = llvm.extractvalue %arg0[0] : !llvm.struct<(struct<(ptr<i252>, i32, i32)>)> 
     %12 = llvm.extractvalue %11[1] : !llvm.struct<(ptr<i252>, i32, i32)> 
@@ -310,8 +310,8 @@ module attributes {llvm.data_layout = ""} {
     %15 = llvm.getelementptr %14[0] : (!llvm.ptr<i252>) -> !llvm.ptr, i252
     %16 = llvm.mlir.null : !llvm.ptr
     %17 = llvm.call @realloc(%16, %3) : (!llvm.ptr, i64) -> !llvm.ptr
-    %18 = llvm.load %15 {alignment = 8 : i64} : !llvm.ptr -> i252
-    llvm.store %18, %17 {alignment = 8 : i64} : i252, !llvm.ptr
+    %18 = llvm.load %15 {alignment = 16 : i64} : !llvm.ptr -> i252
+    llvm.store %18, %17 {alignment = 16 : i64} : i252, !llvm.ptr
     %19 = llvm.getelementptr %14[1] : (!llvm.ptr<i252>) -> !llvm.ptr, i252
     %20 = llvm.sub %12, %2  : i32
     %21 = llvm.zext %20 : i32 to i64
@@ -352,29 +352,29 @@ module attributes {llvm.data_layout = ""} {
     %41 = llvm.bitcast %7 : !llvm.ptr<struct<(i1, array<7 x i8>, ptr, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<7 x i8>, ptr)>>
     %42 = llvm.load %41 : !llvm.ptr<struct<(i1, array<7 x i8>, ptr)>>
     %43 = llvm.extractvalue %42[2] : !llvm.struct<(i1, array<7 x i8>, ptr)> 
-    %44 = llvm.load %43 {alignment = 8 : i64} : !llvm.ptr -> i252
-    %45 = llvm.mlir.undef : !llvm.struct<(i1, array<7 x i8>, i252)>
-    %46 = llvm.insertvalue %1, %45[0] : !llvm.struct<(i1, array<7 x i8>, i252)> 
-    %47 = llvm.insertvalue %44, %46[2] : !llvm.struct<(i1, array<7 x i8>, i252)> 
-    %48 = llvm.bitcast %9 : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    llvm.store %47, %48 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<7 x i8>, i252)>>
-    %49 = llvm.load %9 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
-    %50 = llvm.mlir.undef : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
-    %51 = llvm.insertvalue %39, %50[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    %52 = llvm.insertvalue %49, %51[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    llvm.return %52 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
+    %44 = llvm.load %43 {alignment = 16 : i64} : !llvm.ptr -> i252
+    %45 = llvm.mlir.undef : !llvm.struct<(i1, array<15 x i8>, i252)>
+    %46 = llvm.insertvalue %1, %45[0] : !llvm.struct<(i1, array<15 x i8>, i252)> 
+    %47 = llvm.insertvalue %44, %46[2] : !llvm.struct<(i1, array<15 x i8>, i252)> 
+    %48 = llvm.bitcast %9 : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    llvm.store %47, %48 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<15 x i8>, i252)>>
+    %49 = llvm.load %9 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
+    %50 = llvm.mlir.undef : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
+    %51 = llvm.insertvalue %39, %50[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    %52 = llvm.insertvalue %49, %51[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    llvm.return %52 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
   ^bb7:  // pred: ^bb3
     %53 = llvm.mlir.undef : !llvm.struct<()>
     %54 = llvm.mlir.undef : !llvm.struct<(i1, array<0 x i8>, struct<()>)>
     %55 = llvm.insertvalue %0, %54[0] : !llvm.struct<(i1, array<0 x i8>, struct<()>)> 
     %56 = llvm.insertvalue %53, %55[2] : !llvm.struct<(i1, array<0 x i8>, struct<()>)> 
-    %57 = llvm.bitcast %8 : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<0 x i8>, struct<()>)>>
-    llvm.store %56, %57 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<0 x i8>, struct<()>)>>
-    %58 = llvm.load %8 {alignment = 8 : i64} : !llvm.ptr<struct<(i1, array<7 x i8>, i252, array<0 x i8>)>>
-    %59 = llvm.mlir.undef : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
-    %60 = llvm.insertvalue %39, %59[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    %61 = llvm.insertvalue %58, %60[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)> 
-    llvm.return %61 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
+    %57 = llvm.bitcast %8 : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>> to !llvm.ptr<struct<(i1, array<0 x i8>, struct<()>)>>
+    llvm.store %56, %57 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<0 x i8>, struct<()>)>>
+    %58 = llvm.load %8 {alignment = 16 : i64} : !llvm.ptr<struct<(i1, array<15 x i8>, i252, array<0 x i8>)>>
+    %59 = llvm.mlir.undef : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
+    %60 = llvm.insertvalue %39, %59[0] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    %61 = llvm.insertvalue %58, %60[1] : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)> 
+    llvm.return %61 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
   ^bb8:  // pred: ^bb4
     %62 = llvm.mlir.addressof @assert_msg_2 : !llvm.ptr
     llvm.call @puts(%62) : (!llvm.ptr) -> ()
@@ -382,8 +382,8 @@ module attributes {llvm.data_layout = ""} {
     llvm.unreachable
   }
   llvm.func @"_mlir_ciface_core::Felt252Serde::deserialize"(%arg0: !llvm.ptr, %arg1: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) attributes {llvm.emit_c_interface, sym_visibility = "public"} {
-    %0 = llvm.call @"core::Felt252Serde::deserialize"(%arg1) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>
-    llvm.store %0, %arg0 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<7 x i8>, i252, array<0 x i8>)>)>, !llvm.ptr
+    %0 = llvm.call @"core::Felt252Serde::deserialize"(%arg1) : (!llvm.struct<(struct<(ptr<i252>, i32, i32)>)>) -> !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>
+    llvm.store %0, %arg0 : !llvm.struct<(struct<(struct<(ptr<i252>, i32, i32)>)>, struct<(i1, array<15 x i8>, i252, array<0 x i8>)>)>, !llvm.ptr
     llvm.return
   }
   llvm.func @"hello_starknet::hello_starknet::Echo::echo"(%arg0: !llvm.struct<(struct<()>)>, %arg1: i252) -> !llvm.struct<(struct<(struct<()>)>, i252)> attributes {llvm.emit_c_interface, sym_visibility = "public"} {
@@ -515,8 +515,8 @@ module attributes {llvm.data_layout = ""} {
     %4 = llvm.mlir.constant(1 : i64) : i64
     %5 = llvm.alloca %4 x !llvm.struct<(i1, array<23 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr
     %6 = llvm.alloca %4 x i128 {alignment = 8 : i64} : (i64) -> !llvm.ptr<i128>
-    %7 = llvm.alloca %4 x i252 {alignment = 8 : i64} : (i64) -> !llvm.ptr<i252>
-    %8 = llvm.alloca %4 x i252 {alignment = 8 : i64} : (i64) -> !llvm.ptr<i252>
+    %7 = llvm.alloca %4 x i252 {alignment = 16 : i64} : (i64) -> !llvm.ptr<i252>
+    %8 = llvm.alloca %4 x i252 {alignment = 16 : i64} : (i64) -> !llvm.ptr<i252>
     %9 = llvm.alloca %4 x !llvm.struct<(i1, array<7 x i8>, struct<(ptr<i252>, i32, i32)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(ptr<i252>, i32, i32)>, array<0 x i8>)>>
     %10 = llvm.alloca %4 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>
     %11 = llvm.alloca %4 x !llvm.struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)> {alignment = 8 : i64} : (i64) -> !llvm.ptr<struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>>

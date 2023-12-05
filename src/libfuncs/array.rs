@@ -9,7 +9,7 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };

@@ -1,192 +1,118 @@
-use core::fmt;
-use std::{
-    alloc::Layout,
-    error::Error,
-    fmt::Debug,
-    mem::{size_of, ManuallyDrop},
-    path::Path,
-    ptr::{addr_of, addr_of_mut, null_mut, NonNull},
+use crate::{
+    types::TypeBuilder,
+    utils::generate_function_name,
+    values::{JITValue, ValueBuilder},
 };
-
-use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::{GenFunction, StatementIdx},
+    extensions::{GenericLibfunc, GenericType},
+    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
+use libc::c_void;
+use libloading::Library;
+use std::{alloc::Layout, arch::global_asm};
 
-use crate::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::StarkNetSyscallHandler,
-    utils::{felt252_bigint, get_integer_layout},
-    values::JITValue,
-};
+global_asm!(include_str!("aot.s"));
 
-#[derive(Debug)]
-#[repr(C)]
-struct ResultError {
-    ptr: *const Felt252Abi,
-    len: u32,
-    cap: u32,
+extern "C" {
+    fn aot_trampoline(fn_ptr: *mut c_void, args_ptr: *const u64, args_len: usize);
 }
 
-/// Binary representation of a `felt252` (in MLIR).
-#[derive(Debug, Clone)]
-#[repr(transparent)]
-pub struct Felt252Abi(pub [u8; 32]);
-
-#[derive(Debug)]
-#[repr(C)]
-pub struct Calldata {
-    pub calldata: (*const Felt252Abi, u32, u32),
+pub struct AotNativeExecutor<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+{
+    library: Library,
+    registry: ProgramRegistry<TType, TLibfunc>,
 }
 
-// !llvm.struct<(  array<0 x i8>, i128, ptr, struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>  )>
+impl<TType, TLibfunc> AotNativeExecutor<TType, TLibfunc>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder,
+{
+    pub fn new(library: Library, registry: ProgramRegistry<TType, TLibfunc>) -> Self {
+        Self { library, registry }
+    }
 
-// struct<(i1, array<7 x i8>, struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>
+    pub fn invoke_dynamic(&self, function_id: &FunctionId, args: &[JITValue]) -> Vec<JITValue> {
+        let function_name = generate_function_name(function_id);
+        let function_name = format!("_mlir_ciface_{function_name}");
 
-// struct<(struct<()>, struct<(ptr<i252>, i32, i32)>)>, array<0 x i8>)>
-
-#[repr(C)]
-struct RetEnum {
-    tag: u8,
-    // data exists if tag == 0
-    data: RetEnumData,
-}
-
-#[repr(C)]
-union RetEnumData {
-    ok: (),
-    err: (*const Felt252Abi, u32, u32),
-}
-
-#[repr(C)]
-#[derive(Debug)]
-struct RetValue {
-    range_check: (),
-    gas: u128,
-    syscall_handler: *const (),
-    return_values: RetEnum,
-}
-
-impl fmt::Debug for RetEnum {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let res = if self.tag == 0 {
-            Result::Ok(())
-        } else {
-            Result::Err(unsafe { self.data.err })
+        // Arguments and return values are hardcoded since they'll be handled by the trampoline.
+        let function_ptr = unsafe {
+            self.library
+                .get::<extern "C" fn()>(function_name.as_bytes())
+                .unwrap()
         };
 
-        f.debug_struct("RetEnum")
-            .field("tag", &self.tag)
-            .field("data", &res)
-            .finish()
-    }
-}
+        let function_signature = &self.registry.get_function(function_id).unwrap().signature;
+        let mut invoke_data = Vec::new();
 
-pub fn call_contract_library<T: StarkNetSyscallHandler + Debug>(
-    path: &Path,
-    entry_point: &GenFunction<StatementIdx>,
-    syscall_handler: &mut T,
-    reg: &ProgramRegistry<CoreType, CoreLibfunc>,
-) -> Result<(), Box<dyn Error>> {
-    // dbg!(&entry_point.signature);
-    let symbol: &str = entry_point.id.debug_name.as_deref().unwrap();
+        // Generate return pointer (if necessary).
+        let return_ptr = if function_signature.ret_types.len() > 1
+            || function_signature
+                .ret_types
+                .first()
+                .is_some_and(|id| self.registry.get_type(id).unwrap().is_complex())
+        {
+            let layout =
+                function_signature
+                    .ret_types
+                    .iter()
+                    .fold(Layout::new::<()>(), |layout, id| {
+                        let type_info = self.registry.get_type(id).unwrap();
+                        layout
+                            .extend(type_info.layout(&self.registry).unwrap())
+                            .unwrap()
+                            .0
+                    });
 
-    // todo: verify signature matches that of a contract, so unsafe is "safe"
+            let return_ptr = unsafe { std::alloc::alloc(layout) };
+            invoke_data.push(return_ptr as u64);
 
-    let felt: *mut Felt252Abi = unsafe {
-        libc::realloc(
-            null_mut(),
-            Layout::array::<Felt252Abi>(1)
-                .unwrap()
-                .pad_to_align()
-                .size(),
-        )
-        .cast()
-    };
+            Some((layout, return_ptr))
+        } else {
+            invoke_data.push(0);
+            None
+        };
 
-    unsafe {
-        felt.write(Felt252Abi([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 6,
-        ]));
-    }
-    /*
-       let felt = [
-           Felt252Abi([
-               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-               0, 0, 6,
-           ]),
-           Felt252Abi([
-               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-               0, 0, 6,
-           ]),
-       ]
-       .as_slice();
-    */
-    let payload = (felt.cast_const(), 1u32, 1u32);
-
-    let calldata = Calldata { calldata: payload };
-
-    unsafe {
-        let lib = libloading::Library::new(path)?;
-
-        // llvm.func @"_mlir_ciface_hello_starknet::hello_starknet::Echo::__wrapper__echo"
-        // (%arg0: !llvm.ptr, %arg1: !llvm.array<0 x i8>, %arg2: i128, %arg3: !llvm.ptr, %arg4: !llvm.struct<(struct<(ptr<i252>, i32, i32)>)>)
-        // attributes {llvm.emit_c_interface, sym_visibility = "public"} {
-
-        let arena = Bump::new();
-
-        //let ty = &entry_point.params[3].ty;
-        // dbg!(ty);
-
-        /*
-        let calldata2 = JITValue::Struct {
-            fields: vec![JITValue::Array(vec![JITValue::Felt252(1.into())])],
-            debug_name: None,
+        for arg in args {
+            match arg {
+                JITValue::Felt252(value) => invoke_data.extend(value.to_le_digits()),
+                JITValue::Array(_) => todo!(),
+                JITValue::Struct { .. } => todo!(),
+                JITValue::Enum { .. } => todo!(),
+                JITValue::Felt252Dict { .. } => todo!(),
+                JITValue::Uint8(_) => todo!(),
+                JITValue::Uint16(_) => todo!(),
+                JITValue::Uint32(_) => todo!(),
+                JITValue::Uint64(_) => todo!(),
+                JITValue::Uint128(_) => todo!(),
+                JITValue::EcPoint(_, _) => todo!(),
+                JITValue::EcState(_, _, _, _) => todo!(),
+            }
         }
-        .to_jit(&arena, reg, ty)
-        .unwrap();
 
-        */
+        // TODO: Invoke the trampoline.
+        unsafe {
+            aot_trampoline(
+                function_ptr.into_raw().into_raw(),
+                invoke_data.as_ptr(),
+                invoke_data.len(),
+            );
+        }
 
-        dbg!(&calldata);
+        if let Some((layout, return_ptr)) = return_ptr {
+            unsafe {
+                std::alloc::dealloc(return_ptr, layout);
+            }
+        }
 
-        let syscall_handler_meta = SyscallHandlerMeta::new(syscall_handler);
-        let syscall_addr = syscall_handler_meta.as_ptr().as_ptr();
-
-        let return_value = arena.alloc_layout(Layout::new::<RetValue>()).cast();
-
-        let func: libloading::Symbol<
-            unsafe extern "C" fn(
-                return_value: *mut RetValue,
-                range_check: [u8; 0],
-                gas_builtin: u128,
-                syscall_handler: *mut std::ffi::c_void,
-                calldata: Calldata,
-            ),
-        > = lib.get(format!("_mlir_ciface_{}\0", symbol).as_bytes())?;
-
-        let gas: u128 = 10000000000;
-        func(
-            return_value.as_ptr(),
-            [],
-            gas,
-            syscall_addr.cast(),
-            calldata,
-        );
-
-        let return_value = return_value.as_ptr();
-
-        println!("{:#010b}", (*return_value).return_values.tag);
-
-        let res_data = return_value.as_ref().unwrap();
-        dbg!(return_value);
-        dbg!(res_data);
-        dbg!(gas.saturating_sub((*return_value).gas));
-
-        std::mem::forget(arena);
+        todo!()
     }
-    Ok(())
 }
+
+fn arg_into_values() {}

@@ -9,7 +9,7 @@ use crate::{
         CoreTypeBuilderError,
     },
     ffi::get_struct_field_type_at,
-    metadata::{debug_utils::DebugUtils, MetadataStorage},
+    metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::TypeBuilder,
     utils::{get_integer_layout, ProgramRegistryExt},
@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, LoadStoreOptions},
     },
     ir::{
         attribute::{
@@ -1053,10 +1053,6 @@ where
         .result(0)?
         .into();
 
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(entry, location)?;
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
         crate::types::r#enum::get_type_for_variants(
@@ -1243,11 +1239,6 @@ where
         .result(0)?
         .into();
 
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(entry, location)?;
-
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
             .add_operands(&[
@@ -1261,11 +1252,6 @@ where
             ])
             .build()?,
     );
-
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(entry, location)?;
 
     let result = entry
         .append_operation(llvm::load(
