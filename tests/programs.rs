@@ -1,4 +1,4 @@
-use crate::common::{any_felt252, load_cairo, run_native_or_vm_program, run_vm_program};
+use crate::common::{any_felt252, load_cairo, run_native_or_vm_program};
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -7,7 +7,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
-
+use std::borrow::Borrow;
 mod common;
 mod starknet;
 
@@ -83,14 +83,37 @@ lazy_static! {
 
 #[test]
 fn fib() {
-    let result_vm =
-        run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
+    let program = &FIB;
 
-    let result_native = run_native_or_vm_program(&FIB, "run_test", &[JITValue::Felt252(10.into())]);
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(10))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(10.into())]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &FIB.1,
-        &FIB.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -99,20 +122,37 @@ fn fib() {
 
 #[test]
 fn logistic_map() {
-    let result_vm = run_vm_program(
-        &LOGISTIC_MAP,
+    let program = &LOGISTIC_MAP;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
         "run_test",
-        &[Arg::Value(Felt252::new(1000))],
+        None,
+        Some(&[Arg::Value(Felt252::new(1000))]),
+        Some(sierra_casm_runner),
         Some(GAS),
     )
+    .left()
+    .unwrap()
     .unwrap();
 
-    let result_native =
-        run_native_or_vm_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(1000.into())]);
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(1000.into())]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &LOGISTIC_MAP.1,
-        &LOGISTIC_MAP.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -121,10 +161,16 @@ fn logistic_map() {
 
 #[test]
 fn pedersen() {
-    let result_vm = run_vm_program(
-        &PEDERSEN,
+    let program = &PEDERSEN;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
         "run_test",
-        &[
+        None,
+        Some(&[
             Arg::Value(
                 Felt252::from_str_radix(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
@@ -139,27 +185,35 @@ fn pedersen() {
                 )
                 .unwrap(),
             ),
-        ],
+        ]),
+        Some(sierra_casm_runner),
         Some(GAS),
     )
+    .left()
+    .unwrap()
     .unwrap();
 
     let result_native = run_native_or_vm_program(
-        &PEDERSEN,
+        &program_for_args,
         "run_test",
-        &[
+        Some(&[
             JITValue::felt_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
             ),
             JITValue::felt_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             ),
-        ],
-    );
+        ]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &PEDERSEN.1,
-        &PEDERSEN.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -168,19 +222,37 @@ fn pedersen() {
 
 #[test]
 fn factorial() {
-    let result_vm = run_vm_program(
-        &FACTORIAL,
+    let program = &FACTORIAL;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
         "run_test",
-        &[Arg::Value(Felt252::new(13))],
+        None,
+        Some(&[Arg::Value(Felt252::new(13))]),
+        Some(sierra_casm_runner),
         Some(GAS),
     )
+    .left()
+    .unwrap()
     .unwrap();
-    let result_native =
-        run_native_or_vm_program(&FACTORIAL, "run_test", &[JITValue::Felt252(13.into())]);
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(13.into())]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &FACTORIAL.1,
-        &FACTORIAL.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -190,98 +262,145 @@ fn factorial() {
 proptest! {
     #[test]
     fn fib_proptest(n in 0..100i32) {
-        let result_vm = run_vm_program(
-            &FIB,
-            "run_test",
-            &[Arg::Value(Felt252::new(n))],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(&FIB, "run_test", &[JITValue::Felt252(n.into())]);
 
-        compare_outputs(
-            &FIB.1,
-            &FIB.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+        let program = &FIB;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(n))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+        .unwrap();
     }
 
     #[test]
     fn logistic_map_proptest(n in 100..110i32) {
-        let result_vm = run_vm_program(
-            &LOGISTIC_MAP,
-            "run_test",
-            &[Arg::Value(Felt252::new(n))],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(n.into())]);
+let program = &LOGISTIC_MAP;
 
-        compare_outputs(
-            &LOGISTIC_MAP.1,
-            &LOGISTIC_MAP.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(n))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+        .unwrap();
     }
 
     #[test]
     fn factorial_proptest(n in 1..100i32) {
-        let result_vm = run_vm_program(
-            &FACTORIAL,
-            "run_test",
-            &[Arg::Value(Felt252::new(n))],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(&FACTORIAL, "run_test", &[JITValue::Felt252(n.into())]);
+        let program = &FACTORIAL;
 
-        compare_outputs(
-            &FACTORIAL.1,
-            &FACTORIAL.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(n))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(n.into())]), None, None, None).right().unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+        .unwrap();
     }
 
     #[test]
     fn pedersen_proptest(a in any_felt252(), b in any_felt252()) {
-        let result_vm = run_vm_program(
-            &PEDERSEN,
-            "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
-            Some(GAS),
-        )
+
+
+        let program = &FIB;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]), None, None, None).right().unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
         .unwrap();
-
-        let result_native = run_native_or_vm_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
-
-        compare_outputs(
-            &PEDERSEN.1,
-            &PEDERSEN.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
     }
 
     #[test]
     fn poseidon_proptest(a in any_felt252(), b in any_felt252(), c in any_felt252()) {
-        let result_vm = run_vm_program(
-            &POSEIDON,
-            "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone()), Arg::Value(c.clone())],
-            Some(GAS),
-        )
+
+        let program = &POSEIDON;
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]), None, None, None).right().unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
         .unwrap();
-
-        let result_native = run_native_or_vm_program(&POSEIDON, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
-
-        compare_outputs(
-            &POSEIDON.1,
-            &POSEIDON.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
     }
 }

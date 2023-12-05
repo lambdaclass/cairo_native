@@ -1,10 +1,11 @@
-use crate::common::{any_felt252, load_cairo, run_native_or_vm_program, run_vm_program};
+use crate::common::{any_felt252, load_cairo, run_native_or_vm_program};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use std::borrow::Borrow;
 
 mod common;
 
@@ -57,60 +58,118 @@ proptest! {
     #[test]
     fn felt_add_proptest(a in any_felt252(), b in any_felt252()) {
         let program = &FELT252_ADD;
-        let result_vm = run_vm_program(
-            program,
-            "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
 
-        compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+        let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+
     }
 
     #[test]
     fn felt_sub_proptest(a in any_felt252(), b in any_felt252()) {
         let program = &FELT252_SUB;
-        let result_vm = run_vm_program(
-            program,
-            "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
 
-        compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+        let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
     }
 
     #[test]
     fn felt_mul_proptest(a in any_felt252(), b in any_felt252()) {
         let program = &FELT252_MUL;
-        let result_vm = run_vm_program(
-            program,
-            "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
-            Some(GAS),
-        )
-        .unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
 
-        compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        )?;
+        let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(a.clone()), Arg::Value(b.clone())]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(a), JITValue::Felt252(b)]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
+
+    compare_outputs(
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
     }
 }

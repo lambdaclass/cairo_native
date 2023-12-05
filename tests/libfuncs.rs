@@ -1,5 +1,7 @@
 mod common;
-use crate::common::{compare_outputs, load_cairo};
+
+use crate::common::{compare_outputs, load_cairo, run_native_or_vm_program};
+use std::borrow::Borrow;
 
 #[test]
 fn enum_init() {
@@ -28,12 +30,29 @@ fn enum_init() {
         }
     };
 
-    let result_vm = run_vm_program(&program, "run_test", &[], None).unwrap();
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
 
-    let result_native = run_native_or_vm_program(&program, "run_test", &[]);
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[]),
+        Some(sierra_casm_runner),
+        None,
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[]), None, None, None)
+            .right()
+            .unwrap();
+
     compare_outputs(
-        &program.1,
-        &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -74,25 +93,54 @@ fn enum_match() {
         }
     };
 
-    let result_vm = run_vm_program(&program, "match_a", &[], None).unwrap();
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
 
-    let result_native = run_native_or_vm_program(&program, "match_a", &[]);
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "match_a",
+        None,
+        Some(&[]),
+        Some(sierra_casm_runner),
+        None,
+    )
+    .left()
+    .unwrap()
+    .unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "match_a", Some(&[]), None, None, None)
+            .right()
+            .unwrap();
 
     compare_outputs(
-        &program.1,
-        &program.2.find_function("match_a").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("match_a").unwrap().id,
         &result_vm,
         &result_native,
     )
     .unwrap();
 
-    let result_vm = run_vm_program(&program, "match_b", &[], None).unwrap();
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "match_b",
+        None,
+        Some(&[]),
+        Some(sierra_casm_runner),
+        None,
+    )
+    .left()
+    .unwrap()
+    .unwrap();
 
-    let result_native = run_native_or_vm_program(&program, "match_b", &[]);
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "match_b", Some(&[]), None, None, None)
+            .right()
+            .unwrap();
 
     compare_outputs(
-        &program.1,
-        &program.2.find_function("match_b").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("match_b").unwrap().id,
         &result_vm,
         &result_native,
     )

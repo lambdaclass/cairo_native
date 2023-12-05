@@ -1,4 +1,5 @@
 //! # Various utilities
+#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
 
 use crate::{
     metadata::MetadataStorage,
@@ -13,6 +14,15 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 
+use crate::error::jit_engine::RunnerError;
+use crate::metadata::syscall_handler::SyscallHandlerMeta;
+use crate::ExecutionResult;
+use cairo_lang_runner::RunResultStarknet;
+use cairo_lang_runner::{Arg, SierraCasmRunner, StarknetState};
+use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
+use either::{Either, Left, Right};
+use melior::dialect::DialectRegistry;
+use melior::ir::Location;
 use melior::{
     ir::{Module, Type},
     Context, ExecutionEngine,
@@ -27,18 +37,8 @@ use std::{
     ptr::NonNull,
     sync::Arc,
 };
-use cairo_lang_runner::Arg;
-use cairo_lang_sierra::extensions::core::{CoreLibfunc, CoreType};
-use either::{Either, Left, Right};
-use melior::{
-    ir::Location,
-    dialect::DialectRegistry
-};
+
 use thiserror::Error;
-use cairo_lang_runner::{RunResultStarknet, StarknetState,SierraCasmRunner};
-use crate::metadata::gas::GasMetadata;
-use crate::ExecutionResult;
-use crate::error::jit_engine::RunnerError;
 
 /// Generate a function name.
 ///
@@ -614,21 +614,15 @@ macro_rules! codegen_ret_extr {
 }
 pub(crate) use codegen_ret_extr;
 
-
-
-use crate::{
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+use crate::starknet::{
+    BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
 };
 
-
-
+use crate::metadata::gas::{GasMetadata, MetadataComputationConfig};
+use crate::metadata::runtime_bindings::RuntimeBindingsMeta;
+use crate::values::JITValue;
 use melior::pass::{self, PassManager};
 use melior::utility::{register_all_dialects, register_all_passes};
-use crate::metadata::gas::MetadataComputationConfig;
-use crate::metadata::runtime_bindings::RuntimeBindingsMeta;
-use crate::metadata::syscall_handler::SyscallHandlerMeta;
-use crate::values::JITValue;
-
 
 #[derive(Debug)]
 pub struct TestSyscallHandler;
@@ -892,7 +886,7 @@ impl StarkNetSyscallHandler for TestSyscallHandler {
     }
 }
 
-pub(crate) fn prepare_pass_manager(context: &Context) -> PassManager {
+pub fn prepare_pass_manager(context: &Context) -> PassManager {
     let pass_manager = PassManager::new(&context);
 
     pass_manager.enable_verifier(true);
@@ -909,7 +903,7 @@ pub(crate) fn prepare_pass_manager(context: &Context) -> PassManager {
 }
 
 // Passing parameters in wrapped with Option make running via VM, otherwise run NativeStarknet
-#[cfg(test)]
+// #[cfg(test)]
 pub fn run_native_or_vm_program(
     program: &(String, Program),
     entry_point: &str,
@@ -918,15 +912,17 @@ pub fn run_native_or_vm_program(
     // Running VM program
     sierra_casm_runner: Option<SierraCasmRunner>,
     gas: Option<usize>,
-) -> Either<ExecutionResult, Result<RunResultStarknet, RunnerError>> {
-    if sierra_casm_runner.is_some() && gas.is_some() {
+) -> Either<Result<RunResultStarknet, RunnerError>, ExecutionResult> {
+    if sierra_casm_runner.is_some() {
         let runner = &sierra_casm_runner.unwrap();
-        Left(runner.run_function_with_starknet_context(
-            runner.find_function(entry_point).unwrap(),
-            args_vm.unwrap(),
-            gas,
-            StarknetState::default(),
-        ))
+        Left(Ok(runner
+            .run_function_with_starknet_context(
+                runner.find_function(entry_point).unwrap(),
+                args_vm.unwrap(),
+                gas,
+                StarknetState::default(),
+            )
+            .expect("Test program execution failed.")))
     } else {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;

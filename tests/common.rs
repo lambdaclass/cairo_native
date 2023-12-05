@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
-use cairo_native::utils::run_native_or_vm_program;
+use cairo_native::utils::prepare_pass_manager;
 use cairo_native::{
     context::NativeContext,
     execution_result::ContractExecutionResult,
@@ -36,6 +36,7 @@ use cairo_native::{
     values::JITValue,
     ExecutionResult,
 };
+use either::{Either, Left, Right};
 use lambdaworks_math::{
     field::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
@@ -52,6 +53,7 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
+use std::borrow::Borrow;
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -106,7 +108,7 @@ pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     }
 }
 
-pub fn load_cairo_str(program_str: &str) -> ((String, Program), SierraCasmRunner) {
+pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) {
     let mut program_file = tempfile::Builder::new()
         .prefix("test_")
         .suffix(".cairo")
@@ -142,10 +144,10 @@ pub fn load_cairo_str(program_str: &str) -> ((String, Program), SierraCasmRunner
     let runner =
         SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
 
-    ((module_name.to_string(), program), runner)
+    (module_name.to_string(), program, runner)
 }
 
-pub fn load_cairo_path(program_path: &str) -> ((String, Program), SierraCasmRunner) {
+pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner) {
     let program_file = Path::new(program_path);
 
     let mut db = RootDatabase::default();
@@ -176,34 +178,150 @@ pub fn load_cairo_path(program_path: &str) -> ((String, Program), SierraCasmRunn
     let runner =
         SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
 
-    ((module_name.to_string(), program), runner)
+    (module_name.to_string(), program, runner)
+}
+
+pub fn run_native_or_vm_program(
+    program: &(String, Program),
+    entry_point: &str,
+    args_native: Option<&[JITValue]>,
+    args_vm: Option<&[Arg]>,
+    // Running VM program
+    sierra_casm_runner: Option<&SierraCasmRunner>,
+    gas: Option<usize>,
+) -> Either<Result<RunResultStarknet, RunnerError>, ExecutionResult> {
+    if sierra_casm_runner.is_some() {
+        let runner = sierra_casm_runner.unwrap();
+        Left(Ok(runner
+            .run_function_with_starknet_context(
+                runner.find_function(entry_point).unwrap(),
+                args_vm.unwrap(),
+                gas,
+                StarknetState::default(),
+            )
+            .expect("Test program execution failed.")))
+    } else {
+        let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
+        let program = &program.1;
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
+            .expect("Could not create the test program registry.");
+
+        let entry_point_id = &program
+            .funcs
+            .iter()
+            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+            .expect("Test program entry point not found.")
+            .id;
+
+        let context = Context::new();
+        context.append_dialect_registry(&{
+            let registry = DialectRegistry::new();
+            register_all_dialects(&registry);
+            registry
+        });
+        context.load_all_available_dialects();
+        register_all_passes();
+
+        let mut module = Module::new(Location::unknown(&context));
+
+        let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
+        // Gas
+        let required_initial_gas = if program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+        {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+
+            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
+            metadata.insert(gas_metadata).unwrap();
+            required_initial_gas
+        } else {
+            None
+        };
+
+        cairo_native::compile::<CoreType, CoreLibfunc>(
+            &context,
+            &module,
+            program,
+            &registry,
+            &mut metadata,
+            None,
+        )
+        .expect("Could not compile test program to MLIR.");
+
+        assert!(
+            module.as_operation().verify(),
+            "Test program generated invalid MLIR:\n{}",
+            module.as_operation()
+        );
+
+        let pass_manager = prepare_pass_manager(&context);
+
+        pass_manager
+            .run(&mut module)
+            .expect("Could not apply passes to the compiled test program.");
+
+        let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+        #[cfg(feature = "with-runtime")]
+        register_runtime_symbols(&engine);
+
+        Right(
+            cairo_native::execute(
+                &engine,
+                &registry,
+                &program
+                    .funcs
+                    .iter()
+                    .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+                    .expect("Test program entry point not found.")
+                    .id,
+                args_native.unwrap(),
+                required_initial_gas,
+                Some(u64::MAX.into()),
+                None,
+            )
+            .expect("Test program execution failed."),
+        )
+    }
 }
 
 #[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
-    let (program, sierra_casm_runner)= load_cairo_path(program_path);
+    let program = load_cairo_path(program_path);
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
 
     let result_vm = run_native_or_vm_program(
-        program,
+        &program_for_args,
         "main",
         None,
         Some(&[]),
-        sierra_casm_runner,
+        Some(sierra_casm_runner),
         Some(GAS as usize),
     )
     .left()
-    .unwrap().unwrap();
+    .unwrap()
+    .unwrap();
 
     let result_native =
-        run_native_or_vm_program(program, "main", Some(&[]), None, None, None).right().unwrap();
+        run_native_or_vm_program(&program_for_args, "main", Some(&[]), None, None, None)
+            .right()
+            .unwrap();
 
     compare_outputs(
-        &program.0.1,
-        &program.1.find_function("main").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
-    .expect("compare error");
+    .unwrap();
 }
 
 /// Runs the program using cairo-native JIT.

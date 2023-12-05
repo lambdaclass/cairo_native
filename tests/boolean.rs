@@ -1,4 +1,4 @@
-use crate::common::{load_cairo, run_native_or_vm_program, run_vm_program};
+use crate::common::{load_cairo, run_native_or_vm_program};
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -6,6 +6,8 @@ use cairo_native::values::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use std::borrow::Borrow;
+use std::ops::Deref;
 
 mod common;
 
@@ -118,38 +120,69 @@ lazy_static! {
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;
     let a = true;
-    let result_vm = run_vm_program(
-        program,
+
+    let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
         "run_test",
-        &[Arg::Value(Felt252::new(a))],
+        None,
+        Some(&[Arg::Value(Felt252::new(a))]),
+        Some(sierra_casm_runner),
         Some(GAS),
     )
+    .left()
+    .unwrap()
     .unwrap();
-    let result_native =
-        run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(a.into())]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &program.1,
-        &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
     .unwrap();
 
     let a = false;
-    let result_vm = run_vm_program(
-        program,
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
         "run_test",
-        &[Arg::Value(Felt252::new(a))],
+        None,
+        Some(&[Arg::Value(Felt252::new(a))]),
+        Some(sierra_casm_runner),
         Some(GAS),
     )
+    .left()
+    .unwrap()
     .unwrap();
-    let result_native =
-        run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+
+    let result_native = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        Some(&[JITValue::Felt252(a.into())]),
+        None,
+        None,
+        None,
+    )
+    .right()
+    .unwrap();
 
     compare_outputs(
-        &program.1,
-        &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -160,14 +193,27 @@ proptest! {
     #[test]
     fn bool_to_felt252_proptest(a: bool) {
         let program = &BOOL_TO_FELT252;
-        let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+
+
+   let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(a))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();
 
         compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )
@@ -177,14 +223,26 @@ proptest! {
     #[test]
     fn bool_not_proptest(a: bool) {
         let program = &BOOL_NOT;
-        let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into())]);
+
+   let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[Arg::Value(Felt252::new(a))]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some(&[JITValue::Felt252(a.into())]), None, None, None).right().unwrap();
 
         compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )
@@ -194,15 +252,30 @@ proptest! {
     #[test]
     fn bool_and_proptest(a: bool, b: bool) {
         let program = &BOOL_AND;
-        let result_vm = run_vm_program(program, "run_test", &[
+
+
+   let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[
             Arg::Value(Felt252::new(a)),
             Arg::Value(Felt252::new(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        ]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
+
 
         compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )
@@ -212,15 +285,28 @@ proptest! {
     #[test]
     fn bool_or_proptest(a: bool, b: bool) {
         let program = &BOOL_OR;
-        let result_vm = run_vm_program(program, "run_test", &[
+
+   let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[
             Arg::Value(Felt252::new(a)),
             Arg::Value(Felt252::new(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        ]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
+
 
         compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )
@@ -230,15 +316,30 @@ proptest! {
     #[test]
     fn bool_xor_proptest(a: bool, b: bool) {
         let program = &BOOL_XOR;
-        let result_vm = run_vm_program(program, "run_test", &[
+
+
+   let (program_for_args, sierra_casm_runner) =
+        ((program.0.clone(), program.1.clone()), program.2.borrow());
+
+    let result_vm = run_native_or_vm_program(
+        &program_for_args,
+        "run_test",
+        None,
+        Some(&[
             Arg::Value(Felt252::new(a)),
             Arg::Value(Felt252::new(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_or_vm_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
+        ]),
+        Some(sierra_casm_runner),
+        Some(GAS),
+    ).left().unwrap().unwrap();
+
+    let result_native =
+        run_native_or_vm_program(&program_for_args, "run_test", Some( &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]), None, None, None).right().unwrap();
+
 
         compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
+        &program_for_args.1,
+        &sierra_casm_runner.find_function("run_test").unwrap().id,
             &result_vm,
             &result_native,
         )
