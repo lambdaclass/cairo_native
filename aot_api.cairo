@@ -37,6 +37,10 @@ fn invoke1_u64(arg0: u64) {
     arg0.print();
 }
 
+fn invoke1_u128(arg0: u128) {
+    arg0.print();
+}
+
 fn invoke1_MyStruct(arg0: MyStruct) {
     // TODO: Find out why the print comes out as `(a, c, b)` instead of `(a, b, c)`.
     let mut data = ArrayTrait::new();

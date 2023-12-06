@@ -86,11 +86,14 @@ where
                 JITValue::Struct { .. } => todo!(),
                 JITValue::Enum { .. } => todo!(),
                 JITValue::Felt252Dict { .. } => todo!(),
-                JITValue::Uint8(_) => todo!(),
-                JITValue::Uint16(_) => todo!(),
-                JITValue::Uint32(_) => todo!(),
-                JITValue::Uint64(_) => todo!(),
-                JITValue::Uint128(_) => todo!(),
+                JITValue::Uint8(value) => invoke_data.push(*value as u64),
+                JITValue::Uint16(value) => invoke_data.push(*value as u64),
+                JITValue::Uint32(value) => invoke_data.push(*value as u64),
+                JITValue::Uint64(value) => invoke_data.push(*value),
+                JITValue::Uint128(value) => {
+                    invoke_data.push(*value as u64);
+                    invoke_data.push((value >> 64) as u64);
+                }
                 JITValue::EcPoint(_, _) => todo!(),
                 JITValue::EcState(_, _, _, _) => todo!(),
             }
@@ -111,8 +114,6 @@ where
             }
         }
 
-        todo!()
+        vec![]
     }
 }
-
-fn arg_into_values() {}
