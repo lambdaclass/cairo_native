@@ -4,7 +4,7 @@
 .global _aot_trampoline
 _aot_trampoline:
     // x0 <- fn_ptr: extern "C" fn()
-    // x1 <- args_ptr: *const u8
+    // x1 <- args_ptr: *const u64
     // x2 <- args_len: usize
 
     stp     x29,    x30,    [sp, #-16]!

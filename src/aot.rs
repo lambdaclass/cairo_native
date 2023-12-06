@@ -12,7 +12,10 @@ use libc::c_void;
 use libloading::Library;
 use std::{alloc::Layout, arch::global_asm};
 
-global_asm!(include_str!("aot.s"));
+#[cfg(target_arch = "aarch64")]
+global_asm!(include_str!("arch/aarch64.s"));
+#[cfg(target_arch = "x86_64")]
+global_asm!(include_str!("arch/x86_64.s"));
 
 extern "C" {
     fn aot_trampoline(fn_ptr: *mut c_void, args_ptr: *const u64, args_len: usize);
