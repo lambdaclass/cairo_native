@@ -657,7 +657,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
             CoreTypeConcrete::Enum(_) => true,
-            CoreTypeConcrete::Struct(_) => true,
+            CoreTypeConcrete::Struct(info) => !info.members.is_empty(),
             CoreTypeConcrete::Felt252Dict(_) => false,
             CoreTypeConcrete::Felt252DictEntry(_) => true,
             CoreTypeConcrete::SquashedFelt252Dict(_) => false,
