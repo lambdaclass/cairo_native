@@ -49,15 +49,49 @@ fn main() {
         find_function_id(&program, "aot_api::aot_api::invoke1_u128"),
         &[JITValue::Uint128(128)],
     );
+    // executor.invoke_dynamic(
+    //     find_function_id(&program, "aot_api::aot_api::invoke1_MyStruct"),
+    //     &[JITValue::Struct {
+    //         debug_name: None,
+    //         fields: vec![
+    //             JITValue::Felt252(b'a'.into()),
+    //             JITValue::Uint8(b'b'),
+    //             JITValue::Uint64(b'c' as u64),
+    //         ],
+    //     }],
+    // );
+
     executor.invoke_dynamic(
-        find_function_id(&program, "aot_api::aot_api::invoke1_MyStruct"),
-        &[JITValue::Struct {
-            debug_name: None,
-            fields: vec![
-                JITValue::Felt252(b'a'.into()),
-                JITValue::Uint8(b'b'),
-                JITValue::Uint64(b'c' as u64),
-            ],
-        }],
+        find_function_id(
+            &program,
+            "aot_api::aot_api::invoke8_u64_u64_u64_u64_u64_u64_u64_u64",
+        ),
+        &[
+            JITValue::Uint8(0),
+            JITValue::Uint8(1),
+            JITValue::Uint8(2),
+            JITValue::Uint8(3),
+            JITValue::Uint8(4),
+            JITValue::Uint8(5),
+            JITValue::Uint8(6),
+            JITValue::Uint8(7),
+        ],
+    );
+    executor.invoke_dynamic(
+        find_function_id(
+            &program,
+            "aot_api::aot_api::invoke9_u64_u64_u64_u64_u64_u64_u64_u64_u64",
+        ),
+        &[
+            JITValue::Uint8(0),
+            JITValue::Uint8(1),
+            JITValue::Uint8(2),
+            JITValue::Uint8(3),
+            JITValue::Uint8(4),
+            JITValue::Uint8(5),
+            JITValue::Uint8(6),
+            JITValue::Uint8(7),
+            JITValue::Uint8(8),
+        ],
     );
 }

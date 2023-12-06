@@ -8,6 +8,8 @@ _aot_trampoline:
     // x2 <- args_len: usize
 
     stp     x29,    x30,    [sp, #-16]!
+    str     x19,    [sp, #-16]!             // Necessary to restore the stack after the call.
+    mov     x19,    sp
 
     mov     x9,     x0                      // We'll need x0.
     add     x10,    x1,     x2,     lsl 3   // Move the pointer to the end (past last element).
@@ -21,13 +23,21 @@ _aot_trampoline:
     //
     // Process stack arguments.
     //
+
+    // Add padding to support an odd number of stack parameters.
+    and     x0,     x2,     1
+    sub     x4,     sp,     x0,     lsl 3   // ARM doesn't like `str reg, [sp]` instructions when
+                                            // the stack isn't 16-byte aligned (not just on `bl`).
+
   1:
     sub     x2,     x2,     1               // Decrement length.
     ldr     x3,     [x10, #-8]!             // Decrement pointer, then load the value.
-    str     x3,     [sp, #-8]!              // Reserve stack memory, then write the value.
+    str     x3,     [x4, #-8]!              // Reserve stack memory, then write the value.
 
     cmp     x2,     8                       // Check if there are more than 8 arguments.
     bgt     1b                              // If there still are, loop back and repeat.
+
+    mov     sp,     x4
 
   2:
     //
@@ -51,5 +61,7 @@ _aot_trampoline:
     // Call the function.
     blr     x9
 
+    mov     sp,     x19
+    ldr     x19,    [sp],   16
     ldp     x29,    x30,    [sp],   16
     ret

@@ -91,6 +91,41 @@ fn invoke5_u64_felt252_felt252_felt252_felt252(
     arg4.print();
 }
 
+fn invoke8_u64_u64_u64_u64_u64_u64_u64_u64(
+    arg0: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64, arg7: u64
+) {
+    arg0.print();
+    arg1.print();
+    arg2.print();
+    arg3.print();
+    arg4.print();
+    arg5.print();
+    arg6.print();
+    arg7.print();
+}
+
+fn invoke9_u64_u64_u64_u64_u64_u64_u64_u64_u64(
+    arg0: u64,
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+    arg5: u64,
+    arg6: u64,
+    arg7: u64,
+    arg8: u64,
+) {
+    arg0.print();
+    arg1.print();
+    arg2.print();
+    arg3.print();
+    arg4.print();
+    arg5.print();
+    arg6.print();
+    arg7.print();
+    arg8.print();
+}
+
 fn invoke0_return1_felt252() -> felt252 {
     42
 }
