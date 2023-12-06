@@ -908,7 +908,6 @@ pub fn run_native_or_vm_program(
     entry_point: &str,
     args_native: Option<&[JITValue]>,
     args_vm: Option<&[Arg]>,
-    // Running VM program
     sierra_casm_runner: Option<SierraCasmRunner>,
     gas: Option<usize>,
 ) -> Either<RunResultStarknet, ExecutionResult> {
