@@ -11,7 +11,7 @@ use crate::{
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -36,7 +36,7 @@ use melior::{
     },
     Context,
 };
-use num_bigint::Sign;
+use num_bigint::{Sign, ToBigUint};
 use std::{alloc::Layout, ops::Neg};
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -548,7 +548,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         _ => info.c.to_biguint().unwrap(),
     };
 
@@ -653,7 +653,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         _ => info.c.to_biguint().unwrap(),
     };
 
@@ -1430,7 +1430,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         _ => info.c.to_biguint().unwrap(),
     };
 
