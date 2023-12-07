@@ -3,7 +3,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
-use cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
+use cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JITValue};
 use clap::Parser;
 use itertools::Itertools;
 use num_traits::Num;
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {

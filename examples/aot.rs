@@ -1,9 +1,10 @@
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
-use cairo_native::{context::NativeContext, utils::find_function_id, values::JITValue};
+use cairo_native::{
+    context::NativeContext, executor::AotNativeExecutor, utils::find_function_id, values::JITValue,
+};
 use std::path::Path;
 
 fn main() {
@@ -20,17 +21,16 @@ fn main() {
 
     let shared_lib = unsafe { libloading::Library::new("aot_api.dylib").unwrap() };
 
-    let executor = cairo_native::aot::AotNativeExecutor::new(
+    let executor = AotNativeExecutor::new(
         shared_lib,
         ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap(),
     );
 
-    dbg!(executor.invoke_dynamic(
+    executor.invoke_dynamic(
         find_function_id(&program, "aot_api::aot_api::contract_call"),
         &[JITValue::Array(vec![
             // Array length
             JITValue::Felt252(1.into()),
-
             // Call::to
             JITValue::Felt252(12345678.into()),
             // Call::selector
@@ -38,7 +38,7 @@ fn main() {
             // Call::calldata
             JITValue::Felt252(0.into()),
         ])],
-    ));
+    );
 
     // executor.invoke_dynamic(find_function_id(&program, "aot_api::aot_api::invoke0"), &[]);
     // executor.invoke_dynamic(

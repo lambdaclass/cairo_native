@@ -2,7 +2,7 @@ use cairo_felt::Felt252;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::values::JITValue;
 use cairo_native::{
@@ -330,7 +330,7 @@ fn main() {
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
         .execute_contract(

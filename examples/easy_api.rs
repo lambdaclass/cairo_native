@@ -1,6 +1,6 @@
 use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::values::JITValue;
 use std::path::Path;
 
@@ -24,7 +24,7 @@ fn main() {
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     // Execute the program.
     let result = native_executor

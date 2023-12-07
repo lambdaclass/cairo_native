@@ -22,9 +22,9 @@ use std::{
 };
 
 #[cfg(target_arch = "aarch64")]
-global_asm!(include_str!("arch/aarch64.s"));
+global_asm!(include_str!("../arch/aarch64.s"));
 #[cfg(target_arch = "x86_64")]
-global_asm!(include_str!("arch/x86_64.s"));
+global_asm!(include_str!("../arch/x86_64.s"));
 
 // #[cfg(target_arch = "aarch64")]
 // const NUM_REGISTER_ARGS: usize = 8;

@@ -64,10 +64,8 @@ libloading = "0.8.1"
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
 lambdaworks-math = "0.1"
-num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.2"
-tempfile = "3.6"
 test-case = "3.2.1"
 
 [build-dependencies]

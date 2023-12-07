@@ -1,4 +1,4 @@
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point;
 use cairo_native::{context::NativeContext, values::JITValue};
 use std::path::Path;
@@ -28,7 +28,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     let output = native_executor.execute(fn_id, &[JITValue::Felt252(1.into())], None);
 

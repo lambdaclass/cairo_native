@@ -22,7 +22,7 @@ use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
     execution_result::ContractExecutionResult,
-    executor::NativeExecutor,
+    executor::JitNativeExecutor,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -336,7 +336,7 @@ where
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     native_executor
         .execute_contract(entry_point_id, args, u64::MAX as u128)
