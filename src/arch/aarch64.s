@@ -14,9 +14,6 @@ _aot_trampoline:
     mov     x9,     x0                      // We'll need x0.
     add     x10,    x1,     x2,     lsl 3   // Move the pointer to the end (past last element).
 
-    //
-    // Copy stack arguments (for n_args > 8).
-    //
     cmp     x2,     8                       // Check if there are more than 8 arguments.
     ble     2f                              // If there are less than 8, skip to register arguments.
 
