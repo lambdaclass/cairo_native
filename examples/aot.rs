@@ -71,6 +71,22 @@ fn main() {
             JITValue::Felt252(Felt252::from(4567)),
         ])],
     );
+    executor.invoke_dynamic(
+        find_function_id(&program, "aot_api::aot_api::invoke1_MyEnum"),
+        &[JITValue::Enum {
+            tag: 0,
+            value: JITValue::Uint64(0xDEADBEEFDEADBEEF).into(),
+            debug_name: None,
+        }],
+    );
+    executor.invoke_dynamic(
+        find_function_id(&program, "aot_api::aot_api::invoke1_MyEnum"),
+        &[JITValue::Enum {
+            tag: 1,
+            value: JITValue::Uint8(0xFF).into(),
+            debug_name: None,
+        }],
+    );
 
     executor.invoke_dynamic(
         find_function_id(

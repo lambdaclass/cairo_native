@@ -11,6 +11,7 @@ struct MyStruct {
 enum MyEnum {
     A: u64,
     B: u8,
+    C: felt252,
 }
 
 fn invoke0() {
@@ -58,6 +59,7 @@ fn invoke1_MyEnum(arg0: MyEnum) {
     let (tag, value) = match arg0 {
         MyEnum::A(a) => (0, a.into()),
         MyEnum::B(b) => (1, b.into()),
+        MyEnum::C(c) => (2, c),
     };
 
     let mut data = ArrayTrait::new();
@@ -70,6 +72,7 @@ fn invoke2_MyEnum_MyStruct(arg0: MyEnum, arg1: MyStruct) {
     let (tag, value) = match arg0 {
         MyEnum::A(a) => (0, a.into()),
         MyEnum::B(b) => (1, b.into()),
+        MyEnum::C(c) => (2, c),
     };
 
     let mut data = ArrayTrait::new();

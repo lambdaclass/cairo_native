@@ -21,10 +21,10 @@ global_asm!(include_str!("arch/aarch64.s"));
 #[cfg(target_arch = "x86_64")]
 global_asm!(include_str!("arch/x86_64.s"));
 
-#[cfg(target_arch = "aarch64")]
-const NUM_REGISTER_ARGS: usize = 8;
-#[cfg(target_arch = "x86_64")]
-const NUM_REGISTER_ARGS: usize = 6;
+// #[cfg(target_arch = "aarch64")]
+// const NUM_REGISTER_ARGS: usize = 8;
+// #[cfg(target_arch = "x86_64")]
+// const NUM_REGISTER_ARGS: usize = 6;
 
 extern "C" {
     fn aot_trampoline(fn_ptr: *mut c_void, args_ptr: *const u64, args_len: usize);
@@ -167,10 +167,12 @@ fn map_arg_to_values(
             invoke_data.extend(d.to_le_digits());
         }
         (CoreTypeConcrete::Enum(info), JITValue::Enum { tag, value, .. }) => {
+            // TODO: Why does `MyEnum::A` require its payload on the stack but `MyEnum::B` is parsed
+            //   on the next available register? Why does `MyEnum::A`'s MSB get replaced with 0xEF?
             invoke_data.push(*tag as u64);
-            if invoke_data.len() < NUM_REGISTER_ARGS {
-                invoke_data.resize_with(NUM_REGISTER_ARGS, Default::default);
-            }
+            // if invoke_data.len() < NUM_REGISTER_ARGS {
+            //     invoke_data.resize(NUM_REGISTER_ARGS, 0);
+            // }
             map_arg_to_values(invoke_data, program_registry, &info.variants[*tag], value)?;
         }
         (CoreTypeConcrete::Felt252(_), JITValue::Felt252(value)) => {
