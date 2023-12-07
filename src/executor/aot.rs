@@ -1,7 +1,7 @@
 use crate::{
     types::TypeBuilder,
     utils::generate_function_name,
-    values::{JITValue, ValueBuilder},
+    values::{JitValue, ValueBuilder},
 };
 use bumpalo::Bump;
 use cairo_felt::Felt252;
@@ -65,7 +65,7 @@ where
 }
 
 impl AotNativeExecutor<CoreType, CoreLibfunc> {
-    pub fn invoke_dynamic(&self, function_id: &FunctionId, args: &[JITValue]) -> JITValue {
+    pub fn invoke_dynamic(&self, function_id: &FunctionId, args: &[JitValue]) -> JitValue {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
 
@@ -129,7 +129,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             .unwrap();
         let return_value = match type_info {
             CoreTypeConcrete::Array(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
@@ -137,7 +137,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
                 None => unreachable!("Array<T> is complex"),
             },
             CoreTypeConcrete::EcPoint(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
@@ -145,7 +145,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
                 None => unreachable!("EcPoint is complex"),
             },
             CoreTypeConcrete::EcState(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
@@ -153,7 +153,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
                 None => unreachable!("EcState is complex"),
             },
             CoreTypeConcrete::Enum(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
@@ -162,53 +162,53 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             },
             CoreTypeConcrete::Felt252(_) => match return_ptr {
                 Some(_) => todo!(),
-                None => JITValue::Felt252(Felt252::from_bytes_le(unsafe {
+                None => JitValue::Felt252(Felt252::from_bytes_le(unsafe {
                     std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
                 })),
             },
             CoreTypeConcrete::Felt252Dict(_) => todo!(),
             CoreTypeConcrete::Struct(_) => todo!(),
             CoreTypeConcrete::Uint128(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
                 ),
                 None => {
-                    JITValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64)
+                    JitValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64)
                 }
             },
             CoreTypeConcrete::Uint64(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
                 ),
-                None => JITValue::Uint64(ret_registers[0]),
+                None => JitValue::Uint64(ret_registers[0]),
             },
             CoreTypeConcrete::Uint32(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
                 ),
-                None => JITValue::Uint32(ret_registers[0] as u32),
+                None => JitValue::Uint32(ret_registers[0] as u32),
             },
             CoreTypeConcrete::Uint16(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
                 ),
-                None => JITValue::Uint16(ret_registers[0] as u16),
+                None => JitValue::Uint16(ret_registers[0] as u16),
             },
             CoreTypeConcrete::Uint8(_) => match return_ptr {
-                Some((_, return_ptr)) => JITValue::from_jit(
+                Some((_, return_ptr)) => JitValue::from_jit(
                     unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
                     function_signature.ret_types.last().unwrap(),
                     &self.registry,
                 ),
-                None => JITValue::Uint8(ret_registers[0] as u8),
+                None => JitValue::Uint8(ret_registers[0] as u8),
             },
             _ => todo!("unsupported return type"),
         };
@@ -227,13 +227,13 @@ fn map_arg_to_values(
     invoke_data: &mut Vec<u64>,
     program_registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     type_id: &ConcreteTypeId,
-    value: &JITValue,
+    value: &JitValue,
 ) -> Result<(), Box<ProgramRegistryError>> {
     let type_info = program_registry.get_type(type_id)?;
 
     // TODO: Find out if builtins push an argument or not. My guess is that they do.
     match (type_info, value) {
-        (CoreTypeConcrete::Array(info), JITValue::Array(values)) => {
+        (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
             // TODO: Assert that `info.ty` matches all the values' types.
 
             let type_info = match program_registry.get_type(type_id)? {
@@ -263,17 +263,17 @@ fn map_arg_to_values(
             invoke_data.push(values.len() as u64);
             invoke_data.push(values.len() as u64);
         }
-        (CoreTypeConcrete::EcPoint(_), JITValue::EcPoint(a, b)) => {
+        (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
             invoke_data.extend(a.to_le_digits());
             invoke_data.extend(b.to_le_digits());
         }
-        (CoreTypeConcrete::EcState(_), JITValue::EcState(a, b, c, d)) => {
+        (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
             invoke_data.extend(a.to_le_digits());
             invoke_data.extend(b.to_le_digits());
             invoke_data.extend(c.to_le_digits());
             invoke_data.extend(d.to_le_digits());
         }
-        (CoreTypeConcrete::Enum(info), JITValue::Enum { tag, value, .. }) => {
+        (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
             // TODO: Why does `MyEnum::A` require its payload on the stack but `MyEnum::B` is parsed
             //   on the next available register? Why does `MyEnum::A`'s MSB get replaced with 0xEF?
             invoke_data.push(*tag as u64);
@@ -282,10 +282,10 @@ fn map_arg_to_values(
             // }
             map_arg_to_values(invoke_data, program_registry, &info.variants[*tag], value)?;
         }
-        (CoreTypeConcrete::Felt252(_), JITValue::Felt252(value)) => {
+        (CoreTypeConcrete::Felt252(_), JitValue::Felt252(value)) => {
             invoke_data.extend(value.to_le_digits());
         }
-        (CoreTypeConcrete::Felt252Dict(_), JITValue::Felt252Dict { .. }) => {
+        (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
             #[cfg(not(feature = "cairo-native-runtime"))]
             unimplemented!("enable the `cairo-native-runtime` feature to use felt252 dicts");
 
@@ -302,25 +302,25 @@ fn map_arg_to_values(
             // ) as u64);
             todo!("Flatten felt252_dict into Vec<u64> for the AOT interface's arguments'.")
         }
-        (CoreTypeConcrete::Struct(info), JITValue::Struct { fields, .. }) => {
+        (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => {
             for (field_type_id, field_value) in info.members.iter().zip(fields) {
                 map_arg_to_values(invoke_data, program_registry, field_type_id, field_value)?;
             }
         }
-        (CoreTypeConcrete::Uint128(_), JITValue::Uint128(value)) => {
+        (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => {
             invoke_data.push(*value as u64);
             invoke_data.push((value >> 64) as u64);
         }
-        (CoreTypeConcrete::Uint64(_), JITValue::Uint64(value)) => {
+        (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
             invoke_data.push(*value);
         }
-        (CoreTypeConcrete::Uint32(_), JITValue::Uint32(value)) => {
+        (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
             invoke_data.push(*value as u64);
         }
-        (CoreTypeConcrete::Uint16(_), JITValue::Uint16(value)) => {
+        (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
             invoke_data.push(*value as u64);
         }
-        (CoreTypeConcrete::Uint8(_), JITValue::Uint8(value)) => {
+        (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
             invoke_data.push(*value as u64);
         }
         (sierra_ty, arg_ty) => match sierra_ty {

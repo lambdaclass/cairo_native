@@ -806,7 +806,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
@@ -941,7 +941,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JITValue::Felt252(Felt252::from_bytes_be(b"u128 is 0"));
+        let error = JitValue::Felt252(Felt252::from_bytes_be(b"u128 is 0"));
 
         run_program_assert_output(
             program,
@@ -1123,7 +1123,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        &[jit_panic!(JitValue::Felt252(error))],
                     );
                 }
             }
@@ -1175,7 +1175,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        &[jit_panic!(JitValue::Felt252(error))],
                     );
                 }
             }

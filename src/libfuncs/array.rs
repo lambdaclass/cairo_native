@@ -1183,7 +1183,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
-        values::JITValue,
+        values::JitValue,
     };
     use pretty_assertions_sorted::assert_eq;
 
@@ -1198,7 +1198,7 @@ mod test {
         );
         let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_values;
 
-        assert_eq!(result, &[JITValue::from([1u32, 2u32])]);
+        assert_eq!(result, &[JitValue::from([1u32, 2u32])]);
     }
 
     #[test]
@@ -1451,7 +1451,7 @@ mod test {
 
         assert_eq!(
             result,
-            [jit_panic!(JITValue::felt_str(
+            [jit_panic!(JitValue::felt_str(
                 "1637570914057682275393755530660268060279989363"
             ))]
         );

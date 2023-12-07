@@ -6,7 +6,7 @@ use crate::{
     metadata::syscall_handler::SyscallHandlerMeta,
     module::NativeModule,
     utils::create_engine,
-    values::JITValue,
+    values::JitValue,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -50,7 +50,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn execute(
         &self,
         fn_id: &FunctionId,
-        params: &[JITValue],
+        params: &[JitValue],
         gas: Option<u128>,
     ) -> Result<ExecutionResult, RunnerError> {
         let registry = self.get_program_registry();
@@ -74,7 +74,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn execute_contract(
         &self,
         fn_id: &FunctionId,
-        calldata: &[JITValue],
+        calldata: &[JitValue],
         gas: u128,
     ) -> Result<ContractExecutionResult, RunnerError> {
         let registry = self.get_program_registry();

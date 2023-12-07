@@ -1,6 +1,6 @@
 use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point;
-use cairo_native::{context::NativeContext, values::JITValue};
+use cairo_native::{context::NativeContext, values::JitValue};
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -30,7 +30,7 @@ fn main() {
 
     let native_executor = JitNativeExecutor::new(native_program);
 
-    let output = native_executor.execute(fn_id, &[JITValue::Felt252(1.into())], None);
+    let output = native_executor.execute(fn_id, &[JitValue::Felt252(1.into())], None);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

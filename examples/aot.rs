@@ -3,7 +3,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
-    context::NativeContext, executor::AotNativeExecutor, utils::find_function_id, values::JITValue,
+    context::NativeContext, executor::AotNativeExecutor, utils::find_function_id, values::JitValue,
 };
 use std::path::Path;
 
@@ -28,77 +28,77 @@ fn main() {
 
     executor.invoke_dynamic(
         find_function_id(&program, "aot_api::aot_api::contract_call"),
-        &[JITValue::Array(vec![
+        &[JitValue::Array(vec![
             // Array length
-            JITValue::Felt252(1.into()),
+            JitValue::Felt252(1.into()),
             // Call::to
-            JITValue::Felt252(12345678.into()),
+            JitValue::Felt252(12345678.into()),
             // Call::selector
-            JITValue::Felt252(12345678.into()),
+            JitValue::Felt252(12345678.into()),
             // Call::calldata
-            JITValue::Felt252(0.into()),
+            JitValue::Felt252(0.into()),
         ])],
     );
 
     // executor.invoke_dynamic(find_function_id(&program, "aot_api::aot_api::invoke0"), &[]);
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_felt252"),
-    //     &[JITValue::Felt252(1234.into())],
+    //     &[JitValue::Felt252(1234.into())],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_u8"),
-    //     &[JITValue::Uint8(8)],
+    //     &[JitValue::Uint8(8)],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_u16"),
-    //     &[JITValue::Uint16(16)],
+    //     &[JitValue::Uint16(16)],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_u32"),
-    //     &[JITValue::Uint32(32)],
+    //     &[JitValue::Uint32(32)],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_u64"),
-    //     &[JITValue::Uint64(64)],
+    //     &[JitValue::Uint64(64)],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_u128"),
-    //     &[JITValue::Uint128(128)],
+    //     &[JitValue::Uint128(128)],
     // );
 
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_MyStruct"),
-    //     &[JITValue::Struct {
+    //     &[JitValue::Struct {
     //         debug_name: None,
     //         fields: vec![
-    //             JITValue::Felt252(b'a'.into()),
-    //             JITValue::Uint8(b'b'),
-    //             JITValue::Uint64(b'c' as u64),
+    //             JitValue::Felt252(b'a'.into()),
+    //             JitValue::Uint8(b'b'),
+    //             JitValue::Uint64(b'c' as u64),
     //         ],
     //     }],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_Array_felt252"),
-    //     &[JITValue::Array(vec![
-    //         JITValue::Felt252(Felt252::from(1234)),
-    //         JITValue::Felt252(Felt252::from(2345)),
-    //         JITValue::Felt252(Felt252::from(3456)),
-    //         JITValue::Felt252(Felt252::from(4567)),
+    //     &[JitValue::Array(vec![
+    //         JitValue::Felt252(Felt252::from(1234)),
+    //         JitValue::Felt252(Felt252::from(2345)),
+    //         JitValue::Felt252(Felt252::from(3456)),
+    //         JitValue::Felt252(Felt252::from(4567)),
     //     ])],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_MyEnum"),
-    //     &[JITValue::Enum {
+    //     &[JitValue::Enum {
     //         tag: 0,
-    //         value: JITValue::Uint64(0xDEADBEEFDEADBEEF).into(),
+    //         value: JitValue::Uint64(0xDEADBEEFDEADBEEF).into(),
     //         debug_name: None,
     //     }],
     // );
     // executor.invoke_dynamic(
     //     find_function_id(&program, "aot_api::aot_api::invoke1_MyEnum"),
-    //     &[JITValue::Enum {
+    //     &[JitValue::Enum {
     //         tag: 1,
-    //         value: JITValue::Uint8(0xFF).into(),
+    //         value: JitValue::Uint8(0xFF).into(),
     //         debug_name: None,
     //     }],
     // );
@@ -109,14 +109,14 @@ fn main() {
     //         "aot_api::aot_api::invoke8_u64_u64_u64_u64_u64_u64_u64_u64",
     //     ),
     //     &[
-    //         JITValue::Uint64(0),
-    //         JITValue::Uint64(1),
-    //         JITValue::Uint64(2),
-    //         JITValue::Uint64(3),
-    //         JITValue::Uint64(4),
-    //         JITValue::Uint64(5),
-    //         JITValue::Uint64(6),
-    //         JITValue::Uint64(7),
+    //         JitValue::Uint64(0),
+    //         JitValue::Uint64(1),
+    //         JitValue::Uint64(2),
+    //         JitValue::Uint64(3),
+    //         JitValue::Uint64(4),
+    //         JitValue::Uint64(5),
+    //         JitValue::Uint64(6),
+    //         JitValue::Uint64(7),
     //     ],
     // );
     // executor.invoke_dynamic(
@@ -125,15 +125,15 @@ fn main() {
     //         "aot_api::aot_api::invoke9_u64_u64_u64_u64_u64_u64_u64_u64_u64",
     //     ),
     //     &[
-    //         JITValue::Uint64(0),
-    //         JITValue::Uint64(1),
-    //         JITValue::Uint64(2),
-    //         JITValue::Uint64(3),
-    //         JITValue::Uint64(4),
-    //         JITValue::Uint64(5),
-    //         JITValue::Uint64(6),
-    //         JITValue::Uint64(7),
-    //         JITValue::Uint64(8),
+    //         JitValue::Uint64(0),
+    //         JitValue::Uint64(1),
+    //         JitValue::Uint64(2),
+    //         JitValue::Uint64(3),
+    //         JitValue::Uint64(4),
+    //         JitValue::Uint64(5),
+    //         JitValue::Uint64(6),
+    //         JitValue::Uint64(7),
+    //         JitValue::Uint64(8),
     //     ],
     // );
 }

@@ -12,7 +12,7 @@ use crate::{
     metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::generate_function_name,
-    values::{JITValue, ValueBuilder},
+    values::{JitValue, ValueBuilder},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -31,7 +31,7 @@ use tracing::debug;
 #[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
-    pub return_values: Vec<JITValue>,
+    pub return_values: Vec<JitValue>,
 }
 
 /// Execute a function on an engine loaded with a Sierra program.
@@ -44,12 +44,12 @@ pub struct ExecutionResult {
 /// The registry is needed to convert the params and return values into and from the JIT ABI. Check
 /// out [the values module](crate::values) for more information about the de/serialization process.
 ///
-/// The function's arguments and return values are passed around using [`JITValue`].
+/// The function's arguments and return values are passed around using [`JitValue`].
 pub fn execute(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    params: &[JITValue],
+    params: &[JitValue],
     required_initial_gas: Option<u128>,
     gas: Option<u128>,
     syscall_handler: Option<&SyscallHandlerMeta>,
@@ -75,8 +75,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Array(_)) {
-                    Err(make_unexpected_value_error("JITValue::Array".to_string()))?;
+                if !matches!(next, JitValue::Array(_)) {
+                    Err(make_unexpected_value_error("JitValue::Array".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -99,8 +99,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::EcPoint(..)) {
-                    Err(make_unexpected_value_error("JITValue::EcPoint".to_string()))?;
+                if !matches!(next, JitValue::EcPoint(..)) {
+                    Err(make_unexpected_value_error("JitValue::EcPoint".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -110,8 +110,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::EcState(..)) {
-                    Err(make_unexpected_value_error("JITValue::EcState".to_string()))?;
+                if !matches!(next, JitValue::EcState(..)) {
+                    Err(make_unexpected_value_error("JitValue::EcState".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -121,8 +121,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Felt252(_)) {
-                    Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                if !matches!(next, JitValue::Felt252(_)) {
+                    Err(make_unexpected_value_error("JitValue::Felt252".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -154,8 +154,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint8(_)) {
-                    Err(make_unexpected_value_error("JITValue::Uint8".to_string()))?;
+                if !matches!(next, JitValue::Uint8(_)) {
+                    Err(make_unexpected_value_error("JitValue::Uint8".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -165,8 +165,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint16(_)) {
-                    Err(make_unexpected_value_error("JITValue::Uint16".to_string()))?;
+                if !matches!(next, JitValue::Uint16(_)) {
+                    Err(make_unexpected_value_error("JitValue::Uint16".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -176,8 +176,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint32(_)) {
-                    Err(make_unexpected_value_error("JITValue::Uint32".to_string()))?;
+                if !matches!(next, JitValue::Uint32(_)) {
+                    Err(make_unexpected_value_error("JitValue::Uint32".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -187,8 +187,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint64(_)) {
-                    Err(make_unexpected_value_error("JITValue::Uint64".to_string()))?;
+                if !matches!(next, JitValue::Uint64(_)) {
+                    Err(make_unexpected_value_error("JitValue::Uint64".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -198,8 +198,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Uint128(_)) {
-                    Err(make_unexpected_value_error("JITValue::Uint128".to_string()))?;
+                if !matches!(next, JitValue::Uint128(_)) {
+                    Err(make_unexpected_value_error("JitValue::Uint128".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -223,8 +223,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Enum { .. }) {
-                    Err(make_unexpected_value_error("JITValue::Enum".to_string()))?;
+                if !matches!(next, JitValue::Enum { .. }) {
+                    Err(make_unexpected_value_error("JitValue::Enum".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -234,8 +234,8 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Struct { .. }) {
-                    Err(make_unexpected_value_error("JITValue::Struct".to_string()))?;
+                if !matches!(next, JitValue::Struct { .. }) {
+                    Err(make_unexpected_value_error("JitValue::Struct".to_string()))?;
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -245,9 +245,9 @@ pub fn execute(
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                if !matches!(next, JITValue::Felt252Dict { .. }) {
+                if !matches!(next, JitValue::Felt252Dict { .. }) {
                     Err(make_unexpected_value_error(
-                        "JITValue::Felt252Dict".to_string(),
+                        "JitValue::Felt252Dict".to_string(),
                     ))?;
                 }
 
@@ -268,8 +268,8 @@ pub fn execute(
                             .next()
                             .ok_or_else(|| make_missing_parameter(param_type_id))?;
 
-                        if !matches!(next, JITValue::Felt252(_)) {
-                            Err(make_unexpected_value_error("JITValue::Felt252".to_string()))?;
+                        if !matches!(next, JitValue::Felt252(_)) {
+                            Err(make_unexpected_value_error("JitValue::Felt252".to_string()))?;
                         }
 
                         params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
@@ -359,7 +359,7 @@ pub fn execute(
                 // ignore returned builtins
             }
             _ => {
-                let value = JITValue::from_jit(ptr, type_id, registry);
+                let value = JitValue::from_jit(ptr, type_id, registry);
                 returns.push(value);
             }
         };
@@ -380,13 +380,13 @@ pub fn execute_contract(
     engine: &ExecutionEngine,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_id: &FunctionId,
-    calldata: &[JITValue],
+    calldata: &[JitValue],
     required_initial_gas: Option<u128>,
     gas: u128,
     syscall_handler: &SyscallHandlerMeta,
 ) -> Result<ContractExecutionResult, JitRunnerError> {
-    let params = vec![JITValue::Struct {
-        fields: vec![JITValue::Array(calldata.to_vec())],
+    let params = vec![JitValue::Struct {
+        fields: vec![JitValue::Array(calldata.to_vec())],
         debug_name: None,
     }];
 

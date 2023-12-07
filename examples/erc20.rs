@@ -4,7 +4,7 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -336,12 +336,12 @@ fn main() {
         .execute_contract(
             fn_id,
             &[
-                JITValue::Felt252(Felt252::from_bytes_be(b"name")),
-                JITValue::Felt252(Felt252::from_bytes_be(b"symbol")),
-                JITValue::Felt252(Felt252::new(0)),
-                JITValue::Felt252(Felt252::new(i64::MAX)),
-                JITValue::Felt252(Felt252::new(4)),
-                JITValue::Felt252(Felt252::new(6)),
+                JitValue::Felt252(Felt252::from_bytes_be(b"name")),
+                JitValue::Felt252(Felt252::from_bytes_be(b"symbol")),
+                JitValue::Felt252(Felt252::new(0)),
+                JitValue::Felt252(Felt252::new(i64::MAX)),
+                JitValue::Felt252(Felt252::new(4)),
+                JitValue::Felt252(Felt252::new(6)),
             ],
             u64::MAX.into(),
         )

@@ -1,7 +1,7 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
@@ -64,7 +64,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
 
         compare_outputs(
             &program.1,
@@ -84,7 +84,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
 
         compare_outputs(
             &program.1,
@@ -104,7 +104,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
 
         compare_outputs(
             &program.1,

@@ -428,7 +428,7 @@ Example code to run a program:
 use cairo_felt::Felt252;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use std::path::Path;
 
 fn main() {
@@ -444,7 +444,7 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+    let params = &[JitValue::Felt252(Felt252::from_bytes_be(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
@@ -472,7 +472,7 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -518,7 +518,7 @@ fn main() {
         .execute_contract(
             fn_id,
             // The calldata
-            &[JITValue::Felt252(Felt252::new(1))],
+            &[JitValue::Felt252(Felt252::new(1))],
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");

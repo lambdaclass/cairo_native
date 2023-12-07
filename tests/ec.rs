@@ -2,7 +2,7 @@ use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program}
 use cairo_felt::Felt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
+use cairo_native::values::JitValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
@@ -66,7 +66,7 @@ fn ec_point_from_x_big() {
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
+    let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(x)]);
 
     compare_outputs(
         &program.1,
@@ -84,7 +84,7 @@ fn ec_point_from_x_small() {
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
+    let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(x)]);
 
     compare_outputs(
         &program.1,
@@ -106,7 +106,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
 
         compare_outputs(
             &program.1,
@@ -127,7 +127,7 @@ proptest! {
             Some(GAS),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a)]);
+        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a)]);
 
         compare_outputs(
             &program.1,
