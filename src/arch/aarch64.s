@@ -6,9 +6,10 @@ _aot_trampoline:
     // x0 <- fn_ptr: extern "C" fn()
     // x1 <- args_ptr: *const u64
     // x2 <- args_len: usize
+    // x3 <- ret_ptr: &mut [u64; 4]
 
     stp     x29,    x30,    [sp, #-16]!
-    str     x19,    [sp, #-16]!             // Necessary to restore the stack after the call.
+    stp     x19,    x3,     [sp, #-16]!     // Necessary to restore the stack after the call.
     mov     x19,    sp
 
     mov     x9,     x0                      // We'll need x0.
@@ -58,7 +59,13 @@ _aot_trampoline:
     // Call the function.
     blr     x9
 
+    // Restore the stack and context registers.
     mov     sp,     x19
-    ldr     x19,    [sp],   16
+    ldp     x19,    x4,     [sp],   16
     ldp     x29,    x30,    [sp],   16
+
+    // Store the results into `ret_ptr`.
+    stp     x0,     x1,     [x4],   16
+    stp     x2,     x3,     [x4]
+
     ret

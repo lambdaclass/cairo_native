@@ -4,6 +4,7 @@ use crate::{
     values::{JITValue, ValueBuilder},
 };
 use bumpalo::Bump;
+use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -14,7 +15,11 @@ use cairo_lang_sierra::{
 };
 use libc::c_void;
 use libloading::Library;
-use std::{alloc::Layout, arch::global_asm, ptr::null_mut};
+use std::{
+    alloc::Layout,
+    arch::global_asm,
+    ptr::{null_mut, NonNull},
+};
 
 #[cfg(target_arch = "aarch64")]
 global_asm!(include_str!("arch/aarch64.s"));
@@ -27,7 +32,16 @@ global_asm!(include_str!("arch/x86_64.s"));
 // const NUM_REGISTER_ARGS: usize = 6;
 
 extern "C" {
-    fn aot_trampoline(fn_ptr: *mut c_void, args_ptr: *const u64, args_len: usize);
+    /// Invoke an AOT-compiled function.
+    ///
+    /// The `ret_ptr` argument is only used when the first argument (the actual return pointer) is
+    /// unused. Used for u8, u16, u32, u64, u128 and felt252, but not for arrays, enums or structs.
+    fn aot_trampoline(
+        fn_ptr: *mut c_void,
+        args_ptr: *const u64,
+        args_len: usize,
+        ret_ptr: &mut [u64; 4],
+    );
 }
 
 pub struct AotNativeExecutor<TType, TLibfunc>
@@ -51,7 +65,7 @@ where
 }
 
 impl AotNativeExecutor<CoreType, CoreLibfunc> {
-    pub fn invoke_dynamic(&self, function_id: &FunctionId, args: &[JITValue]) -> Vec<JITValue> {
+    pub fn invoke_dynamic(&self, function_id: &FunctionId, args: &[JITValue]) -> JITValue {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
 
@@ -69,7 +83,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
         let return_ptr = if function_signature.ret_types.len() > 1
             || function_signature
                 .ret_types
-                .first()
+                .last()
                 .is_some_and(|id| self.registry.get_type(id).unwrap().is_complex())
         {
             let layout =
@@ -97,14 +111,107 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             map_arg_to_values(&mut invoke_data, &self.registry, type_id, value).unwrap();
         }
 
-        // TODO: Invoke the trampoline.
+        // Invoke the trampoline.
+        let mut ret_registers = [0; 4];
         unsafe {
             aot_trampoline(
                 function_ptr.into_raw().into_raw(),
                 invoke_data.as_ptr(),
                 invoke_data.len(),
+                &mut ret_registers,
             );
         }
+
+        // Parse return values.
+        let type_info = self
+            .registry
+            .get_type(function_signature.ret_types.last().unwrap())
+            .unwrap();
+        let return_value = match type_info {
+            CoreTypeConcrete::Array(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => unreachable!("Array<T> is complex"),
+            },
+            CoreTypeConcrete::EcPoint(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => unreachable!("EcPoint is complex"),
+            },
+            CoreTypeConcrete::EcState(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => unreachable!("EcState is complex"),
+            },
+            CoreTypeConcrete::Enum(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => unreachable!("Enum<...> is complex"),
+            },
+            CoreTypeConcrete::Felt252(_) => match return_ptr {
+                Some(_) => todo!(),
+                None => JITValue::Felt252(Felt252::from_bytes_le(unsafe {
+                    std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+                })),
+            },
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Uint128(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => {
+                    JITValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64)
+                }
+            },
+            CoreTypeConcrete::Uint64(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => JITValue::Uint64(ret_registers[0]),
+            },
+            CoreTypeConcrete::Uint32(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => JITValue::Uint32(ret_registers[0] as u32),
+            },
+            CoreTypeConcrete::Uint16(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => JITValue::Uint16(ret_registers[0] as u16),
+            },
+            CoreTypeConcrete::Uint8(_) => match return_ptr {
+                Some((_, return_ptr)) => JITValue::from_jit(
+                    unsafe { NonNull::new_unchecked(return_ptr as *mut ()) },
+                    function_signature.ret_types.last().unwrap(),
+                    &self.registry,
+                ),
+                None => JITValue::Uint8(ret_registers[0] as u8),
+            },
+            _ => todo!("unsupported return type"),
+        };
 
         if let Some((layout, return_ptr)) = return_ptr {
             unsafe {
@@ -112,7 +219,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             }
         }
 
-        vec![]
+        return_value
     }
 }
 

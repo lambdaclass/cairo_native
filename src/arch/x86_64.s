@@ -5,7 +5,7 @@
 aot_trampoline:
     # rdi <- fn_ptr: extern "C" fn()
     # rsi <- args_ptr: *const u64
-    # rdx <- args__len: usize
+    # rdx <- args_len: usize
 
     push    rbp                     # Push rbp (callee-saved).
     mov     rbp,    rsp             # Store the current stack pointer.
@@ -16,9 +16,9 @@ aot_trampoline:
     cmp     rdx,    6               # Check if there are more than 6 arguments.
     jbe     2f                      # If there are less than 6, skip to register arguments.
 
-    //
-    // Process stack arguments.
-    //
+    #
+    # Process stack arguments.
+    #
 
     # Add padding to support an odd number of stack parameters.
     mov     rax,    rdx
@@ -34,9 +34,9 @@ aot_trampoline:
     ja      1b                      # If there still are, loop back and repeat.
 
   2:
-    //
-    // Process registers.
-    //
+    #
+    # Process registers.
+    #
 
     shl     rdx,    2               # Multiply remaining length by 4.
     lea     rax,    [rip + 3f]      # Load the PC-relative address of `3f`.
@@ -55,9 +55,12 @@ aot_trampoline:
     mov     rdi,    [r11]           # Load argument #1.
 
   3:
-    // Call the function.
+    # Call the function.
     call    r10
 
     mov     rsp,    rbp
     pop     rbp
+
+    # TODO: Store return registers (after finding which ones are returned).
+
     ret

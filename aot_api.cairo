@@ -14,6 +14,17 @@ enum MyEnum {
     C: felt252,
 }
 
+fn contract_call(calls: Array<core::starknet::account::Call>) -> Array<Span<felt252>> {
+    'contract_call()'.print();
+
+    let mut ret_data = ArrayTrait::new();
+    ret_data.append(10);
+
+    let mut all_ret_data = ArrayTrait::new();
+    all_ret_data.append(ret_data.span());
+    all_ret_data
+}
+
 fn invoke0() {
     'Hello, world!'.print();
 }
