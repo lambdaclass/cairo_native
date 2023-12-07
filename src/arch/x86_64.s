@@ -1,5 +1,3 @@
-.intel_syntax noprefix
-
 .text
 
 
@@ -31,16 +29,18 @@ aot_trampoline:
     ja      1b
 
   2:
-    neg     rdx
-    lea     rax,    [3f + 4 * rdx]
+    shl     rdx,    2
+    lea     rax,    [rip + 3f]
+    sub     rax,    rdx
+    jmp     rax
 
+    mov     r9,     [r11 + 0x28]
+    mov     r8,     [r11 + 0x20]
+    mov     rcx,    [r11 + 0x18]
+    mov     rdx,    [r11 + 0x10]
+    mov     rsi,    [r11 + 0x08]
     nop
-    mov     r9,     [rdx]
-    mov     r8,     [rdx - 0x08]
-    mov     rcx,    [rdx - 0x10]
-    mov     rdx,    [rdx - 0x18]
-    mov     rsi,    [rdx - 0x20]
-    mov     rdi,    [rdx - 0x28]
+    mov     rdi,    [r11]
 
   3:
     call    r10

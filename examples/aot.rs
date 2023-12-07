@@ -15,9 +15,9 @@ fn main() {
     let native_program = native_context.compile(&program).unwrap();
 
     let object_data = cairo_native::module_to_object(native_program.module()).unwrap();
-    cairo_native::object_to_shared_lib(&object_data, Path::new("aot_api.dylib")).unwrap();
+    cairo_native::object_to_shared_lib(&object_data, Path::new("aot_api.so")).unwrap();
 
-    let shared_lib = unsafe { libloading::Library::new("aot_api.dylib").unwrap() };
+    let shared_lib = unsafe { libloading::Library::new("/home/dev/cairo_native/aot_api.so").unwrap() };
 
     let executor = cairo_native::aot::AotNativeExecutor::new(
         shared_lib,

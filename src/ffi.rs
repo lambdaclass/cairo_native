@@ -176,9 +176,9 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "--hash-style=gnu",
                 "--eh-frame-hdr",
                 "-shared",
-                "-L/data2/edgar/work/native/target/debug", // change me
-                "-rpath=/data2/edgar/work/native/target/debug", // change me
-                "-rpath-link=/data2/edgar/work/native/target/debug", // change me
+                "-L/home/dev/cairo_native/target/debug", // change me
+                "-rpath=/home/dev/cairo_native/target/debug", // change me
+                "-rpath-link=/home/dev/cairo_native/target/debug", // change me
                 "-L/lib/../lib64",
                 "-L/usr/lib/../lib64",
                 "-o",
