@@ -193,7 +193,6 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
 
-1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `enum_snapshot_match`
 1. `get_available_gas`
