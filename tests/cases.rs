@@ -23,7 +23,8 @@ mod common;
 #[test_case("tests/cases/enums/enum_init.cairo")]
 #[test_case("tests/cases/enums/single_value.cairo")]
 #[test_case("tests/cases/enums/enum_match.cairo")]
-#[test_case("tests/cases/enums/enum_snapshot_match.cairo")]
+#[test_case("tests/cases/enums/enum_snapshot_match_a.cairo")]
+#[test_case("tests/cases/enums/enum_snapshot_match_b.cairo")]
 // returns
 #[test_case("tests/cases/returns/enums.cairo")]
 #[test_case("tests/cases/returns/simple.cairo")]
