@@ -46,7 +46,9 @@ where
         StructConcreteLibfunc::Deconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::SnapshotDeconstruct(_) => todo!(),
+        StructConcreteLibfunc::SnapshotDeconstruct(info) => {
+            build_snapshot_deconstruct(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -92,6 +94,51 @@ where
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
 pub fn build_deconstruct<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let struct_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+
+    let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
+    for i in 0..info.branch_signatures()[0].vars.len() {
+        fields.push(
+            entry
+                .append_operation(llvm::extract_value(
+                    context,
+                    entry.argument(0)?.into(),
+                    DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
+                    crate::ffi::get_struct_field_type_at(&struct_ty, i),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+        );
+    }
+
+    entry.append_operation(helper.br(0, &fields, location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `struct_deconstruct` libfunc.
+pub fn build_snapshot_deconstruct<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
