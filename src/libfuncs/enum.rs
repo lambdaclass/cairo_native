@@ -8,11 +8,10 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::MetadataStorage,
+    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::{padding_needed_for, ProgramRegistryExt},
 };
-use crate::metadata::enum_snapshot_variants::EnumSnapshotVariantsMeta;
 use cairo_lang_sierra::{
     extensions::{
         enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
