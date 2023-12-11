@@ -105,6 +105,7 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
+            // TODO: Convert this into a flag instead of hardcoding it to `-O0`.
             LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
