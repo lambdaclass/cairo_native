@@ -869,9 +869,8 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
+    #[cfg_attr(target_arch = "x86_64", ignore)]
     fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
@@ -889,9 +888,9 @@ pub mod test {
 
     /// Ensures that the host's `felt252` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
+    #[cfg_attr(target_arch = "x86_64", ignore)]
     fn test_alignment_compatibility_felt252() {
-        assert_eq!(get_integer_layout(252).align(), 8);
+        assert_eq!(get_integer_layout(252).align(), 16);
     }
 
     #[derive(Debug)]
