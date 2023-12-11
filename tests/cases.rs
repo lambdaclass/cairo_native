@@ -43,6 +43,7 @@ mod common;
 #[test_case("tests/cases/structs/bigger.cairo")]
 #[test_case("tests/cases/structs/enum_member.cairo")]
 #[test_case("tests/cases/structs/nested.cairo")]
+#[test_case("tests/cases/structs/struct_snapshot_deconstruct.cairo")]
 // gas
 #[test_case("tests/cases/gas/available_gas.cairo" => ignore["unimplemented"])]
 // bool
