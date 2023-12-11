@@ -2,11 +2,12 @@
 
 ## Arguments
 
-  - Written on registers.
+  - Written on registers, then the stack.
   - Structs' fields are treated as individual arguments (flattened).
-
-Enums are special, their payload always skips registers until it's stored within the stack. Values
-following an enum will always be within the stack.
+  - Enums are structs internally, therefore they are also flattened (including the padding).
+    - The default payload works as expected since it has the correct signature.
+    - All other payloads require breaking it down into bytes and scattering it through the padding
+      and default payload's space.
 
 ## Return values
 
