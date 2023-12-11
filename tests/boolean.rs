@@ -16,7 +16,7 @@ lazy_static! {
         use array::ArrayTrait;
 
         fn felt_to_bool(x: felt252) -> bool {
-            x == 1
+            x == 1.into()
         }
 
         fn run_test(a: felt252) -> bool {
