@@ -17,5 +17,5 @@ fn main() -> (i8, i8, i8, i8, i8, i8, i8, i8) {
     // Overflow
     let (res_d, flag_d) = overflowing_sub(100, -100);
 
-    ( res_a, flag_a, res_b, flag_b, res_c, flag_b, res_d, flag_d )
+    ( res_a, flag_a, res_b, flag_b, res_c, flag_c, res_d, flag_d )
 }
