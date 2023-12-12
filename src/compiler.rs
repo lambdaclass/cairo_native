@@ -459,7 +459,7 @@ where
                     }
 
                     // If returning an enum, return its data (not the pointer).
-                    let mut ret_ptr_iter = num_return_ptrs - 1..=0;
+                    let mut ret_ptr_iter = (0..num_return_ptrs).rev();
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id).unwrap();
                         if let Some(variants) = type_info.variants() {
