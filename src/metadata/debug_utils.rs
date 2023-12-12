@@ -98,6 +98,7 @@ use melior::{
     },
     Context, ExecutionEngine,
 };
+use num_bigint::BigUint;
 use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -105,6 +106,7 @@ enum DebugBinding {
     BreakpointMarker,
     PrintI1,
     PrintPointer,
+    PrintFelt252,
 }
 
 #[derive(Debug, Default)]
@@ -225,6 +227,45 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn print_felt252<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintFelt252) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_felt252"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[IntegerType::new(context, 252).into()], &[])
+                        .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_felt252"),
+            &[value],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
@@ -252,6 +293,16 @@ impl DebugUtils {
                 );
             }
         }
+
+        if self.active_map.contains(&DebugBinding::PrintFelt252) {
+            dbg!("registering felt252 print");
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_felt252",
+                    print_pointer_felt252 as *const fn([u32; 4]) -> () as *mut (),
+                );
+            }
+        }
     }
 }
 
@@ -265,4 +316,9 @@ extern "C" fn print_i1_impl(value: bool) {
 
 extern "C" fn print_pointer_impl(value: *const ()) {
     println!("[DEBUG] {value:018x?}");
+}
+
+extern "C" fn print_pointer_felt252(l0: u32, l1: u32, l2: u32, l3: u32) {
+    let felt_biguint = BigUint::new([l0, l1, l2, l3].to_vec());
+    println!("[DEBUG FELT:] {felt_biguint:?}");
 }
