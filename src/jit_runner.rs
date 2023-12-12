@@ -300,8 +300,20 @@ pub fn execute(
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
             let ty = registry.get_type(id)?;
-            let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
+            let ty_layout = match ty {
+                CoreTypeConcrete::Enum(info) => {
+                    // Enums get special treatment because we need to allocate space for the return
+                    // values instead of its aparent layout, which is just a pointer. Since they are
+                    // complex, a pointer will be generated for it.
+
+                    // TODO: What happens when multiple enums are returned? Structs with enums (can't be pointers)?
+                    crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
+                        .unwrap()
+                        .0
+                }
+                _ => ty.layout(registry).map_err(make_type_builder_error(id))?,
+            };
             let (layout, offset) = match acc {
                 Some(layout) => layout.extend(ty_layout)?,
                 None => (ty_layout, 0),

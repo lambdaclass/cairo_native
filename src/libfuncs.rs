@@ -262,7 +262,7 @@ where
     /// The init block is used for `llvm.alloca` instructions. It is guaranteed to not be executed
     /// multiple times on tail-recursive functions. This property allows generating tail-recursive
     /// functions that do not grow the stack.
-    pub fn init_block(&self) -> &Block<'ctx> {
+    pub fn init_block(&self) -> &'this Block<'ctx> {
         self.init_block
     }
 

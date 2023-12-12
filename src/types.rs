@@ -352,21 +352,7 @@ where
             CoreTypeConcrete::Uninitialized(info) => {
                 registry.get_type(&info.ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Enum(info) => {
-                let tag_layout =
-                    get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
-
-                info.variants.iter().try_fold(tag_layout, |acc, id| {
-                    let layout = tag_layout
-                        .extend(registry.get_type(id)?.layout(registry)?)?
-                        .0;
-
-                    Result::<_, Self::Error>::Ok(Layout::from_size_align(
-                        acc.size().max(layout.size()),
-                        acc.align().max(layout.align()),
-                    )?)
-                })?
-            }
+            CoreTypeConcrete::Enum(_info) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::Struct(info) => info
                 .members
                 .iter()

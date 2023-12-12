@@ -19,9 +19,7 @@ use num_bigint::{BigInt, Sign};
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
     types::{felt252::PRIME, TypeBuilder},
-    utils::{
-        felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
-    },
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, u32_vec_to_felt},
 };
 
 /// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
@@ -264,10 +262,9 @@ impl JITValue {
                 }
                 JITValue::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
-                        let tag_value = *tag;
-                        assert!(tag_value <= info.variants.len());
+                        assert!(*tag <= info.variants.len(), "Variant index out of range.");
 
-                        let payload_type_id = &info.variants[tag_value];
+                        let payload_type_id = &info.variants[*tag];
                         let payload = value.to_jit(arena, registry, payload_type_id)?;
 
                         let (layout, tag_layout, variant_layouts) =
@@ -276,10 +273,11 @@ impl JITValue {
                         let ptr = arena.alloc_layout(layout).cast();
 
                         match tag_layout.size() {
-                            1 => *ptr.cast::<u8>().as_mut() = tag_value as u8,
-                            2 => *ptr.cast::<u16>().as_mut() = tag_value as u16,
-                            4 => *ptr.cast::<u32>().as_mut() = tag_value as u32,
-                            8 => *ptr.cast::<u64>().as_mut() = tag_value as u64,
+                            0 => panic!("An enum without variants cannot be instantiated."),
+                            1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
+                            2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
+                            4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
+                            8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
                             _ => unreachable!(),
                         }
 
@@ -287,13 +285,13 @@ impl JITValue {
                             payload.cast::<u8>().as_ptr(),
                             NonNull::new(
                                 ((ptr.as_ptr() as usize)
-                                    + tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                                    + tag_layout.extend(variant_layouts[*tag]).unwrap().1)
                                     as *mut u8,
                             )
                             .unwrap()
                             .cast()
                             .as_ptr(),
-                            variant_layouts[tag_value].size(),
+                            variant_layouts[*tag].size(),
                         );
 
                         ptr
@@ -493,41 +491,31 @@ impl JITValue {
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
-                    let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
-                        0 | 1 => 0,
-                        num_variants => {
-                            (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
-                                .try_into()
-                                .unwrap()
-                        }
-                    });
-                    let tag_value = match info.variants.len() {
-                        0 => {
-                            // An enum without variants is basically the `!` (never) type in Rust.
-                            panic!("An enum without variants is not a valid type.")
-                        }
+                    let (_, tag_layout, variant_layouts) =
+                        crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
+                            .unwrap();
+
+                    let tag = match info.variants.len() {
+                        0 => panic!("An enum without variants cannot be instantiated."),
                         1 => 0,
-                        _ => match tag_layout.size() {
-                            1 => *ptr.cast::<u8>().as_ref() as usize,
-                            2 => *ptr.cast::<u16>().as_ref() as usize,
-                            4 => *ptr.cast::<u32>().as_ref() as usize,
-                            8 => *ptr.cast::<u64>().as_ref() as usize,
-                            _ => unreachable!(),
-                        },
+                        x if x <= u8::MAX as usize => *ptr.cast::<u8>().as_mut() as usize,
+                        x if x <= u16::MAX as usize => *ptr.cast::<u16>().as_mut() as usize,
+                        x if x <= u32::MAX as usize => *ptr.cast::<u32>().as_mut() as usize,
+                        x if x <= u64::MAX as usize => *ptr.cast::<u64>().as_mut() as usize,
+                        _ => unreachable!(),
                     };
-
-                    let payload_ty = registry.get_type(&info.variants[tag_value]).unwrap();
-                    let payload_layout = payload_ty.layout(registry).unwrap();
-
-                    let payload_ptr = NonNull::new(
-                        ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1)
-                            as *mut _,
-                    )
-                    .unwrap();
-                    let payload = Self::from_jit(payload_ptr, &info.variants[tag_value], registry);
+                    let payload = Self::from_jit(
+                        NonNull::new_unchecked(
+                            (ptr.as_ptr() as usize
+                                + tag_layout.extend(variant_layouts[tag]).unwrap().1)
+                                as *mut _,
+                        ),
+                        &info.variants[tag],
+                        registry,
+                    );
 
                     Self::Enum {
-                        tag: tag_value,
+                        tag,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }

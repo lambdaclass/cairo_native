@@ -69,10 +69,13 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::{arith::CmpiPredicate, cf, func, index, memref},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf, func, index, llvm, memref,
+    },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, MemRefType},
+        r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
@@ -114,7 +117,8 @@ pub fn compile<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     for function in &program.funcs {
@@ -152,11 +156,39 @@ fn compile_func<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     let region = Region::new();
     let blocks_arena = Bump::new();
+
+    let mut arg_types = extract_types(
+        context,
+        module,
+        &function.signature.param_types,
+        registry,
+        metadata,
+    )
+    .collect::<Result<Vec<_>, _>>()?;
+    let mut ret_types = extract_types(
+        context,
+        module,
+        &function.signature.ret_types,
+        registry,
+        metadata,
+    )
+    .collect::<Result<Vec<_>, _>>()?;
+
+    // Extract enums from ret_types and insert them in arg_types.
+    let mut num_return_ptrs = 0;
+    for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
+        let type_info = registry.get_type(type_id).unwrap();
+        if type_info.variants().is_some() {
+            arg_types.insert(0, ret_types.remove(idx));
+            num_return_ptrs += 1;
+        }
+    }
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
@@ -170,7 +202,12 @@ where
             .params
             .iter()
             .enumerate()
-            .map(|(idx, param)| Ok((&param.id, entry_block.argument(idx)?.into())))
+            .map(|(idx, param)| {
+                Ok((
+                    &param.id,
+                    entry_block.argument(num_return_ptrs + idx)?.into(),
+                ))
+            })
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
             .into_iter(),
     )?;
@@ -192,15 +229,10 @@ where
     let pre_entry_block = region.insert_block_before(
         entry_block,
         Block::new(
-            &extract_types(
-                context,
-                module,
-                &function.signature.param_types,
-                registry,
-                metadata,
-            )
-            .map(|ty| Ok((ty?, Location::unknown(context))))
-            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
+            &arg_types
+                .iter()
+                .map(|ty| (*ty, Location::unknown(context)))
+                .collect::<Vec<_>>(),
         ),
     );
 
@@ -368,7 +400,7 @@ where
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, values) = edit_state::take_args(state, var_ids.iter())?;
+                    let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
                     if !tailrec_state.is_empty() {
@@ -426,6 +458,56 @@ where
                         }
                     }
 
+                    // If returning an enum, return its data (not the pointer).
+                    let mut ret_ptr_iter = num_return_ptrs - 1..=0;
+                    for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
+                        let type_info = registry.get_type(type_id).unwrap();
+                        if let Some(variants) = type_info.variants() {
+                            let ptr = values.remove(idx);
+
+                            let (layout, _, _) =
+                                crate::types::r#enum::get_layout_for_variants(registry, variants)
+                                    .unwrap();
+
+                            let num_bytes = block
+                                .append_operation(arith::constant(
+                                    context,
+                                    IntegerAttribute::new(
+                                        layout.size() as i64,
+                                        IntegerType::new(context, 64).into(),
+                                    )
+                                    .into(),
+                                    Location::unknown(context),
+                                ))
+                                .result(0)?
+                                .into();
+                            let is_volatile = block
+                                .append_operation(arith::constant(
+                                    context,
+                                    IntegerAttribute::new(0, IntegerType::new(context, 1).into())
+                                        .into(),
+                                    Location::unknown(context),
+                                ))
+                                .result(0)?
+                                .into();
+
+                            block.append_operation(llvm::call_intrinsic(
+                                context,
+                                StringAttribute::new(context, "llvm.memcpy.inline"),
+                                &[
+                                    pre_entry_block
+                                        .argument(ret_ptr_iter.next().unwrap())?
+                                        .into(),
+                                    ptr,
+                                    num_bytes,
+                                    is_volatile,
+                                ],
+                                &[],
+                                Location::unknown(context),
+                            ));
+                        }
+                    }
+
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
 
                     Vec::new()
@@ -437,38 +519,18 @@ where
     pre_entry_block.append_operation(cf::br(
         &entry_block,
         &(0..entry_block.argument_count())
-            .map(|i| Ok(pre_entry_block.argument(i)?.into()))
+            .map(|i| Ok(pre_entry_block.argument(num_return_ptrs + i)?.into()))
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
         Location::unknown(context),
     ));
 
     let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
+
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
-        TypeAttribute::new(
-            FunctionType::new(
-                context,
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.param_types,
-                    registry,
-                    metadata,
-                )
-                .collect::<Result<Vec<_>, _>>()?,
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.ret_types,
-                    registry,
-                    metadata,
-                )
-                .collect::<Result<Vec<_>, _>>()?,
-            )
-            .into(),
-        ),
+        TypeAttribute::new(FunctionType::new(context, &arg_types, &ret_types).into()),
         region,
         &[
             (
