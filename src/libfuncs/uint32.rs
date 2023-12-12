@@ -709,10 +709,10 @@ mod test {
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
         values::JITValue,
     };
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use num_bigint::ToBigUint;
+    use starknet_types_core::felt::Felt as Felt252;
 
     lazy_static! {
         static ref U32_OVERFLOWING_ADD: (String, Program) = load_cairo! {
@@ -799,7 +799,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[Felt252::new(2).into()]);
+        run_program_assert_output(&program, "run_test", &[], &[Felt252::from(2).into()]);
     }
 
     #[test]
@@ -828,7 +828,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u32, rhs: u32) {
             let program = &U32_OVERFLOWING_ADD;
-            let error = Felt252::from_bytes_be(b"u32_add Overflow");
+            let error = Felt252::from_bytes_be_slice(b"u32_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -880,7 +880,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u32, rhs: u32) {
             let program = &U32_OVERFLOWING_SUB;
-            let error = Felt252::from_bytes_be(b"u32_sub Overflow");
+            let error = Felt252::from_bytes_be_slice(b"u32_sub Overflow");
 
             let add = lhs.checked_sub(rhs);
 

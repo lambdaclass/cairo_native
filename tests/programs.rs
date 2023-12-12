@@ -1,5 +1,5 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252;
+use cairo_felt::Felt252 as OldFelt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -7,6 +7,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt as Felt252;
 
 mod common;
 mod starknet;
@@ -83,8 +84,13 @@ lazy_static! {
 
 #[test]
 fn fib() {
-    let result_vm =
-        run_vm_program(&FIB, "run_test", &[Arg::Value(Felt252::new(10))], Some(GAS)).unwrap();
+    let result_vm = run_vm_program(
+        &FIB,
+        "run_test",
+        &[Arg::Value(OldFelt252::from(10))],
+        Some(GAS),
+    )
+    .unwrap();
 
     let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(10.into())]);
 
@@ -102,7 +108,7 @@ fn logistic_map() {
     let result_vm = run_vm_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[Arg::Value(Felt252::new(1000))],
+        &[Arg::Value(OldFelt252::from(1000))],
         Some(GAS),
     )
     .unwrap();
@@ -126,14 +132,14 @@ fn pedersen() {
         "run_test",
         &[
             Arg::Value(
-                Felt252::from_str_radix(
+                OldFelt252::from_str_radix(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
                     10,
                 )
                 .unwrap(),
             ),
             Arg::Value(
-                Felt252::from_str_radix(
+                OldFelt252::from_str_radix(
                     "2392090257937917229310563411601744459500735555884672871108624696010915493156",
                     10,
                 )
@@ -171,7 +177,7 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(Felt252::new(13))],
+        &[Arg::Value(OldFelt252::from(13))],
         Some(GAS),
     )
     .unwrap();
@@ -192,7 +198,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FIB,
             "run_test",
-            &[Arg::Value(Felt252::new(n))],
+            &[Arg::Value(OldFelt252::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -211,7 +217,7 @@ proptest! {
         let result_vm = run_vm_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[Arg::Value(Felt252::new(n))],
+            &[Arg::Value(OldFelt252::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -230,7 +236,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FACTORIAL,
             "run_test",
-            &[Arg::Value(Felt252::new(n))],
+            &[Arg::Value(OldFelt252::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -249,7 +255,7 @@ proptest! {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(OldFelt252::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();
@@ -269,7 +275,9 @@ proptest! {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone()), Arg::Value(c.clone())],
+            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be())),
+             Arg::Value(OldFelt252::from_bytes_be(&b.clone().to_bytes_be())),
+            Arg::Value(OldFelt252::from_bytes_be(&c.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();

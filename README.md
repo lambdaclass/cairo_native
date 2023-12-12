@@ -444,7 +444,7 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+    let params = &[JITValue::Felt252(Felt252::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
@@ -518,7 +518,7 @@ fn main() {
         .execute_contract(
             fn_id,
             // The calldata
-            &[JITValue::Felt252(Felt252::new(1))],
+            &[JITValue::Felt252(Felt252::from(1))],
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");
@@ -536,7 +536,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<cairo_felt::Felt252> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
-        Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
+        Ok(Felt252::from_bytes_be_slice(b"get_block_hash ok"))
     }
 
     fn get_execution_info(
@@ -576,7 +576,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+            calldata.iter().map(|x| x + &Felt252::from(1)).collect(),
         ))
     }
 
@@ -599,7 +599,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!(
             "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
     }
 
     fn call_contract(
@@ -612,7 +612,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!(
             "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
     }
 
     fn storage_read(
@@ -622,7 +622,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<cairo_felt::Felt252> {
         println!("Called `storage_read({address_domain}, {address})` from MLIR.");
-        Ok(address * &Felt252::new(3))
+        Ok(address * &Felt252::from(3))
     }
 
     fn storage_write(

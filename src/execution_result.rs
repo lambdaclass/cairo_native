@@ -3,7 +3,7 @@ use crate::{
     values::JITValue,
     ExecutionResult,
 };
-use cairo_felt::Felt252;
+use starknet_types_core::felt::Felt as Felt252;
 
 /// Starknet contract execution result.
 #[derive(Debug, Default)]
@@ -77,7 +77,7 @@ impl ContractExecutionResult {
                             .collect();
 
                         let str_error =
-                            String::from_utf8(felt_vec.get(0).unwrap().to_be_bytes().to_vec())
+                            String::from_utf8(felt_vec.get(0).unwrap().to_bytes_be().to_vec())
                                 .unwrap()
                                 .trim_start_matches('\0')
                                 .to_owned();

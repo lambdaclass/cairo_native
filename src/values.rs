@@ -5,7 +5,6 @@
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 use bumpalo::Bump;
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
+use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt as Felt252};
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -144,7 +144,7 @@ impl JITValue {
                 JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint());
+                    let data = felt252_bigint(felt_to_bigint(*value));
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -314,7 +314,7 @@ impl JITValue {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
-                            let key = key.to_le_bytes();
+                            let key = key.to_bytes_le();
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
@@ -389,8 +389,8 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
                     let data = [a, b];
 
                     ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
@@ -402,10 +402,10 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
-                    let c = felt252_bigint(c.to_bigint());
-                    let d = felt252_bigint(d.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
+                    let c = felt252_bigint(felt_to_bigint(*c));
+                    let d = felt252_bigint(felt_to_bigint(*d));
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
@@ -567,7 +567,7 @@ impl JITValue {
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le(key.as_slice());
+                        let key = Felt252::from_bytes_le_slice(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                     }
 
@@ -620,7 +620,7 @@ impl JITValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(Felt252::from(value))
+        Self::Felt252(biguint_to_felt(&value))
     }
 }
 

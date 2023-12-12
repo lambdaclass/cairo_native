@@ -3,7 +3,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(dead_code)]
 
-use cairo_felt::Felt252;
+use starknet_types_core::felt::Felt as Felt252;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt252>>;
 
@@ -421,7 +421,7 @@ pub(crate) mod handler {
                 err: ManuallyDrop::new(SyscallResultAbiErr {
                     tag: 1u8,
                     payload: unsafe {
-                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                        let data: Vec<_> = e.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                         Self::alloc_mlir_array(&data)
                     },
                 }),
@@ -440,7 +440,7 @@ pub(crate) mod handler {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
+                        payload: ManuallyDrop::new(Felt252Abi(x.to_bytes_le())),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
@@ -467,29 +467,29 @@ pub(crate) mod handler {
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
-                                Felt252Abi(x.block_info.sequencer_address.to_le_bytes());
+                                Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             let mut tx_info_ptr = NonNull::new(
                                 libc::malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
-                                Felt252Abi(x.tx_info.version.to_le_bytes());
+                                Felt252Abi(x.tx_info.version.to_bytes_le());
                             tx_info_ptr.as_mut().account_contract_address =
-                                Felt252Abi(x.tx_info.account_contract_address.to_le_bytes());
+                                Felt252Abi(x.tx_info.account_contract_address.to_bytes_le());
                             tx_info_ptr.as_mut().max_fee = x.tx_info.max_fee;
                             tx_info_ptr.as_mut().signature = Self::alloc_mlir_array(
                                 &x.tx_info
                                     .signature
                                     .into_iter()
-                                    .map(|x| Felt252Abi(x.to_le_bytes()))
+                                    .map(|x| Felt252Abi(x.to_bytes_le()))
                                     .collect::<Vec<_>>(),
                             );
                             tx_info_ptr.as_mut().transaction_hash =
-                                Felt252Abi(x.tx_info.transaction_hash.to_le_bytes());
+                                Felt252Abi(x.tx_info.transaction_hash.to_bytes_le());
                             tx_info_ptr.as_mut().chain_id =
-                                Felt252Abi(x.tx_info.chain_id.to_le_bytes());
-                            tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_le_bytes());
+                                Felt252Abi(x.tx_info.chain_id.to_bytes_le());
+                            tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
 
                             let mut execution_info_ptr =
                                 NonNull::new(libc::malloc(size_of::<ExecutionInfoAbi>())
@@ -498,11 +498,11 @@ pub(crate) mod handler {
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
                             execution_info_ptr.as_mut().tx_info = tx_info_ptr;
                             execution_info_ptr.as_mut().caller_address =
-                                Felt252Abi(x.caller_address.to_le_bytes());
+                                Felt252Abi(x.caller_address.to_bytes_le());
                             execution_info_ptr.as_mut().contract_address =
-                                Felt252Abi(x.contract_address.to_le_bytes());
+                                Felt252Abi(x.contract_address.to_bytes_le());
                             execution_info_ptr.as_mut().entry_point_selector =
-                                Felt252Abi(x.entry_point_selector.to_le_bytes());
+                                Felt252Abi(x.entry_point_selector.to_bytes_le());
 
                             ManuallyDrop::new(execution_info_ptr)
                         },
@@ -558,12 +558,12 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => {
-                    let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    let felts: Vec<_> = x.1.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
                             tag: 0u8,
-                            payload: ManuallyDrop::new((Felt252Abi(x.0.to_le_bytes()), felts_ptr)),
+                            payload: ManuallyDrop::new((Felt252Abi(x.0.to_bytes_le()), felts_ptr)),
                         }),
                     }
                 }
@@ -632,7 +632,7 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => {
-                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -682,7 +682,7 @@ pub(crate) mod handler {
 
             *result_ptr = match result {
                 Ok(x) => {
-                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -713,7 +713,7 @@ pub(crate) mod handler {
                 Ok(res) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new(Felt252Abi(res.to_le_bytes())),
+                        payload: ManuallyDrop::new(Felt252Abi(res.to_bytes_le())),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),

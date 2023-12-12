@@ -1,5 +1,5 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252;
+use cairo_felt::Felt252 as OldFelt252;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -7,6 +7,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt as Felt252;
 use std::str::FromStr;
 
 mod common;
@@ -57,7 +58,7 @@ fn ec_point_zero() {
 #[ignore = "TODO: possible bug in ec_point_from_x_nz"]
 #[test]
 fn ec_point_from_x_big() {
-    let x = Felt252::new(
+    let x = OldFelt252::new(
         BigUint::from_str(
             "10503791839462130483045092717244804953879649418761481950933471772092536173",
         )
@@ -66,7 +67,11 @@ fn ec_point_from_x_big() {
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[JITValue::Felt252(Felt252::from_bytes_be(&x.to_be_bytes()))],
+    );
 
     compare_outputs(
         &program.1,
@@ -80,11 +85,15 @@ fn ec_point_from_x_big() {
 #[ignore = "TODO: Still have to implement NonZero type comparisons"]
 #[test]
 fn ec_point_from_x_small() {
-    let x = Felt252::new(BigUint::from_str("1234").unwrap());
+    let x = OldFelt252::new(BigUint::from_str("1234").unwrap());
     let program = &EC_POINT_FROM_X;
     let result_vm =
         run_vm_program(program, "run_test", &[Arg::Value(x.clone())], Some(GAS)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(x)]);
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[JITValue::Felt252(Felt252::from_bytes_be(&x.to_be_bytes()))],
+    );
 
     compare_outputs(
         &program.1,
@@ -102,7 +111,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(OldFelt252::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();
@@ -123,7 +132,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.clone())],
+            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();

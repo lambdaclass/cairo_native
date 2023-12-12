@@ -1,11 +1,24 @@
 #![allow(non_snake_case)]
 
-use cairo_felt::Felt252;
-use cairo_lang_runner::short_string::as_cairo_short_string;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
+use starknet_types_core::felt::{felt_to_bigint, Felt as Felt252};
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
+pub(crate) fn as_cairo_short_string(value: &Felt252) -> Option<String> {
+    let mut as_string = String::default();
+    let mut is_end = false;
+    for byte in value.to_bytes_be() {
+        if byte == 0 {
+            is_end = true;
+        } else if is_end || !byte.is_ascii() {
+            return None;
+        } else {
+            as_string.push(byte as char);
+        }
+    }
+    Some(as_string)
+}
 /// Based on `cairo-lang-runner`'s implementation.
 ///
 /// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800>
@@ -31,13 +44,20 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
             if writeln!(
                 target,
                 "[DEBUG]\t{shortstring: <31}\t(raw: {})",
-                value.to_bigint()
+                felt_to_bigint(value)
             )
             .is_err()
             {
                 return 1;
             };
-        } else if writeln!(target, "[DEBUG]\t{:<31}\t(raw: {})", ' ', value.to_bigint()).is_err() {
+        } else if writeln!(
+            target,
+            "[DEBUG]\t{:<31}\t(raw: {})",
+            ' ',
+            felt_to_bigint(value)
+        )
+        .is_err()
+        {
             return 1;
         }
     }
