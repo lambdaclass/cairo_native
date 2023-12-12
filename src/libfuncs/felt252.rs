@@ -6,7 +6,7 @@ use crate::{
         libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    metadata::{self, debug_utils, prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::{felt252::Felt252, TypeBuilder},
     utils::{mlir_asm, ProgramRegistryExt},
 };
@@ -29,8 +29,8 @@ use melior::{
     },
     Context,
 };
-use num_bigint::{Sign, ToBigInt};
 
+use num_bigint::{Sign, ToBigInt};
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
@@ -80,6 +80,8 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    dbg!("por aquí paso");
+    // Creación de tipos
     let bool_ty = IntegerType::new(context, 1).into();
     let felt252_ty = registry.build_type(
         context,
@@ -120,12 +122,29 @@ where
     .into();
 
     let (op, lhs, rhs) = match info {
-        Felt252BinaryOperationConcrete::WithVar(operation) => (
-            operation.operator,
-            entry.argument(0)?.into(),
-            entry.argument(1)?.into(),
-        ),
+        Felt252BinaryOperationConcrete::WithVar(operation) => {
+            dbg!("with var");
+            dbg!(operation.operator);
+            dbg!(entry.argument(0)?.to_raw());
+            dbg!(entry.argument(1)?.r#type());
+            dbg!(entry.argument(1)?.to_raw());
+            metadata
+                .get_mut::<debug_utils::DebugUtils>()
+                .unwrap()
+                .print_felt252(context, helper, entry, entry.argument(0)?.into(), location)?;
+            metadata
+                .get_mut::<debug_utils::DebugUtils>()
+                .unwrap()
+                .print_felt252(context, helper, entry, entry.argument(1)?.into(), location)?;
+
+            (
+                operation.operator,
+                entry.argument(0)?.into(),
+                entry.argument(1)?.into(),
+            )
+        }
         Felt252BinaryOperationConcrete::WithConst(operation) => {
+            dbg!("with const");
             let value = match operation.c.sign() {
                 Sign::Minus => {
                     let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
@@ -165,8 +184,10 @@ where
             result
         }
         Felt252BinaryOperator::Sub => {
+            dbg!("SUB");
             mlir_asm! { context, entry, location =>
-                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256
+                // operation ::= `arith.extui` $in attr-dict `:` type($in) `to` type($out)
+                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256 //x
                 ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i256
                 ; result = "arith.subi"(lhs, rhs) : (i256, i256) -> i256
 
@@ -257,7 +278,7 @@ pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -265,14 +286,18 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    dbg!("arrived at build_is_zero");
     let arg0: Value = entry.argument(0)?.into();
 
+    // right part of the operation. CONSTANT 0
     let op = entry.append_operation(arith::constant(
         context,
         IntegerAttribute::new(0, arg0.r#type()).into(),
         location,
     ));
-    let const_0 = op.result(0)?.into();
+    let const_0: Value<'_, '_> = op.result(0)?.into();
+    // left part of the operation. CMP arg0, 0
+    dbg!(arg0.to_raw());
 
     let op = entry.append_operation(arith::cmpi(
         context,
@@ -282,8 +307,14 @@ where
         location,
     ));
     let condition = op.result(0)?.into();
-
-    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
+    dbg!(condition);
+    entry.append_operation(dbg!(helper.cond_br(
+        context,
+        condition,
+        [0, 1],
+        [&[], &[arg0]],
+        location
+    )));
 
     Ok(())
 }

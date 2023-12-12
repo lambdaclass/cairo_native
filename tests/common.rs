@@ -24,6 +24,7 @@ use cairo_native::{
     execution_result::ContractExecutionResult,
     executor::NativeExecutor,
     metadata::{
+        debug_utils::DebugUtils,
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
         syscall_handler::SyscallHandlerMeta,
@@ -264,6 +265,12 @@ pub fn run_native_program(
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
+
+    #[cfg(feature = "with-debug-utils")]
+    metadata
+        .get::<DebugUtils>()
+        .unwrap()
+        .register_impls(&engine);
 
     cairo_native::execute(
         &engine,
@@ -559,6 +566,8 @@ pub fn compare_outputs(
                         let native_val: bool = native_tag == 1; // 1 = true
                         prop_assert_eq!(vn_val, native_val, "bool value mismatch");
                     } else if is_panic {
+                        dbg!("here");
+
                         check_next_type(
                             reg.get_type(&info.variants[native_tag]).unwrap(),
                             &mut [&**value].into_iter(),
@@ -606,6 +615,7 @@ pub fn compare_outputs(
                         for _ in 0..(max_tuple_count - this_variant_count) {
                             vm_rets.next().expect("should have filler value");
                         }
+                        dbg!("here");
 
                         check_next_type(
                             reg.get_type(&info.variants[native_tag]).unwrap(),
@@ -621,6 +631,8 @@ pub fn compare_outputs(
             CoreTypeConcrete::Struct(info) => {
                 if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
                     for (field, container) in info.members.iter().zip(fields.iter()) {
+                        dbg!("here");
+
                         check_next_type(
                             reg.get_type(field).unwrap(),
                             &mut [container].into_iter(),

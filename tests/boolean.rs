@@ -1,5 +1,6 @@
 use crate::common::{load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252;
+use cairo_lang_compiler::db;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -14,7 +15,6 @@ const GAS: usize = usize::MAX;
 lazy_static! {
     static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = load_cairo! {
         use array::ArrayTrait;
-
         fn felt_to_bool(x: felt252) -> bool {
             x == 1
         }
@@ -118,6 +118,7 @@ lazy_static! {
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;
     let a = true;
+    dbg!(JITValue::Felt252(a.into()));
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -136,13 +137,15 @@ fn felt252_to_bool_bug() {
     .unwrap();
 
     let a = false;
-    let result_vm = run_vm_program(
+    dbg!(JITValue::Felt252(a.into()));
+    let result_vm: cairo_lang_runner::RunResultStarknet = run_vm_program(
         program,
         "run_test",
         &[Arg::Value(Felt252::new(a))],
         Some(GAS),
     )
     .unwrap();
+    dbg!(result_vm.value.clone());
     let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
 
     compare_outputs(
