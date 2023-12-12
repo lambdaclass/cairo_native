@@ -192,4 +192,4 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: build image
-        run: docker build
+        run: docker build .
