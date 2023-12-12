@@ -4480,7 +4480,7 @@ mod test {
             &CLASS_HASH_CONST,
             "run_program",
             &[],
-            &[Felt252::new(0).into()],
+            &[Felt::from(0).into()],
         )
     }
 
