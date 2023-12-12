@@ -7,7 +7,8 @@ RUN apt update -y && apt install -y lsb-release \
     git \
     build-essential \
     libclang-dev \
-    libz-dev
+    libz-dev \
+    libzstd-dev
 
 # Install LLVM 17
 RUN echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-17 main" > /etc/apt/sources.list.d/llvm-17.list
