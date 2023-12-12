@@ -55,7 +55,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt252::from(1)).collect(),
+            calldata.iter().map(|x| x + Felt252::from(1)).collect(),
         ))
     }
 
@@ -74,7 +74,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!(
             "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
+        Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
     }
 
     fn call_contract(
@@ -87,7 +87,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!(
             "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
+        Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
     }
 
     fn storage_read(
@@ -97,7 +97,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<Felt252> {
         println!("Called `storage_read({address_domain}, {address})` from MLIR.");
-        Ok(address * &Felt252::from(3))
+        Ok(address * Felt252::from(3))
     }
 
     fn storage_write(

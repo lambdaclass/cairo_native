@@ -8,7 +8,6 @@ use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
 
-
 mod common;
 mod starknet;
 

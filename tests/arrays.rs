@@ -7,7 +7,6 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
-
 mod common;
 
 const GAS: usize = usize::MAX;

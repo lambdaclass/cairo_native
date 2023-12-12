@@ -941,7 +941,7 @@ pub mod test {
         ) -> SyscallResult<(Felt252, Vec<Felt252>)> {
             Ok((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + &Felt252::from(1)).collect(),
+                calldata.iter().map(|x| x + Felt252::from(1)).collect(),
             ))
         }
 
@@ -956,7 +956,7 @@ pub mod test {
             calldata: &[Felt252],
             _gas: &mut u128,
         ) -> SyscallResult<Vec<Felt252>> {
-            Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
+            Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
         }
 
         fn call_contract(
@@ -966,7 +966,7 @@ pub mod test {
             calldata: &[Felt252],
             _gas: &mut u128,
         ) -> SyscallResult<Vec<Felt252>> {
-            Ok(calldata.iter().map(|x| x * &Felt252::from(3)).collect())
+            Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
         }
 
         fn storage_read(
@@ -975,7 +975,7 @@ pub mod test {
             address: Felt252,
             _gas: &mut u128,
         ) -> SyscallResult<Felt252> {
-            Ok(address * &Felt252::from(3))
+            Ok(address * Felt252::from(3))
         }
 
         fn storage_write(

@@ -1010,7 +1010,7 @@ mod test {
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    
+
     use starknet_types_core::felt::Felt as Felt252;
 
     lazy_static! {
