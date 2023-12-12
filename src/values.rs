@@ -452,6 +452,8 @@ impl JITValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
+                    libc::free(data_ptr.as_ptr().cast());
+
                     Self::Array(array_value)
                 }
                 CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
