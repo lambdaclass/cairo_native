@@ -7,7 +7,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
-use starknet_types_core::felt::Felt as Felt252;
+
 
 mod common;
 mod starknet;

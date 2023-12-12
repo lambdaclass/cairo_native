@@ -38,7 +38,7 @@ impl ContractExecutionResult {
                                     .iter()
                                     .map(|x| {
                                         if let JITValue::Felt252(f) = x {
-                                            f.clone()
+                                            *f
                                         } else {
                                             panic!("should always be a felt")
                                         }
@@ -69,7 +69,7 @@ impl ContractExecutionResult {
                             .iter()
                             .map(|x| {
                                 if let JITValue::Felt252(f) = x {
-                                    f.clone()
+                                    *f
                                 } else {
                                     panic!("should always be a felt")
                                 }

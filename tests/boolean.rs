@@ -6,7 +6,7 @@ use cairo_native::values::JITValue;
 use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
-use starknet_types_core::felt::Felt as NewFelt252;
+
 
 mod common;
 

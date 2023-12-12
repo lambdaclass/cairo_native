@@ -773,7 +773,7 @@ mod test {
         let u256_is_zero = Felt252::from_bytes_be_slice(b"u256 is 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
-        run((0, 0), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run((0, 0), (0, 0), jit_panic!(u256_is_zero));
         run(
             (0, 0),
             (0, 1),
@@ -797,7 +797,7 @@ mod test {
             ),
         );
 
-        run((0, 1), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run((0, 1), (0, 0), jit_panic!(u256_is_zero));
         run(
             (0, 1),
             (0, 1),

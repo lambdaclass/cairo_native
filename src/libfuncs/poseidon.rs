@@ -290,7 +290,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
-    use num_traits::Num;
+    
     use starknet_types_core::felt::Felt as Felt252;
 
     #[test]
