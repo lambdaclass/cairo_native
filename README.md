@@ -101,6 +101,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `get_block_hash_syscall` (StarkNet)
 1. `get_builtin_costs` (5)
 1. `get_execution_info_syscall` (StarkNet)
+1. `hades_permutation`
 1. `into_box` (2)
 1. `jump`
 1. `keccak_syscall` (StarkNet)
@@ -192,12 +193,10 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
 
-1. `class_hash_const` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `enum_snapshot_match`
 1. `get_available_gas`
 1. `pop_log` (StarkNet, testing)
-1. `poseidon`
 1. `redeposit_gas`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
@@ -222,7 +221,6 @@ This is a list of the current progress implementing each **libfunc**.
 1. `set_transaction_hash` (StarkNet, testing)
 1. `set_version` (StarkNet, testing)
 1. `struct_snapshot_deconstruct`
-1. `u512_safe_divmod_by_u256`
 1. `i128_diff`
 1. `i16_diff`
 1. `i32_diff`

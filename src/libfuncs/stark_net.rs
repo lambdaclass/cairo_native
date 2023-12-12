@@ -11,7 +11,7 @@ use crate::{
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -36,8 +36,8 @@ use melior::{
     },
     Context,
 };
-use num_bigint::Sign;
-use std::{alloc::Layout, ops::Neg};
+use num_bigint::{Sign, ToBigUint};
+use std::alloc::Layout;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -59,7 +59,9 @@ where
         StarkNetConcreteLibfunc::CallContract(info) => {
             build_call_contract(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ClassHashConst(_) => todo!(),
+        StarkNetConcreteLibfunc::ClassHashConst(info) => {
+            build_class_hash_const(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ClassHashTryFromFelt252(info) => {
             build_class_hash_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
@@ -530,6 +532,39 @@ where
     Ok(())
 }
 
+pub fn build_class_hash_const<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndConstConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let value = match info.c.sign() {
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
+        _ => info.c.to_biguint().unwrap(),
+    };
+
+    let value = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
+}
+
 pub fn build_class_hash_to_felt252<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -618,7 +653,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         _ => info.c.to_biguint().unwrap(),
     };
 
@@ -1395,7 +1430,7 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c).neg().to_biguint().unwrap(),
+        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         _ => info.c.to_biguint().unwrap(),
     };
 
@@ -4430,6 +4465,23 @@ mod test {
                 storage_address_try_from_felt252(value)
             }
         };
+        static ref CLASS_HASH_CONST: (String, Program) = load_cairo! {
+            use starknet::class_hash::{class_hash_const, ClassHash};
+
+            fn run_program() -> ClassHash {
+                class_hash_const::<0>()
+            }
+        };
+    }
+
+    #[test]
+    fn class_hash_const() {
+        run_program_assert_output(
+            &CLASS_HASH_CONST,
+            "run_program",
+            &[],
+            &[Felt252::new(0).into()],
+        )
     }
 
     #[test]

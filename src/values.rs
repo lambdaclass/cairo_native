@@ -38,20 +38,17 @@ pub enum JITValue {
     Struct {
         fields: Vec<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     }, // element types can differ
     Enum {
         tag: usize,
         value: Box<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Felt252Dict {
         value: HashMap<Felt, Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Uint8(u8),

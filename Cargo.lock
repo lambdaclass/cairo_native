@@ -1017,9 +1017,9 @@ dependencies = [
 
 [[package]]
 name = "comrak"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c995deda3bfdebd07d0e2af79e9da13e4b1be652b21a746f3f5b24bf0a49ef"
+checksum = "9f18e72341e6cdc7489cffb76f993812a14a906db54dedb020044ccc211dcaae"
 dependencies = [
  "clap",
  "derive_builder",
@@ -1326,14 +1326,14 @@ checksum = "23d2f3407d9a573d666de4b5bdf10569d73ca9478087346697dcbae6244bfbcd"
 
 [[package]]
 name = "educe"
-version = "0.4.23"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0042ff8246a363dbe77d2ceedb073339e85a804b9a47636c6e016a9a32c05f"
+checksum = "f39e09e750431c4f545eb575c1175640d5350282124120c32c295ea9c4f80d28"
 dependencies = [
  "enum-ordinalize",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.38",
 ]
 
 [[package]]
@@ -1359,12 +1359,19 @@ checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
 
 [[package]]
 name = "enum-ordinalize"
-version = "3.1.15"
+version = "4.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bf1fa3f06bbff1ea5b1a9c7b14aa992a39657db60a2759457328d7e058f49ee"
+checksum = "6926bbe8b379bb3d8e9fb718a0496481531f338866666a848e6a02da99ffab79"
 dependencies = [
- "num-bigint",
- "num-traits 0.2.17",
+ "enum-ordinalize-derive",
+]
+
+[[package]]
+name = "enum-ordinalize-derive"
+version = "4.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05aa0010e0e391b9a82dc87bfc4dbee3cb8260eec12ad9d83c12788299fa9093"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.38",
@@ -1901,9 +1908,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ded989056570433e795e2499bdb495a65e0e3cb90129e584b8897f6b86415b65"
+checksum = "d579dda794588eae5b4e470efb3acaa330c1b9af6148d40abbf4d683bf01922b"
 dependencies = [
  "dashmap",
  "melior-macro",
@@ -1913,9 +1920,9 @@ dependencies = [
 
 [[package]]
 name = "melior-macro"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c698b22dae02b9106a47ab2213abf7fc6a9746538d1a7200528b2dbacbf0845a"
+checksum = "8423fdf51f19a02f0fc34b1e4d603661e7b6ed6b2905d04c894cdccb65c6d0a0"
 dependencies = [
  "comrak",
  "convert_case",
