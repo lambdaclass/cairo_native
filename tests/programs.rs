@@ -1,5 +1,5 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252 as OldFelt252;
+use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -86,7 +86,7 @@ fn fib() {
     let result_vm = run_vm_program(
         &FIB,
         "run_test",
-        &[Arg::Value(OldFelt252::from(10))],
+        &[Arg::Value(DeprecatedFelt::from(10))],
         Some(GAS),
     )
     .unwrap();
@@ -107,7 +107,7 @@ fn logistic_map() {
     let result_vm = run_vm_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[Arg::Value(OldFelt252::from(1000))],
+        &[Arg::Value(DeprecatedFelt::from(1000))],
         Some(GAS),
     )
     .unwrap();
@@ -131,14 +131,14 @@ fn pedersen() {
         "run_test",
         &[
             Arg::Value(
-                OldFelt252::from_str_radix(
+                DeprecatedFelt::from_str_radix(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
                     10,
                 )
                 .unwrap(),
             ),
             Arg::Value(
-                OldFelt252::from_str_radix(
+                DeprecatedFelt::from_str_radix(
                     "2392090257937917229310563411601744459500735555884672871108624696010915493156",
                     10,
                 )
@@ -176,7 +176,7 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(OldFelt252::from(13))],
+        &[Arg::Value(DeprecatedFelt::from(13))],
         Some(GAS),
     )
     .unwrap();
@@ -197,7 +197,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FIB,
             "run_test",
-            &[Arg::Value(OldFelt252::from(n))],
+            &[Arg::Value(DeprecatedFelt::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -216,7 +216,7 @@ proptest! {
         let result_vm = run_vm_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[Arg::Value(OldFelt252::from(n))],
+            &[Arg::Value(DeprecatedFelt::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -235,7 +235,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FACTORIAL,
             "run_test",
-            &[Arg::Value(OldFelt252::from(n))],
+            &[Arg::Value(DeprecatedFelt::from(n))],
             Some(GAS),
         )
         .unwrap();
@@ -254,7 +254,7 @@ proptest! {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
-            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(OldFelt252::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();
@@ -274,9 +274,9 @@ proptest! {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",
-            &[Arg::Value(OldFelt252::from_bytes_be(&a.clone().to_bytes_be())),
-             Arg::Value(OldFelt252::from_bytes_be(&b.clone().to_bytes_be())),
-            Arg::Value(OldFelt252::from_bytes_be(&c.clone().to_bytes_be()))],
+            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())),
+             Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be())),
+            Arg::Value(DeprecatedFelt::from_bytes_be(&c.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();

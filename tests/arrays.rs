@@ -1,5 +1,5 @@
 use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252 as OldFelt252;
+use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -59,8 +59,8 @@ fn array_get_test() {
         program,
         "run_test",
         &[
-            Arg::Value(OldFelt252::from(10)),
-            Arg::Value(OldFelt252::from(5)),
+            Arg::Value(DeprecatedFelt::from(10)),
+            Arg::Value(DeprecatedFelt::from(5)),
         ],
         Some(GAS),
     )
@@ -85,8 +85,8 @@ proptest! {
     fn array_get_test_proptest(value in any_felt252(), idx in 0u32..26) {
         let program = &ARRAY_GET;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(OldFelt252::from_bytes_be(&value.clone().to_bytes_be())),
-            Arg::Value(OldFelt252::from(idx))
+            Arg::Value(DeprecatedFelt::from_bytes_be(&value.clone().to_bytes_be())),
+            Arg::Value(DeprecatedFelt::from(idx))
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(value), JITValue::Felt252(idx.into())]);
 
