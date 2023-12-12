@@ -1,7 +1,6 @@
 //! # `i8`-related libfuncs
 use super::{LibfuncBuilder, LibfuncHelper};
-use crate::libfuncs::BranchTarget;
-use crate::values::JITValue;
+
 use crate::{
     error::{
         libfuncs::{Error, Result},
@@ -25,13 +24,13 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, llvm, scf,
+        cf, llvm,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Region, Value, ValueLike,
+        Attribute, Block, Location, Value, ValueLike,
     },
     Context,
 };
@@ -72,7 +71,7 @@ where
         SintConcrete::WideMul(info) => {
             build_widemul(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::Diff(info) => todo!(),
+        SintConcrete::Diff(_info) => todo!(),
     }
 }
 
@@ -448,7 +447,6 @@ mod test {
     use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
 
     lazy_static! {
         static ref I8_OVERFLOWING_ADD: (String, Program) = load_cairo! {

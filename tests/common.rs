@@ -654,7 +654,7 @@ pub fn compare_outputs(
                 let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
                 // If the i8 value is negative we will get PRIME - val from the vm
                 if vm_value > *HALF_PRIME {
-                    vm_value = vm_value - BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
                 let native_value: i8 = if let JITValue::Sint8(v) = native_rets.next().unwrap() {
                     *v
