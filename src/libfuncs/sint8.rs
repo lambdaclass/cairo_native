@@ -161,14 +161,6 @@ where
 
     let op_result = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        IntegerType::new(context, 1).into(),
-        location,
-    ));
-    // let op_overflow = op.result(0)?.into();
     // Create a const operation to get the i8::MAX value to compare against
     let max_op = entry.append_operation(arith::constant(
         context,

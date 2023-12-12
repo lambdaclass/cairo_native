@@ -30,7 +30,7 @@ use cairo_native::{
         MetadataStorage,
     },
     starknet::StarkNetSyscallHandler,
-    types::felt252::PRIME,
+    types::felt252::{HALF_PRIME, PRIME},
     utils::{find_entry_point_by_idx, register_runtime_symbols},
     values::JITValue,
     ExecutionResult,
@@ -651,13 +651,18 @@ pub fn compare_outputs(
                     native_rets.peek().is_some(),
                     "cairo-native missing next value"
                 );
-                let vm_value: i8 = vm_rets.next().unwrap().parse().unwrap();
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i8 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value = vm_value - BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
                 let native_value: i8 = if let JITValue::Sint8(v) = native_rets.next().unwrap() {
                     *v
                 } else {
+                    panic!("invalid type")
                 };
-                prop_assert_eq!(vm_value, native_value)
-            },
+                prop_assert_eq!(vm_value, native_value.into())
+            }
             CoreTypeConcrete::Sint16(_) => todo!(),
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
