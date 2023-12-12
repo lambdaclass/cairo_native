@@ -4676,6 +4676,58 @@
 <a href="#4676" id="4676">4676</a>
 <a href="#4677" id="4677">4677</a>
 <a href="#4678" id="4678">4678</a>
+<a href="#4679" id="4679">4679</a>
+<a href="#4680" id="4680">4680</a>
+<a href="#4681" id="4681">4681</a>
+<a href="#4682" id="4682">4682</a>
+<a href="#4683" id="4683">4683</a>
+<a href="#4684" id="4684">4684</a>
+<a href="#4685" id="4685">4685</a>
+<a href="#4686" id="4686">4686</a>
+<a href="#4687" id="4687">4687</a>
+<a href="#4688" id="4688">4688</a>
+<a href="#4689" id="4689">4689</a>
+<a href="#4690" id="4690">4690</a>
+<a href="#4691" id="4691">4691</a>
+<a href="#4692" id="4692">4692</a>
+<a href="#4693" id="4693">4693</a>
+<a href="#4694" id="4694">4694</a>
+<a href="#4695" id="4695">4695</a>
+<a href="#4696" id="4696">4696</a>
+<a href="#4697" id="4697">4697</a>
+<a href="#4698" id="4698">4698</a>
+<a href="#4699" id="4699">4699</a>
+<a href="#4700" id="4700">4700</a>
+<a href="#4701" id="4701">4701</a>
+<a href="#4702" id="4702">4702</a>
+<a href="#4703" id="4703">4703</a>
+<a href="#4704" id="4704">4704</a>
+<a href="#4705" id="4705">4705</a>
+<a href="#4706" id="4706">4706</a>
+<a href="#4707" id="4707">4707</a>
+<a href="#4708" id="4708">4708</a>
+<a href="#4709" id="4709">4709</a>
+<a href="#4710" id="4710">4710</a>
+<a href="#4711" id="4711">4711</a>
+<a href="#4712" id="4712">4712</a>
+<a href="#4713" id="4713">4713</a>
+<a href="#4714" id="4714">4714</a>
+<a href="#4715" id="4715">4715</a>
+<a href="#4716" id="4716">4716</a>
+<a href="#4717" id="4717">4717</a>
+<a href="#4718" id="4718">4718</a>
+<a href="#4719" id="4719">4719</a>
+<a href="#4720" id="4720">4720</a>
+<a href="#4721" id="4721">4721</a>
+<a href="#4722" id="4722">4722</a>
+<a href="#4723" id="4723">4723</a>
+<a href="#4724" id="4724">4724</a>
+<a href="#4725" id="4725">4725</a>
+<a href="#4726" id="4726">4726</a>
+<a href="#4727" id="4727">4727</a>
+<a href="#4728" id="4728">4728</a>
+<a href="#4729" id="4729">4729</a>
+<a href="#4730" id="4730">4730</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -4689,7 +4741,7 @@
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -4714,8 +4766,8 @@
     },
     Context,
 };
-<span class="kw">use </span>num_bigint::Sign;
-<span class="kw">use </span>std::{alloc::Layout, ops::Neg};
+<span class="kw">use </span>num_bigint::{Sign, ToBigUint};
+<span class="kw">use </span>std::alloc::Layout;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
@@ -4737,7 +4789,9 @@
         StarkNetConcreteLibfunc::CallContract(info) =&gt; {
             build_call_contract(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ClassHashConst(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        StarkNetConcreteLibfunc::ClassHashConst(info) =&gt; {
+            build_class_hash_const(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::ClassHashTryFromFelt252(info) =&gt; {
             build_class_hash_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
@@ -5208,6 +5262,39 @@
     <span class="prelude-val">Ok</span>(())
 }
 
+<span class="kw">pub fn </span>build_class_hash_const&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    info: <span class="kw-2">&amp;</span>SignatureAndConstConcreteLibfunc,
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
+<span class="kw">where
+    </span>TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
+    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
+{
+    <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
+        Sign::Minus =&gt; PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
+        <span class="kw">_ </span>=&gt; info.c.to_biguint().unwrap(),
+    };
+
+    <span class="kw">let </span>value = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : i252&quot;</span>)).unwrap(),
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="kw">pub fn </span>build_class_hash_to_felt252&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -5296,7 +5383,7 @@
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
     <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; (<span class="kw-2">&amp;</span>info.c).neg().to_biguint().unwrap(),
+        Sign::Minus =&gt; PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         <span class="kw">_ </span>=&gt; info.c.to_biguint().unwrap(),
     };
 
@@ -6073,7 +6160,7 @@
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
     <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; (<span class="kw-2">&amp;</span>info.c).neg().to_biguint().unwrap(),
+        Sign::Minus =&gt; PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
         <span class="kw">_ </span>=&gt; info.c.to_biguint().unwrap(),
     };
 
@@ -9108,6 +9195,23 @@
                 storage_address_try_from_felt252(value)
             }
         };
+        <span class="kw">static </span><span class="kw-2">ref </span>CLASS_HASH_CONST: (String, Program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">use </span>starknet::class_hash::{class_hash_const, ClassHash};
+
+            <span class="kw">fn </span>run_program() -&gt; ClassHash {
+                class_hash_const::&lt;<span class="number">0</span>&gt;()
+            }
+        };
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>class_hash_const() {
+        run_program_assert_output(
+            <span class="kw-2">&amp;</span>CLASS_HASH_CONST,
+            <span class="string">&quot;run_program&quot;</span>,
+            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+        )
     }
 
     <span class="attr">#[test]
