@@ -645,7 +645,19 @@ pub fn compare_outputs(
                 // ignore
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
-            CoreTypeConcrete::Sint8(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let vm_value: i8 = vm_rets.next().unwrap().parse().unwrap();
+                let native_value: i8 = if let JITValue::Sint8(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                };
+                prop_assert_eq!(vm_value, native_value)
+            },
             CoreTypeConcrete::Sint16(_) => todo!(),
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
