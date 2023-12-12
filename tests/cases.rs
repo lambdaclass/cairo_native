@@ -38,6 +38,12 @@ mod common;
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]
+// sint8
+#[test_case("tests/cases/sint/i8_diff.cairo")]
+#[test_case("tests/cases/sint/i8_eq.cairo")]
+#[test_case("tests/cases/sint/i8_is_zero.cairo")]
+#[test_case("tests/cases/sint/i8_add.cairo")]
+#[test_case("tests/cases/sint/i8_sub.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]

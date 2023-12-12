@@ -41,6 +41,7 @@ pub mod mem;
 pub mod nullable;
 pub mod pedersen;
 pub mod poseidon;
+pub mod sint8;
 pub mod snapshot_take;
 pub mod stark_net;
 pub mod r#struct;
@@ -199,7 +200,9 @@ where
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            CoreConcreteLibfunc::Sint8(_) => todo!(),
+            Self::Sint8(info) => {
+                self::sint8::build(context, registry, entry, location, helper, metadata, info)
+            }
             CoreConcreteLibfunc::Sint16(_) => todo!(),
             CoreConcreteLibfunc::Sint32(_) => todo!(),
             CoreConcreteLibfunc::Sint64(_) => todo!(),

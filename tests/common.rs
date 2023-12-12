@@ -211,7 +211,6 @@ pub fn run_native_program(
     let mut metadata = MetadataStorage::new();
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
     // Gas
     let required_initial_gas = if program
         .type_declarations
@@ -226,7 +225,6 @@ pub fn run_native_program(
     } else {
         None
     };
-
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
