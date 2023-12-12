@@ -299,7 +299,7 @@ impl DebugUtils {
             unsafe {
                 engine.register_symbol(
                     "__debug__print_felt252",
-                    print_pointer_felt252 as *const fn([u32; 4]) -> () as *mut (),
+                    print_pointer_felt252 as *const fn(u64, u64, u64, u64) -> () as *mut (),
                 );
             }
         }
@@ -318,7 +318,14 @@ extern "C" fn print_pointer_impl(value: *const ()) {
     println!("[DEBUG] {value:018x?}");
 }
 
-extern "C" fn print_pointer_felt252(l0: u32, l1: u32, l2: u32, l3: u32) {
-    let felt_biguint = BigUint::new([l0, l1, l2, l3].to_vec());
+extern "C" fn print_pointer_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
+    let felt_biguint = BigUint::from_bytes_le(
+        &l0.to_le_bytes()
+            .into_iter()
+            .chain(l1.to_le_bytes())
+            .chain(l2.to_le_bytes())
+            .chain(l3.to_le_bytes())
+            .collect::<Vec<_>>(),
+    );
     println!("[DEBUG FELT:] {felt_biguint:?}");
 }
