@@ -16,7 +16,7 @@ use melior::{
     Context, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use starknet_types_core::felt::Felt as Felt252;
+use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -172,8 +172,8 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     digits.try_into().unwrap()
 }
 
-/// Converts a u32 slice into a Felt252
-pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
+/// Converts a u32 slice into a Felt
+pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt {
     let mut ret = vec![];
 
     for limb in u32_limbs {
@@ -181,7 +181,7 @@ pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt252 {
         ret.extend_from_slice(&bytes);
     }
 
-    Felt252::from_bytes_le_slice(&ret)
+    Felt::from_bytes_le_slice(&ret)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -887,7 +887,7 @@ pub mod test {
         assert_eq!(get_integer_layout(512).align(), 8);
     }
 
-    /// Ensures that the host's `felt252` is compatible with its compiled counterpart.
+    /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
     #[ignore]
     fn test_alignment_compatibility_felt252() {
@@ -898,12 +898,8 @@ pub mod test {
     struct TestSyscallHandler;
 
     impl StarkNetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(
-            &mut self,
-            _block_number: u64,
-            _gas: &mut u128,
-        ) -> SyscallResult<Felt252> {
-            Ok(Felt252::from_bytes_be_slice(b"get_block_hash ok"))
+        fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+            Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
         }
 
         fn get_execution_info(
@@ -933,56 +929,56 @@ pub mod test {
 
         fn deploy(
             &mut self,
-            class_hash: Felt252,
-            contract_address_salt: Felt252,
-            calldata: &[Felt252],
+            class_hash: Felt,
+            contract_address_salt: Felt,
+            calldata: &[Felt],
             _deploy_from_zero: bool,
             _gas: &mut u128,
-        ) -> SyscallResult<(Felt252, Vec<Felt252>)> {
+        ) -> SyscallResult<(Felt, Vec<Felt>)> {
             Ok((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt252::from(1)).collect(),
+                calldata.iter().map(|x| x + Felt::from(1)).collect(),
             ))
         }
 
-        fn replace_class(&mut self, _class_hash: Felt252, _gas: &mut u128) -> SyscallResult<()> {
+        fn replace_class(&mut self, _class_hash: Felt, _gas: &mut u128) -> SyscallResult<()> {
             Ok(())
         }
 
         fn library_call(
             &mut self,
-            _class_hash: Felt252,
-            _function_selector: Felt252,
-            calldata: &[Felt252],
+            _class_hash: Felt,
+            _function_selector: Felt,
+            calldata: &[Felt],
             _gas: &mut u128,
-        ) -> SyscallResult<Vec<Felt252>> {
-            Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
+        ) -> SyscallResult<Vec<Felt>> {
+            Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
         }
 
         fn call_contract(
             &mut self,
-            _address: Felt252,
-            _entry_point_selector: Felt252,
-            calldata: &[Felt252],
+            _address: Felt,
+            _entry_point_selector: Felt,
+            calldata: &[Felt],
             _gas: &mut u128,
-        ) -> SyscallResult<Vec<Felt252>> {
-            Ok(calldata.iter().map(|x| x * Felt252::from(3)).collect())
+        ) -> SyscallResult<Vec<Felt>> {
+            Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
         }
 
         fn storage_read(
             &mut self,
             _address_domain: u32,
-            address: Felt252,
+            address: Felt,
             _gas: &mut u128,
-        ) -> SyscallResult<Felt252> {
-            Ok(address * Felt252::from(3))
+        ) -> SyscallResult<Felt> {
+            Ok(address * Felt::from(3))
         }
 
         fn storage_write(
             &mut self,
             _address_domain: u32,
-            _address: Felt252,
-            _value: Felt252,
+            _address: Felt,
+            _value: Felt,
             _gas: &mut u128,
         ) -> SyscallResult<()> {
             Ok(())
@@ -990,8 +986,8 @@ pub mod test {
 
         fn emit_event(
             &mut self,
-            _keys: &[Felt252],
-            _data: &[Felt252],
+            _keys: &[Felt],
+            _data: &[Felt],
             _gas: &mut u128,
         ) -> SyscallResult<()> {
             Ok(())
@@ -999,8 +995,8 @@ pub mod test {
 
         fn send_message_to_l1(
             &mut self,
-            _to_address: Felt252,
-            _payload: &[Felt252],
+            _to_address: Felt,
+            _payload: &[Felt],
             _gas: &mut u128,
         ) -> SyscallResult<()> {
             Ok(())
@@ -1012,7 +1008,7 @@ pub mod test {
             gas: &mut u128,
         ) -> SyscallResult<crate::starknet::U256> {
             *gas -= 1000;
-            Ok(U256(Felt252::from(1234567890).to_bytes_le()))
+            Ok(U256(Felt::from(1234567890).to_bytes_le()))
         }
 
         fn secp256k1_add(
@@ -1107,7 +1103,7 @@ pub mod test {
             todo!()
         }
 
-        fn set_account_contract_address(&mut self, _contract_address: Felt252) {
+        fn set_account_contract_address(&mut self, _contract_address: Felt) {
             todo!()
         }
 
@@ -1119,15 +1115,15 @@ pub mod test {
             todo!()
         }
 
-        fn set_caller_address(&mut self, _address: Felt252) {
+        fn set_caller_address(&mut self, _address: Felt) {
             todo!()
         }
 
-        fn set_chain_id(&mut self, _chain_id: Felt252) {
+        fn set_chain_id(&mut self, _chain_id: Felt) {
             todo!()
         }
 
-        fn set_contract_address(&mut self, _address: Felt252) {
+        fn set_contract_address(&mut self, _address: Felt) {
             todo!()
         }
 
@@ -1135,23 +1131,23 @@ pub mod test {
             todo!()
         }
 
-        fn set_nonce(&mut self, _nonce: Felt252) {
+        fn set_nonce(&mut self, _nonce: Felt) {
             todo!()
         }
 
-        fn set_sequencer_address(&mut self, _address: Felt252) {
+        fn set_sequencer_address(&mut self, _address: Felt) {
             todo!()
         }
 
-        fn set_signature(&mut self, _signature: &[Felt252]) {
+        fn set_signature(&mut self, _signature: &[Felt]) {
             todo!()
         }
 
-        fn set_transaction_hash(&mut self, _transaction_hash: Felt252) {
+        fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
             todo!()
         }
 
-        fn set_version(&mut self, _version: Felt252) {
+        fn set_version(&mut self, _version: Felt) {
             todo!()
         }
     }

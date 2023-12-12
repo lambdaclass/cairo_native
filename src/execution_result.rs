@@ -3,14 +3,14 @@ use crate::{
     values::JITValue,
     ExecutionResult,
 };
-use starknet_types_core::felt::Felt as Felt252;
+use starknet_types_core::felt::Felt;
 
 /// Starknet contract execution result.
 #[derive(Debug, Default)]
 pub struct ContractExecutionResult {
     pub remaining_gas: u128,
     pub failure_flag: bool,
-    pub return_values: Vec<Felt252>,
+    pub return_values: Vec<Felt>,
     pub error_msg: Option<String>,
 }
 

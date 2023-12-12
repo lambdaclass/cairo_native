@@ -2,10 +2,10 @@
 
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
-use starknet_types_core::felt::{felt_to_bigint, Felt as Felt252};
+use starknet_types_core::felt::{felt_to_bigint, Felt};
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
-pub(crate) fn as_cairo_short_string(value: &Felt252) -> Option<String> {
+pub(crate) fn as_cairo_short_string(value: &Felt) -> Option<String> {
     let mut as_string = String::default();
     let mut is_end = false;
     for byte in value.to_bytes_be() {
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
         let mut data = *data.add(i);
         data.reverse();
 
-        let value = Felt252::from_bytes_be(&data);
+        let value = Felt::from_bytes_be(&data);
         if let Some(shortstring) = as_cairo_short_string(&value) {
             if writeln!(
                 target,

@@ -14,7 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
-use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt as Felt252};
+use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -32,7 +32,7 @@ use crate::{
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
-    Felt252(Felt252),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -49,7 +49,7 @@ pub enum JITValue {
         debug_name: Option<String>,
     },
     Felt252Dict {
-        value: HashMap<Felt252, Self>,
+        value: HashMap<Felt, Self>,
         #[educe(PartialEq(ignore))]
         #[educe(Eq(ignore))]
         debug_name: Option<String>,
@@ -59,14 +59,14 @@ pub enum JITValue {
     Uint32(u32),
     Uint64(u64),
     Uint128(u128),
-    EcPoint(Felt252, Felt252),
-    EcState(Felt252, Felt252, Felt252, Felt252),
+    EcPoint(Felt, Felt),
+    EcState(Felt, Felt, Felt, Felt),
 }
 
 // Conversions
 
-impl From<Felt252> for JITValue {
-    fn from(value: Felt252) -> Self {
+impl From<Felt> for JITValue {
+    fn from(value: Felt) -> Self {
         JITValue::Felt252(value)
     }
 }
@@ -567,7 +567,7 @@ impl JITValue {
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le_slice(key.as_slice());
+                        let key = Felt::from_bytes_le_slice(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                     }
 

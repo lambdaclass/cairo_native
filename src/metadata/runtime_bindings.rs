@@ -524,7 +524,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>, // ptr to the dict
-        key_ptr: Value<'c, 'a>,  // key must be a ptr to felt252
+        key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -575,7 +575,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>,  // ptr to the dict
-        key_ptr: Value<'c, 'a>,   // key must be a ptr to felt252
+        key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
         value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>

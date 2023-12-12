@@ -239,7 +239,7 @@ where
 mod test {
     use crate::utils::test::{load_cairo, run_program_assert_output};
 
-    use starknet_types_core::felt::Felt as Felt252;
+    use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_pedersen() {
@@ -254,8 +254,8 @@ mod test {
         run_program_assert_output(
             &program,
             "run_test",
-            &[Felt252::from(2).into(), Felt252::from(4).into()],
-            &[Felt252::from_dec_str(
+            &[Felt::from(2).into(), Felt::from(4).into()],
+            &[Felt::from_dec_str(
                 "2178161520066714737684323463974044933282313051386084149915030950231093462467",
             )
             .unwrap()

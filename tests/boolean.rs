@@ -113,7 +113,7 @@ lazy_static! {
 
 // Since comparing a felt to 1 to create boolean (uses felt252_is_zero and felt sub,add) has a bug,
 // we'll be using use u8 on other tests until this is fixed. The bug may be in felt subtraction.
-#[ignore = "TODO: comparing a felt252 == 1 will lead to wrong results"]
+#[ignore = "TODO: comparing a Felt == 1 will lead to wrong results"]
 #[test]
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;

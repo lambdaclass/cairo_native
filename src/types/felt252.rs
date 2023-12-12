@@ -29,7 +29,7 @@ lazy_static! {
 }
 
 /// Marker type for the [PrimeModuloMeta] metadata.
-// TODO: Maybe we should use the JIT value (in `crate::values::felt252`) instead of defining a dummy
+// TODO: Maybe we should use the JIT value (in `crate::values::Felt`) instead of defining a dummy
 //   type?
 #[derive(Debug)]
 pub struct Felt252;

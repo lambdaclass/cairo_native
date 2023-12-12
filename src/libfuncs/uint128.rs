@@ -812,7 +812,7 @@ mod test {
     use lazy_static::lazy_static;
     use num_bigint::ToBigUint;
 
-    use starknet_types_core::felt::Felt as Felt252;
+    use starknet_types_core::felt::Felt;
 
     lazy_static! {
         static ref U128_BYTE_REVERSE: (String, Program) = load_cairo! {
@@ -941,7 +941,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JITValue::Felt252(Felt252::from_bytes_be_slice(b"u128 is 0"));
+        let error = JITValue::Felt252(Felt::from_bytes_be_slice(b"u128 is 0"));
 
         run_program_assert_output(
             program,
@@ -1054,21 +1054,21 @@ mod test {
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::from(0).into()],
+            &[Felt::from(0).into()],
             &[jit_enum!(0, 0u128.into())],
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::from(1).into()],
+            &[Felt::from(1).into()],
             &[jit_enum!(0, 1u128.into())],
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::from(u128::MAX).into()],
+            &[Felt::from(u128::MAX).into()],
             &[jit_enum!(0, u128::MAX.into())],
         );
 
@@ -1076,7 +1076,7 @@ mod test {
             &U128_FROM_FELT252,
             "run_test",
             &[
-                Felt252::from_dec_str("340282366920938463463374607431768211456")
+                Felt::from_dec_str("340282366920938463463374607431768211456")
                     .unwrap()
                     .into(),
             ],
@@ -1105,7 +1105,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u128, rhs: u128) {
             let program = &U128_ADD;
-            let error = Felt252::from_bytes_be_slice(b"u128_add Overflow");
+            let error = Felt::from_bytes_be_slice(b"u128_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -1157,7 +1157,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u128, rhs: u128) {
             let program = &U128_SUB;
-            let error = Felt252::from_bytes_be_slice(b"u128_sub Overflow");
+            let error = Felt::from_bytes_be_slice(b"u128_sub Overflow");
 
             let res = lhs.checked_sub(rhs);
 
@@ -1212,19 +1212,19 @@ mod test {
             program,
             "run_test",
             &[0u128.into()],
-            &[Felt252::from(0).into()],
+            &[Felt::from(0).into()],
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into()],
-            &[Felt252::from(1).into()],
+            &[Felt::from(1).into()],
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into()],
-            &[Felt252::from(u128::MAX).into()],
+            &[Felt::from(u128::MAX).into()],
         );
     }
 

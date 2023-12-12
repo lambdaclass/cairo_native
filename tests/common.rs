@@ -50,7 +50,7 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use starknet_types_core::felt::{felt_to_biguint, Felt as Felt252};
+use starknet_types_core::felt::{felt_to_biguint, Felt};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -523,8 +523,8 @@ pub fn compare_outputs(
                 // cairo-vm fills with 0 before the variant value based on the variant with most values, if they are a tuple
                 /*
                    enum MyEnum {
-                       A: felt252,
-                       B: (felt252, felt252, felt252),
+                       A: Felt,
+                       B: (Felt, Felt, Felt),
                    }
 
                    will produce [0, 0, A_value] for the variant A in cairo-vm, because B is a tuple of 3 elements.
@@ -669,8 +669,8 @@ pub fn compare_outputs(
 pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64); // this is equal to 10633823966279327296825105735305134080
 pub const FIELD_LOW: u128 = 1;
 
-/// Returns a [`Strategy`] that generates any valid Felt252
-pub fn any_felt252() -> impl Strategy<Value = Felt252> {
+/// Returns a [`Strategy`] that generates any valid Felt
+pub fn any_felt252() -> impl Strategy<Value = Felt> {
     use proptest::prelude::*;
 
     (0..=FIELD_HIGH)
@@ -685,7 +685,7 @@ pub fn any_felt252() -> impl Strategy<Value = Felt252> {
             };
             (Just(high), low)
         })
-        // turn (u128, u128) into limbs array and then into Felt252
+        // turn (u128, u128) into limbs array and then into Felt
         .prop_map(|(high, low)| {
             let limbs = [
                 (high >> 64) as u64,
@@ -696,11 +696,11 @@ pub fn any_felt252() -> impl Strategy<Value = Felt252> {
             FieldElement::new(UnsignedInteger::from_limbs(limbs))
         })
         .prop_map(|value: FieldElement<MontgomeryBackendPrimeField<_, 4>>| {
-            Felt252::from_bytes_be(&value.to_bytes_be())
+            Felt::from_bytes_be(&value.to_bytes_be())
         })
 }
 
-/// Returns a [`Strategy`] that generates any nonzero Felt252
-pub fn nonzero_felt252() -> impl Strategy<Value = Felt252> {
+/// Returns a [`Strategy`] that generates any nonzero Felt
+pub fn nonzero_felt252() -> impl Strategy<Value = Felt> {
     any_felt252().prop_filter("is zero", |x| !x.is_zero())
 }

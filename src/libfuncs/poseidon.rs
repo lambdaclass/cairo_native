@@ -291,7 +291,7 @@ where
 mod test {
     use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
 
-    use starknet_types_core::felt::Felt as Felt252;
+    use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_hades_permutation() {
@@ -307,22 +307,22 @@ mod test {
             &program,
             "run_test",
             &[
-                Felt252::from(2).into(),
-                Felt252::from(4).into(),
-                Felt252::from(4).into(),
+                Felt::from(2).into(),
+                Felt::from(4).into(),
+                Felt::from(4).into(),
             ],
             &[jit_struct!(
-                Felt252::from_dec_str(
+                Felt::from_dec_str(
                     "1627044480024625333712068603977073585655327747658231320998869768849911913066"
                 )
                 .unwrap()
                 .into(),
-                Felt252::from_dec_str(
+                Felt::from_dec_str(
                     "2368195581807763724810563135784547417602556730014791322540110420941926079965"
                 )
                 .unwrap()
                 .into(),
-                Felt252::from_dec_str(
+                Felt::from_dec_str(
                     "2381325839211954898363395375151559373051496038592329842107874845056395867189"
                 )
                 .unwrap()

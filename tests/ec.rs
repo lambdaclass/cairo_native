@@ -7,7 +7,7 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use proptest::prelude::*;
-use starknet_types_core::felt::Felt as Felt252;
+use starknet_types_core::felt::Felt;
 use std::str::FromStr;
 
 mod common;
@@ -70,7 +70,7 @@ fn ec_point_from_x_big() {
     let result_native = run_native_program(
         program,
         "run_test",
-        &[JITValue::Felt252(Felt252::from_bytes_be(&x.to_be_bytes()))],
+        &[JITValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
     );
 
     compare_outputs(
@@ -92,7 +92,7 @@ fn ec_point_from_x_small() {
     let result_native = run_native_program(
         program,
         "run_test",
-        &[JITValue::Felt252(Felt252::from_bytes_be(&x.to_be_bytes()))],
+        &[JITValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
     );
 
     compare_outputs(
