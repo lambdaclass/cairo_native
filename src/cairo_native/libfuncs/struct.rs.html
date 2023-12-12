@@ -134,6 +134,8 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Struct-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -182,7 +184,9 @@
         StructConcreteLibfunc::Deconstruct(info) =&gt; {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::SnapshotDeconstruct(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        StructConcreteLibfunc::SnapshotDeconstruct(info) =&gt; {
+            build_deconstruct(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
