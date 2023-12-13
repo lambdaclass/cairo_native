@@ -92,6 +92,7 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::compile::CompileError,
     metadata::{
@@ -110,7 +111,7 @@
 <span class="kw">use </span>melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    utility::{register_all_dialects, register_all_passes},
+    utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
 
@@ -184,6 +185,7 @@
     });
     context.load_all_available_dialects();
     register_all_passes();
+    register_all_llvm_translations(<span class="kw-2">&amp;</span>context);
     context
 }
 </code></pre></div></section></main></body></html>
