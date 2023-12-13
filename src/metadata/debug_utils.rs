@@ -104,6 +104,7 @@ use std::collections::HashSet;
 enum DebugBinding {
     BreakpointMarker,
     PrintI1,
+    PrintI8,
     PrintPointer,
 }
 
@@ -225,6 +226,44 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn print_i8<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintI8) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_i8"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[IntegerType::new(context, 8).into()], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_i8"),
+            &[value],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
@@ -240,6 +279,15 @@ impl DebugUtils {
                 engine.register_symbol(
                     "__debug__print_i1",
                     print_i1_impl as *const fn(bool) -> () as *mut (),
+                );
+            }
+        }
+
+        if self.active_map.contains(&DebugBinding::PrintI8) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_i8",
+                    print_i8_impl as *const fn(u8) -> () as *mut (),
                 );
             }
         }
@@ -260,6 +308,10 @@ extern "C" fn breakpoint_marker_impl() {
 }
 
 extern "C" fn print_i1_impl(value: bool) {
+    println!("[DEBUG] {value}");
+}
+
+extern "C" fn print_i8_impl(value: u8) {
     println!("[DEBUG] {value}");
 }
 
