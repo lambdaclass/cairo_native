@@ -15,6 +15,7 @@ use std::{
 };
 
 pub mod debug_utils;
+pub mod enum_snapshot_variants;
 pub mod gas;
 pub mod prime_modulo;
 pub mod realloc_bindings;

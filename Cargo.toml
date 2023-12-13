@@ -35,12 +35,12 @@ cairo-lang-filesystem = "2.3.1"
 cairo-lang-lowering = "2.3.1"
 cairo-lang-sierra = "2.3.1"
 cairo-lang-sierra-generator = "2.3.1"
-educe = "0.4.23"
+educe = "0.5.5"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.147"
-melior = { version = "0.13.0", features = ["ods-dialects"] }
+melior = { version = "0.14.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
@@ -62,6 +62,7 @@ cairo-lang-starknet = "2.3.1"
 
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
+criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
@@ -87,6 +88,10 @@ opt-level = 3
 # On dev optimize dependencies a bit so it's not as slow.
 [profile.dev.package."*"]
 opt-level = 1
+
+[[bench]]
+name = "compile_time"
+harness = false
 
 [workspace]
 members = ["runtime"]
