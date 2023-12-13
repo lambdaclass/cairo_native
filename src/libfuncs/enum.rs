@@ -129,6 +129,25 @@ where
         .result(0)?
         .into();
 
+    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let payload_val = if payload_type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                variant_tys[info.index].0,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    variant_tys[info.index].1.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into()
+    } else {
+        entry.argument(0)?.into()
+    };
+
     let val = entry
         .append_operation(llvm::undef(enum_ty, location))
         .result(0)?
@@ -148,7 +167,7 @@ where
             context,
             val,
             DenseI64ArrayAttribute::new(context, &[1]),
-            entry.argument(0)?.into(),
+            payload_val,
             location,
         ))
         .result(0)?

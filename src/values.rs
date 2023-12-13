@@ -2,8 +2,11 @@
 
 //! A Rusty interface to provide parameters to JIT calls.
 
-use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
-
+use crate::{
+    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    types::{felt252::PRIME, TypeBuilder},
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, u32_vec_to_felt},
+};
 use bumpalo::Bump;
 use cairo_felt::Felt252;
 use cairo_lang_sierra::{
@@ -15,11 +18,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
-
-use crate::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
-    types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, u32_vec_to_felt},
+use std::{
+    alloc::Layout,
+    collections::HashMap,
+    ops::Neg,
+    ptr::{addr_of_mut, NonNull},
 };
 
 /// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
@@ -441,6 +444,12 @@ impl JITValue {
     ) -> JITValue {
         let ty = registry.get_type(type_id).unwrap();
 
+        let ptr = if ty.is_memory_allocated(registry) {
+            unsafe { *ptr.cast::<NonNull<()>>().as_ref() }
+        } else {
+            ptr
+        };
+
         unsafe {
             match ty {
                 CoreTypeConcrete::Array(info) => {
@@ -514,8 +523,6 @@ impl JITValue {
                         crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
                             .unwrap();
 
-                    let ptr = *ptr.cast::<NonNull<()>>().as_ref();
-
                     let tag = match info.variants.len() {
                         0 => panic!("An enum without variants cannot be instantiated."),
                         1 => 0,
@@ -525,12 +532,18 @@ impl JITValue {
                         x if x <= u64::MAX as usize => *ptr.cast::<u64>().as_mut() as usize,
                         _ => unreachable!(),
                     };
+
+                    let payload_type_info = registry.get_type(&info.variants[tag]).unwrap();
+                    let mut local_ptr = NonNull::new_unchecked(
+                        (ptr.as_ptr() as usize + tag_layout.extend(variant_layouts[tag]).unwrap().1)
+                            as *mut _,
+                    );
                     let payload = Self::from_jit(
-                        NonNull::new_unchecked(
-                            (ptr.as_ptr() as usize
-                                + tag_layout.extend(variant_layouts[tag]).unwrap().1)
-                                as *mut _,
-                        ),
+                        if payload_type_info.is_memory_allocated(registry) {
+                            NonNull::new(addr_of_mut!(local_ptr)).unwrap().cast()
+                        } else {
+                            local_ptr
+                        },
                         &info.variants[tag],
                         registry,
                     );
@@ -555,8 +568,14 @@ impl JITValue {
                         };
                         layout = Some(new_layout);
 
+                        let mut local_ptr =
+                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap();
                         members.push(JITValue::from_jit(
-                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
+                            if member.is_memory_allocated(registry) {
+                                NonNull::new(addr_of_mut!(local_ptr)).unwrap().cast()
+                            } else {
+                                local_ptr
+                            },
                             member_ty,
                             registry,
                         ));
