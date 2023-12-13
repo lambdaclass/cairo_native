@@ -464,7 +464,7 @@ where
 
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
-                let array_val = entry.argument(0).unwrap().into();
+                let array_val = entry.argument(0)?.into();
 
                 let op = entry.append_operation(llvm::extract_value(
                     context,
@@ -473,30 +473,27 @@ where
                     ptr_ty,
                     location,
                 ));
-                let ptr: Value = op.result(0).unwrap().into();
+                let ptr: Value = op.result(0)?.into();
 
                 let ptr = entry
                     .append_operation(llvm::bitcast(ptr, opaque_pointer(context), location))
-                    .result(0)
-                    .unwrap()
+                    .result(0)?
                     .into();
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
-                let ptr = entry.argument(0).unwrap().into();
+                let ptr = entry.argument(0)?.into();
 
-                runtime
-                    .dict_alloc_free(context, helper, ptr, entry, location)
-                    .unwrap();
+                runtime.dict_alloc_free(context, helper, ptr, entry, location)?;
             }
             CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
 
-                let ptr = entry.argument(0).unwrap().into();
+                let ptr = entry.argument(0)?.into();
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             _ => {}
