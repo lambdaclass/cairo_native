@@ -295,7 +295,7 @@ pub fn execute(
         }
     }
 
-    let mut complex_results = entry_point.signature.ret_types.len() > 1;
+    let mut complex_results = false;
     let mut num_ret_ptrs = 0;
     let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(
         (Option::<Layout>::None, Vec::new()),
@@ -327,17 +327,20 @@ pub fn execute(
             }
         },
     )?;
+    complex_results |= offsets.len() > 1;
 
     let layout = layout.unwrap_or(Layout::new::<()>());
     let ret_ptr = arena.alloc_layout(layout).cast::<()>();
 
     let function_name = generate_function_name(function_id);
     let mut io_pointers = if complex_results {
+        // TODO: Is this correct?
         let ret_ptr_ptr = arena.alloc(ret_ptr) as *mut NonNull<()>;
         once(ret_ptr_ptr as *mut ())
             .chain(params_ptrs.iter().copied().map(NonNull::as_ptr))
             .collect::<Vec<_>>()
     } else {
+        // TODO: Is this correct?
         params_ptrs
             .iter()
             .copied()
