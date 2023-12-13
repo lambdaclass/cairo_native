@@ -88,8 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         debug_info.as_ref(),
     )?;
 
-    run_pass_manager(&context, &mut module)
-        .expect("Could not apply passes to the compiled test program.");
+    run_pass_manager(&context, &mut module)?;
 
     let object = cairo_native::module_to_object(&module)?;
     cairo_native::object_to_shared_lib(&object, &args.output)?;

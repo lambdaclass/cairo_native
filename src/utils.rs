@@ -1,7 +1,6 @@
 //! # Various utilities
 
 use crate::{
-    error::compile::CompileError,
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
 };
@@ -16,7 +15,7 @@ use cairo_lang_sierra::{
 use melior::{
     ir::{Module, Type},
     pass::{self, PassManager},
-    Context, ExecutionEngine,
+    Context, ExecutionEngine, Error,
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use std::{
@@ -203,7 +202,7 @@ pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionE
     engine
 }
 
-pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), CompileError> {
+pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Error> {
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -214,7 +213,7 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Co
     pass_manager.add_pass(pass::conversion::create_index_to_llvm());
     pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    Ok(pass_manager.run(module)?)
+    pass_manager.run(module)
 }
 
 #[cfg(feature = "with-runtime")]
