@@ -686,6 +686,6 @@ pub fn any_felt() -> impl Strategy<Value = Felt> {
 }
 
 /// Returns a [`Strategy`] that generates any nonzero Felt
-pub fn nonzero_felt252() -> impl Strategy<Value = Felt> {
+pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
     any_felt().prop_filter("is zero", |x| !x.is_zero())
 }
