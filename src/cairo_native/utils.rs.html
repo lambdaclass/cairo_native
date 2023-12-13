@@ -1176,7 +1176,8 @@
 };
 <span class="kw">use </span>melior::{
     ir::{Module, Type},
-    Context, ExecutionEngine,
+    pass::{<span class="self">self</span>, PassManager},
+    Context, Error, ExecutionEngine,
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
 <span class="kw">use </span>std::{
@@ -1361,6 +1362,20 @@
         .register_impls(<span class="kw-2">&amp;</span>engine);
 
     engine
+}
+
+<span class="kw">pub fn </span>run_pass_manager(context: <span class="kw-2">&amp;</span>Context, module: <span class="kw-2">&amp;mut </span>Module) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">let </span>pass_manager = PassManager::new(context);
+    pass_manager.enable_verifier(<span class="bool-val">true</span>);
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.run(module)
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;with-runtime&quot;</span>)]
@@ -1791,7 +1806,6 @@
     <span class="kw">use </span>melior::{
         dialect::DialectRegistry,
         ir::{Location, Module},
-        pass::{<span class="self">self</span>, PassManager},
         utility::{register_all_dialects, register_all_passes},
         Context, ExecutionEngine,
     };
@@ -1943,21 +1957,7 @@
             module.as_operation()
         );
 
-        <span class="kw">let </span>pass_manager = PassManager::new(<span class="kw-2">&amp;</span>context);
-        pass_manager.enable_verifier(<span class="bool-val">true</span>);
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-        pass_manager
-            .run(<span class="kw-2">&amp;mut </span>module)
+        run_pass_manager(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;mut </span>module)
             .expect(<span class="string">&quot;Could not apply passes to the compiled test program.&quot;</span>);
 
         <span class="kw">let </span>engine = ExecutionEngine::new(<span class="kw-2">&amp;</span>module, <span class="number">0</span>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);

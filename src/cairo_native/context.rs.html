@@ -92,20 +92,6 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::compile::CompileError,
     metadata::{
@@ -114,6 +100,7 @@
         MetadataStorage,
     },
     module::NativeModule,
+    utils::run_pass_manager,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -123,7 +110,6 @@
 <span class="kw">use </span>melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{<span class="self">self</span>, PassManager},
     utility::{register_all_dialects, register_all_passes},
     Context,
 };
@@ -182,23 +168,9 @@
             <span class="prelude-val">None</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.lower_to_llvm(<span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
+        run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(NativeModule::new(module, registry, metadata))
-    }
-
-    <span class="kw">fn </span>lower_to_llvm(<span class="kw-2">&amp;</span><span class="self">self</span>, module: <span class="kw-2">&amp;mut </span>Module) -&gt; <span class="prelude-ty">Result</span>&lt;(), CompileError&gt; {
-        <span class="kw">let </span>pass_manager = PassManager::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context);
-        pass_manager.enable_verifier(<span class="bool-val">true</span>);
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        <span class="prelude-val">Ok</span>(pass_manager.run(module)<span class="question-mark">?</span>)
     }
 }
 
