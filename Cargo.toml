@@ -64,6 +64,7 @@ cairo-lang-starknet = "2.3.1"
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
 cairo-felt = "0.8.5"
+criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
@@ -89,6 +90,10 @@ opt-level = 3
 # On dev optimize dependencies a bit so it's not as slow.
 [profile.dev.package."*"]
 opt-level = 1
+
+[[bench]]
+name = "compile_time"
+harness = false
 
 [workspace]
 members = ["runtime"]

@@ -30,7 +30,7 @@ use cairo_native::{
     },
     starknet::StarkNetSyscallHandler,
     types::felt252::PRIME,
-    utils::{find_entry_point_by_idx, register_runtime_symbols},
+    utils::{find_entry_point_by_idx, register_runtime_symbols, run_pass_manager},
     values::JITValue,
     ExecutionResult,
 };
@@ -43,7 +43,6 @@ use lambdaworks_math::{
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{self, PassManager},
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
@@ -243,21 +242,7 @@ pub fn run_native_program(
         module.as_operation()
     );
 
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager
-        .run(&mut module)
+    run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
     let engine = ExecutionEngine::new(&module, 0, &[], false);

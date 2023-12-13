@@ -15,12 +15,12 @@ use cairo_lang_starknet::{
 use cairo_native::{
     debug_info::{DebugInfo, DebugLocations},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::run_pass_manager,
 };
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{self, PassManager},
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
 };
@@ -88,18 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         debug_info.as_ref(),
     )?;
 
-    // lower to llvm dialect
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-    pass_manager.run(&mut module)?;
+    run_pass_manager(&context, &mut module)?;
 
     let object = cairo_native::module_to_object(&module)?;
     cairo_native::object_to_shared_lib(&object, &args.output)?;
