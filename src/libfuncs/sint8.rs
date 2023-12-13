@@ -190,8 +190,7 @@ where
     let block_not_overflow = helper.append_block(Block::new(&[]));
     let block_overflow = helper.append_block(Block::new(&[]));
 
-    // The libfunc has three outputs: In Range, Overflow & Underflow
-    // But Underflow is not reachable
+    // The libfunc has three possible outputs: In Range, Overflow & Underflow
     entry.append_operation(cf::cond_br(
         context,
         op_overflow,
@@ -201,7 +200,7 @@ where
         &[],
         location,
     ));
-    // Check weather the result is positive to distinguish between undeflowing & overflowing result
+    // Check wether the result is positive to distinguish between undeflowing & overflowing results
     block_overflow.append_operation(helper.cond_br(
         context,
         is_positive,
