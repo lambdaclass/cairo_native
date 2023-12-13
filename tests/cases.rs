@@ -45,6 +45,7 @@ mod common;
 #[test_case("tests/cases/sint/i8_add.cairo")]
 #[test_case("tests/cases/sint/i8_sub.cairo")]
 #[test_case("tests/cases/sint/i8_wide_mul.cairo")]
+#[test_case("tests/cases/sint/i8_to_from_felt252.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
