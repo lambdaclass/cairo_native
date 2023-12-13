@@ -568,9 +568,13 @@ impl JITValue {
                     for (key, val_ptr) in map.iter() {
                         let key = Felt252::from_bytes_le(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        // we need to free all the elements, which are allocated by libc realloc.
+                        libc::free(val_ptr.as_ptr());
                     }
 
-                    Box::leak(map); // we must leak to avoid a double free
+                    // we must leak to avoid a double free
+                    // as it was allocated in the arena and will be freed by it.
+                    Box::leak(map);
 
                     JITValue::Felt252Dict {
                         value: output_map,
