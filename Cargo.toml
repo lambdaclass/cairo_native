@@ -90,10 +90,6 @@ opt-level = 3
 opt-level = 1
 
 [[bench]]
-name = "libfuncs"
-harness = false
-
-[[bench]]
 name = "compile_time"
 harness = false
 
