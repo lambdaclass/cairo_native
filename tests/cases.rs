@@ -43,21 +43,21 @@ mod common;
 #[test_case("tests/cases/uint/wide_mul.cairo")]
 #[test_case("tests/cases/uint/u512_safe_divmod_by_u256.cairo")]
 // sint8
+#[test_case("tests/cases/sint/eq.cairo")]
+#[test_case("tests/cases/sint/is_zero.cairo")]
+#[test_case("tests/cases/sint/to_from_felt252.cairo")]
+// sint8
 #[test_case("tests/cases/sint/i8_diff.cairo")]
-#[test_case("tests/cases/sint/i8_eq.cairo")]
-#[test_case("tests/cases/sint/i8_is_zero.cairo")]
-#[test_case("tests/cases/sint/i8_add.cairo")]
-#[test_case("tests/cases/sint/i8_sub.cairo")]
+#[test_case("tests/cases/sint/i8_add_sub.cairo")]
 #[test_case("tests/cases/sint/i8_wide_mul.cairo")]
-#[test_case("tests/cases/sint/i8_to_from_felt252.cairo")]
 // sint16
 #[test_case("tests/cases/sint/i16_diff.cairo")]
-#[test_case("tests/cases/sint/i16_eq.cairo")]
-#[test_case("tests/cases/sint/i16_is_zero.cairo")]
-#[test_case("tests/cases/sint/i16_add.cairo")]
-#[test_case("tests/cases/sint/i16_sub.cairo")]
+#[test_case("tests/cases/sint/i16_add_sub.cairo")]
 #[test_case("tests/cases/sint/i16_wide_mul.cairo")]
-#[test_case("tests/cases/sint/i16_to_from_felt252.cairo")]
+// sint32
+#[test_case("tests/cases/sint/i32_diff.cairo")]
+#[test_case("tests/cases/sint/i32_add_sub.cairo")]
+#[test_case("tests/cases/sint/i32_wide_mul.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
