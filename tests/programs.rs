@@ -1,4 +1,4 @@
-use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
+use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -250,7 +250,7 @@ proptest! {
     }
 
     #[test]
-    fn pedersen_proptest(a in any_felt252(), b in any_felt252()) {
+    fn pedersen_proptest(a in any_felt(), b in any_felt()) {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
@@ -270,7 +270,7 @@ proptest! {
     }
 
     #[test]
-    fn poseidon_proptest(a in any_felt252(), b in any_felt252(), c in any_felt252()) {
+    fn poseidon_proptest(a in any_felt(), b in any_felt(), c in any_felt()) {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",

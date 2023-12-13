@@ -655,7 +655,7 @@ pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64); // this is equal to 106338
 pub const FIELD_LOW: u128 = 1;
 
 /// Returns a [`Strategy`] that generates any valid Felt
-pub fn any_felt252() -> impl Strategy<Value = Felt> {
+pub fn any_felt() -> impl Strategy<Value = Felt> {
     use proptest::prelude::*;
 
     (0..=FIELD_HIGH)
@@ -687,5 +687,5 @@ pub fn any_felt252() -> impl Strategy<Value = Felt> {
 
 /// Returns a [`Strategy`] that generates any nonzero Felt
 pub fn nonzero_felt252() -> impl Strategy<Value = Felt> {
-    any_felt252().prop_filter("is zero", |x| !x.is_zero())
+    any_felt().prop_filter("is zero", |x| !x.is_zero())
 }

@@ -1,4 +1,4 @@
-use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
+use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -106,7 +106,7 @@ fn ec_point_from_x_small() {
 
 proptest! {
     #[test]
-    fn ec_point_try_new_proptest(a in any_felt252(), b in any_felt252()) {
+    fn ec_point_try_new_proptest(a in any_felt(), b in any_felt()) {
         let program = &EC_POINT_TRY_NEW;
         let result_vm = run_vm_program(
             program,
@@ -127,7 +127,7 @@ proptest! {
 
     #[ignore = "TODO: possible bug in ec_point_from_x_nz"]
     #[test]
-    fn ec_point_from_x_proptest(a in any_felt252()) {
+    fn ec_point_from_x_proptest(a in any_felt()) {
         let program = &EC_POINT_FROM_X;
         let result_vm = run_vm_program(
             program,
