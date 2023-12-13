@@ -212,12 +212,7 @@ where
             .params
             .iter()
             .enumerate()
-            .map(|(idx, param)| {
-                Ok((
-                    &param.id,
-                    entry_block.argument(num_return_ptrs + idx)?.into(),
-                ))
-            })
+            .map(|(idx, param)| Ok((&param.id, entry_block.argument(idx)?.into())))
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
             .into_iter(),
     )?;
@@ -454,13 +449,28 @@ where
                                 Location::unknown(context),
                             ));
 
+                            let recursive_values = function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_memory_allocated(registry) {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
                             block.append_operation(cf::cond_br(
                                 context,
                                 op2.result(0)?.into(),
                                 &cont_block,
                                 &return_target,
                                 &[],
-                                &values,
+                                &recursive_values,
                                 Location::unknown(context),
                             ));
 

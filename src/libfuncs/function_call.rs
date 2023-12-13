@@ -59,6 +59,7 @@ where
 
     // Allocate space for memory-allocated return types and move them from `result_types` into
     // `arguments`.
+    let mut num_return_ptrs = 0;
     for (idx, var_info) in info.signature.branch_signatures[0]
         .vars
         .iter()
@@ -97,6 +98,7 @@ where
                 .into();
 
             arguments.insert(0, stack_ptr);
+            num_return_ptrs += 1;
         }
     }
 
@@ -121,7 +123,11 @@ where
 
         entry.append_operation(cf::br(
             &tailrec_meta.recursion_target(),
-            &arguments,
+            &arguments
+                .iter()
+                .skip(num_return_ptrs)
+                .copied()
+                .collect::<Vec<_>>(),
             location,
         ));
 
@@ -133,11 +139,24 @@ where
                 .collect::<Vec<_>>(),
         ));
 
+        let mut iter = arguments.iter().copied();
+        let mut arg_index = 0;
         cont_block.append_operation(
             helper.br(
                 0,
-                &(0..result_types.len())
-                    .map(|i| Result::Ok(cont_block.argument(i)?.into()))
+                &info.signature.branch_signatures[0]
+                    .vars
+                    .iter()
+                    .map(|var_info| {
+                        let type_info = registry.get_type(&var_info.ty)?;
+                        Result::Ok(if type_info.is_memory_allocated(registry) {
+                            iter.next().unwrap()
+                        } else {
+                            let value = cont_block.argument(arg_index)?.into();
+                            arg_index += 1;
+                            value
+                        })
+                    })
                     .collect::<Result<Vec<_>>>()?,
                 location,
             ),
@@ -170,11 +189,6 @@ where
                         })
                     })
                     .collect::<Result<Vec<_>>>()?,
-                // &result_types
-                //     .iter()
-                //     .enumerate()
-                //     .map(|(i, _)| Result::Ok(op0.result(i)?.into()))
-                //     .collect::<Result<Vec<_>>>()?,
                 location,
             ),
         );

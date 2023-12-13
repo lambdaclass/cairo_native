@@ -514,6 +514,8 @@ impl JITValue {
                         crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
                             .unwrap();
 
+                    let ptr = *ptr.cast::<NonNull<()>>().as_ref();
+
                     let tag = match info.variants.len() {
                         0 => panic!("An enum without variants cannot be instantiated."),
                         1 => 0,

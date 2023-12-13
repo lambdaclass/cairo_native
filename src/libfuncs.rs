@@ -462,7 +462,7 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
@@ -472,7 +472,7 @@ pub(crate) enum BranchArg<'ctx, 'this> {
 ///
 /// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
 /// statement's branches using [BranchTarget::Return] with the branch index.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum BranchTarget<'ctx, 'a> {
     /// A block within the current libfunc.
     Jump(&'a Block<'ctx>),
