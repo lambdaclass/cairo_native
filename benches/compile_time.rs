@@ -15,7 +15,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
                 b.iter(|| {
                     let native_context = NativeContext::new();
                     native_context.compile(program).unwrap();
-                    // pass manager internally verifies its correct MLIR output.
+                    // pass manager internally verifies the MLIR output is correct.
                 })
             });
         }
@@ -32,7 +32,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     native_context.compile(program).unwrap();
-                    // pass manager internally verifies its correct MLIR output.
+                    // pass manager internally verifies the MLIR output is correct.
                 })
             });
         }
