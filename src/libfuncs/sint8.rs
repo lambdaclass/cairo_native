@@ -130,8 +130,8 @@ where
     let rhs: Value = entry.argument(2)?.into();
 
     let op_name = match info.operator {
-        IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
-        IntOperator::OverflowingSub => "llvm.intr.usub.with.overflow",
+        IntOperator::OverflowingAdd => "llvm.intr.sadd.with.overflow",
+        IntOperator::OverflowingSub => "llvm.intr.ssub.with.overflow",
     };
 
     let values_type = lhs.r#type();
@@ -160,61 +160,57 @@ where
 
     let op_result = op.result(0)?.into();
 
-    // Create a const operation to get the i8::MAX value to compare against
-    let max_op = entry.append_operation(arith::constant(
+    // Create a const operation to get the 0 value to compare against
+    let zero_op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", i8::MAX, values_type)).unwrap(),
+        IntegerAttribute::new(0.into(), values_type).into(),
         location,
     ));
-    let const_max = max_op.result(0)?.into();
-    // Compare result against i8::MAX to check if an oveflow has happened
-    let op_compare_max = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Sle,
-        op_result,
-        const_max,
-        location,
-    ));
-    let not_overflow = op_compare_max.result(0)?.into();
-
-    // Create a const operation to get the i8::MIN value to compare against
-    let min_op = entry.append_operation(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{} : {}", i8::MIN, values_type)).unwrap(),
-        location,
-    ));
-    let const_min = min_op.result(0)?.into();
-    // Compare result against i8::MIN to check if an underflow has happened
-    let op_compare_min = entry.append_operation(arith::cmpi(
+    let zero_const = zero_op.result(0)?.into();
+    // Check if the result is positive
+    let is_positive_op = entry.append_operation(arith::cmpi(
         context,
         CmpiPredicate::Sge,
         op_result,
-        const_min,
+        zero_const,
         location,
     ));
-    let not_underflow = op_compare_min.result(0)?.into();
-    let block_not_oveflow = helper.append_block(Block::new(&[]));
+    let is_positive = is_positive_op.result(0)?.into();
+
+    // Check overflow flag
+    let op = entry.append_operation(llvm::extract_value(
+        context,
+        result,
+        DenseI64ArrayAttribute::new(context, &[1]),
+        IntegerType::new(context, 1).into(),
+        location,
+    ));
+    let op_overflow = op.result(0)?.into();
+
+    let block_not_overflow = helper.append_block(Block::new(&[]));
     let block_overflow = helper.append_block(Block::new(&[]));
 
+    // The libfunc has three outputs: In Range, Overflow & Underflow
+    // But Underflow is not reachable
     entry.append_operation(cf::cond_br(
         context,
-        not_overflow,
-        block_not_oveflow,
+        op_overflow,
         block_overflow,
+        block_not_overflow,
         &[],
         &[],
         location,
     ));
-
-    block_not_oveflow.append_operation(helper.cond_br(
+    // Check weather the result is positive to distinguish between undeflowing & overflowing result
+    block_overflow.append_operation(helper.cond_br(
         context,
-        not_underflow,
-        [0, 1],
+        is_positive,
+        [1, 2],
         [&[range_check, op_result], &[range_check, op_result]],
         location,
     ));
-
-    block_overflow.append_operation(helper.br(2, &[range_check, op_result], location));
+    // No Oveflow/Underflow -> In range result
+    block_not_overflow.append_operation(helper.br(0, &[range_check, op_result], location));
     Ok(())
 }
 
