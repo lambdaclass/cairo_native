@@ -890,7 +890,7 @@ pub mod test {
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
     #[ignore]
-    fn test_alignment_compatibility_felt252() {
+    fn test_alignment_compatibility_felt() {
         assert_eq!(get_integer_layout(252).align(), 8);
     }
 
