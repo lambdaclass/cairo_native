@@ -204,15 +204,16 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let variant_ids = registry
+        .get_type(&info.param_signatures()[0].ty)?
+        .variants()
+        .unwrap();
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        registry
-            .get_type(&info.param_signatures()[0].ty)?
-            .variants()
-            .unwrap(),
+        variant_ids,
     )?;
 
     let tag_val = entry
@@ -269,7 +270,9 @@ where
     }
 
     // Enum variants.
-    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
+    for (i, (block, (payload_ty, payload_layout))) in
+        variant_blocks.into_iter().zip(variant_tys).enumerate()
+    {
         let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
         let val = block
@@ -296,6 +299,50 @@ where
             ))
             .result(0)?
             .into();
+
+        let payload_type_info = registry.get_type(&variant_ids[i])?;
+        let payload_val = if payload_type_info.is_memory_allocated(registry) {
+            let k1 = helper
+                .init_block()
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            let stack_ptr = helper
+                .init_block()
+                .append_operation(llvm::alloca(
+                    context,
+                    k1,
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                    AllocaOptions::new()
+                        .align(Some(IntegerAttribute::new(
+                            payload_layout.align() as i64,
+                            IntegerType::new(context, 64).into(),
+                        )))
+                        .elem_type(Some(TypeAttribute::new(payload_ty))),
+                ))
+                .result(0)?
+                .into();
+
+            block.append_operation(llvm::store(
+                context,
+                payload_val,
+                stack_ptr,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    payload_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ));
+
+            stack_ptr
+        } else {
+            payload_val
+        };
 
         block.append_operation(helper.br(i, &[payload_val], location));
     }
