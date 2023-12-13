@@ -97,14 +97,15 @@ where
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
 
+    #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
         &self,
-        _context: &'ctx Context,
+        context: &'ctx Context,
         registry: &ProgramRegistry<TType, TLibfunc>,
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
-        _metadata: &mut MetadataStorage,
+        metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<(), Self::Error>;
 }
@@ -489,6 +490,14 @@ where
                 runtime
                     .dict_alloc_free(context, helper, ptr, entry, location)
                     .unwrap();
+            }
+            CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
+                let ptr = entry.argument(0).unwrap().into();
+                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             _ => {}
         };
