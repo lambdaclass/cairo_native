@@ -6,6 +6,7 @@ use crate::{
         MetadataStorage,
     },
     module::NativeModule,
+    utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -15,7 +16,6 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{self, PassManager},
     utility::{register_all_dialects, register_all_passes},
     Context,
 };
@@ -74,23 +74,9 @@ impl NativeContext {
             None,
         )?;
 
-        self.lower_to_llvm(&mut module)?;
+        run_pass_manager(&self.context, &mut module)?;
 
         Ok(NativeModule::new(module, registry, metadata))
-    }
-
-    fn lower_to_llvm(&self, module: &mut Module) -> Result<(), CompileError> {
-        let pass_manager = PassManager::new(&self.context);
-        pass_manager.enable_verifier(true);
-        pass_manager.add_pass(pass::transform::create_canonicalizer());
-        pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-        Ok(pass_manager.run(module)?)
     }
 }
 
