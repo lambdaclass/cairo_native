@@ -48,7 +48,8 @@ pub fn bench_compile_time(c: &mut Criterion) {
                 b.iter(|| {
                     let native_context = NativeContext::new();
                     let module = native_context.compile(black_box(program)).unwrap();
-                    let object = module_to_object(module.module()).expect("to compile correctly to a object file");
+                    let object = module_to_object(module.module())
+                        .expect("to compile correctly to a object file");
                     black_box(object)
                 })
             });
