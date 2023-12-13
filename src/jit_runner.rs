@@ -225,7 +225,7 @@ pub fn execute(
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
-            },
+            }
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),

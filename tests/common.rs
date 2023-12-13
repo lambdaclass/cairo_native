@@ -683,7 +683,7 @@ pub fn compare_outputs(
                     panic!("invalid type")
                 };
                 prop_assert_eq!(vm_value, native_value.into())
-            },
+            }
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
