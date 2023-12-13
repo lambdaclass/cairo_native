@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
 use melior::{
     ir::{Module, Type},
     pass::{self, PassManager},
-    Context, ExecutionEngine, Error,
+    Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use std::{
