@@ -645,7 +645,6 @@ pub mod test {
     use melior::{
         dialect::DialectRegistry,
         ir::{Location, Module},
-        pass::{self, PassManager},
         utility::{register_all_dialects, register_all_passes},
         Context, ExecutionEngine,
     };
