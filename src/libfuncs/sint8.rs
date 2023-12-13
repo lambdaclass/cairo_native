@@ -71,9 +71,7 @@ where
         SintConcrete::WideMul(info) => {
             build_widemul(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::Diff(info) => {
-            build_diff(context, registry, entry, location, helper, metadata, info)
-        }
+        SintConcrete::Diff(info) => build_diff(context, registry, entry, location, helper, info),
     }
 }
 
@@ -438,12 +436,11 @@ where
 /// Generate MLIR operations for the `i8_diff` libfunc.
 pub fn build_diff<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -455,28 +452,11 @@ where
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
-    // let target_type = registry.build_type(
-    //     context,
-    //     helper,
-    //     registry,
-    //     metadata,
-    //     &info.output_types()[0][1],
-    // )?;
-
-    // let op = entry.append_operation(arith::extsi(lhs, target_type, location));
-    // let lhs = op.result(0)?.into();
-
-    // let op = entry.append_operation(arith::extsi(rhs, target_type, location));
-    // let rhs = op.result(0)?.into();
-
     // Check if lhs >= rhs
     let is_ge_op =
         entry.append_operation(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location));
 
     let is_ge = is_ge_op.result(0)?.into();
-
-    // let block_ge = helper.append_block(Block::new(&[]));
-    // let block_lt = helper.append_block(Block::new(&[]));
 
     let diff_op = entry.append_operation(arith::subi(lhs, rhs, location));
     let result = diff_op.result(0)?.into();
@@ -488,26 +468,6 @@ where
         [&[range_check, result], &[range_check, result]],
         location,
     ));
-
-    // entry.append_operation(cf::cond_br(
-    //     context,
-    //     is_ge,
-    //     block_ge,
-    //     block_lt,
-    //     &[],
-    //     &[],
-    //     location,
-    // ));
-
-    // // If lhs >= rhs then we retrun Ok(lhs -lhs)
-    // let diff_op = block_ge.append_operation(arith::subi(lhs, rhs, location));
-    // let result = diff_op.result(0)?.into();
-    // block_ge.append_operation(helper.br(0, &[result, range_check], location));
-
-    // // If lhs >= rhs then we retrun Err(2**8 + lhs -lhs)
-    // let diff_op = block_ge.append_operation(arith::subi(lhs, rhs, location));
-    // let result = diff_op.result(0)?.into();
-    // block_ge.append_operation(helper.br(1, &[result, range_check], location));
 
     Ok(())
 }
