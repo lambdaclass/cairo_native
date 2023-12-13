@@ -314,10 +314,10 @@ where
     let lhs: Value = entry.argument(0)?.into();
     let rhs: Value = entry.argument(1)?.into();
 
-    let op = entry.append_operation(arith::extui(lhs, target_type, location));
+    let op = entry.append_operation(arith::extsi(lhs, target_type, location));
     let lhs = op.result(0)?.into();
 
-    let op = entry.append_operation(arith::extui(rhs, target_type, location));
+    let op = entry.append_operation(arith::extsi(rhs, target_type, location));
     let rhs = op.result(0)?.into();
 
     let op = entry.append_operation(arith::muli(lhs, rhs, location));
@@ -397,7 +397,7 @@ where
 
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", u8::MAX, felt252_ty)).unwrap(),
+        Attribute::parse(context, &format!("{} : {}", i8::MAX, felt252_ty)).unwrap(),
         location,
     ));
     let const_max = op.result(0)?.into();
@@ -474,7 +474,7 @@ mod test {
         static ref I8_WIDEMUL: (String, Program) = load_cairo! {
             use integer::i8_wide_mul;
             fn run_test(lhs: i8, rhs: i8) -> i16 {
-                u8_wide_mul(lhs, rhs)
+                i8_wide_mul(lhs, rhs)
             }
         };
     }
@@ -538,7 +538,7 @@ mod test {
     #[test]
     fn i8_overflowing_add() {
         #[track_caller]
-        fn run(lhs: u8, rhs: u8) {
+        fn run(lhs: i8, rhs: i8) {
             let program = &I8_OVERFLOWING_ADD;
             let error = Felt252::from_bytes_be(b"i8_add Overflow");
 
@@ -564,7 +564,7 @@ mod test {
             }
         }
 
-        const MAX: u8 = u8::MAX;
+        const MAX: i8 = i8::MAX;
 
         run(0, 0);
         run(0, 1);
@@ -590,7 +590,7 @@ mod test {
     #[test]
     fn i8_overflowing_sub() {
         #[track_caller]
-        fn run(lhs: u8, rhs: u8) {
+        fn run(lhs: i8, rhs: i8) {
             let program = &I8_OVERFLOWING_SUB;
             let error = Felt252::from_bytes_be(b"i8_sub Overflow");
 
@@ -616,7 +616,7 @@ mod test {
             }
         }
 
-        const MAX: u8 = u8::MAX;
+        const MAX: i8 = i8::MAX;
 
         run(0, 0);
         run(0, 1);
@@ -646,25 +646,25 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 0u8.into()],
+            &[0i8.into(), 0i8.into()],
             &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 0u8.into()],
+            &[1i8.into(), 0i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 1u8.into()],
+            &[0i8.into(), 1i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 1u8.into()],
+            &[1i8.into(), 1i8.into()],
             &[jit_enum!(1, jit_struct!())],
         );
     }
@@ -676,13 +676,13 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into()],
+            &[0i8.into()],
             &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into()],
+            &[1i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
     }
@@ -694,57 +694,57 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 0u8.into()],
+            &[0i8.into(), 0i8.into()],
             &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 1u8.into()],
+            &[0i8.into(), 1i8.into()],
             &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 0xFFu8.into()],
+            &[0i8.into(), i8::MAX.into()],
             &[jit_enum!(1, jit_struct!())],
         );
 
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 0u8.into()],
+            &[1i8.into(), 0i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 1u8.into()],
+            &[1i8.into(), 1i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 0xFFu8.into()],
+            &[1i8.into(), i8::MAX.into()],
             &[jit_enum!(0, jit_struct!())],
         );
 
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu8.into(), 0u8.into()],
+            &[i8::MAX.into(), 0i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu8.into(), 1u8.into()],
+            &[i8::MAX.into(), 1i8.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0xFFu8.into(), 0xFFu8.into()],
+            &[i8::MAX.into(), i8::MAX.into()],
             &[jit_enum!(0, jit_struct!())],
         );
     }
@@ -756,32 +756,32 @@ mod test {
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 0u8.into()],
-            &[0u16.into()],
+            &[0i8.into(), 0i8.into()],
+            &[0i16.into()],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0u8.into(), 1u8.into()],
-            &[0u16.into()],
+            &[0i8.into(), 1i8.into()],
+            &[0i16.into()],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 0u8.into()],
-            &[0u16.into()],
+            &[1i8.into(), 0i8.into()],
+            &[0i16.into()],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1u8.into(), 1u8.into()],
-            &[1u16.into()],
+            &[1i8.into(), 1i8.into()],
+            &[1i16.into()],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[u8::MAX.into(), u8::MAX.into()],
-            &[(u8::MAX as u16 * u8::MAX as u16).into()],
+            &[i8::MAX.into(), i8::MAX.into()],
+            &[(i8::MAX as i16 * i8::MAX as i16).into()],
         );
     }
 }
