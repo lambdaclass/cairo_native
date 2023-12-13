@@ -487,7 +487,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[0u8.into()]);
+        run_program_assert_output(&program, "run_test", &[], &[0i8.into()]);
     }
 
     #[test]
@@ -498,7 +498,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[(i8::MAX as u8).into()]);
+        run_program_assert_output(&program, "run_test", &[], &[(i8::MAX).into()]);
     }
 
     #[test]
@@ -520,7 +520,7 @@ mod test {
             use traits::TryInto;
 
             fn run_test() -> (Option<i8>, Option<i8>) {
-                (255.try_into(), 256.try_into())
+                (127.try_into(), 128.try_into())
             }
         );
 
@@ -529,7 +529,7 @@ mod test {
             "run_test",
             &[],
             &[jit_struct!(
-                jit_enum!(0, 255u8.into()),
+                jit_enum!(0, 127i8.into()),
                 jit_enum!(1, jit_struct!()),
             )],
         );
