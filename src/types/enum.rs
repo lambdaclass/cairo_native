@@ -428,29 +428,17 @@ pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: WithSelf<EnumConcreteType>,
+    info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    Ok(llvm::r#type::opaque_pointer(context))
-}
-
-pub fn as_return_type<TType, TLibfunc>(
-    registry: &ProgramRegistry<TType, TLibfunc>,
-    variants: &[ConcreteTypeId],
-) -> Result<Layout>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
-    let tag_layout = get_integer_layout(variants.len().next_power_of_two().trailing_zeros());
-    Ok(variants.iter().fold(tag_layout, |acc, id| {
+    let tag_layout = get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
+    let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
             .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
             .unwrap()
@@ -461,7 +449,36 @@ where
             acc.align().max(layout.align()),
         )
         .unwrap()
-    }))
+    });
+
+    let i8_ty = IntegerType::new(context, 8).into();
+    Ok(llvm::r#type::r#struct(
+        context,
+        &match layout.align() {
+            1 => [
+                IntegerType::new(context, 8).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 1) as u32),
+            ],
+            2 => [
+                IntegerType::new(context, 16).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 2) as u32),
+            ],
+            4 => [
+                IntegerType::new(context, 32).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 4) as u32),
+            ],
+            8 => [
+                IntegerType::new(context, 64).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 8) as u32),
+            ],
+            16 => [
+                IntegerType::new(context, 128).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 16) as u32),
+            ],
+            _ => unreachable!(),
+        },
+        false,
+    ))
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.

@@ -218,6 +218,7 @@ impl JITValue {
                         let mut layout: Option<Layout> = None;
                         let mut data = Vec::with_capacity(info.members.len());
 
+                        let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
                             let member_layout = member_ty
@@ -230,10 +231,19 @@ impl JITValue {
                             };
                             layout = Some(new_layout);
 
+                            let member_ptr = member.to_jit(arena, registry, member_type_id)?;
                             data.push((
                                 member_layout,
                                 offset,
-                                member.to_jit(arena, registry, member_type_id)?,
+                                if member_ty.is_memory_allocated(registry) {
+                                    is_memory_allocated = true;
+
+                                    // Undo the wrapper pointer added because the member's memory
+                                    // allocated flag.
+                                    *member_ptr.cast::<NonNull<()>>().as_ref()
+                                } else {
+                                    member_ptr
+                                },
                             ));
                         }
 
@@ -252,7 +262,14 @@ impl JITValue {
                             );
                         }
 
-                        ptr
+                        if is_memory_allocated {
+                            dbg!(ptr.cast::<[u8; 32 * 5]>().as_ref());
+                            NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
+                                .unwrap()
+                                .cast()
+                        } else {
+                            ptr
+                        }
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got a struct",
@@ -270,7 +287,7 @@ impl JITValue {
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
                                 .unwrap();
-                        let ptr = arena.alloc_layout(layout).cast();
+                        let ptr = arena.alloc_layout(layout).cast::<()>();
 
                         match tag_layout.size() {
                             0 => panic!("An enum without variants cannot be instantiated."),
@@ -294,7 +311,9 @@ impl JITValue {
                             variant_layouts[*tag].size(),
                         );
 
-                        ptr
+                        NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
+                            .unwrap()
+                            .cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",

@@ -101,6 +101,8 @@ where
         ))
         .result(0)?
         .into();
+    // Allocating only the space necessary for the current variant. This shouldn't cause any
+    // problems because the data won't be changed in place.
     let stack_ptr = helper
         .init_block()
         .append_operation(llvm::alloca(
@@ -189,7 +191,7 @@ where
         registry,
         metadata,
         registry
-            .get_type(&info.branch_signatures()[0].vars[0].ty)?
+            .get_type(&info.param_signatures()[0].ty)?
             .variants()
             .unwrap(),
     )?;
