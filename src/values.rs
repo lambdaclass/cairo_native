@@ -18,12 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
-use std::{
-    alloc::Layout,
-    collections::HashMap,
-    ops::Neg,
-    ptr::{addr_of_mut, NonNull},
-};
+use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 /// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
 ///
@@ -266,7 +261,6 @@ impl JITValue {
                         }
 
                         if is_memory_allocated {
-                            dbg!(ptr.cast::<[u8; 32 * 5]>().as_ref());
                             NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
                                 .unwrap()
                                 .cast()
@@ -442,202 +436,205 @@ impl JITValue {
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> JITValue {
-        let ty = registry.get_type(type_id).unwrap();
+        fn inner(
+            ptr: NonNull<()>,
+            type_id: &ConcreteTypeId,
+            registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        ) -> JITValue {
+            let ty = registry.get_type(type_id).unwrap();
 
+            unsafe {
+                match ty {
+                    CoreTypeConcrete::Array(info) => {
+                        let elem_ty = registry.get_type(&info.ty).unwrap();
+
+                        let elem_layout = elem_ty.layout(registry).unwrap();
+                        let elem_stride = elem_layout.pad_to_align().size();
+
+                        let ptr_layout = Layout::new::<*mut ()>();
+                        let len_layout = crate::utils::get_integer_layout(32);
+
+                        let len_value = *NonNull::new(
+                            ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
+                                as *mut (),
+                        )
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
+
+                        let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
+                        let mut array_value = Vec::new();
+
+                        for i in 0..(len_value as usize) {
+                            let cur_elem_ptr = NonNull::new(
+                                ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
+                            )
+                            .unwrap();
+
+                            array_value.push(inner(cur_elem_ptr, &info.ty, registry));
+                        }
+
+                        JITValue::Array(array_value)
+                    }
+                    CoreTypeConcrete::Box(info) => inner(ptr, &info.ty, registry),
+                    CoreTypeConcrete::EcPoint(_) => {
+                        let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
+
+                        JITValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
+                    }
+                    CoreTypeConcrete::EcState(_) => {
+                        let data = ptr.cast::<[[u32; 8]; 4]>().as_ref();
+
+                        JITValue::EcState(
+                            u32_vec_to_felt(&data[0]),
+                            u32_vec_to_felt(&data[1]),
+                            u32_vec_to_felt(&data[2]),
+                            u32_vec_to_felt(&data[3]),
+                        )
+                    }
+                    CoreTypeConcrete::Felt252(_) => {
+                        let data = ptr.cast::<[u32; 8]>().as_ref();
+                        let data = u32_vec_to_felt(data);
+                        JITValue::Felt252(data)
+                    }
+                    CoreTypeConcrete::Uint8(_) => JITValue::Uint8(*ptr.cast::<u8>().as_ref()),
+                    CoreTypeConcrete::Uint16(_) => JITValue::Uint16(*ptr.cast::<u16>().as_ref()),
+                    CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
+                    CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
+                    CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
+                    CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+                    CoreTypeConcrete::Sint8(_) => todo!(),
+                    CoreTypeConcrete::Sint16(_) => todo!(),
+                    CoreTypeConcrete::Sint32(_) => todo!(),
+                    CoreTypeConcrete::Sint64(_) => todo!(),
+                    CoreTypeConcrete::Sint128(_) => todo!(),
+                    CoreTypeConcrete::NonZero(info) => inner(ptr, &info.ty, registry),
+                    CoreTypeConcrete::Nullable(_) => todo!(),
+                    CoreTypeConcrete::Uninitialized(_) => todo!(),
+                    CoreTypeConcrete::Enum(info) => {
+                        let (_, tag_layout, variant_layouts) =
+                            crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
+                                .unwrap();
+
+                        let tag = match info.variants.len() {
+                            0 => panic!("An enum without variants cannot be instantiated."),
+                            1 => 0,
+                            x if x <= u8::MAX as usize => *ptr.cast::<u8>().as_mut() as usize,
+                            x if x <= u16::MAX as usize => *ptr.cast::<u16>().as_mut() as usize,
+                            x if x <= u32::MAX as usize => *ptr.cast::<u32>().as_mut() as usize,
+                            x if x <= u64::MAX as usize => *ptr.cast::<u64>().as_mut() as usize,
+                            _ => unreachable!(),
+                        };
+                        // let tag = tag & (info.variants.len().next_power_of_two() - 1);
+
+                        let payload = inner(
+                            NonNull::new_unchecked(
+                                (ptr.as_ptr() as usize
+                                    + tag_layout.extend(variant_layouts[tag]).unwrap().1)
+                                    as *mut _,
+                            ),
+                            &info.variants[tag],
+                            registry,
+                        );
+
+                        JITValue::Enum {
+                            tag,
+                            value: Box::new(payload),
+                            debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
+                        }
+                    }
+                    CoreTypeConcrete::Struct(info) => {
+                        let mut layout: Option<Layout> = None;
+                        let mut members = Vec::with_capacity(info.members.len());
+
+                        for member_ty in &info.members {
+                            let member = registry.get_type(member_ty).unwrap();
+                            let member_layout = member.layout(registry).unwrap();
+
+                            let (new_layout, offset) = match layout {
+                                Some(layout) => layout.extend(member_layout).unwrap(),
+                                None => (member_layout, 0),
+                            };
+                            layout = Some(new_layout);
+
+                            members.push(inner(
+                                NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                                    .unwrap(),
+                                member_ty,
+                                registry,
+                            ));
+                        }
+
+                        JITValue::Struct {
+                            fields: members,
+                            debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
+                        }
+                    }
+                    CoreTypeConcrete::Felt252Dict(info)
+                    | CoreTypeConcrete::SquashedFelt252Dict(info) => {
+                        let ptr =
+                            ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
+                        let ptr = *ptr.as_ptr();
+                        let map = Box::from_raw(ptr.as_ptr());
+
+                        let mut output_map = HashMap::with_capacity(map.len());
+
+                        for (key, val_ptr) in map.iter() {
+                            let key = Felt252::from_bytes_le(key.as_slice());
+                            output_map.insert(key, inner(val_ptr.cast(), &info.ty, registry));
+                        }
+
+                        Box::leak(map); // we must leak to avoid a double free
+
+                        JITValue::Felt252Dict {
+                            value: output_map,
+                            debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
+                        }
+                    }
+                    CoreTypeConcrete::Felt252DictEntry(_) => {
+                        unimplemented!("shouldn't be possible to return")
+                    }
+                    CoreTypeConcrete::Pedersen(_)
+                    | CoreTypeConcrete::Poseidon(_)
+                    | CoreTypeConcrete::Bitwise(_)
+                    | CoreTypeConcrete::BuiltinCosts(_)
+                    | CoreTypeConcrete::RangeCheck(_)
+                    | CoreTypeConcrete::EcOp(_)
+                    | CoreTypeConcrete::GasBuiltin(_)
+                    | CoreTypeConcrete::SegmentArena(_) => {
+                        unimplemented!("handled before: {:?}", type_id)
+                    }
+                    // Does it make sense for programs to return this? Should it be implemented
+                    CoreTypeConcrete::StarkNet(selector) => match selector {
+                        StarkNetTypeConcrete::ClassHash(_)
+                        | StarkNetTypeConcrete::ContractAddress(_)
+                        | StarkNetTypeConcrete::StorageBaseAddress(_)
+                        | StarkNetTypeConcrete::StorageAddress(_) => {
+                            // felt values
+                            let data = ptr.cast::<[u32; 8]>().as_ref();
+                            let data = u32_vec_to_felt(data);
+                            JITValue::Felt252(data)
+                        }
+                        StarkNetTypeConcrete::System(_) => {
+                            unimplemented!("should be handled before")
+                        }
+                        StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                    },
+                    CoreTypeConcrete::Span(_) => todo!(),
+                    CoreTypeConcrete::Snapshot(info) => inner(ptr, &info.ty, registry),
+                    CoreTypeConcrete::Bytes31(_) => todo!(),
+                }
+            }
+        }
+
+        let ty = registry.get_type(type_id).unwrap();
         let ptr = if ty.is_memory_allocated(registry) {
             unsafe { *ptr.cast::<NonNull<()>>().as_ref() }
         } else {
             ptr
         };
 
-        unsafe {
-            match ty {
-                CoreTypeConcrete::Array(info) => {
-                    let elem_ty = registry.get_type(&info.ty).unwrap();
-
-                    let elem_layout = elem_ty.layout(registry).unwrap();
-                    let elem_stride = elem_layout.pad_to_align().size();
-
-                    let ptr_layout = Layout::new::<*mut ()>();
-                    let len_layout = crate::utils::get_integer_layout(32);
-
-                    let len_value = *NonNull::new(
-                        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
-                            as *mut (),
-                    )
-                    .unwrap()
-                    .cast::<u32>()
-                    .as_ref();
-
-                    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let mut array_value = Vec::new();
-
-                    for i in 0..(len_value as usize) {
-                        let cur_elem_ptr = NonNull::new(
-                            ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
-                        )
-                        .unwrap();
-
-                        array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
-                    }
-
-                    Self::Array(array_value)
-                }
-                CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::EcPoint(_) => {
-                    let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
-
-                    JITValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
-                }
-                CoreTypeConcrete::EcState(_) => {
-                    let data = ptr.cast::<[[u32; 8]; 4]>().as_ref();
-
-                    JITValue::EcState(
-                        u32_vec_to_felt(&data[0]),
-                        u32_vec_to_felt(&data[1]),
-                        u32_vec_to_felt(&data[2]),
-                        u32_vec_to_felt(&data[3]),
-                    )
-                }
-                CoreTypeConcrete::Felt252(_) => {
-                    let data = ptr.cast::<[u32; 8]>().as_ref();
-                    let data = u32_vec_to_felt(data);
-                    JITValue::Felt252(data)
-                }
-                CoreTypeConcrete::Uint8(_) => JITValue::Uint8(*ptr.cast::<u8>().as_ref()),
-                CoreTypeConcrete::Uint16(_) => JITValue::Uint16(*ptr.cast::<u16>().as_ref()),
-                CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
-                CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
-                CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
-                CoreTypeConcrete::Sint32(_) => todo!(),
-                CoreTypeConcrete::Sint64(_) => todo!(),
-                CoreTypeConcrete::Sint128(_) => todo!(),
-                CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Nullable(_) => todo!(),
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
-                CoreTypeConcrete::Enum(info) => {
-                    let (_, tag_layout, variant_layouts) =
-                        crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                            .unwrap();
-
-                    let tag = match info.variants.len() {
-                        0 => panic!("An enum without variants cannot be instantiated."),
-                        1 => 0,
-                        x if x <= u8::MAX as usize => *ptr.cast::<u8>().as_mut() as usize,
-                        x if x <= u16::MAX as usize => *ptr.cast::<u16>().as_mut() as usize,
-                        x if x <= u32::MAX as usize => *ptr.cast::<u32>().as_mut() as usize,
-                        x if x <= u64::MAX as usize => *ptr.cast::<u64>().as_mut() as usize,
-                        _ => unreachable!(),
-                    };
-
-                    let payload_type_info = registry.get_type(&info.variants[tag]).unwrap();
-                    let mut local_ptr = NonNull::new_unchecked(
-                        (ptr.as_ptr() as usize + tag_layout.extend(variant_layouts[tag]).unwrap().1)
-                            as *mut _,
-                    );
-                    let payload = Self::from_jit(
-                        if payload_type_info.is_memory_allocated(registry) {
-                            NonNull::new(addr_of_mut!(local_ptr)).unwrap().cast()
-                        } else {
-                            local_ptr
-                        },
-                        &info.variants[tag],
-                        registry,
-                    );
-
-                    Self::Enum {
-                        tag,
-                        value: Box::new(payload),
-                        debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
-                    }
-                }
-                CoreTypeConcrete::Struct(info) => {
-                    let mut layout: Option<Layout> = None;
-                    let mut members = Vec::with_capacity(info.members.len());
-
-                    for member_ty in &info.members {
-                        let member = registry.get_type(member_ty).unwrap();
-                        let member_layout = member.layout(registry).unwrap();
-
-                        let (new_layout, offset) = match layout {
-                            Some(layout) => layout.extend(member_layout).unwrap(),
-                            None => (member_layout, 0),
-                        };
-                        layout = Some(new_layout);
-
-                        let mut local_ptr =
-                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap();
-                        members.push(JITValue::from_jit(
-                            if member.is_memory_allocated(registry) {
-                                NonNull::new(addr_of_mut!(local_ptr)).unwrap().cast()
-                            } else {
-                                local_ptr
-                            },
-                            member_ty,
-                            registry,
-                        ));
-                    }
-
-                    JITValue::Struct {
-                        fields: members,
-                        debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
-                    }
-                }
-                CoreTypeConcrete::Felt252Dict(info)
-                | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let ptr = ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
-                    let ptr = *ptr.as_ptr();
-                    let map = Box::from_raw(ptr.as_ptr());
-
-                    let mut output_map = HashMap::with_capacity(map.len());
-
-                    for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le(key.as_slice());
-                        output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
-                    }
-
-                    Box::leak(map); // we must leak to avoid a double free
-
-                    JITValue::Felt252Dict {
-                        value: output_map,
-                        debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
-                    }
-                }
-                CoreTypeConcrete::Felt252DictEntry(_) => {
-                    unimplemented!("shouldn't be possible to return")
-                }
-                CoreTypeConcrete::Pedersen(_)
-                | CoreTypeConcrete::Poseidon(_)
-                | CoreTypeConcrete::Bitwise(_)
-                | CoreTypeConcrete::BuiltinCosts(_)
-                | CoreTypeConcrete::RangeCheck(_)
-                | CoreTypeConcrete::EcOp(_)
-                | CoreTypeConcrete::GasBuiltin(_)
-                | CoreTypeConcrete::SegmentArena(_) => {
-                    unimplemented!("handled before: {:?}", type_id)
-                }
-                // Does it make sense for programs to return this? Should it be implemented
-                CoreTypeConcrete::StarkNet(selector) => match selector {
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_) => {
-                        // felt values
-                        let data = ptr.cast::<[u32; 8]>().as_ref();
-                        let data = u32_vec_to_felt(data);
-                        JITValue::Felt252(data)
-                    }
-                    StarkNetTypeConcrete::System(_) => unimplemented!("should be handled before"),
-                    StarkNetTypeConcrete::Secp256Point(_) => todo!(),
-                },
-                CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
-            }
-        }
+        inner(ptr, type_id, registry)
     }
 
     /// String to felt
