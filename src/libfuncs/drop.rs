@@ -25,13 +25,13 @@ use melior::{
 
 /// Generate MLIR operations for the `drop` libfunc.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -40,6 +40,17 @@ where
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
     // TODO: Implement drop for arrays.
+
+    let ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    ty.build_drop(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+    )?;
 
     entry.append_operation(helper.br(0, &[], location));
 

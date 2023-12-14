@@ -18,7 +18,7 @@ use melior::{
     ir::{r#type::IntegerType, Module, Type},
     Context,
 };
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 
 lazy_static! {
     /// The `felt252` prime modulo.
@@ -26,10 +26,14 @@ lazy_static! {
         "3618502788666131213697322783095070105623107215331596699973092056135872020481"
             .parse()
             .unwrap();
+    pub static ref HALF_PRIME: BigInt =
+        "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+            .parse()
+            .unwrap();
 }
 
 /// Marker type for the [PrimeModuloMeta] metadata.
-// TODO: Maybe we should use the JIT value (in `crate::values::felt252`) instead of defining a dummy
+// TODO: Maybe we should use the JIT value (in `crate::values::Felt`) instead of defining a dummy
 //   type?
 #[derive(Debug)]
 pub struct Felt252;

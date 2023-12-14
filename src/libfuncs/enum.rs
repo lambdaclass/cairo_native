@@ -468,9 +468,9 @@ where
 #[cfg(test)]
 mod test {
     use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
+    use starknet_types_core::felt::Felt;
 
     lazy_static! {
         static ref ENUM_INIT: (String, Program) = load_cairo! {
@@ -537,8 +537,8 @@ mod test {
             "run_test",
             &[],
             &[jit_struct!(
-                jit_enum!(0, Felt252::new(-1).into()),
-                jit_enum!(0, Felt252::new(5678).into()),
+                jit_enum!(0, Felt::from(-1).into()),
+                jit_enum!(0, Felt::from(5678).into()),
                 jit_enum!(1, 90u8.into()),
                 jit_enum!(2, 9012u16.into()),
                 jit_enum!(3, 34567890u32.into()),
@@ -549,7 +549,7 @@ mod test {
 
     #[test]
     fn enum_match() {
-        run_program_assert_output(&ENUM_MATCH, "match_a", &[], &[Felt252::new(5).into()]);
+        run_program_assert_output(&ENUM_MATCH, "match_a", &[], &[Felt::from(5).into()]);
 
         run_program_assert_output(&ENUM_MATCH, "match_b", &[], &[5u8.into()]);
     }

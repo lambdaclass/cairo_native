@@ -27,7 +27,6 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.14"
-cairo-felt = "0.8.5"
 cairo-lang-compiler = "2.3.1"
 cairo-lang-defs = "2.3.1"
 cairo-lang-diagnostics = "2.3.1"
@@ -35,12 +34,12 @@ cairo-lang-filesystem = "2.3.1"
 cairo-lang-lowering = "2.3.1"
 cairo-lang-sierra = "2.3.1"
 cairo-lang-sierra-generator = "2.3.1"
-educe = "0.4.23"
+educe = "0.5.5"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.147"
-melior = { version = "0.13.0", features = ["ods-dialects"] }
+melior = { version = "0.14.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
@@ -48,6 +47,8 @@ thiserror = "1.0"
 tracing = "0.1"
 llvm-sys = "170.0.0"
 tempfile = "3.6"
+starknet-types-core = { git = "https://github.com/starknet-io/types-rs.git", rev = "4bc8a5db3c86f017e8be7dc43531a2cb6db011c0", default-features = false, features = ["serde"] }
+
 
 # CLI dependencies
 cairo-native-runtime = { path = "runtime", optional = true }
@@ -62,6 +63,8 @@ cairo-lang-starknet = "2.3.1"
 
 [dev-dependencies]
 cairo-lang-runner = "2.3.1"
+cairo-felt = "0.8.5"
+criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
 num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
@@ -87,6 +90,10 @@ opt-level = 3
 # On dev optimize dependencies a bit so it's not as slow.
 [profile.dev.package."*"]
 opt-level = 1
+
+[[bench]]
+name = "compile_time"
+harness = false
 
 [workspace]
 members = ["runtime"]
