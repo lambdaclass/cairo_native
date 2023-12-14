@@ -1160,6 +1160,12 @@
 <a href="#1160" id="1160">1160</a>
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1435,6 +1441,12 @@
         engine.register_symbol(
             <span class="string">&quot;cairo_native__alloc_dict&quot;</span>,
             cairo_native_runtime::cairo_native__alloc_dict <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>() -&gt; <span class="kw-2">*mut </span>std::ffi::c_void
+                <span class="kw">as </span><span class="kw-2">*mut </span>(),
+        );
+
+        engine.register_symbol(
+            <span class="string">&quot;cairo_native__dict_free&quot;</span>,
+            cairo_native_runtime::cairo_native__dict_free <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void) -&gt; ()
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 

@@ -625,6 +625,48 @@
 <a href="#625" id="625">625</a>
 <a href="#626" id="626">626</a>
 <a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
 //!
 //! This metadata ensures that the bindings to the runtime functions exist in the current
@@ -655,6 +697,7 @@
     DictNew,
     DictGet,
     DictInsert,
+    DictFree,
 }
 
 <span class="doccomment">/// Runtime library bindings metadata.
@@ -1135,6 +1178,47 @@
             FlatSymbolRefAttribute::new(context, <span class="string">&quot;cairo_native__alloc_dict&quot;</span>),
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)],
+            location,
+        )))
+    }
+
+    <span class="doccomment">/// Register if necessary, then invoke the `dict_alloc_new()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>dict_alloc_free&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;c </span>Context,
+        module: <span class="kw-2">&amp;</span>Module,
+        ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,
+        block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block&lt;<span class="lifetime">&#39;c</span>&gt;,
+        location: Location&lt;<span class="lifetime">&#39;c</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;&gt;
+    <span class="kw">where
+        </span><span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;a</span>,
+    {
+        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictFree) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, <span class="string">&quot;cairo_native__dict_free&quot;</span>),
+                TypeAttribute::new(
+                    FunctionType::new(context, <span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)], <span class="kw-2">&amp;</span>[])
+                        .into(),
+                ),
+                Region::new(),
+                <span class="kw-2">&amp;</span>[(
+                    Identifier::new(context, <span class="string">&quot;sym_visibility&quot;</span>),
+                    StringAttribute::new(context, <span class="string">&quot;private&quot;</span>).into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        <span class="prelude-val">Ok</span>(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, <span class="string">&quot;cairo_native__dict_free&quot;</span>),
+            <span class="kw-2">&amp;</span>[ptr],
+            <span class="kw-2">&amp;</span>[],
             location,
         )))
     }

@@ -681,6 +681,12 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -1135,6 +1141,8 @@
                         array_value.push(<span class="self">Self</span>::from_jit(cur_elem_ptr, <span class="kw-2">&amp;</span>info.ty, registry));
                     }
 
+                    libc::free(data_ptr.as_ptr().cast());
+
                     <span class="self">Self</span>::Array(array_value)
                 }
                 CoreTypeConcrete::Box(info) =&gt; JITValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
@@ -1249,11 +1257,15 @@
                     <span class="kw">for </span>(key, val_ptr) <span class="kw">in </span>map.iter() {
                         <span class="kw">let </span>key = Felt252::from_bytes_le(key.as_slice());
                         output_map.insert(key, <span class="self">Self</span>::from_jit(val_ptr.cast(), <span class="kw-2">&amp;</span>info.ty, registry));
+                        <span class="comment">// we need to free all the elements, which are allocated by libc realloc.
+                        </span>libc::free(val_ptr.as_ptr());
                     }
 
-                    Box::leak(map); <span class="comment">// we must leak to avoid a double free
+                    <span class="comment">// we must leak to avoid a double free
+                    // as it was allocated in the arena and will be freed by it.
+                    </span>Box::leak(map);
 
-                    </span>JITValue::Felt252Dict {
+                    JITValue::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
