@@ -302,6 +302,21 @@ pub fn execute(
         |(acc, mut offsets), id| {
             let ty = registry.get_type(id)?;
 
+            // Do not insert offsets for builtins.
+            if matches!(
+                ty,
+                CoreTypeConcrete::Pedersen(_)
+                    | CoreTypeConcrete::Poseidon(_)
+                    | CoreTypeConcrete::Bitwise(_)
+                    | CoreTypeConcrete::BuiltinCosts(_)
+                    | CoreTypeConcrete::RangeCheck(_)
+                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                    | CoreTypeConcrete::EcOp(_)
+                    | CoreTypeConcrete::SegmentArena(_)
+            ) {
+                return Ok((acc, offsets));
+            }
+
             let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
             if ty.is_memory_allocated(registry) {
@@ -334,7 +349,6 @@ pub fn execute(
 
     let function_name = generate_function_name(function_id);
     let mut io_pointers = if complex_results {
-        // TODO: Is this correct?
         let ret_ptr_ptr = arena.alloc(ret_ptr) as *mut NonNull<()>;
         once(ret_ptr_ptr as *mut ())
             .chain(params_ptrs.iter().copied().map(NonNull::as_ptr))
