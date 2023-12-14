@@ -198,7 +198,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     .unwrap();
 
     match AffinePoint::from_x(x) {
-        Some(point) => {
+        Some(mut point) => {
+            if point.y >= FieldElement::from_dec_str("1809251394333065606848661391547535052811553607665798349986546028067936010240").unwrap() {
+                point.y = -point.y
+            }
             point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
             point_ptr.as_mut()[1].reverse();
 
