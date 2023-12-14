@@ -258,7 +258,7 @@ pub fn execute(
                 }
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
-            },
+            }
             CoreTypeConcrete::NonZero(info) => {
                 let next = params_it
                     .next()
