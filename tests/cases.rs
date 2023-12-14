@@ -35,7 +35,7 @@ mod common;
 #[test_case("tests/cases/uint/compare.cairo")]
 #[test_case("tests/cases/uint/consts.cairo")]
 #[test_case("tests/cases/uint/downcasts.cairo")]
-#[test_case("tests/cases/uint/safe_divmod.cairo" => ignore["TODO: cairo program is outdated"])]
+#[test_case("tests/cases/uint/safe_divmod.cairo")]
 #[test_case("tests/cases/uint/uint_addition.cairo")]
 #[test_case("tests/cases/uint/uint_subtraction.cairo")]
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
@@ -65,7 +65,7 @@ mod common;
 #[test_case("tests/cases/structs/nested.cairo")]
 #[test_case("tests/cases/structs/struct_snapshot_deconstruct.cairo")]
 // gas
-#[test_case("tests/cases/gas/available_gas.cairo" => ignore["unimplemented"])]
+#[test_case("tests/cases/gas/available_gas.cairo")]
 // bool
 #[test_case("tests/cases/bool/and.cairo")]
 #[test_case("tests/cases/bool/eq.cairo")]
