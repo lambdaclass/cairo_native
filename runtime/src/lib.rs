@@ -176,6 +176,23 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
     }
 }
 
+/// Frees the dictionary.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_free(map: *mut std::ffi::c_void) {
+    let dict = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+    let dict = Box::from_raw(dict);
+
+    for (_, entry) in dict.into_iter() {
+        libc::free(entry.as_ptr().cast());
+    }
+    // freed by box drop
+}
+
 /// Compute `ec_point_from_x_nz(x)` and store it.
 ///
 /// # Panics
