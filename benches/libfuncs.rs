@@ -9,7 +9,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
     let programs = prepare_programs("tests/cases");
 
     {
-        let mut c = c.benchmark_group("Libfunc Execution Time");
+        let mut c = c.benchmark_group("Libfunc Execution Time ");
 
         for (program, filename) in &programs {
             if filename == "div.cairo" {
