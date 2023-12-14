@@ -13,7 +13,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         int::{
-            signed128::{Sint128Traits, Sint128Concrete},
+            signed128::{Sint128Concrete, Sint128Traits},
             IntConstConcreteLibfunc, IntOperationConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -58,7 +58,9 @@ where
         Sint128Concrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, info)
         }
-        Sint128Concrete::Equal(info) => build_equal(context, registry, entry, location, helper, info),
+        Sint128Concrete::Equal(info) => {
+            build_equal(context, registry, entry, location, helper, info)
+        }
         Sint128Concrete::ToFelt252(info) => {
             build_to_felt252(context, registry, entry, location, helper, metadata, info)
         }

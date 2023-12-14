@@ -41,6 +41,7 @@ pub mod mem;
 pub mod nullable;
 pub mod pedersen;
 pub mod poseidon;
+pub mod sint128;
 pub mod sint16;
 pub mod sint32;
 pub mod sint64;
@@ -57,7 +58,6 @@ pub mod uint64;
 pub mod uint8;
 pub mod unconditional_jump;
 pub mod unwrap_non_zero;
-pub mod sint128;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -218,7 +218,7 @@ where
             }
             CoreConcreteLibfunc::Sint128(info) => {
                 self::sint128::build(context, registry, entry, location, helper, metadata, info)
-            },
+            }
             CoreConcreteLibfunc::Bytes31(_) => todo!(),
         }
     }
