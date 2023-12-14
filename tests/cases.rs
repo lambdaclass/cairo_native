@@ -50,6 +50,14 @@ mod common;
 #[test_case("tests/cases/sint/i8_sub.cairo")]
 #[test_case("tests/cases/sint/i8_wide_mul.cairo")]
 #[test_case("tests/cases/sint/i8_to_from_felt252.cairo")]
+// sint16
+#[test_case("tests/cases/sint/i16_diff.cairo")]
+#[test_case("tests/cases/sint/i16_eq.cairo")]
+#[test_case("tests/cases/sint/i16_is_zero.cairo")]
+#[test_case("tests/cases/sint/i16_add.cairo")]
+#[test_case("tests/cases/sint/i16_sub.cairo")]
+#[test_case("tests/cases/sint/i16_wide_mul.cairo")]
+#[test_case("tests/cases/sint/i16_to_from_felt252.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
