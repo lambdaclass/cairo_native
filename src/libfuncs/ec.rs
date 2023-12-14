@@ -351,6 +351,14 @@ where
         ))
         .result(0)?
         .into();
+    let half_prime = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, "1809251394333065606848661391547535052811553607665798349986546028067936010240 : i252").unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
 
     // Deconstruct point, apply modulo and then reconstruct
     let x = entry
@@ -375,8 +383,25 @@ where
         .result(0)?
         .into();
 
-    let y_mod = entry
+    // If y > PRIME/ 2 then use PRIME - y
+    let y_over_half_prime = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ugt,
+            y,
+            half_prime,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let prime_minus_y = entry
         .append_operation(arith::subi(prime, y, location))
+        .result(0)?
+        .into();
+
+    let y = entry
+        .append_operation(arith::select(y_over_half_prime, prime_minus_y, y, location))
         .result(0)?
         .into();
 
@@ -399,7 +424,7 @@ where
             context,
             point,
             DenseI64ArrayAttribute::new(context, &[1]),
-            y_mod,
+            y,
             location,
         ))
         .result(0)?
