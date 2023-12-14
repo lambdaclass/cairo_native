@@ -44,6 +44,19 @@ impl ReallocBindingsMeta {
             )],
             Location::unknown(context),
         ));
+        module.body().append_operation(func::func(
+            context,
+            StringAttribute::new(context, "free"),
+            TypeAttribute::new(
+                FunctionType::new(context, &[llvm::r#type::opaque_pointer(context)], &[]).into(),
+            ),
+            Region::new(),
+            &[(
+                Identifier::new(context, "sym_visibility"),
+                StringAttribute::new(context, "private").into(),
+            )],
+            Location::unknown(context),
+        ));
 
         Self {
             phantom: PhantomData,
@@ -62,6 +75,21 @@ impl ReallocBindingsMeta {
             FlatSymbolRefAttribute::new(context, "realloc"),
             &[ptr, len],
             &[llvm::r#type::opaque_pointer(context)],
+            location,
+        )
+    }
+
+    /// Calls the `free` function.
+    pub fn free<'c>(
+        context: &'c Context,
+        ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Operation<'c> {
+        func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "free"),
+            &[ptr],
+            &[],
             location,
         )
     }
