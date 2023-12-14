@@ -427,9 +427,9 @@ pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
 /// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
+    _module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>>
 where
@@ -437,35 +437,46 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (_, (tag_ty, tag_layout), variant_tys) =
-        get_type_for_variants(context, module, registry, metadata, &info.variants)?;
+    let tag_layout = get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
+    let layout = info.variants.iter().fold(tag_layout, |acc, id| {
+        let layout = tag_layout
+            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .unwrap()
+            .0;
 
-    let (variant_ty, variant_layout) = variant_tys
-        .iter()
-        .copied()
-        .max_by_key(|(_, layout)| layout.align())
-        .unwrap_or((
-            llvm::r#type::r#struct(context, &[], false),
-            Layout::new::<()>(),
-        ));
+        Layout::from_size_align(
+            acc.size().max(layout.size()),
+            acc.align().max(layout.align()),
+        )
+        .unwrap()
+    });
 
-    let filling_ty = llvm::r#type::array(
-        IntegerType::new(context, 8).into(),
-        (tag_layout.extend(variant_layout)?.1 - tag_layout.size()).try_into()?,
-    );
-
-    let total_len = variant_tys
-        .iter()
-        .map(|(_, layout)| tag_layout.extend(*layout).map(|(x, _)| x.size()))
-        .try_fold(0, |acc, x| x.map(|x| acc.max(x)))?;
-    let padding_ty = llvm::r#type::array(
-        IntegerType::new(context, 8).into(),
-        (total_len - tag_layout.extend(variant_layout)?.0.size()).try_into()?,
-    );
-
+    let i8_ty = IntegerType::new(context, 8).into();
     Ok(llvm::r#type::r#struct(
         context,
-        &[tag_ty, filling_ty, variant_ty, padding_ty],
+        &match layout.align() {
+            1 => [
+                IntegerType::new(context, 8).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 1) as u32),
+            ],
+            2 => [
+                IntegerType::new(context, 16).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 2) as u32),
+            ],
+            4 => [
+                IntegerType::new(context, 32).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 4) as u32),
+            ],
+            8 => [
+                IntegerType::new(context, 64).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 8) as u32),
+            ],
+            16 => [
+                IntegerType::new(context, 128).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - 16) as u32),
+            ],
+            _ => unreachable!(),
+        },
         false,
     ))
 }

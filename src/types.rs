@@ -87,6 +87,10 @@ where
     /// Used in both the compiler and the interface when calling the compiled code.
     fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error>;
 
+    /// Whether the layout should be allocated in memory (either the stack or the heap) when used as
+    /// a function invocation argument or return value.
+    fn is_memory_allocated(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+
     /// If the type is an integer (felt not included) type, return its width in bits.
     ///
     /// TODO: How is it used?
@@ -446,6 +450,57 @@ where
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => todo!(),
         })
+    }
+
+    fn is_memory_allocated(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+        // Right now, only enums and other structures which may end up passing a flattened enum as
+        // arguments.
+        match self {
+            CoreTypeConcrete::Array(_) => false,
+            CoreTypeConcrete::Bitwise(_) => false,
+            CoreTypeConcrete::Box(_) => false,
+            CoreTypeConcrete::EcOp(_) => false,
+            CoreTypeConcrete::EcPoint(_) => false,
+            CoreTypeConcrete::EcState(_) => false,
+            CoreTypeConcrete::Felt252(_) => false,
+            CoreTypeConcrete::GasBuiltin(_) => false,
+            CoreTypeConcrete::BuiltinCosts(_) => false,
+            CoreTypeConcrete::Uint8(_) => false,
+            CoreTypeConcrete::Uint16(_) => false,
+            CoreTypeConcrete::Uint32(_) => false,
+            CoreTypeConcrete::Uint64(_) => false,
+            CoreTypeConcrete::Uint128(_) => false,
+            CoreTypeConcrete::Uint128MulGuarantee(_) => false,
+            CoreTypeConcrete::Sint8(_) => false,
+            CoreTypeConcrete::Sint16(_) => false,
+            CoreTypeConcrete::Sint32(_) => false,
+            CoreTypeConcrete::Sint64(_) => false,
+            CoreTypeConcrete::Sint128(_) => false,
+            CoreTypeConcrete::NonZero(_) => false,
+            CoreTypeConcrete::Nullable(_) => false,
+            CoreTypeConcrete::RangeCheck(_) => false,
+            CoreTypeConcrete::Uninitialized(_) => false,
+            CoreTypeConcrete::Enum(_) => true,
+            CoreTypeConcrete::Struct(info) => info.members.iter().any(|mem| {
+                registry
+                    .get_type(mem)
+                    .unwrap()
+                    .is_memory_allocated(registry)
+            }),
+            CoreTypeConcrete::Felt252Dict(_) => false,
+            CoreTypeConcrete::Felt252DictEntry(_) => false,
+            CoreTypeConcrete::SquashedFelt252Dict(_) => false,
+            CoreTypeConcrete::Pedersen(_) => false,
+            CoreTypeConcrete::Poseidon(_) => false,
+            CoreTypeConcrete::Span(_) => false,
+            CoreTypeConcrete::StarkNet(_) => false,
+            CoreTypeConcrete::SegmentArena(_) => false,
+            CoreTypeConcrete::Snapshot(info) => registry
+                .get_type(&info.ty)
+                .unwrap()
+                .is_memory_allocated(registry),
+            CoreTypeConcrete::Bytes31(_) => false,
+        }
     }
 
     fn integer_width(&self) -> Option<usize> {

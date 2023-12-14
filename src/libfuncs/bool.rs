@@ -18,8 +18,15 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{attribute::DenseI64ArrayAttribute, r#type::IntegerType, Attribute, Block, Location},
+    dialect::{
+        arith,
+        llvm::{self, AllocaOptions, LoadStoreOptions},
+    },
+    ir::{
+        attribute::{IntegerAttribute, TypeAttribute},
+        r#type::IntegerType,
+        Attribute, Block, Location,
+    },
     Context,
 };
 
@@ -116,22 +123,32 @@ where
     let lhs = entry.argument(0)?.into();
     let rhs = entry.argument(1)?.into();
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let lhs_tag = op.result(0)?.into();
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        rhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let rhs_tag = op.result(0)?.into();
+    let lhs_tag = entry
+        .append_operation(llvm::load(
+            context,
+            lhs,
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                enum_ty.layout(registry)?.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
+    let rhs_tag = entry
+        .append_operation(llvm::load(
+            context,
+            rhs,
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                enum_ty.layout(registry)?.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
 
     let op = match bin_op {
         BoolOp::And => entry.append_operation(arith::andi(lhs_tag, rhs_tag, location)),
@@ -140,16 +157,43 @@ where
     };
     let new_tag_value = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::insert_value(
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let stack_ptr = helper
+        .init_block()
+        .append_operation(llvm::alloca(
+            context,
+            k1,
+            llvm::r#type::opaque_pointer(context),
+            location,
+            AllocaOptions::new()
+                .align(Some(IntegerAttribute::new(
+                    enum_ty.layout(registry)?.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                )))
+                .elem_type(Some(TypeAttribute::new(tag_ty))),
+        ))
+        .result(0)?
+        .into();
+    entry.append_operation(llvm::store(
         context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
         new_tag_value,
+        stack_ptr,
         location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            enum_ty.layout(registry)?.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
     ));
-    let value = op.result(0)?.into();
 
-    entry.append_operation(helper.br(0, &[value], location));
+    entry.append_operation(helper.br(0, &[stack_ptr], location));
     Ok(())
 }
 
@@ -179,15 +223,19 @@ where
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let tag_value = op.result(0)?.into();
+    let tag_value = entry
+        .append_operation(llvm::load(
+            context,
+            value,
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                enum_ty.layout(registry)?.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::constant(
         context,
@@ -199,16 +247,43 @@ where
     let op = entry.append_operation(arith::xori(tag_value, const_1, location));
     let new_tag_value = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::insert_value(
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let stack_ptr = helper
+        .init_block()
+        .append_operation(llvm::alloca(
+            context,
+            k1,
+            llvm::r#type::opaque_pointer(context),
+            location,
+            AllocaOptions::new()
+                .align(Some(IntegerAttribute::new(
+                    enum_ty.layout(registry)?.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                )))
+                .elem_type(Some(TypeAttribute::new(tag_ty))),
+        ))
+        .result(0)?
+        .into();
+    entry.append_operation(llvm::store(
         context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
         new_tag_value,
+        stack_ptr,
         location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            enum_ty.layout(registry)?.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
     ));
-    let value = op.result(0)?.into();
 
-    entry.append_operation(helper.br(0, &[value], location));
+    entry.append_operation(helper.br(0, &[stack_ptr], location));
     Ok(())
 }
 
@@ -246,22 +321,25 @@ where
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let tag_value = op.result(0)?.into();
+    let tag_value = entry
+        .append_operation(llvm::load(
+            context,
+            value,
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                enum_ty.layout(registry)?.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::extui(tag_value, felt252_ty, location));
 
     let result = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[result], location));
-
     Ok(())
 }
 

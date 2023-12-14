@@ -1,4 +1,4 @@
-// # Cairo Sierra to MLIR compiler and JIT engine
+//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further

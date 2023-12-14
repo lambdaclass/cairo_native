@@ -69,10 +69,13 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::{arith::CmpiPredicate, cf, func, index, memref},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf, func, index, llvm, memref,
+    },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, MemRefType},
+        r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
     },
     Context,
@@ -114,7 +117,8 @@ pub fn compile<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     for function in &program.funcs {
@@ -152,11 +156,49 @@ fn compile_func<TType, TLibfunc>(
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TType as GenericType>::Concrete:
+        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     let region = Region::new();
     let blocks_arena = Bump::new();
+
+    let mut arg_types = extract_types(
+        context,
+        module,
+        &function.signature.param_types,
+        registry,
+        metadata,
+    )
+    .collect::<Result<Vec<_>, _>>()?;
+    let mut ret_types = extract_types(
+        context,
+        module,
+        &function.signature.ret_types,
+        registry,
+        metadata,
+    )
+    .collect::<Result<Vec<_>, _>>()?;
+
+    // Replace memory-allocated arguments with pointers.
+    for (ty, type_id) in arg_types.iter_mut().zip(&function.signature.param_types) {
+        let type_info = registry.get_type(type_id).unwrap();
+        if type_info.is_memory_allocated(registry) {
+            *ty = llvm::r#type::opaque_pointer(context);
+        }
+    }
+
+    // Extract memory-allocated return types from ret_types and insert them in arg_types as a
+    // pointer.
+    let mut num_return_ptrs = 0;
+    for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
+        let type_info = registry.get_type(type_id).unwrap();
+        if type_info.is_memory_allocated(registry) {
+            ret_types.remove(idx);
+            arg_types.insert(0, llvm::r#type::opaque_pointer(context));
+            num_return_ptrs += 1;
+        }
+    }
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
@@ -192,15 +234,10 @@ where
     let pre_entry_block = region.insert_block_before(
         entry_block,
         Block::new(
-            &extract_types(
-                context,
-                module,
-                &function.signature.param_types,
-                registry,
-                metadata,
-            )
-            .map(|ty| Ok((ty?, Location::unknown(context))))
-            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
+            &arg_types
+                .iter()
+                .map(|ty| (*ty, Location::unknown(context)))
+                .collect::<Vec<_>>(),
         ),
     );
 
@@ -368,7 +405,7 @@ where
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
-                    let (_, values) = edit_state::take_args(state, var_ids.iter())?;
+                    let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
                     if !tailrec_state.is_empty() {
@@ -412,17 +449,79 @@ where
                                 Location::unknown(context),
                             ));
 
+                            let recursive_values = function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_memory_allocated(registry) {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
                             block.append_operation(cf::cond_br(
                                 context,
                                 op2.result(0)?.into(),
                                 &cont_block,
                                 &return_target,
                                 &[],
-                                &values,
+                                &recursive_values,
                                 Location::unknown(context),
                             ));
 
                             block = cont_block;
+                        }
+                    }
+
+                    // If returning a memory-allocated value, copy its data instead of returning anything.
+                    let mut ret_ptr_iter = (0..num_return_ptrs).rev();
+                    for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
+                        let type_info = registry.get_type(type_id).unwrap();
+                        if type_info.is_memory_allocated(registry) {
+                            let layout = type_info.layout(registry).unwrap();
+                            let ptr = values.remove(idx);
+
+                            let num_bytes = block
+                                .append_operation(arith::constant(
+                                    context,
+                                    IntegerAttribute::new(
+                                        layout.size() as i64,
+                                        IntegerType::new(context, 64).into(),
+                                    )
+                                    .into(),
+                                    Location::unknown(context),
+                                ))
+                                .result(0)?
+                                .into();
+                            let is_volatile = block
+                                .append_operation(arith::constant(
+                                    context,
+                                    IntegerAttribute::new(0, IntegerType::new(context, 1).into())
+                                        .into(),
+                                    Location::unknown(context),
+                                ))
+                                .result(0)?
+                                .into();
+
+                            block.append_operation(llvm::call_intrinsic(
+                                context,
+                                StringAttribute::new(context, "llvm.memcpy.inline"),
+                                &[
+                                    pre_entry_block
+                                        .argument(ret_ptr_iter.next().unwrap())?
+                                        .into(),
+                                    ptr,
+                                    num_bytes,
+                                    is_volatile,
+                                ],
+                                &[],
+                                Location::unknown(context),
+                            ));
                         }
                     }
 
@@ -437,38 +536,18 @@ where
     pre_entry_block.append_operation(cf::br(
         &entry_block,
         &(0..entry_block.argument_count())
-            .map(|i| Ok(pre_entry_block.argument(i)?.into()))
+            .map(|i| Ok(pre_entry_block.argument(num_return_ptrs + i)?.into()))
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
         Location::unknown(context),
     ));
 
     let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
+
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
-        TypeAttribute::new(
-            FunctionType::new(
-                context,
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.param_types,
-                    registry,
-                    metadata,
-                )
-                .collect::<Result<Vec<_>, _>>()?,
-                &extract_types(
-                    context,
-                    module,
-                    &function.signature.ret_types,
-                    registry,
-                    metadata,
-                )
-                .collect::<Result<Vec<_>, _>>()?,
-            )
-            .into(),
-        ),
+        TypeAttribute::new(FunctionType::new(context, &arg_types, &ret_types).into()),
         region,
         &[
             (
@@ -502,19 +581,22 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
-    let initial_state = edit_state::put_results::<Type>(
+    let initial_state = edit_state::put_results::<(Type, bool)>(
         HashMap::new(),
         function
             .params
             .iter()
             .zip(&function.signature.param_types)
             .map(|(param, ty)| {
+                let type_info = registry.get_type(ty)?;
                 Ok((
                     &param.id,
-                    registry
-                        .get_type(ty)?
-                        .build(context, module, registry, metadata_storage, ty)
-                        .map_err(make_type_builder_error(ty))?,
+                    (
+                        type_info
+                            .build(context, module, registry, metadata_storage, ty)
+                            .map_err(make_type_builder_error(ty))?,
+                        type_info.is_memory_allocated(registry),
+                    ),
                 ))
             })
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
@@ -549,9 +631,16 @@ where
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
-                    types.into_iter().for_each(|ty| {
-                        block.add_argument(ty, Location::unknown(context));
-                    });
+                    for (ty, is_memory_allocated) in types {
+                        block.add_argument(
+                            if is_memory_allocated {
+                                llvm::r#type::opaque_pointer(context)
+                            } else {
+                                ty
+                            },
+                            Location::unknown(context),
+                        );
+                    }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     invocation
@@ -567,16 +656,22 @@ where
                                         .iter()
                                         .map(
                                             |var_info| -> Result<_, CompileError<TType, TLibfunc>> {
-                                                registry
-                                                    .get_type(&var_info.ty)?
-                                                    .build(
-                                                        context,
-                                                        module,
-                                                        registry,
-                                                        metadata_storage,
-                                                        &var_info.ty,
-                                                    )
-                                                    .map_err(make_type_builder_error(&var_info.ty))
+                                                let type_info = registry.get_type(&var_info.ty)?;
+
+                                                Ok((
+                                                    type_info
+                                                        .build(
+                                                            context,
+                                                            module,
+                                                            registry,
+                                                            metadata_storage,
+                                                            &var_info.ty,
+                                                        )
+                                                        .map_err(make_type_builder_error(
+                                                            &var_info.ty,
+                                                        ))?,
+                                                    type_info.is_memory_allocated(registry),
+                                                ))
                                             },
                                         )
                                         .collect::<Result<Vec<_>, _>>()?,
@@ -606,9 +701,16 @@ where
                         "State must be empty after a return statement."
                     );
 
-                    types.into_iter().for_each(|ty| {
-                        block.add_argument(ty, Location::unknown(context));
-                    });
+                    for (ty, is_memory_allocated) in types {
+                        block.add_argument(
+                            if is_memory_allocated {
+                                llvm::r#type::opaque_pointer(context)
+                            } else {
+                                ty
+                            },
+                            Location::unknown(context),
+                        );
+                    }
 
                     Vec::new()
                 }
@@ -617,8 +719,8 @@ where
     )?;
 
     tracing::trace!("Generating function entry block.");
-    let entry_block = region.append_block(Block::new(
-        &extract_types(
+    let entry_block = region.append_block(Block::new(&{
+        let mut args = extract_types(
             context,
             module,
             &function.signature.param_types,
@@ -626,8 +728,17 @@ where
             metadata_storage,
         )
         .map(|ty| Ok((ty?, Location::unknown(context))))
-        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
-    ));
+        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?;
+
+        for (id, ty) in function.signature.param_types.iter().zip(args.iter_mut()) {
+            let type_info = registry.get_type(id)?;
+            if type_info.is_memory_allocated(registry) {
+                ty.0 = llvm::r#type::opaque_pointer(context);
+            }
+        }
+
+        args
+    }));
 
     let blocks = blocks
         .into_iter()
@@ -651,7 +762,16 @@ where
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|ty| (ty, Location::unknown(context)))
+                                .map(|(ty, is_memory_allocated)| {
+                                    (
+                                        if is_memory_allocated {
+                                            llvm::r#type::opaque_pointer(context)
+                                        } else {
+                                            ty
+                                        },
+                                        Location::unknown(context),
+                                    )
+                                })
                                 .collect::<Vec<_>>(),
                         ),
                     ),

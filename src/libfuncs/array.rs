@@ -1203,7 +1203,7 @@ mod test {
 
     #[test]
     fn run_append() {
-        let program = load_cairo!(
+        let program = load_cairo! {
             use array::ArrayTrait;
 
             fn run_test() -> Array<u32> {
@@ -1211,7 +1211,7 @@ mod test {
                 numbers.append(4_u32);
                 numbers
             }
-        );
+        };
         let result = run_program(&program, "run_test", &[]).return_values;
 
         assert_eq!(result, [[4u32].into()]);

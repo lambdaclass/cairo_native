@@ -10,7 +10,6 @@ use crate::{
     },
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{padding_needed_for, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,13 +22,12 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith, cf,
-        llvm::{self, LoadStoreOptions},
+        llvm::{self, AllocaOptions, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Identifier, Location,
+        Block, Location,
     },
     Context,
 };
@@ -80,7 +78,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -91,99 +89,102 @@ where
             .unwrap(),
     )?;
 
-    let enum_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
+    let ptr_ty = llvm::r#type::opaque_pointer(context);
+    let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
 
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(info.index.try_into()?, tag_ty).into(),
-        location,
-    ));
-
-    let concrete_enum_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            tag_ty,
-            llvm::r#type::array(
-                IntegerType::new(context, 8).into(),
-                padding_needed_for(&tag_layout, variant_tys[info.index].1.align()).try_into()?,
-            ),
-            variant_tys[info.index].0,
-        ],
-        false,
-    );
-
-    let op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
-    let op2 = entry.append_operation(llvm::insert_value(
-        context,
-        op1.result(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[0]),
-        op0.result(0)?.into(),
-        location,
-    ));
-    let op3 = entry.append_operation(llvm::insert_value(
-        context,
-        op2.result(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[2]),
-        entry.argument(0)?.into(),
-        location,
-    ));
-
-    let op4 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-        location,
-    ));
-    let op5 = helper.init_block().append_operation(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    layout.align().try_into()?,
+    let k1 = helper
+        .init_block()
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    // Allocating only the space necessary for the current variant. This shouldn't cause any
+    // problems because the data won't be changed in place.
+    let stack_ptr = helper
+        .init_block()
+        .append_operation(llvm::alloca(
+            context,
+            k1,
+            ptr_ty,
+            location,
+            AllocaOptions::new()
+                .align(Some(IntegerAttribute::new(
+                    layout.align() as i64,
                     IntegerType::new(context, 64).into(),
-                )
-                .into(),
-            )])
-            .add_operands(&[op4.result(0)?.into()])
-            .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build()?,
-    );
+                )))
+                .elem_type(Some(TypeAttribute::new(enum_ty))),
+        ))
+        .result(0)?
+        .into();
 
-    let op6 = entry.append_operation(
-        OperationBuilder::new("llvm.bitcast", location)
-            .add_operands(&[op5.result(0)?.into()])
-            .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
-            .build()?,
-    );
+    let tag_val = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(info.index as i64, tag_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let payload_val = if payload_type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                variant_tys[info.index].0,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    variant_tys[info.index].1.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into()
+    } else {
+        entry.argument(0)?.into()
+    };
+
+    let val = entry
+        .append_operation(llvm::undef(enum_ty, location))
+        .result(0)?
+        .into();
+    let val = entry
+        .append_operation(llvm::insert_value(
+            context,
+            val,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            tag_val,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let val = entry
+        .append_operation(llvm::insert_value(
+            context,
+            val,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            payload_val,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(llvm::store(
         context,
-        op3.result(0)?.into(),
-        op6.result(0)?.into(),
+        val,
+        stack_ptr,
         location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            layout.align() as i64,
             IntegerType::new(context, 64).into(),
         ))),
     ));
 
-    let op7 = entry.append_operation(llvm::load(
-        context,
-        op5.result(0)?.into(),
-        enum_ty,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
-
-    entry.append_operation(helper.br(0, &[op7.result(0)?.into()], location));
-
+    entry.append_operation(helper.br(0, &[stack_ptr], location));
     Ok(())
 }
 
@@ -203,54 +204,31 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let variant_ids = registry
+        .get_type(&info.param_signatures()[0].ty)?
+        .variants()
+        .unwrap();
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        registry
-            .get_type(&info.param_signatures()[0].ty)?
-            .variants()
-            .unwrap(),
+        variant_ids,
     )?;
 
-    let enum_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
-
-    let op0 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-        location,
-    ));
-    let op1 = helper.init_block().append_operation(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    layout.align().try_into()?,
-                    IntegerType::new(context, 64).into(),
-                )
-                .into(),
-            )])
-            .add_operands(&[op0.result(0)?.into()])
-            .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build()?,
-    );
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(0)?.into(),
-        op1.result(0)?.into(),
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
+    let tag_val = entry
+        .append_operation(llvm::load(
+            context,
+            entry.argument(0)?.into(),
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
 
     let default_block = helper.append_block(Block::new(&[]));
     let variant_blocks = variant_tys
@@ -258,22 +236,14 @@ where
         .map(|_| helper.append_block(Block::new(&[])))
         .collect::<Vec<_>>();
 
-    let op2 = entry.append_operation(llvm::extract_value(
-        context,
-        entry.argument(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-
-    let case_values: Vec<i64> = (0..variant_tys.len())
+    let case_values = (0..variant_tys.len())
         .map(i64::try_from)
         .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
 
     entry.append_operation(cf::switch(
         context,
         &case_values,
-        op2.result(0)?.into(),
+        tag_val,
         tag_ty,
         (default_block, &[]),
         &variant_blocks
@@ -284,61 +254,97 @@ where
         location,
     )?);
 
+    // Default block.
     {
-        let op3 = default_block.append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-            location,
-        ));
+        let val = default_block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
 
-        default_block.append_operation(cf::assert(
-            context,
-            op3.result(0)?.into(),
-            "Invalid enum tag.",
-            location,
-        ));
-        default_block
-            .append_operation(OperationBuilder::new("llvm.unreachable", location).build()?);
+        default_block.append_operation(cf::assert(context, val, "Invalid enum tag.", location));
+        default_block.append_operation(llvm::unreachable(location));
     }
 
+    // Enum variants.
     for (i, (block, (payload_ty, payload_layout))) in
         variant_blocks.into_iter().zip(variant_tys).enumerate()
     {
-        let concrete_enum_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    padding_needed_for(&tag_layout, payload_layout.align()).try_into()?,
-                ),
+        let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+
+        let val = block
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                enum_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into();
+
+        let payload_val = block
+            .append_operation(llvm::extract_value(
+                context,
+                val,
+                DenseI64ArrayAttribute::new(context, &[1]),
                 payload_ty,
-            ],
-            false,
-        );
+                location,
+            ))
+            .result(0)?
+            .into();
 
-        let op3 = block.append_operation(
-            OperationBuilder::new("llvm.bitcast", location)
-                .add_operands(&[op1.result(0)?.into()])
-                .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
-                .build()?,
-        );
-        let op4 = block.append_operation(llvm::load(
-            context,
-            op3.result(0)?.into(),
-            concrete_enum_ty,
-            location,
-            LoadStoreOptions::default(),
-        ));
-        let op5 = block.append_operation(llvm::extract_value(
-            context,
-            op4.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            payload_ty,
-            location,
-        ));
+        let payload_type_info = registry.get_type(&variant_ids[i])?;
+        let payload_val = if payload_type_info.is_memory_allocated(registry) {
+            let k1 = helper
+                .init_block()
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            let stack_ptr = helper
+                .init_block()
+                .append_operation(llvm::alloca(
+                    context,
+                    k1,
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                    AllocaOptions::new()
+                        .align(Some(IntegerAttribute::new(
+                            payload_layout.align() as i64,
+                            IntegerType::new(context, 64).into(),
+                        )))
+                        .elem_type(Some(TypeAttribute::new(payload_ty))),
+                ))
+                .result(0)?
+                .into();
 
-        block.append_operation(helper.br(i, &[op5.result(0)?.into()], location));
+            block.append_operation(llvm::store(
+                context,
+                payload_val,
+                stack_ptr,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    payload_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ));
+
+            stack_ptr
+        } else {
+            payload_val
+        };
+
+        block.append_operation(helper.br(i, &[payload_val], location));
     }
 
     Ok(())
@@ -367,47 +373,23 @@ where
         .get_variants(&info.param_signatures()[0].ty)
         .unwrap()
         .clone();
-    let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context, helper, registry, metadata, &variants,
     )?;
 
-    let enum_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
-
-    let op0 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-        location,
-    ));
-    let op1 = helper.init_block().append_operation(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    layout.align().try_into()?,
-                    IntegerType::new(context, 64).into(),
-                )
-                .into(),
-            )])
-            .add_operands(&[op0.result(0)?.into()])
-            .add_results(&[llvm::r#type::pointer(enum_ty, 0)])
-            .build()?,
-    );
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(0)?.into(),
-        op1.result(0)?.into(),
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout.align().try_into()?,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
+    let tag_val = entry
+        .append_operation(llvm::load(
+            context,
+            entry.argument(0)?.into(),
+            tag_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
 
     let default_block = helper.append_block(Block::new(&[]));
     let variant_blocks = variant_tys
@@ -415,22 +397,14 @@ where
         .map(|_| helper.append_block(Block::new(&[])))
         .collect::<Vec<_>>();
 
-    let op2 = entry.append_operation(llvm::extract_value(
-        context,
-        entry.argument(0)?.into(),
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-
-    let case_values: Vec<i64> = (0..variant_tys.len())
+    let case_values = (0..variant_tys.len())
         .map(i64::try_from)
         .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
 
     entry.append_operation(cf::switch(
         context,
         &case_values,
-        op2.result(0)?.into(),
+        tag_val,
         tag_ty,
         (default_block, &[]),
         &variant_blocks
@@ -441,61 +415,51 @@ where
         location,
     )?);
 
+    // Default block.
     {
-        let op3 = default_block.append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-            location,
-        ));
+        let val = default_block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
 
-        default_block.append_operation(cf::assert(
-            context,
-            op3.result(0)?.into(),
-            "Invalid enum tag.",
-            location,
-        ));
-        default_block
-            .append_operation(OperationBuilder::new("llvm.unreachable", location).build()?);
+        default_block.append_operation(cf::assert(context, val, "Invalid enum tag.", location));
+        default_block.append_operation(llvm::unreachable(location));
     }
 
-    for (i, (block, (payload_ty, payload_layout))) in
-        variant_blocks.into_iter().zip(variant_tys).enumerate()
-    {
-        let concrete_enum_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    padding_needed_for(&tag_layout, payload_layout.align()).try_into()?,
-                ),
+    // Enum variants.
+    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
+        let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+
+        let val = block
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                enum_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into();
+
+        let payload_val = block
+            .append_operation(llvm::extract_value(
+                context,
+                val,
+                DenseI64ArrayAttribute::new(context, &[1]),
                 payload_ty,
-            ],
-            false,
-        );
+                location,
+            ))
+            .result(0)?
+            .into();
 
-        let op3 = block.append_operation(
-            OperationBuilder::new("llvm.bitcast", location)
-                .add_operands(&[op1.result(0)?.into()])
-                .add_results(&[llvm::r#type::pointer(concrete_enum_ty, 0)])
-                .build()?,
-        );
-        let op4 = block.append_operation(llvm::load(
-            context,
-            op3.result(0)?.into(),
-            concrete_enum_ty,
-            location,
-            LoadStoreOptions::default(),
-        ));
-        let op5 = block.append_operation(llvm::extract_value(
-            context,
-            op4.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            payload_ty,
-            location,
-        ));
-
-        block.append_operation(helper.br(i, &[op5.result(0)?.into()], location));
+        block.append_operation(helper.br(i, &[payload_val], location));
     }
 
     Ok(())

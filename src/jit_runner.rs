@@ -315,24 +315,54 @@ pub fn execute(
         }
     }
 
-    let mut complex_results = entry_point.signature.ret_types.len() > 1;
+    let mut complex_results = false;
+    let mut num_ret_ptrs = 0;
     let (layout, offsets) = entry_point.signature.ret_types.iter().try_fold(
         (Option::<Layout>::None, Vec::new()),
         |(acc, mut offsets), id| {
             let ty = registry.get_type(id)?;
+
+            // Do not insert offsets for builtins.
+            if matches!(
+                ty,
+                CoreTypeConcrete::Pedersen(_)
+                    | CoreTypeConcrete::Poseidon(_)
+                    | CoreTypeConcrete::Bitwise(_)
+                    | CoreTypeConcrete::BuiltinCosts(_)
+                    | CoreTypeConcrete::RangeCheck(_)
+                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                    | CoreTypeConcrete::EcOp(_)
+                    | CoreTypeConcrete::SegmentArena(_)
+            ) {
+                return Ok((acc, offsets));
+            }
+
             let ty_layout = ty.layout(registry).map_err(make_type_builder_error(id))?;
 
-            let (layout, offset) = match acc {
-                Some(layout) => layout.extend(ty_layout)?,
-                None => (ty_layout, 0),
-            };
+            if ty.is_memory_allocated(registry) {
+                let ptr = arena.alloc_layout(ty_layout).cast::<()>();
+                let ptr = NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
+                    .unwrap()
+                    .cast();
 
-            offsets.push(offset);
-            complex_results |= ty.is_complex();
+                params_ptrs.insert(num_ret_ptrs, ptr);
+                num_ret_ptrs += 1;
 
-            Result::<_, JitRunnerError>::Ok((Some(layout), offsets))
+                Result::<_, JitRunnerError>::Ok((acc, offsets))
+            } else {
+                let (layout, offset) = match acc {
+                    Some(layout) => layout.extend(ty_layout)?,
+                    None => (ty_layout, 0),
+                };
+
+                offsets.push(offset);
+                complex_results |= ty.is_complex();
+
+                Result::<_, JitRunnerError>::Ok((Some(layout), offsets))
+            }
         },
     )?;
+    complex_results |= offsets.len() > 1;
 
     let layout = layout.unwrap_or(Layout::new::<()>());
     let ret_ptr = arena.alloc_layout(layout).cast::<()>();
@@ -341,11 +371,13 @@ pub fn execute(
     let mut io_pointers = if complex_results {
         let ret_ptr_ptr = arena.alloc(ret_ptr) as *mut NonNull<()>;
         once(ret_ptr_ptr as *mut ())
-            .chain(params_ptrs.into_iter().map(NonNull::as_ptr))
+            .chain(params_ptrs.iter().copied().map(NonNull::as_ptr))
             .collect::<Vec<_>>()
     } else {
+        // TODO: Is this correct?
         params_ptrs
-            .into_iter()
+            .iter()
+            .copied()
             .map(NonNull::as_ptr)
             .chain(once(ret_ptr.as_ptr()))
             .collect::<Vec<_>>()
@@ -359,13 +391,15 @@ pub fn execute(
 
     let mut remaining_gas = None;
 
-    for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
+    let mut arg_ptr_iter = params_ptrs.iter();
+    let mut offsets_iter = offsets.iter();
+    for type_id in entry_point.signature.ret_types.iter() {
         let ty = registry.get_type(type_id)?;
-
-        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
 
         match ty {
             CoreTypeConcrete::GasBuiltin(_) => {
+                let offset = offsets_iter.next().unwrap();
+                let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut ()).unwrap();
                 remaining_gas = Some(*unsafe { ptr.cast::<u128>().as_ref() });
             }
             CoreTypeConcrete::Pedersen(_)
@@ -379,6 +413,13 @@ pub fn execute(
                 // ignore returned builtins
             }
             _ => {
+                let ptr = if ty.is_memory_allocated(registry) {
+                    *arg_ptr_iter.next().unwrap()
+                } else {
+                    let offset = offsets_iter.next().unwrap();
+                    NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap()
+                };
+
                 let value = JitValue::from_jit(ptr, type_id, registry);
                 returns.push(value);
             }
@@ -391,9 +432,11 @@ pub fn execute(
     })
 }
 
-/// Utility function to make it easier to execute contracts. Please see the [`execute`] for more information about program execution.
+/// Utility function to make it easier to execute contracts. Please see the [`execute`] for more
+/// information about program execution.
 ///
-/// To call a contract, the calldata needs to be inside a struct inside a array, this helper function does that for you.
+/// To call a contract, the calldata needs to be inside a struct inside a array, this helper
+/// function does that for you.
 ///
 /// The calldata passed should all be felt252 values.
 pub fn execute_contract(
