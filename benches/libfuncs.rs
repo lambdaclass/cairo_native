@@ -1,6 +1,7 @@
+use cairo_lang_runner::StarknetState;
 use cairo_native::{context::NativeContext, executor::NativeExecutor};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use util::prepare_programs;
+use util::{create_vm_runner, prepare_programs};
 
 mod util;
 
@@ -8,45 +9,13 @@ pub fn bench_libfuncs(c: &mut Criterion) {
     let programs = prepare_programs("tests/cases");
 
     {
-        let mut c = c.benchmark_group("Libfunc Cold JIT Execution Time");
-
-        for (program, filename) in &programs {
-            c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
-                let native_context = NativeContext::new();
-                b.iter(|| {
-                    let module = native_context.compile(program).unwrap();
-                    // pass manager internally verifies the MLIR output is correct.
-                    let native_executor = NativeExecutor::new(module);
-
-                    let entry = program
-                        .funcs
-                        .iter()
-                        .find(|f| {
-                            if let Some(name) = &f.id.debug_name {
-                                name.ends_with("main")
-                            } else {
-                                false
-                            }
-                        })
-                        .expect("failed to find entry point");
-
-                    // Execute the program.
-                    let result = native_executor
-                        .execute(&entry.id, &[], Some(u64::MAX as u128))
-                        .unwrap();
-                    black_box(result)
-                })
-            });
-        }
-    }
-
-    {
-        let mut c = c.benchmark_group("Libfunc Hot JIT Execution Time");
+        let mut c = c.benchmark_group("Libfunc Execution Time");
 
         for (program, filename) in &programs {
             if filename == "div.cairo" {
                 continue; // todo: enable when libfuncs felt252_div and felt252_div_const are implemented
             }
+
             let entry = program
                 .funcs
                 .iter()
@@ -59,27 +28,70 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 })
                 .expect("failed to find entry point");
 
-            c.bench_with_input(BenchmarkId::new(filename, 1), program, |b, program| {
-                let native_context = NativeContext::new();
-                let module = native_context.compile(program).unwrap();
-                // pass manager internally verifies the MLIR output is correct.
-                let native_executor = NativeExecutor::new(module);
+            let vm_runner = create_vm_runner(program);
 
-                // warmup
-                for _ in 0..5 {
-                    native_executor
-                        .execute(&entry.id, &[], Some(u64::MAX as u128))
-                        .unwrap();
-                }
+            c.bench_with_input(
+                BenchmarkId::new(filename, "SierraCasmRunner"),
+                &program,
+                |b, _program| {
+                    b.iter(|| {
+                        let res = vm_runner
+                            .run_function_with_starknet_context(
+                                entry,
+                                &[],
+                                Some(usize::MAX),
+                                StarknetState::default(),
+                            )
+                            .expect("should run correctly");
+                        black_box(res)
+                    })
+                },
+            );
 
-                b.iter(|| {
-                    // Execute the program.
-                    let result = native_executor
-                        .execute(&entry.id, &[], Some(u64::MAX as u128))
-                        .unwrap();
-                    black_box(result)
-                })
-            });
+            c.bench_with_input(
+                BenchmarkId::new(filename, "jit-cold"),
+                &program,
+                |b, program| {
+                    let native_context = NativeContext::new();
+                    b.iter(|| {
+                        let module = native_context.compile(program).unwrap();
+                        // pass manager internally verifies the MLIR output is correct.
+                        let native_executor = NativeExecutor::new(module);
+
+                        // Execute the program.
+                        let result = native_executor
+                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                        black_box(result)
+                    })
+                },
+            );
+
+            c.bench_with_input(
+                BenchmarkId::new(filename, "jit-hot"),
+                program,
+                |b, program| {
+                    let native_context = NativeContext::new();
+                    let module = native_context.compile(program).unwrap();
+                    // pass manager internally verifies the MLIR output is correct.
+                    let native_executor = NativeExecutor::new(module);
+
+                    // warmup
+                    for _ in 0..5 {
+                        native_executor
+                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                    }
+
+                    b.iter(|| {
+                        // Execute the program.
+                        let result = native_executor
+                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                        black_box(result)
+                    })
+                },
+            );
         }
     }
 }
