@@ -5,7 +5,10 @@ use cairo_lang_runner::short_string::as_cairo_short_string;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
-
+use lazy_static::lazy_static;
+lazy_static!(
+    pub static ref HALF_PRIME: FieldElement = FieldElement::from_dec_str("1809251394333065606848661391547535052811553607665798349986546028067936010240").unwrap();
+);
 /// Based on `cairo-lang-runner`'s implementation.
 ///
 /// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800>
@@ -198,8 +201,9 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     .unwrap();
 
     match AffinePoint::from_x(x) {
-        Some(mut point) => {
-            if point.y >= FieldElement::from_dec_str("1809251394333065606848661391547535052811553607665798349986546028067936010240").unwrap() {
+       Some(mut point) => {
+            // If y > PRIME/ 2 use PRIME - y
+            if point.y >= *HALF_PRIME {
                 point.y = -point.y
             }
             point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
