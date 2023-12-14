@@ -2,7 +2,7 @@
 //!
 //! Contains the prime modulo number of a finite field.
 //!
-//! Currently used only for `felt252`.
+//! Currently used only for `Felt`.
 
 use num_bigint::BigUint;
 use std::marker::PhantomData;
