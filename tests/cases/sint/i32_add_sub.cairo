@@ -1,4 +1,4 @@
-use integer::{i32_overflowing_add_impl, SignedIntegerResult};
+use integer::{i32_overflowing_add_impl, i32_overflowing_sub_impl, SignedIntegerResult};
 
 fn overflowing_add(lhs: i32, rhs: i32) -> (i32, i32) {
     match i32_overflowing_add_impl(lhs, rhs) {
@@ -17,8 +17,8 @@ fn overflowing_sub(lhs: i32, rhs: i32) -> (i32, i32) {
 }
 
 fn main() -> (
-    (i32, i32, i32, i32, i32, i32, i32, i32)
-    (i32, i32, i32, i32, i32, i32, i32, i32)
+    (i32, i32, i32, i32, i32, i32, i32, i32),
+    (i32, i32, i32, i32, i32, i32, i32, i32),
 ) {
     // In range additions
     let (res_a, flag_a) = overflowing_add(16, 1);

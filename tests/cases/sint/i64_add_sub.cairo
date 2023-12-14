@@ -1,15 +1,15 @@
-use integer::{i32_overflowing_add_impl, SignedIntegerResult};
+use integer::{i64_overflowing_add_impl, i64_overflowing_sub_impl, SignedIntegerResult};
 
-fn overflowing_add(lhs: i32, rhs: i32) -> (i32, i32) {
-    match i32_overflowing_add_impl(lhs, rhs) {
+fn overflowing_add(lhs: i64, rhs: i64) -> (i64, i64) {
+    match i64_overflowing_add_impl(lhs, rhs) {
         SignedIntegerResult::InRange(res) => (res, 0),
         SignedIntegerResult::Underflow(res) => (res, 1),
         SignedIntegerResult::Overflow(res) =>(res, 2),
     }
 }
 
-fn overflowing_sub(lhs: i32, rhs: i32) -> (i32, i32) {
-    match i32_overflowing_sub_impl(lhs, rhs) {
+fn overflowing_sub(lhs: i64, rhs: i64) -> (i64, i64) {
+    match i64_overflowing_sub_impl(lhs, rhs) {
         SignedIntegerResult::InRange(res) => (res, 0),
         SignedIntegerResult::Underflow(res) => (res, 1),
         SignedIntegerResult::Overflow(res) =>(res, 2),
@@ -17,8 +17,8 @@ fn overflowing_sub(lhs: i32, rhs: i32) -> (i32, i32) {
 }
 
 fn main() -> (
-    (i32, i32, i32, i32, i32, i32, i32, i32)
-    (i32, i32, i32, i32, i32, i32, i32, i32)
+    (i64, i64, i64, i64, i64, i64, i64, i64),
+    (i64, i64, i64, i64, i64, i64, i64, i64),
 ) {
     // In range additions
     let (res_a, flag_a) = overflowing_add(16, 1);

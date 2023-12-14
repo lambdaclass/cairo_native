@@ -1,4 +1,4 @@
-use integer::{i8_overflowing_add_impl, SignedIntegerResult};
+use integer::{i8_overflowing_add_impl, i8_overflowing_sub_impl, SignedIntegerResult};
 
 fn overflowing_add(lhs: i8, rhs: i8) -> (i8, i8) {
     match i8_overflowing_add_impl(lhs, rhs) {
@@ -17,8 +17,8 @@ fn overflowing_sub(lhs: i8, rhs: i8) -> (i8, i8) {
 }
 
 fn main() -> (
-    (i8, i8, i8, i8, i8, i8, i8, i8)
-    (i8, i8, i8, i8, i8, i8, i8, i8)
+    (i8, i8, i8, i8, i8, i8, i8, i8),
+    (i8, i8, i8, i8, i8, i8, i8, i8),
 ) {
     // In range additions
     let (res_a, flag_a) = overflowing_add(16, 1);
