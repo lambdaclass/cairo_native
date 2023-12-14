@@ -277,6 +277,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
+            "cairo_native__dict_free",
+            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut std::ffi::c_void) -> ()
+                as *mut (),
+        );
+
+        engine.register_symbol(
             "cairo_native__dict_get",
             cairo_native_runtime::cairo_native__dict_get
                 as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
