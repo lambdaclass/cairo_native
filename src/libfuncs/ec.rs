@@ -352,6 +352,59 @@ where
         .result(0)?
         .into();
 
+    // Deconstruct point, apply modulo and then reconstruct
+    let x = entry
+        .append_operation(llvm::extract_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            crate::ffi::get_struct_field_type_at(&ec_point_ty, 0),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let y = entry
+        .append_operation(llvm::extract_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            crate::ffi::get_struct_field_type_at(&ec_point_ty, 1),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let y_mod = entry
+        .append_operation(arith::subi(prime, y, location))
+        .result(0)?
+        .into();
+
+    let mut point = entry
+        .append_operation(llvm::undef(ec_point_ty, location))
+        .result(0)?
+        .into();
+    point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            x,
+            location,
+        ))
+        .result(0)?
+        .into();
+    point = entry
+        .append_operation(llvm::insert_value(
+            context,
+            point,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            y_mod,
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         context,
         result,
