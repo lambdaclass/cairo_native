@@ -740,8 +740,8 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint8(_) => false,
             CoreTypeConcrete::Sint16(_) => false,
             CoreTypeConcrete::Sint32(_) => false,
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => false,
+            CoreTypeConcrete::Sint128(_) => false,
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }

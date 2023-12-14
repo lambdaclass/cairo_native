@@ -547,18 +547,18 @@ mod test {
     fn i32_const_min() {
         let program = load_cairo!(
             fn run_test() -> i32 {
-                0_i32
+                -2147483648_i32
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[0i32.into()]);
+        run_program_assert_output(&program, "run_test", &[], &[i32::MIN.into()]);
     }
 
     #[test]
     fn i32_const_max() {
         let program = load_cairo!(
             fn run_test() -> i32 {
-                2147483646_i32
+                2147483647_i32
             }
         );
 
@@ -584,7 +584,7 @@ mod test {
             use traits::TryInto;
 
             fn run_test() -> (Option<i32>, Option<i32>) {
-                (2147483646.try_into(), 2147483647.try_into())
+                (2147483647.try_into(), 2147483648.try_into())
             }
         );
 
@@ -593,7 +593,7 @@ mod test {
             "run_test",
             &[],
             &[jit_struct!(
-                jit_enum!(0, 2147483646i32.into()),
+                jit_enum!(0, 2147483647i32.into()),
                 jit_enum!(1, jit_struct!()),
             )],
         );

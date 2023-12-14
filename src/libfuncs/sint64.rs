@@ -547,18 +547,18 @@ mod test {
     fn i64_const_min() {
         let program = load_cairo!(
             fn run_test() -> i64 {
-                0_i64
+                -9223372036854775808_i64
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[0i64.into()]);
+        run_program_assert_output(&program, "run_test", &[], &[i64::MIN.into()]);
     }
 
     #[test]
     fn i64_const_max() {
         let program = load_cairo!(
             fn run_test() -> i64 {
-                9223372036854775806_i64
+                9223372036854775807_i64
             }
         );
 
@@ -585,8 +585,8 @@ mod test {
 
             fn run_test() -> (Option<i64>, Option<i64>) {
                 (
-                    9223372036854775806.try_into(),
                     9223372036854775807.try_into(),
+                    9223372036854775808.try_into(),
                 )
             }
         );
@@ -596,7 +596,7 @@ mod test {
             "run_test",
             &[],
             &[jit_struct!(
-                jit_enum!(0, 9223372036854775806i64.into()),
+                jit_enum!(0, 9223372036854775807i64.into()),
                 jit_enum!(1, jit_struct!()),
             )],
         );

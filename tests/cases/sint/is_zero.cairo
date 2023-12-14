@@ -22,7 +22,7 @@ fn is_zero_i32(val: i32) -> bool {
 }
 
 fn is_zero_i64(val: i64) -> bool {
-    match integer::i32_is_zero(val) {
+    match integer::i64_is_zero(val) {
         IsZeroResult::Zero => true,
         IsZeroResult::NonZero(_) => false,
     }

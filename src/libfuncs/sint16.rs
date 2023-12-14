@@ -547,11 +547,11 @@ mod test {
     fn i16_const_min() {
         let program = load_cairo!(
             fn run_test() -> i16 {
-                0_i16
+                -32768_i16
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[0i16.into()]);
+        run_program_assert_output(&program, "run_test", &[], &[i16::MIN.into()]);
     }
 
     #[test]
