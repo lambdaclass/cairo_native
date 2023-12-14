@@ -42,6 +42,14 @@ mod common;
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]
 #[test_case("tests/cases/uint/u512_safe_divmod_by_u256.cairo")]
+// sint8
+#[test_case("tests/cases/sint/i8_diff.cairo")]
+#[test_case("tests/cases/sint/i8_eq.cairo")]
+#[test_case("tests/cases/sint/i8_is_zero.cairo")]
+#[test_case("tests/cases/sint/i8_add.cairo")]
+#[test_case("tests/cases/sint/i8_sub.cairo")]
+#[test_case("tests/cases/sint/i8_wide_mul.cairo")]
+#[test_case("tests/cases/sint/i8_to_from_felt252.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
