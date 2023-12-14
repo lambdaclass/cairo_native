@@ -30,7 +30,7 @@ use cairo_native::{
         MetadataStorage,
     },
     starknet::StarkNetSyscallHandler,
-    types::felt252::PRIME,
+    types::felt252::{HALF_PRIME, PRIME},
     utils::{find_entry_point_by_idx, register_runtime_symbols, run_pass_manager},
     values::JITValue,
     ExecutionResult,
@@ -210,7 +210,6 @@ pub fn run_native_program(
     let mut metadata = MetadataStorage::new();
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
     // Gas
     let required_initial_gas = if program
         .type_declarations
@@ -225,7 +224,6 @@ pub fn run_native_program(
     } else {
         None
     };
-
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -632,8 +630,42 @@ pub fn compare_outputs(
                 // ignore
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i8 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i8 = if let JITValue::Sint8(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
+            CoreTypeConcrete::Sint16(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i16 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i16 = if let JITValue::Sint16(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),

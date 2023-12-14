@@ -56,6 +56,8 @@ pub enum JITValue {
     Uint32(u32),
     Uint64(u64),
     Uint128(u128),
+    Sint8(i8),
+    Sint16(i16),
     EcPoint(Felt252, Felt252),
     EcState(Felt252, Felt252, Felt252, Felt252),
 }
@@ -95,6 +97,18 @@ impl From<u64> for JITValue {
 impl From<u128> for JITValue {
     fn from(value: u128) -> Self {
         JITValue::Uint128(value)
+    }
+}
+
+impl From<i8> for JITValue {
+    fn from(value: i8) -> Self {
+        JITValue::Sint8(value)
+    }
+}
+
+impl From<i16> for JITValue {
+    fn from(value: i16) -> Self {
+        JITValue::Sint16(value)
     }
 }
 
@@ -381,6 +395,18 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Sint8(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i8>()).cast();
+                    *ptr.cast::<i8>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint16(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i16>()).cast();
+                    *ptr.cast::<i16>().as_mut() = *value;
+
+                    ptr
+                }
                 JITValue::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
@@ -483,8 +509,8 @@ impl JITValue {
                 CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
                 CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
+                CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
+                CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => todo!(),
                 CoreTypeConcrete::Sint64(_) => todo!(),
                 CoreTypeConcrete::Sint128(_) => todo!(),
@@ -678,8 +704,8 @@ impl ValueBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(_) => false,
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => false,
+            CoreTypeConcrete::Sint16(_) => false,
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
