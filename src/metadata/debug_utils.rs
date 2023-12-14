@@ -90,9 +90,9 @@
 
 use crate::error::libfuncs::Result;
 use melior::{
-    dialect::{func, llvm},
+    dialect::{arith, func, llvm},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
         Block, Identifier, Location, Module, Region, Value,
     },
@@ -105,6 +105,7 @@ enum DebugBinding {
     BreakpointMarker,
     PrintI1,
     PrintI8,
+    PrintI128,
     PrintPointer,
 }
 
@@ -264,6 +265,75 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn print_i128<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintI128) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_i128"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        let i64_ty = IntegerType::new(context, 64).into();
+        let k64 = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(64, IntegerType::new(context, 128).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let value_lo = block
+            .append_operation(arith::trunci(value, i64_ty, location))
+            .result(0)?
+            .into();
+        let value_hi = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let value_hi = block
+            .append_operation(arith::trunci(value_hi, i64_ty, location))
+            .result(0)?
+            .into();
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_i128"),
+            &[value_lo, value_hi],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
@@ -292,6 +362,15 @@ impl DebugUtils {
             }
         }
 
+        if self.active_map.contains(&DebugBinding::PrintI128) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_i128",
+                    print_i128_impl as *const fn(u64, u64) -> () as *mut (),
+                );
+            }
+        }
+
         if self.active_map.contains(&DebugBinding::PrintPointer) {
             unsafe {
                 engine.register_symbol(
@@ -312,6 +391,11 @@ extern "C" fn print_i1_impl(value: bool) {
 }
 
 extern "C" fn print_i8_impl(value: u8) {
+    println!("[DEBUG] {value}");
+}
+
+extern "C" fn print_i128_impl(value_lo: u64, value_hi: u64) {
+    let value = ((value_hi as u128) << 64) | value_lo as u128;
     println!("[DEBUG] {value}");
 }
 
