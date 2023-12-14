@@ -342,6 +342,16 @@ where
         .result(0)?
         .into();
 
+    // We need to check that the resulting values are inside the Felt252 bounds
+    let prime = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, "3618502788666131213697322783095070105623107215331596699973092056135872020481 : i252").unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
     entry.append_operation(helper.cond_br(
         context,
         result,

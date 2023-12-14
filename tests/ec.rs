@@ -54,7 +54,7 @@ fn ec_point_zero() {
     .unwrap();
 }
 
-#[ignore = "TODO: possible bug in ec_point_from_x_nz"]
+//#[ignore = "TODO: possible bug in ec_point_from_x_nz"]
 #[test]
 fn ec_point_from_x_big() {
     let x = Felt252::new(
