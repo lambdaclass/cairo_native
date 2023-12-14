@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use educe::Educe;
 use num_bigint::{BigInt, Sign};
 use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};

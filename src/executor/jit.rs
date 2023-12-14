@@ -1,8 +1,6 @@
 use crate::{
     error::jit_engine::{ErrorImpl, RunnerError},
-    execute, execute_contract,
-    execution_result::ContractExecutionResult,
-    jit_runner::ExecutionResult,
+    execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::syscall_handler::SyscallHandlerMeta,
     module::NativeModule,
     utils::create_engine,
@@ -57,15 +55,16 @@ impl<'m> JitNativeExecutor<'m> {
         let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
         let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
-        execute(
-            &self.engine,
-            registry,
-            fn_id,
-            params,
-            required_initial_gas,
-            gas,
-            syscall_handler,
-        )
+        todo!()
+        // execute(
+        //     &self.engine,
+        //     registry,
+        //     fn_id,
+        //     params,
+        //     required_initial_gas,
+        //     gas,
+        //     syscall_handler,
+        // )
     }
 
     /// Execute a contract with the given calldata.
@@ -86,14 +85,15 @@ impl<'m> JitNativeExecutor<'m> {
         // Note: It appears this isn't being checked when running contracts on the VM.
         // let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
 
-        execute_contract(
-            &self.engine,
-            registry,
-            fn_id,
-            calldata,
-            None,
-            gas,
-            syscall_handler,
-        )
+        todo!()
+        // execute_contract(
+        //     &self.engine,
+        //     registry,
+        //     fn_id,
+        //     calldata,
+        //     None,
+        //     gas,
+        //     syscall_handler,
+        // )
     }
 }

@@ -1,9 +1,15 @@
 use crate::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
     values::JitValue,
-    ExecutionResult,
 };
 use starknet_types_core::felt::Felt;
+
+/// The result of the JIT execution.
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    pub remaining_gas: Option<u128>,
+    pub return_values: Vec<JitValue>,
+}
 
 /// Starknet contract execution result.
 #[derive(Debug, Default)]

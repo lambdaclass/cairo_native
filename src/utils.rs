@@ -630,16 +630,17 @@ pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
     use crate::{
-        jit_runner::ExecutionResult,
+        execution_result::ExecutionResult,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
             syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
+        module::NativeModule,
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+        utils::*,
         values::JitValue,
     };
     use cairo_lang_compiler::{
@@ -820,15 +821,13 @@ pub mod test {
             .unwrap()
             .register_impls(&engine);
 
-        let mut handler = TestSyscallHandler;
-        let handler = SyscallHandlerMeta::new(&mut handler);
+        metadata
+            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
+            .unwrap();
 
-        metadata.insert(handler).unwrap();
-        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
-
-        crate::execute(
-            &engine,
-            &registry,
+        let native_module = NativeModule::new(module, registry, metadata);
+        let executor = crate::executor::JitNativeExecutor::new(native_module);
+        executor.execute(
             &program
                 .funcs
                 .iter()
@@ -836,11 +835,8 @@ pub mod test {
                 .expect("Test program entry point not found.")
                 .id,
             args,
-            required_initial_gas,
-            Some(u64::MAX.into()),
-            Some(handler),
+            Some(u128::MAX.into()),
         )
-        .expect("Test program execution failed.")
     }
 
     #[track_caller]
