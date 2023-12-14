@@ -58,6 +58,7 @@ pub enum JITValue {
     Uint128(u128),
     Sint8(i8),
     Sint16(i16),
+    Sint32(i32),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
 }
@@ -109,6 +110,12 @@ impl From<i8> for JITValue {
 impl From<i16> for JITValue {
     fn from(value: i16) -> Self {
         JITValue::Sint16(value)
+    }
+}
+
+impl From<i32> for JITValue {
+    fn from(value: i32) -> Self {
+        JITValue::Sint32(value)
     }
 }
 
@@ -407,6 +414,12 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Sint32(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i32>()).cast();
+                    *ptr.cast::<i32>().as_mut() = *value;
+
+                    ptr
+                }
                 JITValue::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
@@ -511,7 +524,7 @@ impl JITValue {
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
                 CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
-                CoreTypeConcrete::Sint32(_) => todo!(),
+                CoreTypeConcrete::Sint32(_) => JITValue::Sint32(*ptr.cast::<i32>().as_ref()),
                 CoreTypeConcrete::Sint64(_) => todo!(),
                 CoreTypeConcrete::Sint128(_) => todo!(),
                 CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
@@ -706,7 +719,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Snapshot(_) => false,
             CoreTypeConcrete::Sint8(_) => false,
             CoreTypeConcrete::Sint16(_) => false,
-            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => false,
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
