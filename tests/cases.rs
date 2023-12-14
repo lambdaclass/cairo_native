@@ -22,6 +22,9 @@ mod common;
 // TODO: compare error: Fail(Reason("assertion failed: `(left == right)` \n  left: `0`,\n right: `10` at tests/common.rs:453"))
 #[test_case("tests/cases/enums/enum_init.cairo")]
 #[test_case("tests/cases/enums/single_value.cairo")]
+#[test_case("tests/cases/enums/enum_match.cairo")]
+#[test_case("tests/cases/enums/enum_snapshot_match_a.cairo")]
+#[test_case("tests/cases/enums/enum_snapshot_match_b.cairo")]
 // returns
 #[test_case("tests/cases/returns/enums.cairo")]
 #[test_case("tests/cases/returns/simple.cairo")]
@@ -38,11 +41,29 @@ mod common;
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]
+#[test_case("tests/cases/uint/u512_safe_divmod_by_u256.cairo")]
+// sint8
+#[test_case("tests/cases/sint/i8_diff.cairo")]
+#[test_case("tests/cases/sint/i8_eq.cairo")]
+#[test_case("tests/cases/sint/i8_is_zero.cairo")]
+#[test_case("tests/cases/sint/i8_add.cairo")]
+#[test_case("tests/cases/sint/i8_sub.cairo")]
+#[test_case("tests/cases/sint/i8_wide_mul.cairo")]
+#[test_case("tests/cases/sint/i8_to_from_felt252.cairo")]
+// sint16
+#[test_case("tests/cases/sint/i16_diff.cairo")]
+#[test_case("tests/cases/sint/i16_eq.cairo")]
+#[test_case("tests/cases/sint/i16_is_zero.cairo")]
+#[test_case("tests/cases/sint/i16_add.cairo")]
+#[test_case("tests/cases/sint/i16_sub.cairo")]
+#[test_case("tests/cases/sint/i16_wide_mul.cairo")]
+#[test_case("tests/cases/sint/i16_to_from_felt252.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
 #[test_case("tests/cases/structs/enum_member.cairo")]
 #[test_case("tests/cases/structs/nested.cairo")]
+#[test_case("tests/cases/structs/struct_snapshot_deconstruct.cairo")]
 // gas
 #[test_case("tests/cases/gas/available_gas.cairo" => ignore["unimplemented"])]
 // bool

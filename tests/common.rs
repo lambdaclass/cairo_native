@@ -3,7 +3,6 @@
 
 #![allow(dead_code)]
 
-use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -30,8 +29,8 @@ use cairo_native::{
         MetadataStorage,
     },
     starknet::StarkNetSyscallHandler,
-    types::felt252::PRIME,
-    utils::{find_entry_point_by_idx, register_runtime_symbols},
+    types::felt252::{HALF_PRIME, PRIME},
+    utils::{find_entry_point_by_idx, register_runtime_symbols, run_pass_manager},
     values::JitValue,
     ExecutionResult,
 };
@@ -44,13 +43,13 @@ use lambdaworks_math::{
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
-    pass::{self, PassManager},
     utility::{register_all_dialects, register_all_passes},
     Context, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
+use starknet_types_core::felt::{felt_to_biguint, Felt};
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -211,7 +210,6 @@ pub fn run_native_program(
     let mut metadata = MetadataStorage::new();
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
     // Gas
     let required_initial_gas = if program
         .type_declarations
@@ -226,7 +224,6 @@ pub fn run_native_program(
     } else {
         None
     };
-
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -243,21 +240,7 @@ pub fn run_native_program(
         module.as_operation()
     );
 
-    let pass_manager = PassManager::new(&context);
-    pass_manager.enable_verifier(true);
-    pass_manager.add_pass(pass::transform::create_canonicalizer());
-
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
-
-    pass_manager
-        .run(&mut module)
+    run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
     let engine = ExecutionEngine::new(&module, 0, &[], false);
@@ -412,8 +395,8 @@ pub fn compare_outputs(
                     let vm_a = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
                     let vm_b = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
 
-                    let native_value_a = a.to_biguint();
-                    let native_value_b = b.to_biguint();
+                    let native_value_a = felt_to_biguint(*a);
+                    let native_value_b = felt_to_biguint(*b);
                     prop_assert_eq!(vm_a, native_value_a, "felt value mismatch in ecpoint");
                     prop_assert_eq!(vm_b, native_value_b, "felt value mismatch in ecpoint");
                 } else {
@@ -430,7 +413,7 @@ pub fn compare_outputs(
                 let vm_value = vm_rets.next().unwrap();
 
                 if let JitValue::Felt252(felt) = native_rets.next().unwrap() {
-                    let native_value = felt.to_biguint();
+                    let native_value = felt_to_biguint(*felt);
                     let vm_value = BigUint::from_str(vm_value).unwrap();
                     prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                 } else {
@@ -523,8 +506,8 @@ pub fn compare_outputs(
                 // cairo-vm fills with 0 before the variant value based on the variant with most values, if they are a tuple
                 /*
                    enum MyEnum {
-                       A: felt252,
-                       B: (felt252, felt252, felt252),
+                       A: Felt,
+                       B: (Felt, Felt, Felt),
                    }
 
                    will produce [0, 0, A_value] for the variant A in cairo-vm, because B is a tuple of 3 elements.
@@ -647,9 +630,60 @@ pub fn compare_outputs(
                 // ignore
             }
             CoreTypeConcrete::Snapshot(_) => todo!(),
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
-            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i8 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i8 = if let JitValue::Sint8(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
+            CoreTypeConcrete::Sint16(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i16 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i16 = if let JitValue::Sint16(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
+            CoreTypeConcrete::Sint32(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i16 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i32 = if let JitValue::Sint32(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
@@ -669,8 +703,8 @@ pub fn compare_outputs(
 pub const FIELD_HIGH: u128 = (1 << 123) + (17 << 64); // this is equal to 10633823966279327296825105735305134080
 pub const FIELD_LOW: u128 = 1;
 
-/// Returns a [`Strategy`] that generates any valid Felt252
-pub fn any_felt252() -> impl Strategy<Value = Felt252> {
+/// Returns a [`Strategy`] that generates any valid Felt
+pub fn any_felt() -> impl Strategy<Value = Felt> {
     use proptest::prelude::*;
 
     (0..=FIELD_HIGH)
@@ -685,7 +719,7 @@ pub fn any_felt252() -> impl Strategy<Value = Felt252> {
             };
             (Just(high), low)
         })
-        // turn (u128, u128) into limbs array and then into Felt252
+        // turn (u128, u128) into limbs array and then into Felt
         .prop_map(|(high, low)| {
             let limbs = [
                 (high >> 64) as u64,
@@ -696,11 +730,11 @@ pub fn any_felt252() -> impl Strategy<Value = Felt252> {
             FieldElement::new(UnsignedInteger::from_limbs(limbs))
         })
         .prop_map(|value: FieldElement<MontgomeryBackendPrimeField<_, 4>>| {
-            Felt252::from_bytes_be(&value.to_bytes_be())
+            Felt::from_bytes_be(&value.to_bytes_be())
         })
 }
 
-/// Returns a [`Strategy`] that generates any nonzero Felt252
-pub fn nonzero_felt252() -> impl Strategy<Value = Felt252> {
-    any_felt252().prop_filter("is zero", |x| !x.is_zero())
+/// Returns a [`Strategy`] that generates any nonzero Felt
+pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
+    any_felt().prop_filter("is zero", |x| !x.is_zero())
 }

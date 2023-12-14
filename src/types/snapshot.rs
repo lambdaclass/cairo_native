@@ -15,7 +15,7 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::types::{Error, Result},
-    metadata::MetadataStorage,
+    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -45,6 +45,13 @@ where
     // This type is like a `Cow<T>` that clones whenever the original type is modified to keep the
     // original data. Since implementing that is complicated we can just clone the entire value for
     // now.
+    match metadata.get_mut::<EnumSnapshotVariantsMeta>() {
+        Some(x) => x,
+        None => metadata
+            .insert(EnumSnapshotVariantsMeta::default())
+            .unwrap(),
+    }
+    .set_mapping(info.self_ty, registry.get_type(&info.ty)?.variants());
 
     registry.build_type(context, module, registry, metadata, &info.ty)
 }

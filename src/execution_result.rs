@@ -3,14 +3,14 @@ use crate::{
     values::JitValue,
     ExecutionResult,
 };
-use cairo_felt::Felt252;
+use starknet_types_core::felt::Felt;
 
 /// Starknet contract execution result.
 #[derive(Debug, Default)]
 pub struct ContractExecutionResult {
     pub remaining_gas: u128,
     pub failure_flag: bool,
-    pub return_values: Vec<Felt252>,
+    pub return_values: Vec<Felt>,
     pub error_msg: Option<String>,
 }
 
@@ -38,7 +38,7 @@ impl ContractExecutionResult {
                                     .iter()
                                     .map(|x| {
                                         if let JitValue::Felt252(f) = x {
-                                            f.clone()
+                                            *f
                                         } else {
                                             panic!("should always be a felt")
                                         }
@@ -69,7 +69,7 @@ impl ContractExecutionResult {
                             .iter()
                             .map(|x| {
                                 if let JitValue::Felt252(f) = x {
-                                    f.clone()
+                                    *f
                                 } else {
                                     panic!("should always be a felt")
                                 }
@@ -77,7 +77,7 @@ impl ContractExecutionResult {
                             .collect();
 
                         let str_error =
-                            String::from_utf8(felt_vec.get(0).unwrap().to_be_bytes().to_vec())
+                            String::from_utf8(felt_vec.get(0).unwrap().to_bytes_be().to_vec())
                                 .unwrap()
                                 .trim_start_matches('\0')
                                 .to_owned();

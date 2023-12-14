@@ -1,4 +1,4 @@
-//! # `felt252`-related libfuncs
+//! # `Felt`-related libfuncs
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{

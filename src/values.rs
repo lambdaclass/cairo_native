@@ -5,7 +5,6 @@
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 use bumpalo::Bump;
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
+use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -32,26 +32,23 @@ use crate::{
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JitValue {
-    Felt252(Felt252),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
         fields: Vec<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     }, // element types can differ
     Enum {
         tag: usize,
         value: Box<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Felt252Dict {
-        value: HashMap<Felt252, Self>,
+        value: HashMap<Felt, Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Uint8(u8),
@@ -59,45 +56,66 @@ pub enum JitValue {
     Uint32(u32),
     Uint64(u64),
     Uint128(u128),
-    EcPoint(Felt252, Felt252),
-    EcState(Felt252, Felt252, Felt252, Felt252),
+    Sint8(i8),
+    Sint16(i16),
+    Sint32(i32),
+    EcPoint(Felt, Felt),
+    EcState(Felt, Felt, Felt, Felt),
 }
 
 // Conversions
 
-impl From<Felt252> for JitValue {
-    fn from(value: Felt252) -> Self {
-        JitValue::Felt252(value)
+impl From<Felt> for JitValue {
+    fn from(value: Felt) -> Self {
+        Self::Felt252(value)
     }
 }
 
 impl From<u8> for JitValue {
     fn from(value: u8) -> Self {
-        JitValue::Uint8(value)
+        Self::Uint8(value)
     }
 }
 
 impl From<u16> for JitValue {
     fn from(value: u16) -> Self {
-        JitValue::Uint16(value)
+        Self::Uint16(value)
     }
 }
 
 impl From<u32> for JitValue {
     fn from(value: u32) -> Self {
-        JitValue::Uint32(value)
+        Self::Uint32(value)
     }
 }
 
 impl From<u64> for JitValue {
     fn from(value: u64) -> Self {
-        JitValue::Uint64(value)
+        Self::Uint64(value)
     }
 }
 
 impl From<u128> for JitValue {
     fn from(value: u128) -> Self {
-        JitValue::Uint128(value)
+        Self::Uint128(value)
+    }
+}
+
+impl From<i8> for JitValue {
+    fn from(value: i8) -> Self {
+        Self::Sint8(value)
+    }
+}
+
+impl From<i16> for JitValue {
+    fn from(value: i16) -> Self {
+        Self::Sint16(value)
+    }
+}
+
+impl From<i32> for JitValue {
+    fn from(value: i32) -> Self {
+        Self::Sint32(value)
     }
 }
 
@@ -141,14 +159,14 @@ impl JitValue {
 
         Ok(unsafe {
             match self {
-                JitValue::Felt252(value) => {
+                Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint());
+                    let data = felt252_bigint(felt_to_bigint(*value));
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-                JitValue::Array(data) => {
+                Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty
@@ -212,7 +230,7 @@ impl JitValue {
                         )))?
                     }
                 }
-                JitValue::Struct {
+                Self::Struct {
                     fields: members, ..
                 } => {
                     if let CoreTypeConcrete::Struct(info) = Self::resolve_type(ty, registry) {
@@ -261,7 +279,7 @@ impl JitValue {
                         )))?
                     }
                 }
-                JitValue::Enum { tag, value, .. } => {
+                Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
                         let tag_value = *tag;
                         assert!(tag_value <= info.variants.len());
@@ -303,7 +321,7 @@ impl JitValue {
                         )))?
                     }
                 }
-                JitValue::Felt252Dict { value: map, .. } => {
+                Self::Felt252Dict { value: map, .. } => {
                     if let CoreTypeConcrete::Felt252Dict(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -313,7 +331,7 @@ impl JitValue {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
-                            let key = key.to_le_bytes();
+                            let key = key.to_bytes_le();
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
@@ -353,58 +371,76 @@ impl JitValue {
                         )))?
                     }
                 }
-                JitValue::Uint8(value) => {
+                Self::Uint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
                     *ptr.cast::<u8>().as_mut() = *value;
 
                     ptr
                 }
-                JitValue::Uint16(value) => {
+                Self::Uint16(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u16>()).cast();
                     *ptr.cast::<u16>().as_mut() = *value;
 
                     ptr
                 }
-                JitValue::Uint32(value) => {
+                Self::Uint32(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u32>()).cast();
                     *ptr.cast::<u32>().as_mut() = *value;
 
                     ptr
                 }
-                JitValue::Uint64(value) => {
+                Self::Uint64(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
                     *ptr.cast::<u64>().as_mut() = *value;
 
                     ptr
                 }
-                JitValue::Uint128(value) => {
+                Self::Uint128(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
                     *ptr.cast::<u128>().as_mut() = *value;
 
                     ptr
                 }
-                JitValue::EcPoint(a, b) => {
+                Self::Sint8(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i8>()).cast();
+                    *ptr.cast::<i8>().as_mut() = *value;
+
+                    ptr
+                }
+                Self::Sint16(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i16>()).cast();
+                    *ptr.cast::<i16>().as_mut() = *value;
+
+                    ptr
+                }
+                Self::Sint32(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i32>()).cast();
+                    *ptr.cast::<i32>().as_mut() = *value;
+
+                    ptr
+                }
+                Self::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
                     let data = [a, b];
 
                     ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
 
                     ptr
                 }
-                JitValue::EcState(a, b, c, d) => {
+                Self::EcState(a, b, c, d) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
-                    let c = felt252_bigint(c.to_bigint());
-                    let d = felt252_bigint(d.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
+                    let c = felt252_bigint(felt_to_bigint(*c));
+                    let d = felt252_bigint(felt_to_bigint(*d));
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
@@ -420,7 +456,7 @@ impl JitValue {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> JitValue {
+    ) -> Self {
         let ty = registry.get_type(type_id).unwrap();
 
         unsafe {
@@ -454,18 +490,20 @@ impl JitValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
+                    libc::free(data_ptr.as_ptr().cast());
+
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) => JitValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Box(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
-                    JitValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
+                    Self::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
                 }
                 CoreTypeConcrete::EcState(_) => {
                     let data = ptr.cast::<[[u32; 8]; 4]>().as_ref();
 
-                    JitValue::EcState(
+                    Self::EcState(
                         u32_vec_to_felt(&data[0]),
                         u32_vec_to_felt(&data[1]),
                         u32_vec_to_felt(&data[2]),
@@ -475,20 +513,20 @@ impl JitValue {
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u32; 8]>().as_ref();
                     let data = u32_vec_to_felt(data);
-                    JitValue::Felt252(data)
+                    Self::Felt252(data)
                 }
-                CoreTypeConcrete::Uint8(_) => JitValue::Uint8(*ptr.cast::<u8>().as_ref()),
-                CoreTypeConcrete::Uint16(_) => JitValue::Uint16(*ptr.cast::<u16>().as_ref()),
-                CoreTypeConcrete::Uint32(_) => JitValue::Uint32(*ptr.cast::<u32>().as_ref()),
-                CoreTypeConcrete::Uint64(_) => JitValue::Uint64(*ptr.cast::<u64>().as_ref()),
-                CoreTypeConcrete::Uint128(_) => JitValue::Uint128(*ptr.cast::<u128>().as_ref()),
+                CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
+                CoreTypeConcrete::Uint16(_) => Self::Uint16(*ptr.cast::<u16>().as_ref()),
+                CoreTypeConcrete::Uint32(_) => Self::Uint32(*ptr.cast::<u32>().as_ref()),
+                CoreTypeConcrete::Uint64(_) => Self::Uint64(*ptr.cast::<u64>().as_ref()),
+                CoreTypeConcrete::Uint128(_) => Self::Uint128(*ptr.cast::<u128>().as_ref()),
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
-                CoreTypeConcrete::Sint32(_) => todo!(),
+                CoreTypeConcrete::Sint8(_) => Self::Sint8(*ptr.cast::<i8>().as_ref()),
+                CoreTypeConcrete::Sint16(_) => Self::Sint16(*ptr.cast::<i16>().as_ref()),
+                CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
                 CoreTypeConcrete::Sint64(_) => todo!(),
                 CoreTypeConcrete::Sint128(_) => todo!(),
-                CoreTypeConcrete::NonZero(info) => JitValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::NonZero(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
@@ -545,14 +583,14 @@ impl JitValue {
                         };
                         layout = Some(new_layout);
 
-                        members.push(JitValue::from_jit(
+                        members.push(Self::from_jit(
                             NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
                             member_ty,
                             registry,
                         ));
                     }
 
-                    JitValue::Struct {
+                    Self::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -566,13 +604,17 @@ impl JitValue {
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le(key.as_slice());
+                        let key = Felt::from_bytes_le_slice(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        // we need to free all the elements, which are allocated by libc realloc.
+                        libc::free(val_ptr.as_ptr());
                     }
 
-                    Box::leak(map); // we must leak to avoid a double free
+                    // we must leak to avoid a double free
+                    // as it was allocated in the arena and will be freed by it.
+                    Box::leak(map);
 
-                    JitValue::Felt252Dict {
+                    Self::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -599,7 +641,7 @@ impl JitValue {
                         // felt values
                         let data = ptr.cast::<[u32; 8]>().as_ref();
                         let data = u32_vec_to_felt(data);
-                        JitValue::Felt252(data)
+                        Self::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(_) => unimplemented!("should be handled before"),
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
@@ -619,7 +661,7 @@ impl JitValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(Felt252::from(value))
+        Self::Felt252(biguint_to_felt(&value))
     }
 }
 
@@ -674,9 +716,9 @@ impl ValueBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(_) => false,
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
-            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => false,
+            CoreTypeConcrete::Sint16(_) => false,
+            CoreTypeConcrete::Sint32(_) => false,
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),

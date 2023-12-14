@@ -46,7 +46,9 @@ where
         StructConcreteLibfunc::Deconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::SnapshotDeconstruct(_) => todo!(),
+        StructConcreteLibfunc::SnapshotDeconstruct(info) => {
+            build_deconstruct(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 

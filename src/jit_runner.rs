@@ -204,8 +204,28 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JitValue::Sint8(_)) {
+                    Err(make_unexpected_value_error("JitValue::Sint8".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint16(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JitValue::Sint16(_)) {
+                    Err(make_unexpected_value_error("JitValue::Sint16".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
             CoreTypeConcrete::Sint32(_) => todo!(),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),

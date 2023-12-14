@@ -682,11 +682,11 @@ mod test {
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
         values::JitValue,
     };
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use num_bigint::{BigUint, ToBigUint};
     use num_traits::One;
+    use starknet_types_core::felt::Felt;
     use std::ops::Shl;
 
     lazy_static! {
@@ -770,10 +770,10 @@ mod test {
             )
         }
 
-        let u256_is_zero = Felt252::from_bytes_be(b"u256 is 0");
+        let u256_is_zero = Felt::from_bytes_be_slice(b"u256 is 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
-        run((0, 0), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run((0, 0), (0, 0), jit_panic!(u256_is_zero));
         run(
             (0, 0),
             (0, 1),
@@ -797,7 +797,7 @@ mod test {
             ),
         );
 
-        run((0, 1), (0, 0), jit_panic!(u256_is_zero.clone()));
+        run((0, 1), (0, 0), jit_panic!(u256_is_zero));
         run(
             (0, 1),
             (0, 1),

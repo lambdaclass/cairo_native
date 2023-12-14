@@ -1,4 +1,5 @@
-use crate::common::{any_felt252, load_cairo, run_native_program, run_vm_program};
+use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
+use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JitValue;
@@ -55,12 +56,12 @@ lazy_static! {
 
 proptest! {
     #[test]
-    fn felt_add_proptest(a in any_felt252(), b in any_felt252()) {
+    fn felt_add_proptest(a in any_felt(), b in any_felt()) {
         let program = &FELT252_ADD;
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();
@@ -75,12 +76,12 @@ proptest! {
     }
 
     #[test]
-    fn felt_sub_proptest(a in any_felt252(), b in any_felt252()) {
+    fn felt_sub_proptest(a in any_felt(), b in any_felt()) {
         let program = &FELT252_SUB;
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();
@@ -95,12 +96,12 @@ proptest! {
     }
 
     #[test]
-    fn felt_mul_proptest(a in any_felt252(), b in any_felt252()) {
+    fn felt_mul_proptest(a in any_felt(), b in any_felt()) {
         let program = &FELT252_MUL;
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.clone()), Arg::Value(b.clone())],
+            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(GAS),
         )
         .unwrap();

@@ -1,3 +1,5 @@
+#![cfg(target_arch = "aarch64")]
+
 use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},

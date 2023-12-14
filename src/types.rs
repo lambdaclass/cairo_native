@@ -4,8 +4,12 @@
 
 use crate::{
     error::CoreTypeBuilderError,
-    metadata::MetadataStorage,
-    utils::{get_integer_layout, layout_repeat},
+    libfuncs::LibfuncHelper,
+    metadata::{
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
+    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -15,6 +19,10 @@ use cairo_lang_sierra::{
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
+};
+use melior::{
+    dialect::llvm::{self, r#type::opaque_pointer},
+    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
 };
 use melior::{
     ir::{Module, Type},
@@ -88,6 +96,18 @@ where
     ///
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_drop<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
+    ) -> Result<(), Self::Error>;
 }
 
 impl<TType, TLibfunc> TypeBuilder<TType, TLibfunc> for CoreTypeConcrete
@@ -314,9 +334,27 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
-            CoreTypeConcrete::Sint32(_) => todo!(),
+            CoreTypeConcrete::Sint8(info) => self::uint8::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            CoreTypeConcrete::Sint16(info) => self::uint16::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            CoreTypeConcrete::Sint32(info) => self::uint32::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             CoreTypeConcrete::Sint64(_) => todo!(),
             CoreTypeConcrete::Sint128(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
@@ -426,6 +464,59 @@ where
             Self::Enum(info) => Some(&info.variants),
             _ => None,
         }
+    }
+
+    fn build_drop<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        registry: &ProgramRegistry<TType, TLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
+    ) -> Result<(), Self::Error> {
+        match self {
+            CoreTypeConcrete::Array(_info) => {
+                let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
+
+                let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+
+                let array_val = entry.argument(0)?.into();
+
+                let op = entry.append_operation(llvm::extract_value(
+                    context,
+                    array_val,
+                    DenseI64ArrayAttribute::new(context, &[0]),
+                    ptr_ty,
+                    location,
+                ));
+                let ptr: Value = op.result(0)?.into();
+
+                let ptr = entry
+                    .append_operation(llvm::bitcast(ptr, opaque_pointer(context), location))
+                    .result(0)?
+                    .into();
+
+                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+            }
+            CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
+                let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
+                let ptr = entry.argument(0)?.into();
+
+                runtime.dict_alloc_free(context, helper, ptr, entry, location)?;
+            }
+            CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
+                let ptr = entry.argument(0)?.into();
+                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+            }
+            _ => {}
+        };
+        Ok(())
     }
 }
 

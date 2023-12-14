@@ -1,4 +1,4 @@
-//! # Squashed `felt252` dictionary type
+//! # Squashed `Felt` dictionary type
 //!
 //! TODO
 

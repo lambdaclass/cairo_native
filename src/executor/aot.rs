@@ -4,7 +4,6 @@ use crate::{
     values::{JitValue, ValueBuilder},
 };
 use bumpalo::Bump;
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
 };
 use libc::c_void;
 use libloading::Library;
+use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
@@ -164,7 +164,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             },
             CoreTypeConcrete::Felt252(_) => match return_ptr {
                 Some(_) => todo!(),
-                None => JitValue::Felt252(Felt252::from_bytes_le(unsafe {
+                None => JitValue::Felt252(Felt::from_bytes_le(unsafe {
                     std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
                 })),
             },
@@ -430,7 +430,7 @@ fn map_arg_to_bytes(
     let type_info = program_registry.get_type(type_id)?;
 
     match (type_info, value) {
-        (CoreTypeConcrete::Array(_), JitValue::Array(values)) => todo!(),
+        (CoreTypeConcrete::Array(_), JitValue::Array(_values)) => todo!(),
         (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
             if binary_data.len() & (get_integer_layout(252).align() - 1) != 0 {
                 binary_data.resize(
@@ -443,8 +443,8 @@ fn map_arg_to_bytes(
                 );
             }
 
-            binary_data.extend(a.to_le_bytes());
-            binary_data.extend(b.to_le_bytes());
+            binary_data.extend(a.to_bytes_le());
+            binary_data.extend(b.to_bytes_le());
         }
         (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
             if binary_data.len() & (get_integer_layout(252).align() - 1) != 0 {
@@ -458,12 +458,12 @@ fn map_arg_to_bytes(
                 );
             }
 
-            binary_data.extend(a.to_le_bytes());
-            binary_data.extend(b.to_le_bytes());
-            binary_data.extend(c.to_le_bytes());
-            binary_data.extend(d.to_le_bytes());
+            binary_data.extend(a.to_bytes_le());
+            binary_data.extend(b.to_bytes_le());
+            binary_data.extend(c.to_bytes_le());
+            binary_data.extend(d.to_bytes_le());
         }
-        (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => todo!(),
+        (CoreTypeConcrete::Enum(_info), JitValue::Enum { .. }) => todo!(),
         (CoreTypeConcrete::Felt252(_), JitValue::Felt252(value)) => {
             if binary_data.len() & (get_integer_layout(252).align() - 1) != 0 {
                 binary_data.resize(
@@ -476,10 +476,10 @@ fn map_arg_to_bytes(
                 );
             }
 
-            binary_data.extend(value.to_le_bytes());
+            binary_data.extend(value.to_bytes_le());
         }
         (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => todo!(),
-        (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => todo!(),
+        (CoreTypeConcrete::Struct(_info), JitValue::Struct { .. }) => todo!(),
         (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => {
             if binary_data.len() & (get_integer_layout(128).align() - 1) != 0 {
                 binary_data.resize(
@@ -593,6 +593,7 @@ fn map_arg_to_bytes(
     Ok(())
 }
 
+#[allow(dead_code)]
 enum EnumTypeId<'a> {
     Padding(usize),
     Payload(&'a ConcreteTypeId),
@@ -622,26 +623,26 @@ fn map_bytes_to_values(
                     CoreTypeConcrete::EcPoint(_) => {
                         let mut bytes = [0; 32];
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                     }
                     CoreTypeConcrete::EcState(_) => {
                         let mut bytes = [0; 32];
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                     }
                     CoreTypeConcrete::Enum(_) => todo!(),
                     CoreTypeConcrete::Felt252(_) => {
                         let mut bytes = [0; 32];
                         value.read_exact(&mut bytes).unwrap();
-                        invoke_data.extend(Felt252::from_bytes_le(&bytes).to_le_digits());
+                        invoke_data.extend(Felt::from_bytes_le(&bytes).to_le_digits());
                     }
                     CoreTypeConcrete::Felt252Dict(_) => todo!(),
                     CoreTypeConcrete::Struct(_) => todo!(),
