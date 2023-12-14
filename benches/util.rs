@@ -13,7 +13,7 @@ pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
             match path.extension().map(|x| x.to_str().unwrap()) {
                 Some("cairo") => Some((
                     cairo_native::utils::cairo_to_sierra(path),
-                    path.file_name().unwrap().to_str().unwrap().to_string(),
+                    path.display().to_string(),
                 )),
                 _ => None,
             }
