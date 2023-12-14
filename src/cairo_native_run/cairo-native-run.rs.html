@@ -163,18 +163,14 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_felt::Felt252;
-<span class="kw">use </span>cairo_lang_compiler::{
+</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
 <span class="kw">use </span>cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>num_traits::Num;
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{
     borrow::Cow,
     convert::Infallible,
@@ -228,9 +224,7 @@
     <span class="kw">let </span>params = params_input
         .split_whitespace()
         .map(|x| {
-            JITValue::Felt252(
-                Felt252::from_str_radix(x, <span class="number">10</span>).expect(<span class="string">&quot;input parameter is not a valid felt252&quot;</span>),
-            )
+            JITValue::Felt252(Felt::from_dec_str(x).expect(<span class="string">&quot;input parameter is not a valid Felt&quot;</span>))
         })
         .collect_vec();
 

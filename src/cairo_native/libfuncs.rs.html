@@ -479,6 +479,12 @@
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -522,6 +528,8 @@
 <span class="kw">pub mod </span>nullable;
 <span class="kw">pub mod </span>pedersen;
 <span class="kw">pub mod </span>poseidon;
+<span class="kw">pub mod </span>sint16;
+<span class="kw">pub mod </span>sint8;
 <span class="kw">pub mod </span>snapshot_take;
 <span class="kw">pub mod </span>stark_net;
 <span class="kw">pub mod </span>r#struct;
@@ -680,8 +688,12 @@
             <span class="self">Self</span>::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            CoreConcreteLibfunc::Sint8(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreConcreteLibfunc::Sint16(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Sint8(info) =&gt; {
+                <span class="self">self</span>::sint8::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint16(info) =&gt; {
+                <span class="self">self</span>::sint16::build(context, registry, entry, location, helper, metadata, info)
+            }
             CoreConcreteLibfunc::Sint32(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreConcreteLibfunc::Sint64(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreConcreteLibfunc::Sint128(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),

@@ -432,14 +432,47 @@
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
-</span><span class="kw">use </span>cairo_felt::Felt252;
-<span class="kw">use </span>cairo_lang_runner::short_string::as_cairo_short_string;
-<span class="kw">use </span>starknet_crypto::FieldElement;
+</span><span class="kw">use </span>starknet_crypto::FieldElement;
 <span class="kw">use </span>starknet_curve::AffinePoint;
+<span class="kw">use </span>starknet_types_core::felt::{felt_to_bigint, Felt};
 <span class="kw">use </span>std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_cairo_short_string(value: <span class="kw-2">&amp;</span>Felt) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>as_string = String::default();
+    <span class="kw">let </span><span class="kw-2">mut </span>is_end = <span class="bool-val">false</span>;
+    <span class="kw">for </span>byte <span class="kw">in </span>value.to_bytes_be() {
+        <span class="kw">if </span>byte == <span class="number">0 </span>{
+            is_end = <span class="bool-val">true</span>;
+        } <span class="kw">else if </span>is_end || !byte.is_ascii() {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        } <span class="kw">else </span>{
+            as_string.push(byte <span class="kw">as </span>char);
+        }
+    }
+    <span class="prelude-val">Some</span>(as_string)
+}
 <span class="doccomment">/// Based on `cairo-lang-runner`&#39;s implementation.
 ///
 /// Source: &lt;https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800&gt;
@@ -460,18 +493,25 @@
         <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw-2">*</span>data.add(i);
         data.reverse();
 
-        <span class="kw">let </span>value = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>data);
+        <span class="kw">let </span>value = Felt::from_bytes_be(<span class="kw-2">&amp;</span>data);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(shortstring) = as_cairo_short_string(<span class="kw-2">&amp;</span>value) {
             <span class="kw">if </span><span class="macro">writeln!</span>(
                 target,
                 <span class="string">&quot;[DEBUG]\t{shortstring: &lt;31}\t(raw: {})&quot;</span>,
-                value.to_bigint()
+                felt_to_bigint(value)
             )
             .is_err()
             {
                 <span class="kw">return </span><span class="number">1</span>;
             };
-        } <span class="kw">else if </span><span class="macro">writeln!</span>(target, <span class="string">&quot;[DEBUG]\t{:&lt;31}\t(raw: {})&quot;</span>, <span class="string">&#39; &#39;</span>, value.to_bigint()).is_err() {
+        } <span class="kw">else if </span><span class="macro">writeln!</span>(
+            target,
+            <span class="string">&quot;[DEBUG]\t{:&lt;31}\t(raw: {})&quot;</span>,
+            <span class="string">&#39; &#39;</span>,
+            felt_to_bigint(value)
+        )
+        .is_err()
+        {
             <span class="kw">return </span><span class="number">1</span>;
         }
     }

@@ -863,17 +863,16 @@
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
 <a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="attr">#![allow(clippy::type_complexity)]
 #![allow(dead_code)]
 
-</span><span class="kw">use </span>cairo_felt::Felt252;
+</span><span class="kw">use </span>starknet_types_core::felt::Felt;
 
-<span class="kw">pub type </span>SyscallResult&lt;T&gt; = std::result::Result&lt;T, Vec&lt;Felt252&gt;&gt;;
+<span class="kw">pub type </span>SyscallResult&lt;T&gt; = std::result::Result&lt;T, Vec&lt;Felt&gt;&gt;;
 
-<span class="doccomment">/// Binary representation of a `felt252` (in MLIR).
+<span class="doccomment">/// Binary representation of a `Felt` (in MLIR).
 </span><span class="attr">#[derive(Debug, Clone)]
 #[cfg_attr(target_arch = <span class="string">&quot;x86_64&quot;</span>, repr(C, align(<span class="number">8</span>)))]
 #[cfg_attr(not(target_arch = <span class="string">&quot;x86_64&quot;</span>), repr(C, align(<span class="number">16</span>)))]
@@ -888,25 +887,25 @@
 <span class="kw">pub struct </span>ExecutionInfo {
     <span class="kw">pub </span>block_info: BlockInfo,
     <span class="kw">pub </span>tx_info: TxInfo,
-    <span class="kw">pub </span>caller_address: Felt252,
-    <span class="kw">pub </span>contract_address: Felt252,
-    <span class="kw">pub </span>entry_point_selector: Felt252,
+    <span class="kw">pub </span>caller_address: Felt,
+    <span class="kw">pub </span>contract_address: Felt,
+    <span class="kw">pub </span>entry_point_selector: Felt,
 }
 
 <span class="kw">pub struct </span>BlockInfo {
     <span class="kw">pub </span>block_number: u64,
     <span class="kw">pub </span>block_timestamp: u64,
-    <span class="kw">pub </span>sequencer_address: Felt252,
+    <span class="kw">pub </span>sequencer_address: Felt,
 }
 
 <span class="kw">pub struct </span>TxInfo {
-    <span class="kw">pub </span>version: Felt252,
-    <span class="kw">pub </span>account_contract_address: Felt252,
+    <span class="kw">pub </span>version: Felt,
+    <span class="kw">pub </span>account_contract_address: Felt,
     <span class="kw">pub </span>max_fee: u128,
-    <span class="kw">pub </span>signature: Vec&lt;Felt252&gt;,
-    <span class="kw">pub </span>transaction_hash: Felt252,
-    <span class="kw">pub </span>chain_id: Felt252,
-    <span class="kw">pub </span>nonce: Felt252,
+    <span class="kw">pub </span>signature: Vec&lt;Felt&gt;,
+    <span class="kw">pub </span>transaction_hash: Felt,
+    <span class="kw">pub </span>chain_id: Felt,
+    <span class="kw">pub </span>nonce: Felt,
 }
 
 <span class="kw">pub struct </span>Secp256k1Point {
@@ -922,62 +921,61 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_number: u64,
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;Felt252&gt;;
+    ) -&gt; SyscallResult&lt;Felt&gt;;
     <span class="kw">fn </span>get_execution_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;ExecutionInfo&gt;;
 
     <span class="kw">fn </span>deploy(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        class_hash: Felt252,
-        contract_address_salt: Felt252,
-        calldata: <span class="kw-2">&amp;</span>[Felt252],
+        class_hash: Felt,
+        contract_address_salt: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
         deploy_from_zero: bool,
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;(Felt252, Vec&lt;Felt252&gt;)&gt;;
-    <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;mut </span><span class="self">self</span>, class_hash: Felt252, remaining_gas: <span class="kw-2">&amp;mut </span>u128)
-        -&gt; SyscallResult&lt;()&gt;;
+    ) -&gt; SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt;;
+    <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;mut </span><span class="self">self</span>, class_hash: Felt, remaining_gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;()&gt;;
 
     <span class="kw">fn </span>library_call(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        class_hash: Felt252,
-        function_selector: Felt252,
-        calldata: <span class="kw-2">&amp;</span>[Felt252],
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;Vec&lt;Felt252&gt;&gt;;
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt;;
 
     <span class="kw">fn </span>call_contract(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        address: Felt252,
-        entry_point_selector: Felt252,
-        calldata: <span class="kw-2">&amp;</span>[Felt252],
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;Vec&lt;Felt252&gt;&gt;;
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt;;
 
     <span class="kw">fn </span>storage_read(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         address_domain: u32,
-        address: Felt252,
+        address: Felt,
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;Felt252&gt;;
+    ) -&gt; SyscallResult&lt;Felt&gt;;
 
     <span class="kw">fn </span>storage_write(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         address_domain: u32,
-        address: Felt252,
-        value: Felt252,
+        address: Felt,
+        value: Felt,
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;()&gt;;
 
     <span class="kw">fn </span>emit_event(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        keys: <span class="kw-2">&amp;</span>[Felt252],
-        data: <span class="kw-2">&amp;</span>[Felt252],
+        keys: <span class="kw-2">&amp;</span>[Felt],
+        data: <span class="kw-2">&amp;</span>[Felt],
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;()&gt;;
 
     <span class="kw">fn </span>send_message_to_l1(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        to_address: Felt252,
-        payload: <span class="kw-2">&amp;</span>[Felt252],
+        to_address: Felt,
+        payload: <span class="kw-2">&amp;</span>[Felt],
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;()&gt;;
 
@@ -1057,29 +1055,29 @@
     // TODO: Make them optional. Crash if called but not implemented.
     </span><span class="kw">fn </span>pop_log(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, contract_address: Felt252);
+    <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, contract_address: Felt);
 
     <span class="kw">fn </span>set_block_number(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_number: u64);
 
     <span class="kw">fn </span>set_block_timestamp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_timestamp: u64);
 
-    <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt);
 
-    <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chain_id: Felt252);
+    <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chain_id: Felt);
 
-    <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt);
 
     <span class="kw">fn </span>set_max_fee(<span class="kw-2">&amp;mut </span><span class="self">self</span>, max_fee: u128);
 
-    <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, nonce: Felt252);
+    <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, nonce: Felt);
 
-    <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt252);
+    <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Felt);
 
-    <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, signature: <span class="kw-2">&amp;</span>[Felt252]);
+    <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, signature: <span class="kw-2">&amp;</span>[Felt]);
 
-    <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, transaction_hash: Felt252);
+    <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, transaction_hash: Felt);
 
-    <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, version: Felt252);
+    <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, version: Felt);
 }
 
 <span class="comment">// TODO: Move to the correct place or remove if unused.
@@ -1282,12 +1280,12 @@
             (NonNull::new(ptr).unwrap(), len, len)
         }
 
-        <span class="kw">fn </span>wrap_error&lt;E&gt;(e: <span class="kw-2">&amp;</span>[Felt252]) -&gt; SyscallResultAbi&lt;E&gt; {
+        <span class="kw">fn </span>wrap_error&lt;E&gt;(e: <span class="kw-2">&amp;</span>[Felt]) -&gt; SyscallResultAbi&lt;E&gt; {
             SyscallResultAbi {
                 err: ManuallyDrop::new(SyscallResultAbiErr {
                     tag: <span class="number">1u8</span>,
                     payload: <span class="kw">unsafe </span>{
-                        <span class="kw">let </span>data: Vec&lt;<span class="kw">_</span>&gt; = e.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                        <span class="kw">let </span>data: Vec&lt;<span class="kw">_</span>&gt; = e.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                         <span class="self">Self</span>::alloc_mlir_array(<span class="kw-2">&amp;</span>data)
                     },
                 }),
@@ -1306,7 +1304,7 @@
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: <span class="number">0u8</span>,
-                        payload: ManuallyDrop::new(Felt252Abi(x.to_le_bytes())),
+                        payload: ManuallyDrop::new(Felt252Abi(x.to_bytes_le())),
                     }),
                 },
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),
@@ -1333,29 +1331,29 @@
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
-                                Felt252Abi(x.block_info.sequencer_address.to_le_bytes());
+                                Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             <span class="kw">let </span><span class="kw-2">mut </span>tx_info_ptr = NonNull::new(
                                 libc::malloc(size_of::&lt;TxInfoAbi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>TxInfoAbi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
-                                Felt252Abi(x.tx_info.version.to_le_bytes());
+                                Felt252Abi(x.tx_info.version.to_bytes_le());
                             tx_info_ptr.as_mut().account_contract_address =
-                                Felt252Abi(x.tx_info.account_contract_address.to_le_bytes());
+                                Felt252Abi(x.tx_info.account_contract_address.to_bytes_le());
                             tx_info_ptr.as_mut().max_fee = x.tx_info.max_fee;
                             tx_info_ptr.as_mut().signature = <span class="self">Self</span>::alloc_mlir_array(
                                 <span class="kw-2">&amp;</span>x.tx_info
                                     .signature
                                     .into_iter()
-                                    .map(|x| Felt252Abi(x.to_le_bytes()))
+                                    .map(|x| Felt252Abi(x.to_bytes_le()))
                                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                             );
                             tx_info_ptr.as_mut().transaction_hash =
-                                Felt252Abi(x.tx_info.transaction_hash.to_le_bytes());
+                                Felt252Abi(x.tx_info.transaction_hash.to_bytes_le());
                             tx_info_ptr.as_mut().chain_id =
-                                Felt252Abi(x.tx_info.chain_id.to_le_bytes());
-                            tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_le_bytes());
+                                Felt252Abi(x.tx_info.chain_id.to_bytes_le());
+                            tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
 
                             <span class="kw">let </span><span class="kw-2">mut </span>execution_info_ptr =
                                 NonNull::new(libc::malloc(size_of::&lt;ExecutionInfoAbi&gt;())
@@ -1364,11 +1362,11 @@
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
                             execution_info_ptr.as_mut().tx_info = tx_info_ptr;
                             execution_info_ptr.as_mut().caller_address =
-                                Felt252Abi(x.caller_address.to_le_bytes());
+                                Felt252Abi(x.caller_address.to_bytes_le());
                             execution_info_ptr.as_mut().contract_address =
-                                Felt252Abi(x.contract_address.to_le_bytes());
+                                Felt252Abi(x.contract_address.to_bytes_le());
                             execution_info_ptr.as_mut().entry_point_selector =
-                                Felt252Abi(x.entry_point_selector.to_le_bytes());
+                                Felt252Abi(x.entry_point_selector.to_bytes_le());
 
                             ManuallyDrop::new(execution_info_ptr)
                         },
@@ -1389,12 +1387,12 @@
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ) {
-            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
             });
-            <span class="kw">let </span>contract_address_salt = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>contract_address_salt = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = contract_address_salt.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1406,7 +1404,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data
@@ -1424,12 +1422,12 @@
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
-                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.<span class="number">1</span>.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.<span class="number">1</span>.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     <span class="kw">let </span>felts_ptr = <span class="kw">unsafe </span>{ <span class="self">Self</span>::alloc_mlir_array(<span class="kw-2">&amp;</span>felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
                             tag: <span class="number">0u8</span>,
-                            payload: ManuallyDrop::new((Felt252Abi(x.<span class="number">0</span>.to_le_bytes()), felts_ptr)),
+                            payload: ManuallyDrop::new((Felt252Abi(x.<span class="number">0</span>.to_bytes_le()), felts_ptr)),
                         }),
                     }
                 }
@@ -1443,7 +1441,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1469,12 +1467,12 @@
             function_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="kw">let </span>class_hash = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>class_hash = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
                 data.reverse();
                 data
             });
-            <span class="kw">let </span>function_selector = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>function_selector = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = function_selector.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1486,7 +1484,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data
@@ -1498,7 +1496,7 @@
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
-                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     <span class="kw">let </span>felts_ptr = <span class="kw">unsafe </span>{ <span class="self">Self</span>::alloc_mlir_array(<span class="kw-2">&amp;</span>felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -1519,12 +1517,12 @@
             entry_point_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
             });
-            <span class="kw">let </span>entry_point_selector = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>entry_point_selector = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = entry_point_selector.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1536,7 +1534,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data
@@ -1548,7 +1546,7 @@
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
-                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.iter().map(|x| Felt252Abi(x.to_le_bytes())).collect();
+                    <span class="kw">let </span>felts: Vec&lt;<span class="kw">_</span>&gt; = x.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
                     <span class="kw">let </span>felts_ptr = <span class="kw">unsafe </span>{ <span class="self">Self</span>::alloc_mlir_array(<span class="kw-2">&amp;</span>felts) };
                     SyscallResultAbi {
                         ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -1568,7 +1566,7 @@
             address_domain: u32,
             address: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1579,7 +1577,7 @@
                 <span class="prelude-val">Ok</span>(res) =&gt; SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: <span class="number">0u8</span>,
-                        payload: ManuallyDrop::new(Felt252Abi(res.to_le_bytes())),
+                        payload: ManuallyDrop::new(Felt252Abi(res.to_bytes_le())),
                     }),
                 },
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),
@@ -1594,12 +1592,12 @@
             address: <span class="kw-2">&amp;</span>Felt252Abi,
             value: <span class="kw-2">&amp;</span>Felt252Abi,
         ) {
-            <span class="kw">let </span>address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
                 data.reverse();
                 data
             });
-            <span class="kw">let </span>value = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>value = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = value.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1630,7 +1628,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data
@@ -1644,7 +1642,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data
@@ -1672,7 +1670,7 @@
             to_address: <span class="kw-2">&amp;</span>Felt252Abi,
             payload: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ) {
-            <span class="kw">let </span>to_address = Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+            <span class="kw">let </span>to_address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = to_address.<span class="number">0</span>;
                 data.reverse();
                 data
@@ -1683,7 +1681,7 @@
             }
             .iter()
             .map(|x| {
-                Felt252::from_bytes_be(<span class="kw-2">&amp;</span>{
+                Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                     <span class="kw">let </span><span class="kw-2">mut </span>data = x.<span class="number">0</span>;
                     data.reverse();
                     data

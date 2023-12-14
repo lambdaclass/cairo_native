@@ -1096,9 +1096,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>ENUM_INIT: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -1165,8 +1165,8 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(-<span class="number">1</span>).into()),
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(<span class="number">5678</span>).into()),
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(-<span class="number">1</span>).into()),
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">5678</span>).into()),
                 <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="number">90u8</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">2</span>, <span class="number">9012u16</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">3</span>, <span class="number">34567890u32</span>.into()),
@@ -1177,7 +1177,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>enum_match() {
-        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">5</span>).into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt::from(<span class="number">5</span>).into()]);
 
         run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_b&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">5u8</span>.into()]);
     }

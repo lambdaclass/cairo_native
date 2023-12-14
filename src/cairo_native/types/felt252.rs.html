@@ -64,6 +64,10 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `felt252` type
 //!
 //! A `felt252` is a 252-bit number within a
@@ -84,7 +88,7 @@
     ir::{r#type::IntegerType, Module, Type},
     Context,
 };
-<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>num_bigint::{BigInt, BigUint};
 
 <span class="macro">lazy_static! </span>{
     <span class="doccomment">/// The `felt252` prime modulo.
@@ -92,10 +96,14 @@
         <span class="string">&quot;3618502788666131213697322783095070105623107215331596699973092056135872020481&quot;
             </span>.parse()
             .unwrap();
+    <span class="kw">pub static </span><span class="kw-2">ref </span>HALF_PRIME: BigInt =
+        <span class="string">&quot;1809251394333065606848661391547535052811553607665798349986546028067936010240&quot;
+            </span>.parse()
+            .unwrap();
 }
 
 <span class="doccomment">/// Marker type for the [PrimeModuloMeta] metadata.
-</span><span class="comment">// TODO: Maybe we should use the JIT value (in `crate::values::felt252`) instead of defining a dummy
+</span><span class="comment">// TODO: Maybe we should use the JIT value (in `crate::values::Felt`) instead of defining a dummy
 //   type?
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Felt252;

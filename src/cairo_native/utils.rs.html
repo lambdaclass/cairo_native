@@ -1158,21 +1158,12 @@
 <a href="#1158" id="1158">1158</a>
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
-<a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
 };
-<span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{GenericLibfunc, GenericType},
@@ -1186,6 +1177,7 @@
     Context, Error, ExecutionEngine,
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{
     alloc::Layout,
     borrow::Cow,
@@ -1341,8 +1333,8 @@
     digits.try_into().unwrap()
 }
 
-<span class="doccomment">/// Converts a u32 slice into a Felt252
-</span><span class="kw">pub fn </span>u32_vec_to_felt(u32_limbs: <span class="kw-2">&amp;</span>[u32]) -&gt; Felt252 {
+<span class="doccomment">/// Converts a u32 slice into a Felt
+</span><span class="kw">pub fn </span>u32_vec_to_felt(u32_limbs: <span class="kw-2">&amp;</span>[u32]) -&gt; Felt {
     <span class="kw">let </span><span class="kw-2">mut </span>ret = <span class="macro">vec!</span>[];
 
     <span class="kw">for </span>limb <span class="kw">in </span>u32_limbs {
@@ -1350,7 +1342,7 @@
         ret.extend_from_slice(<span class="kw-2">&amp;</span>bytes);
     }
 
-    Felt252::from_bytes_le(<span class="kw-2">&amp;</span>ret)
+    Felt::from_bytes_le_slice(<span class="kw-2">&amp;</span>ret)
 }
 
 <span class="doccomment">/// Creates the execution engine, with all symbols registered.
@@ -2061,10 +2053,10 @@
         <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">8</span>);
     }
 
-    <span class="doccomment">/// Ensures that the host&#39;s `felt252` is compatible with its compiled counterpart.
+    <span class="doccomment">/// Ensures that the host&#39;s `Felt` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
     #[ignore]
-    </span><span class="kw">fn </span>test_alignment_compatibility_felt252() {
+    </span><span class="kw">fn </span>test_alignment_compatibility_felt() {
         <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">252</span>).align(), <span class="number">8</span>);
     }
 
@@ -2072,12 +2064,8 @@
     </span><span class="kw">struct </span>TestSyscallHandler;
 
     <span class="kw">impl </span>StarkNetSyscallHandler <span class="kw">for </span>TestSyscallHandler {
-        <span class="kw">fn </span>get_block_hash(
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _block_number: u64,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;cairo_felt::Felt252&gt; {
-            <span class="prelude-val">Ok</span>(Felt252::from_bytes_be(<span class="string">b&quot;get_block_hash ok&quot;</span>))
+        <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;Felt&gt; {
+            <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b&quot;get_block_hash ok&quot;</span>))
         }
 
         <span class="kw">fn </span>get_execution_info(
@@ -2107,60 +2095,56 @@
 
         <span class="kw">fn </span>deploy(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            class_hash: cairo_felt::Felt252,
-            contract_address_salt: cairo_felt::Felt252,
-            calldata: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
+            class_hash: Felt,
+            contract_address_salt: Felt,
+            calldata: <span class="kw-2">&amp;</span>[Felt],
             _deploy_from_zero: bool,
             _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;(cairo_felt::Felt252, Vec&lt;cairo_felt::Felt252&gt;)&gt; {
+        ) -&gt; SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt; {
             <span class="prelude-val">Ok</span>((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + <span class="kw-2">&amp;</span>Felt252::new(<span class="number">1</span>)).collect(),
+                calldata.iter().map(|x| x + Felt::from(<span class="number">1</span>)).collect(),
             ))
         }
 
-        <span class="kw">fn </span>replace_class(
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _class_hash: cairo_felt::Felt252,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _class_hash: Felt, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;()&gt; {
             <span class="prelude-val">Ok</span>(())
         }
 
         <span class="kw">fn </span>library_call(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _class_hash: cairo_felt::Felt252,
-            _function_selector: cairo_felt::Felt252,
-            calldata: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
+            _class_hash: Felt,
+            _function_selector: Felt,
+            calldata: <span class="kw-2">&amp;</span>[Felt],
             _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;Vec&lt;cairo_felt::Felt252&gt;&gt; {
-            <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * <span class="kw-2">&amp;</span>Felt252::new(<span class="number">3</span>)).collect())
+        ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+            <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * Felt::from(<span class="number">3</span>)).collect())
         }
 
         <span class="kw">fn </span>call_contract(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _address: cairo_felt::Felt252,
-            _entry_point_selector: cairo_felt::Felt252,
-            calldata: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
+            _address: Felt,
+            _entry_point_selector: Felt,
+            calldata: <span class="kw-2">&amp;</span>[Felt],
             _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;Vec&lt;cairo_felt::Felt252&gt;&gt; {
-            <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * <span class="kw-2">&amp;</span>Felt252::new(<span class="number">3</span>)).collect())
+        ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+            <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * Felt::from(<span class="number">3</span>)).collect())
         }
 
         <span class="kw">fn </span>storage_read(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             _address_domain: u32,
-            address: cairo_felt::Felt252,
+            address: Felt,
             _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;cairo_felt::Felt252&gt; {
-            <span class="prelude-val">Ok</span>(address * <span class="kw-2">&amp;</span>Felt252::new(<span class="number">3</span>))
+        ) -&gt; SyscallResult&lt;Felt&gt; {
+            <span class="prelude-val">Ok</span>(address * Felt::from(<span class="number">3</span>))
         }
 
         <span class="kw">fn </span>storage_write(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             _address_domain: u32,
-            _address: cairo_felt::Felt252,
-            _value: cairo_felt::Felt252,
+            _address: Felt,
+            _value: Felt,
             _gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;()&gt; {
             <span class="prelude-val">Ok</span>(())
@@ -2168,8 +2152,8 @@
 
         <span class="kw">fn </span>emit_event(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _keys: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
-            _data: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
+            _keys: <span class="kw-2">&amp;</span>[Felt],
+            _data: <span class="kw-2">&amp;</span>[Felt],
             _gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;()&gt; {
             <span class="prelude-val">Ok</span>(())
@@ -2177,8 +2161,8 @@
 
         <span class="kw">fn </span>send_message_to_l1(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _to_address: cairo_felt::Felt252,
-            _payload: <span class="kw-2">&amp;</span>[cairo_felt::Felt252],
+            _to_address: Felt,
+            _payload: <span class="kw-2">&amp;</span>[Felt],
             _gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;()&gt; {
             <span class="prelude-val">Ok</span>(())
@@ -2190,7 +2174,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::U256&gt; {
             <span class="kw-2">*</span>gas -= <span class="number">1000</span>;
-            <span class="prelude-val">Ok</span>(U256(Felt252::from(<span class="number">1234567890</span>).to_le_bytes()))
+            <span class="prelude-val">Ok</span>(U256(Felt::from(<span class="number">1234567890</span>).to_bytes_le()))
         }
 
         <span class="kw">fn </span>secp256k1_add(
@@ -2285,7 +2269,7 @@
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _contract_address: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _contract_address: Felt) {
             <span class="macro">todo!</span>()
         }
 
@@ -2297,15 +2281,15 @@
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _chain_id: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _chain_id: Felt) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
             <span class="macro">todo!</span>()
         }
 
@@ -2313,23 +2297,23 @@
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _nonce: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _nonce: Felt) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _signature: <span class="kw-2">&amp;</span>[cairo_felt::Felt252]) {
+        <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _signature: <span class="kw-2">&amp;</span>[Felt]) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _transaction_hash: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _transaction_hash: Felt) {
             <span class="macro">todo!</span>()
         }
 
-        <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _version: cairo_felt::Felt252) {
+        <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _version: Felt) {
             <span class="macro">todo!</span>()
         }
     }

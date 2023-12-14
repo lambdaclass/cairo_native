@@ -1235,7 +1235,7 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block&lt;<span class="lifetime">&#39;c</span>&gt;,
         dict_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;, <span class="comment">// ptr to the dict
-        </span>key_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,  <span class="comment">// key must be a ptr to felt252
+        </span>key_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,  <span class="comment">// key must be a ptr to Felt
         </span>location: Location&lt;<span class="lifetime">&#39;c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;&gt;
     <span class="kw">where
@@ -1286,7 +1286,7 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block&lt;<span class="lifetime">&#39;c</span>&gt;,
         dict_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,  <span class="comment">// ptr to the dict
-        </span>key_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,   <span class="comment">// key must be a ptr to felt252
+        </span>key_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;,   <span class="comment">// key must be a ptr to Felt
         </span>value_ptr: Value&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;, <span class="comment">// value must be a opaque non null ptr
         </span>location: Location&lt;<span class="lifetime">&#39;c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;&gt;

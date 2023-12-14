@@ -4706,28 +4706,6 @@
 <a href="#4706" id="4706">4706</a>
 <a href="#4707" id="4707">4707</a>
 <a href="#4708" id="4708">4708</a>
-<a href="#4709" id="4709">4709</a>
-<a href="#4710" id="4710">4710</a>
-<a href="#4711" id="4711">4711</a>
-<a href="#4712" id="4712">4712</a>
-<a href="#4713" id="4713">4713</a>
-<a href="#4714" id="4714">4714</a>
-<a href="#4715" id="4715">4715</a>
-<a href="#4716" id="4716">4716</a>
-<a href="#4717" id="4717">4717</a>
-<a href="#4718" id="4718">4718</a>
-<a href="#4719" id="4719">4719</a>
-<a href="#4720" id="4720">4720</a>
-<a href="#4721" id="4721">4721</a>
-<a href="#4722" id="4722">4722</a>
-<a href="#4723" id="4723">4723</a>
-<a href="#4724" id="4724">4724</a>
-<a href="#4725" id="4725">4725</a>
-<a href="#4726" id="4726">4726</a>
-<a href="#4727" id="4727">4727</a>
-<a href="#4728" id="4728">4728</a>
-<a href="#4729" id="4729">4729</a>
-<a href="#4730" id="4730">4730</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -9154,10 +9132,10 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_traits::Num;
+
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>STORAGE_BASE_ADDRESS_FROM_FELT252: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -9210,7 +9188,7 @@
             <span class="kw-2">&amp;</span>CLASS_HASH_CONST,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         )
     }
 
@@ -9219,36 +9197,34 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(-<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[Felt::from(-<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
+            <span class="kw-2">&amp;</span>[Felt::from_dec_str(
                 <span class="string">&quot;3618502788666131106986593281521497120414687020801267626233049500247285300992&quot;</span>,
-                <span class="number">10</span>,
             )
             .unwrap()
             .into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         );
     }
 
@@ -9257,30 +9233,28 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
     }
 
@@ -9289,98 +9263,86 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into(), <span class="number">0u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">0u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into(), <span class="number">0u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">0u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[
-                Felt252::from_str_radix(
-                    <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                    <span class="number">10</span>,
-                )
-                .unwrap()
-                .into(),
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
                 <span class="number">0u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into(), <span class="number">1u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">1u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into(), <span class="number">1u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">2</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">1u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[
-                Felt252::from_str_radix(
-                    <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                    <span class="number">10</span>,
-                )
-                .unwrap()
-                .into(),
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
                 <span class="number">1u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719489&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719489&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into(), <span class="number">255u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">255</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">255u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">255</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into(), <span class="number">255u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">256</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">255u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">256</span>).into()],
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[
-                Felt252::from_str_radix(
-                    <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                    <span class="number">10</span>,
-                )
-                .unwrap()
-                .into(),
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
                 <span class="number">255u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719743&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719743&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
     }
 
@@ -9389,30 +9351,28 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
         );
     }
 
@@ -9421,39 +9381,35 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(<span class="number">0</span>).into())],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">0</span>).into())],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt252::new(<span class="number">1</span>).into())],
+            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">1</span>).into())],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::from_str_radix(
-                <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                <span class="number">10</span>,
-            )
-            .unwrap()
-            .into()],
+            <span class="kw-2">&amp;</span>[
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into(),
+            ],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
-                Felt252::from_str_radix(
-                    <span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>,
-                    <span class="number">10</span>,
-                )
-                .unwrap()
-                .into()
+                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                    .unwrap()
+                    .into()
             )],
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[Felt252::new(-<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::from(-<span class="number">1</span>).into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
     }

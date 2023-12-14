@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build","register_prime_modulo_meta"],"struct":["Felt252","PRIME"]};
+window.SIDEBAR_ITEMS = {"fn":["build","register_prime_modulo_meta"],"struct":["Felt252","HALF_PRIME","PRIME"]};

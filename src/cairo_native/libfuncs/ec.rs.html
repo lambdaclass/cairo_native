@@ -1368,14 +1368,6 @@
 <a href="#1368" id="1368">1368</a>
 <a href="#1369" id="1369">1369</a>
 <a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
 //!
 //! TODO
@@ -2386,10 +2378,10 @@
         utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
         values::JITValue,
     };
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_traits::Num;
+
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>EC_POINT_IS_ZERO: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -2502,7 +2494,7 @@
         );
         <span class="macro">assert_eq!</span>(
             r(<span class="number">0</span>.into(), <span class="number">1</span>.into()),
-            [JITValue::EcPoint(<span class="number">0</span>.into(), Felt252::new(-<span class="number">1</span>))]
+            [JITValue::EcPoint(<span class="number">0</span>.into(), Felt::from(-<span class="number">1</span>))]
         );
         <span class="macro">assert_eq!</span>(
             r(<span class="number">1</span>.into(), <span class="number">0</span>.into()),
@@ -2510,7 +2502,7 @@
         );
         <span class="macro">assert_eq!</span>(
             r(<span class="number">1</span>.into(), <span class="number">1</span>.into()),
-            [JITValue::EcPoint(<span class="number">1</span>.into(), Felt252::new(-<span class="number">1</span>))]
+            [JITValue::EcPoint(<span class="number">1</span>.into(), Felt::from(-<span class="number">1</span>))]
         );
     }
 
@@ -2521,8 +2513,8 @@
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into()), [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
         <span class="macro">assert_eq!</span>(r(<span class="number">1234</span>.into()), [<span class="macro">jit_enum!</span>(<span class="number">0</span>, JITValue::EcPoint(
-            Felt252::new(<span class="number">1234</span>),
-            Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+            Felt::from(<span class="number">1234</span>),
+            Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
         ))]);
     }
 
@@ -2530,21 +2522,21 @@
     </span><span class="kw">fn </span>ec_state_add() {
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             ),
             JITValue::EcPoint(
-                Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
             )
         ], <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             )
         ]);
     }
@@ -2553,43 +2545,43 @@
     </span><span class="kw">fn </span>ec_state_add_mul() {
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             ),
-            Felt252::new(<span class="number">1</span>).into(), <span class="comment">// scalar
+            Felt::from(<span class="number">1</span>).into(), <span class="comment">// scalar
             </span>JITValue::EcPoint(
-                Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
             )
         ], <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             )
         ]);
 
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             ),
-            Felt252::new(<span class="number">2</span>).into(), <span class="comment">// scalar
+            Felt::from(<span class="number">2</span>).into(), <span class="comment">// scalar
             </span>JITValue::EcPoint(
-                Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
             )
         ], <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;3016674370847061744386893405108272070153695046160622325692702034987910716850&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;898133181809473419542838028331350248951548889944002871647069130998202992502&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;3016674370847061744386893405108272070153695046160622325692702034987910716850&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;898133181809473419542838028331350248951548889944002871647069130998202992502&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             )
         ]);
     }
@@ -2600,24 +2592,20 @@
             <span class="kw-2">&amp;</span>EC_STATE_FINALIZE,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[JITValue::EcState(
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
             )],
@@ -2625,15 +2613,15 @@
         );
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_FINALIZE, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
             JITValue::EcState(
-                Felt252::from_str_radix(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
             ),
         ], <span class="kw-2">&amp;</span>[
             <span class="macro">jit_enum!</span>(<span class="number">0</span>, JITValue::EcPoint(
-                    Felt252::new(<span class="number">1234</span>),
-                    Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+                    Felt::from(<span class="number">1234</span>),
+                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
                 )
             )
         ]);
@@ -2646,24 +2634,20 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[JITValue::EcState(
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
-                Felt252::from_str_radix(
+                Felt::from_dec_str(
                     <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
-                    <span class="number">10</span>,
                 )
                 .unwrap(),
             )],
@@ -2676,8 +2660,8 @@
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[
-                Felt252::from_str_radix(<span class="string">&quot;0&quot;</span>, <span class="number">10</span>).unwrap().into(),
-                Felt252::from_str_radix(<span class="string">&quot;0&quot;</span>, <span class="number">10</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().into(),
             ],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
@@ -2685,26 +2669,26 @@
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[
-                Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap().into(),
-                Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap().into()
+                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().into()
             ],
             <span class="kw-2">&amp;</span>[
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, JITValue::EcPoint(
-                    Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap(),
-                    Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap()
+                    Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
+                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
                 ))
             ],
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[  Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap().into(),
-                Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap().neg().into()
+            <span class="kw-2">&amp;</span>[  Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().neg().into()
                 ],
             <span class="kw-2">&amp;</span>[
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, JITValue::EcPoint(
-                    Felt252::from_str_radix(<span class="string">&quot;1234&quot;</span>, <span class="number">10</span>).unwrap(),
-                    Felt252::from_str_radix(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>, <span class="number">10</span>).unwrap().neg()
+                    Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
+                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().neg()
                 ))
             ],
         );
@@ -2712,11 +2696,11 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_unwrap() {
-        <span class="kw">fn </span>parse(x: <span class="kw-2">&amp;</span>str) -&gt; Felt252 {
+        <span class="kw">fn </span>parse(x: <span class="kw-2">&amp;</span>str) -&gt; Felt {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(x) = x.strip_prefix(<span class="string">&#39;-&#39;</span>) {
-                Felt252::from_str_radix(x, <span class="number">10</span>).unwrap().neg()
+                Felt::from_dec_str(x).unwrap().neg()
             } <span class="kw">else </span>{
-                Felt252::from_str_radix(x, <span class="number">10</span>).unwrap()
+                Felt::from_dec_str(x).unwrap()
             }
         }
 
@@ -2748,8 +2732,8 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[JITValue::EcPoint(
-                Felt252::from_str_radix(<span class="string">&quot;0&quot;</span>, <span class="number">10</span>).unwrap(),
-                Felt252::from_str_radix(<span class="string">&quot;0&quot;</span>, <span class="number">10</span>).unwrap().neg(),
+                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().neg(),
             )],
         );
     }

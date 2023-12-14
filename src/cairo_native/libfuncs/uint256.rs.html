@@ -1567,11 +1567,11 @@
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
         values::JITValue,
     };
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
     <span class="kw">use </span>num_bigint::{BigUint, ToBigUint};
     <span class="kw">use </span>num_traits::One;
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
     <span class="kw">use </span>std::ops::Shl;
 
     <span class="macro">lazy_static! </span>{
@@ -1655,10 +1655,10 @@
             )
         }
 
-        <span class="kw">let </span>u256_is_zero = Felt252::from_bytes_be(<span class="string">b&quot;u256 is 0&quot;</span>);
+        <span class="kw">let </span>u256_is_zero = Felt::from_bytes_be_slice(<span class="string">b&quot;u256 is 0&quot;</span>);
         <span class="kw">let </span>max_value = <span class="number">0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128</span>;
 
-        run((<span class="number">0</span>, <span class="number">0</span>), (<span class="number">0</span>, <span class="number">0</span>), <span class="macro">jit_panic!</span>(u256_is_zero.clone()));
+        run((<span class="number">0</span>, <span class="number">0</span>), (<span class="number">0</span>, <span class="number">0</span>), <span class="macro">jit_panic!</span>(u256_is_zero));
         run(
             (<span class="number">0</span>, <span class="number">0</span>),
             (<span class="number">0</span>, <span class="number">1</span>),
@@ -1682,7 +1682,7 @@
             ),
         );
 
-        run((<span class="number">0</span>, <span class="number">1</span>), (<span class="number">0</span>, <span class="number">0</span>), <span class="macro">jit_panic!</span>(u256_is_zero.clone()));
+        run((<span class="number">0</span>, <span class="number">1</span>), (<span class="number">0</span>, <span class="number">0</span>), <span class="macro">jit_panic!</span>(u256_is_zero));
         run(
             (<span class="number">0</span>, <span class="number">1</span>),
             (<span class="number">0</span>, <span class="number">1</span>),

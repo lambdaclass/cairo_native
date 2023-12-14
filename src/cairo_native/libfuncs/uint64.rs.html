@@ -1809,10 +1809,10 @@
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
         values::JITValue,
     };
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
     <span class="kw">use </span>num_bigint::ToBigUint;
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
         <span class="kw">static </span><span class="kw-2">ref </span>U64_OVERFLOWING_ADD: (String, Program) = <span class="macro">load_cairo! </span>{
@@ -1899,7 +1899,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt252::new(<span class="number">2</span>).into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into()]);
     }
 
     <span class="attr">#[test]
@@ -1931,7 +1931,7 @@
         <span class="attr">#[track_caller]
         </span><span class="kw">fn </span>run(lhs: u64, rhs: u64) {
             <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_OVERFLOWING_ADD;
-            <span class="kw">let </span>error = Felt252::from_bytes_be(<span class="string">b&quot;u64_add Overflow&quot;</span>);
+            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;u64_add Overflow&quot;</span>);
 
             <span class="kw">let </span>add = lhs.checked_add(rhs);
 
@@ -1983,7 +1983,7 @@
         <span class="attr">#[track_caller]
         </span><span class="kw">fn </span>run(lhs: u64, rhs: u64) {
             <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U64_OVERFLOWING_SUB;
-            <span class="kw">let </span>error = Felt252::from_bytes_be(<span class="string">b&quot;u64_sub Overflow&quot;</span>);
+            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;u64_sub Overflow&quot;</span>);
 
             <span class="kw">let </span>add = lhs.checked_sub(rhs);
 
