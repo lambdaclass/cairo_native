@@ -21,7 +21,15 @@ fn is_zero_i32(val: i32) -> bool {
     }
 }
 
+fn is_zero_i64(val: i64) -> bool {
+    match integer::i32_is_zero(val) {
+        IsZeroResult::Zero => true,
+        IsZeroResult::NonZero(_) => false,
+    }
+}
+
 fn main() -> (
+    bool, bool, bool,
     bool, bool, bool,
     bool, bool, bool,
     bool, bool, bool,
@@ -38,5 +46,9 @@ fn main() -> (
         is_zero_i32(17),
         is_zero_i32(-17),
         is_zero_i32(0),
+
+        is_zero_i64(17),
+        is_zero_i64(-17),
+        is_zero_i64(0),
     )
 }

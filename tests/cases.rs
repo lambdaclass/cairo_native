@@ -58,6 +58,10 @@ mod common;
 #[test_case("tests/cases/sint/i32_diff.cairo")]
 #[test_case("tests/cases/sint/i32_add_sub.cairo")]
 #[test_case("tests/cases/sint/i32_wide_mul.cairo")]
+// sint64
+#[test_case("tests/cases/sint/i64_diff.cairo")]
+#[test_case("tests/cases/sint/i64_add_sub.cairo")]
+#[test_case("tests/cases/sint/i64_wide_mul.cairo")]
 // structs
 #[test_case("tests/cases/structs/basic.cairo")]
 #[test_case("tests/cases/structs/bigger.cairo")]
