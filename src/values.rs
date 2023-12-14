@@ -5,7 +5,6 @@
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 use bumpalo::Bump;
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
+use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -32,7 +32,7 @@ use crate::{
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
-    Felt252(Felt252),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -47,7 +47,7 @@ pub enum JITValue {
         debug_name: Option<String>,
     },
     Felt252Dict {
-        value: HashMap<Felt252, Self>,
+        value: HashMap<Felt, Self>,
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
@@ -59,14 +59,14 @@ pub enum JITValue {
     Sint8(i8),
     Sint16(i16),
     Sint32(i32),
-    EcPoint(Felt252, Felt252),
-    EcState(Felt252, Felt252, Felt252, Felt252),
+    EcPoint(Felt, Felt),
+    EcState(Felt, Felt, Felt, Felt),
 }
 
 // Conversions
 
-impl From<Felt252> for JITValue {
-    fn from(value: Felt252) -> Self {
+impl From<Felt> for JITValue {
+    fn from(value: Felt) -> Self {
         JITValue::Felt252(value)
     }
 }
@@ -162,7 +162,7 @@ impl JITValue {
                 JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint());
+                    let data = felt252_bigint(felt_to_bigint(*value));
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -332,7 +332,7 @@ impl JITValue {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
-                            let key = key.to_le_bytes();
+                            let key = key.to_bytes_le();
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
@@ -425,8 +425,8 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
                     let data = [a, b];
 
                     ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
@@ -438,10 +438,10 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
-                    let c = felt252_bigint(c.to_bigint());
-                    let d = felt252_bigint(d.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
+                    let c = felt252_bigint(felt_to_bigint(*c));
+                    let d = felt252_bigint(felt_to_bigint(*d));
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
@@ -605,7 +605,7 @@ impl JITValue {
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le(key.as_slice());
+                        let key = Felt::from_bytes_le_slice(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                         // we need to free all the elements, which are allocated by libc realloc.
                         libc::free(val_ptr.as_ptr());
@@ -662,7 +662,7 @@ impl JITValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(Felt252::from(value))
+        Self::Felt252(biguint_to_felt(&value))
     }
 }
 

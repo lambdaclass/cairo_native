@@ -1,4 +1,4 @@
-//! # `felt252` dictionary entry libfuncs
+//! # `Felt` dictionary entry libfuncs
 //!
 //! TODO
 

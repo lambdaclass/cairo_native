@@ -1,4 +1,4 @@
-//! # `felt252` dictionary entry type
+//! # `Felt` dictionary entry type
 //!
 //! The entry type returning when getting a value from a dictionary.
 //!
