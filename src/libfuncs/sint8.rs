@@ -142,50 +142,59 @@ where
         false,
     );
 
-    let op = entry.append_operation(
-        OperationBuilder::new(op_name, location)
-            .add_operands(&[lhs, rhs])
-            .add_results(&[result_type])
-            .build()?,
-    );
-    let result = op.result(0)?.into();
+    let result = entry
+        .append_operation(
+            OperationBuilder::new(op_name, location)
+                .add_operands(&[lhs, rhs])
+                .add_results(&[result_type])
+                .build()?,
+        )
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        values_type,
-        location,
-    ));
-
-    let op_result = op.result(0)?.into();
+    let op_result = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            values_type,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     // Create a const operation to get the 0 value to compare against
-    let zero_op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(0.into(), values_type).into(),
-        location,
-    ));
-    let zero_const = zero_op.result(0)?.into();
+    let zero_const = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0.into(), values_type).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
     // Check if the result is positive
-    let is_positive_op = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        op_result,
-        zero_const,
-        location,
-    ));
-    let is_positive = is_positive_op.result(0)?.into();
+    let is_positive = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Sge,
+            op_result,
+            zero_const,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     // Check overflow flag
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        result,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        IntegerType::new(context, 1).into(),
-        location,
-    ));
-    let op_overflow = op.result(0)?.into();
+    let op_overflow = entry
+        .append_operation(llvm::extract_value(
+            context,
+            result,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 1).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let block_not_overflow = helper.append_block(Block::new(&[]));
     let block_overflow = helper.append_block(Block::new(&[]));
@@ -274,14 +283,16 @@ where
     ));
     let const_0 = op.result(0)?.into();
 
-    let op = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ));
-    let condition = op.result(0)?.into();
+    let condition = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            arg0,
+            const_0,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
@@ -314,14 +325,19 @@ where
     let lhs: Value = entry.argument(0)?.into();
     let rhs: Value = entry.argument(1)?.into();
 
-    let op = entry.append_operation(arith::extsi(lhs, target_type, location));
-    let lhs = op.result(0)?.into();
+    let lhs = entry
+        .append_operation(arith::extsi(lhs, target_type, location))
+        .result(0)?
+        .into();
+    let rhs = entry
+        .append_operation(arith::extsi(rhs, target_type, location))
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(arith::extsi(rhs, target_type, location));
-    let rhs = op.result(0)?.into();
-
-    let op = entry.append_operation(arith::muli(lhs, rhs, location));
-    let result = op.result(0)?.into();
+    let result = entry
+        .append_operation(arith::muli(lhs, rhs, location))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
@@ -352,9 +368,10 @@ where
     )?;
     let value: Value = entry.argument(0)?.into();
 
-    let op = entry.append_operation(arith::extui(value, felt252_ty, location));
-
-    let result = op.result(0)?.into();
+    let result = entry
+        .append_operation(arith::extui(value, felt252_ty, location))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.br(0, &[result], location));
 
@@ -395,21 +412,25 @@ where
         &info.branch_signatures()[0].vars[1].ty,
     )?;
 
-    let op = entry.append_operation(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{} : {}", i8::MAX, felt252_ty)).unwrap(),
-        location,
-    ));
-    let const_max = op.result(0)?.into();
+    let const_max = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{} : {}", i8::MAX, felt252_ty)).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        value,
-        const_max,
-        location,
-    ));
-    let is_ule = op.result(0)?.into();
+    let is_ule = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ule,
+            value,
+            const_max,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let block_success = helper.append_block(Block::new(&[]));
     let block_failure = helper.append_block(Block::new(&[]));
@@ -424,8 +445,10 @@ where
         location,
     ));
 
-    let op = block_success.append_operation(arith::trunci(value, result_ty, location));
-    let value = op.result(0)?.into();
+    let value = block_success
+        .append_operation(arith::trunci(value, result_ty, location))
+        .result(0)?
+        .into();
     block_success.append_operation(helper.br(0, &[range_check, value], location));
 
     block_failure.append_operation(helper.br(1, &[range_check], location));
@@ -453,13 +476,15 @@ where
     let rhs: Value = entry.argument(2)?.into();
 
     // Check if lhs >= rhs
-    let is_ge_op =
-        entry.append_operation(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location));
+    let is_ge = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))
+        .result(0)?
+        .into();
 
-    let is_ge = is_ge_op.result(0)?.into();
-
-    let diff_op = entry.append_operation(arith::subi(lhs, rhs, location));
-    let result = diff_op.result(0)?.into();
+    let result = entry
+        .append_operation(arith::subi(lhs, rhs, location))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.cond_br(
         context,
