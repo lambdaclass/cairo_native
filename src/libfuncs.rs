@@ -57,6 +57,7 @@ pub mod uint64;
 pub mod uint8;
 pub mod unconditional_jump;
 pub mod unwrap_non_zero;
+pub mod sint128;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -215,7 +216,9 @@ where
             CoreConcreteLibfunc::Sint64(info) => {
                 self::sint64::build(context, registry, entry, location, helper, metadata, info)
             }
-            CoreConcreteLibfunc::Sint128(_) => todo!(),
+            CoreConcreteLibfunc::Sint128(info) => {
+                self::sint128::build(context, registry, entry, location, helper, metadata, info)
+            },
             CoreConcreteLibfunc::Bytes31(_) => todo!(),
         }
     }
