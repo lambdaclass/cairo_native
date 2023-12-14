@@ -21,6 +21,7 @@ pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
         .collect::<Vec<_>>()
 }
 
+#[allow(unused)] // its used but clippy doesn't detect it well
 pub fn create_vm_runner(program: &Program) -> SierraCasmRunner {
     SierraCasmRunner::new(
         program.clone(),
