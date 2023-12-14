@@ -1,4 +1,3 @@
-use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -6,7 +5,7 @@ use cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
 use cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
 use clap::Parser;
 use itertools::Itertools;
-use num_traits::Num;
+use starknet_types_core::felt::Felt;
 use std::{
     borrow::Cow,
     convert::Infallible,
@@ -60,9 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let params = params_input
         .split_whitespace()
         .map(|x| {
-            JITValue::Felt252(
-                Felt252::from_str_radix(x, 10).expect("input parameter is not a valid felt252"),
-            )
+            JITValue::Felt252(Felt::from_dec_str(x).expect("input parameter is not a valid Felt"))
         })
         .collect_vec();
 
