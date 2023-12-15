@@ -1,4 +1,4 @@
-//! # `felt252` dictionary type
+//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!

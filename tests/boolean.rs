@@ -1,5 +1,5 @@
 use crate::common::{load_cairo, run_native_program, run_vm_program};
-use cairo_felt::Felt252;
+use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JITValue;
@@ -113,7 +113,7 @@ lazy_static! {
 
 // Since comparing a felt to 1 to create boolean (uses felt252_is_zero and felt sub,add) has a bug,
 // we'll be using use u8 on other tests until this is fixed. The bug may be in felt subtraction.
-#[ignore = "TODO: comparing a felt252 == 1 will lead to wrong results"]
+#[ignore = "TODO: comparing a Felt == 1 will lead to wrong results"]
 #[test]
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;
@@ -121,7 +121,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt252::new(a))],
+        &[Arg::Value(DeprecatedFelt::from(a))],
         Some(GAS),
     )
     .unwrap();
@@ -139,7 +139,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt252::new(a))],
+        &[Arg::Value(DeprecatedFelt::from(a))],
         Some(GAS),
     )
     .unwrap();
@@ -159,7 +159,7 @@ proptest! {
     fn bool_to_felt252_proptest(a: bool) {
         let program = &BOOL_TO_FELT252;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
+            Arg::Value(DeprecatedFelt::from(a)),
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
 
@@ -176,7 +176,7 @@ proptest! {
     fn bool_not_proptest(a: bool) {
         let program = &BOOL_NOT;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
+            Arg::Value(DeprecatedFelt::from(a)),
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into())]);
 
@@ -193,8 +193,8 @@ proptest! {
     fn bool_and_proptest(a: bool, b: bool) {
         let program = &BOOL_AND;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
-            Arg::Value(Felt252::new(b))
+            Arg::Value(DeprecatedFelt::from(a)),
+            Arg::Value(DeprecatedFelt::from(b))
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
 
@@ -211,8 +211,8 @@ proptest! {
     fn bool_or_proptest(a: bool, b: bool) {
         let program = &BOOL_OR;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
-            Arg::Value(Felt252::new(b))
+            Arg::Value(DeprecatedFelt::from(a)),
+            Arg::Value(DeprecatedFelt::from(b))
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
 
@@ -229,8 +229,8 @@ proptest! {
     fn bool_xor_proptest(a: bool, b: bool) {
         let program = &BOOL_XOR;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(Felt252::new(a)),
-            Arg::Value(Felt252::new(b))
+            Arg::Value(DeprecatedFelt::from(a)),
+            Arg::Value(DeprecatedFelt::from(b))
         ], Some(GAS)).unwrap();
         let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(a.into()), JITValue::Felt252(b.into())]);
 
