@@ -49,7 +49,9 @@ where
             build_withdraw_gas(context, registry, entry, location, helper, metadata, info)
         }
         GasConcreteLibfunc::RedepositGas(_) => todo!(),
-        GasConcreteLibfunc::GetAvailableGas(_) => todo!(),
+        GasConcreteLibfunc::GetAvailableGas(info) => {
+            build_get_available_gas(context, registry, entry, location, helper, metadata, info)
+        }
         GasConcreteLibfunc::BuiltinWithdrawGas(info) => {
             build_builtin_withdraw_gas(context, registry, entry, location, helper, metadata, info)
         }
@@ -57,6 +59,30 @@ where
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+/// Generate MLIR operations for the `get_builtin_costs` libfunc.
+pub fn build_get_available_gas<'ctx, 'this, TType, TLibfunc>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    entry.append_operation(helper.br(
+        0,
+        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
+        location,
+    ));
+    Ok(())
 }
 
 /// Generate MLIR operations for the `withdraw_gas` libfunc.

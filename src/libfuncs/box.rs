@@ -1,4 +1,6 @@
 //! # Box libfuncs
+//!
+//! A heap allocated value, its internally a pointer that can't be null.
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -161,6 +163,22 @@ mod test {
                 let x: u32 = 2_u32;
                 let box_x: Box<u32> = BoxTrait::new(x);
                 box_x.unbox()
+            }
+        );
+
+        run_program_assert_output(&program, "run_test", &[], &[JITValue::Uint32(2)]);
+    }
+
+    #[test]
+    fn run_box() {
+        let program = load_cairo!(
+            use box::BoxTrait;
+            use box::BoxImpl;
+
+            fn run_test() -> Box<u32>  {
+                let x: u32 = 2_u32;
+                let box_x: Box<u32> = BoxTrait::new(x);
+                box_x
             }
         );
 

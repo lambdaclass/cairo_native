@@ -226,9 +226,39 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Sint32(_) => todo!(),
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint32(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint32(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint32".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint64(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint64(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint64".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint128(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint128(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint128".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
             CoreTypeConcrete::NonZero(info) => {
                 let next = params_it
                     .next()

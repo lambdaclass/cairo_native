@@ -55,7 +55,6 @@ fn ec_point_zero() {
     .unwrap();
 }
 
-#[ignore = "TODO: possible bug in ec_point_from_x_nz"]
 #[test]
 fn ec_point_from_x_big() {
     let x = DeprecatedFelt::new(
@@ -82,7 +81,6 @@ fn ec_point_from_x_big() {
     .unwrap();
 }
 
-#[ignore = "TODO: Still have to implement NonZero type comparisons"]
 #[test]
 fn ec_point_from_x_small() {
     let x = DeprecatedFelt::new(BigUint::from_str("1234").unwrap());
@@ -125,7 +123,6 @@ proptest! {
         )?;
     }
 
-    #[ignore = "TODO: possible bug in ec_point_from_x_nz"]
     #[test]
     fn ec_point_from_x_proptest(a in any_felt()) {
         let program = &EC_POINT_FROM_X;
