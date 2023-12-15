@@ -3,7 +3,7 @@ use crate::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::syscall_handler::SyscallHandlerMeta,
     module::NativeModule,
-    utils::create_engine,
+    utils::{create_engine, generate_function_name},
     values::JitValue,
 };
 use cairo_lang_sierra::{
@@ -12,6 +12,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::ExecutionEngine;
+use mlir_sys::{mlirExecutionEngineLookup, MlirExecutionEngine, MlirStringRef};
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct JitNativeExecutor<'m> {
@@ -30,41 +31,55 @@ impl<'m> JitNativeExecutor<'m> {
         }
     }
 
-    pub fn get_program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+    pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         self.native_module.program_registry()
     }
 
-    pub fn get_module(&self) -> &NativeModule<'m> {
+    pub fn module(&self) -> &NativeModule<'m> {
         &self.native_module
     }
 
-    pub fn get_module_mut(&mut self) -> &mut NativeModule<'m> {
+    pub fn module_mut(&mut self) -> &mut NativeModule<'m> {
         &mut self.native_module
     }
 
     /// Execute a program with the given params.
     ///
     /// See [`cairo_native::jit_runner::execute`]
-    pub fn execute(
+    pub fn invoke_dynamic(
         &self,
-        fn_id: &FunctionId,
-        params: &[JitValue],
+        function_id: &FunctionId,
+        args: &[JitValue],
         gas: Option<u128>,
     ) -> Result<ExecutionResult, RunnerError> {
-        let registry = self.get_program_registry();
-        let syscall_handler = self.get_module().get_metadata::<SyscallHandlerMeta>();
-        let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
+        let function_name = generate_function_name(function_id);
+        let function_name = format!("_mlir_ciface_{function_name}");
 
-        todo!()
-        // execute(
-        //     &self.engine,
-        //     registry,
-        //     fn_id,
-        //     params,
-        //     required_initial_gas,
-        //     gas,
-        //     syscall_handler,
-        // )
+        // Arguments and return values are hardcoded since they'll be handled by the trampoline.
+        let function_ptr = unsafe {
+            // FIXME: Code a PR to extract the raw pointer from `ExecutionEngine`s.
+            mlirExecutionEngineLookup(
+                *std::mem::transmute::<&ExecutionEngine, &MlirExecutionEngine>(&self.engine),
+                MlirStringRef {
+                    data: function_name.as_ptr() as *const i8,
+                    length: function_name.len(),
+                },
+            )
+        };
+
+        let function_signature = &self
+            .program_registry()
+            .get_function(function_id)
+            .unwrap()
+            .signature;
+
+        Ok(super::invoke_dynamic(
+            self.program_registry(),
+            function_ptr,
+            function_signature,
+            args,
+            gas,
+        ))
     }
 
     /// Execute a contract with the given calldata.
@@ -72,13 +87,13 @@ impl<'m> JitNativeExecutor<'m> {
     /// See [`cairo_native::jit_runner::execute_contract`]
     pub fn execute_contract(
         &self,
-        fn_id: &FunctionId,
-        calldata: &[JitValue],
-        gas: u128,
+        _fn_id: &FunctionId,
+        _calldata: &[JitValue],
+        _gas: u128,
     ) -> Result<ContractExecutionResult, RunnerError> {
-        let registry = self.get_program_registry();
-        let syscall_handler = self
-            .get_module()
+        let _registry = self.program_registry();
+        let _syscall_handler = self
+            .module()
             .get_metadata::<SyscallHandlerMeta>()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
 

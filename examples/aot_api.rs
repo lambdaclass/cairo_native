@@ -1,4 +1,7 @@
-#![cfg(target_arch = "aarch64")]
+#![cfg_attr(
+    not(target_arch = "aarch64"),
+    allow(unused_imports, unused_mut, unused_variables, unreachable_code)
+)]
 
 use cairo_felt::Felt252;
 use cairo_lang_sierra::{
@@ -511,6 +514,7 @@ unsafe fn call_invoke0_return1_felt252(
     let mut l1: u64;
     let mut l2: u64;
     let mut l3: u64;
+    #[cfg(target_arch = "aarch64")]
     asm!(
         "blr {invoked_fn}",
         invoked_fn = in(reg) invoked_fn.into_raw().into_raw(),
@@ -519,6 +523,8 @@ unsafe fn call_invoke0_return1_felt252(
         out("x2") l2,
         out("x3") l3,
     );
+    #[cfg(not(target_arch = "aarch64"))]
+    todo!();
 
     let bytes: [u8; 32] = std::mem::transmute([l0, l1, l2, l3]);
     dbg!(Felt252::from_bytes_le(&bytes));
@@ -558,11 +564,14 @@ unsafe fn call_invoke0_return1_tuple8_u64(
         .unwrap();
 
     let mut l = [0u64; 8];
+    #[cfg(target_arch = "aarch64")]
     asm!(
         "blr {invoked_fn}",
         invoked_fn = in(reg) invoked_fn.into_raw().into_raw(),
         in("x0") std::ptr::addr_of_mut!(l),
     );
+    #[cfg(not(target_arch = "aarch64"))]
+    todo!();
 
     dbg!(l);
 }
@@ -585,11 +594,14 @@ unsafe fn call_invoke0_return1_tuple10_u64(
         .unwrap();
 
     let mut l = [0u64; 10];
+    #[cfg(target_arch = "aarch64")]
     asm!(
         "blr {invoked_fn}",
         in("x0") std::ptr::addr_of_mut!(l),
         invoked_fn = in(reg) invoked_fn.into_raw().into_raw(),
     );
+    #[cfg(not(target_arch = "aarch64"))]
+    todo!();
 
     dbg!(l);
 }

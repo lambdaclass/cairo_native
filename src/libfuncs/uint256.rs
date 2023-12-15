@@ -733,25 +733,25 @@ mod test {
             &U256_IS_ZERO,
             "run_test",
             &[u256(0u32.into())],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             &U256_IS_ZERO,
             "run_test",
             &[u256(1u32.into())],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             &U256_IS_ZERO,
             "run_test",
             &[u256(BigUint::one() << 128u32)],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             &U256_IS_ZERO,
             "run_test",
             &[u256((BigUint::one() << 128u32) + 1u32)],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -766,7 +766,7 @@ mod test {
                     jit_struct!(lhs.1.into(), lhs.0.into()),
                     jit_struct!(rhs.1.into(), rhs.0.into()),
                 ],
-                &[result],
+                result,
             )
         }
 
@@ -854,7 +854,7 @@ mod test {
                 &U256_SQRT,
                 "run_test",
                 &[jit_struct!(value.1.into(), value.0.into())],
-                &[result],
+                result,
             )
         }
 

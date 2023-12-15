@@ -459,7 +459,7 @@ mod test {
                 &UINT512_DIVMOD_U256,
                 "run_test",
                 &[lhs, rhs],
-                &[jit_struct!(output_u512, output_u256)],
+                jit_struct!(output_u512, output_u256),
             );
         }
 

@@ -632,10 +632,9 @@ pub(crate) use codegen_ret_extr;
 pub mod test {
     use crate::{
         execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
         metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
+            runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         module::NativeModule,
@@ -657,7 +656,7 @@ pub mod test {
         dialect::DialectRegistry,
         ir::{Location, Module},
         utility::{register_all_dialects, register_all_passes},
-        Context, ExecutionEngine,
+        Context,
     };
     use pretty_assertions_sorted::assert_eq;
     use std::{env::var, fs, path::Path};
@@ -770,26 +769,13 @@ pub mod test {
         register_all_passes();
 
         let mut module = Module::new(Location::unknown(&context));
-
         let mut metadata = MetadataStorage::new();
 
-        // Make the runtime library available.
+        // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-        // Gas
-        let required_initial_gas = if program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-        {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-            metadata.insert(gas_metadata).unwrap();
-            required_initial_gas
-        } else {
-            None
-        };
+        metadata
+            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
+            .unwrap();
 
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
@@ -810,33 +796,11 @@ pub mod test {
         run_pass_manager(&context, &mut module)
             .expect("Could not apply passes to the compiled test program.");
 
-        let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-        #[cfg(feature = "with-runtime")]
-        register_runtime_symbols(&engine);
-
-        #[cfg(feature = "with-debug-utils")]
-        metadata
-            .get::<crate::metadata::debug_utils::DebugUtils>()
-            .unwrap()
-            .register_impls(&engine);
-
-        metadata
-            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
-            .unwrap();
-
         let native_module = NativeModule::new(module, registry, metadata);
-        let executor = crate::executor::JitNativeExecutor::new(native_module);
-        executor.execute(
-            &program
-                .funcs
-                .iter()
-                .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-                .expect("Test program entry point not found.")
-                .id,
-            args,
-            Some(u128::MAX.into()),
-        )
+        let executor = JitNativeExecutor::new(native_module);
+        executor
+            .invoke_dynamic(entry_point_id, args, Some(u128::MAX))
+            .unwrap()
     }
 
     #[track_caller]
@@ -844,10 +808,10 @@ pub mod test {
         program: &(String, Program),
         entry_point: &str,
         args: &[JitValue],
-        outputs: &[JitValue],
+        output: JitValue,
     ) {
         let result = run_program(program, entry_point, args);
-        assert_eq!(result.return_values.as_slice(), outputs);
+        assert_eq!(result.return_value, output);
     }
 
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.

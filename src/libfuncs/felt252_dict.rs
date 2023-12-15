@@ -130,7 +130,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[jit_struct!()]);
+        run_program_assert_output(&program, "run_test", &[], jit_struct!());
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[1u32.into()]);
+        run_program_assert_output(&program, "run_test", &[], 1u32.into());
     }
 
     #[test]
@@ -169,13 +169,13 @@ mod test {
             &program,
             "run_test",
             &[],
-            &[jit_dict!(
+            jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
                 3 => 4u32,
                 4 => 5u32,
                 5 => 6u32,
-            )],
+            ),
         );
     }
 
@@ -200,13 +200,13 @@ mod test {
                 4 => 5u32,
                 5 => 6u32,
             )],
-            &[jit_dict!(
+            jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
                 3 => 4u32,
                 4 => 5u32,
                 5 => 6u32,
-            )],
+            ),
         );
     }
 }

@@ -4476,12 +4476,7 @@ mod test {
 
     #[test]
     fn class_hash_const() {
-        run_program_assert_output(
-            &CLASS_HASH_CONST,
-            "run_program",
-            &[],
-            &[Felt::from(0).into()],
-        )
+        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], Felt::from(0).into())
     }
 
     #[test]
@@ -4490,23 +4485,21 @@ mod test {
             &STORAGE_BASE_ADDRESS_FROM_FELT252,
             "run_program",
             &[Felt::from(0).into()],
-            &[Felt::from(0).into()],
+            Felt::from(0).into(),
         );
         run_program_assert_output(
             &STORAGE_BASE_ADDRESS_FROM_FELT252,
             "run_program",
             &[Felt::from(1).into()],
-            &[Felt::from(1).into()],
+            Felt::from(1).into(),
         );
         run_program_assert_output(
             &STORAGE_BASE_ADDRESS_FROM_FELT252,
             "run_program",
             &[Felt::from(-1).into()],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
+                .unwrap()
+                .into(),
         );
         run_program_assert_output(
             &STORAGE_BASE_ADDRESS_FROM_FELT252,
@@ -4516,7 +4509,7 @@ mod test {
             )
             .unwrap()
             .into()],
-            &[Felt::from(0).into()],
+            Felt::from(0).into(),
         );
     }
 
@@ -4526,13 +4519,13 @@ mod test {
             &STORAGE_ADDRESS_FROM_BASE,
             "run_program",
             &[Felt::from(0).into()],
-            &[Felt::from(0).into()],
+            Felt::from(0).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE,
             "run_program",
             &[Felt::from(1).into()],
-            &[Felt::from(1).into()],
+            Felt::from(1).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE,
@@ -4542,11 +4535,9 @@ mod test {
                     .unwrap()
                     .into(),
             ],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
+                .unwrap()
+                .into(),
         );
     }
 
@@ -4556,13 +4547,13 @@ mod test {
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(0).into(), 0u8.into()],
-            &[Felt::from(0).into()],
+            Felt::from(0).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(1).into(), 0u8.into()],
-            &[Felt::from(1).into()],
+            Felt::from(1).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
@@ -4573,24 +4564,22 @@ mod test {
                     .into(),
                 0u8.into(),
             ],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
+                .unwrap()
+                .into(),
         );
 
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(0).into(), 1u8.into()],
-            &[Felt::from(1).into()],
+            Felt::from(1).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(1).into(), 1u8.into()],
-            &[Felt::from(2).into()],
+            Felt::from(2).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
@@ -4601,24 +4590,22 @@ mod test {
                     .into(),
                 1u8.into(),
             ],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719489")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719489")
+                .unwrap()
+                .into(),
         );
 
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(0).into(), 255u8.into()],
-            &[Felt::from(255).into()],
+            Felt::from(255).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             "run_program",
             &[Felt::from(1).into(), 255u8.into()],
-            &[Felt::from(256).into()],
+            Felt::from(256).into(),
         );
 
         run_program_assert_output(
@@ -4630,11 +4617,9 @@ mod test {
                     .into(),
                 255u8.into(),
             ],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719743")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719743")
+                .unwrap()
+                .into(),
         );
     }
 
@@ -4644,13 +4629,13 @@ mod test {
             &STORAGE_ADDRESS_TO_FELT252,
             "run_program",
             &[Felt::from(0).into()],
-            &[Felt::from(0).into()],
+            Felt::from(0).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_TO_FELT252,
             "run_program",
             &[Felt::from(1).into()],
-            &[Felt::from(1).into()],
+            Felt::from(1).into(),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_TO_FELT252,
@@ -4660,11 +4645,9 @@ mod test {
                     .unwrap()
                     .into(),
             ],
-            &[
-                Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
+                .unwrap()
+                .into(),
         );
     }
 
@@ -4674,13 +4657,13 @@ mod test {
             &STORAGE_ADDRESS_TRY_FROM_FELT252,
             "run_program",
             &[Felt::from(0).into()],
-            &[jit_enum!(0, Felt::from(0).into())],
+            jit_enum!(0, Felt::from(0).into()),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_TRY_FROM_FELT252,
             "run_program",
             &[Felt::from(1).into()],
-            &[jit_enum!(0, Felt::from(1).into())],
+            jit_enum!(0, Felt::from(1).into()),
         );
         run_program_assert_output(
             &STORAGE_ADDRESS_TRY_FROM_FELT252,
@@ -4690,19 +4673,19 @@ mod test {
                     .unwrap()
                     .into(),
             ],
-            &[jit_enum!(
+            jit_enum!(
                 0,
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
                     .unwrap()
                     .into()
-            )],
+            ),
         );
 
         run_program_assert_output(
             &STORAGE_ADDRESS_TRY_FROM_FELT252,
             "run_program",
             &[Felt::from(-1).into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
     }
 }

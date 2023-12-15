@@ -38,6 +38,7 @@ fn main() {
             // Call::calldata
             JitValue::Felt252(0.into()),
         ])],
+        None,
     );
 
     // executor.invoke_dynamic(find_function_id(&program, "aot_api::aot_api::invoke0"), &[]);

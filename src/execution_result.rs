@@ -8,7 +8,7 @@ use starknet_types_core::felt::Felt;
 #[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
-    pub return_values: Vec<JitValue>,
+    pub return_value: JitValue,
 }
 
 /// Starknet contract execution result.
@@ -26,13 +26,7 @@ impl ContractExecutionResult {
         let mut error_msg = None;
         let failure_flag;
 
-        assert_eq!(
-            result.return_values.len(),
-            1,
-            "return values length doesnt match 1, which shouldn't happen with starknet contracts"
-        );
-
-        let return_values = match &result.return_values[0] {
+        let return_values = match &result.return_value {
             JitValue::Enum { tag, value, .. } => {
                 failure_flag = *tag != 0;
 

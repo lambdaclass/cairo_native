@@ -164,6 +164,6 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[JitValue::Uint32(2)]);
+        run_program_assert_output(&program, "run_test", &[], JitValue::Uint32(2));
     }
 }

@@ -916,25 +916,25 @@ mod test {
             &U128_BYTE_REVERSE,
             "run_test",
             &[0x00000000_00000000_00000000_00000000u128.into()],
-            &[0x00000000_00000000_00000000_00000000u128.into()],
+            0x00000000_00000000_00000000_00000000u128.into(),
         );
         run_program_assert_output(
             &U128_BYTE_REVERSE,
             "run_test",
             &[0x00000000_00000000_00000000_00000001u128.into()],
-            &[0x01000000_00000000_00000000_00000000u128.into()],
+            0x01000000_00000000_00000000_00000000u128.into(),
         );
         run_program_assert_output(
             &U128_BYTE_REVERSE,
             "run_test",
             &[0x12345678_90ABCDEF_12345678_90ABCDEFu128.into()],
-            &[0xEFCDAB90_78563412_EFCDAB90_78563412u128.into()],
+            0xEFCDAB90_78563412_EFCDAB90_78563412u128.into(),
         );
     }
 
     #[test]
     fn u128_const() {
-        run_program_assert_output(&U128_CONST, "run_test", &[], &[1234567890_u128.into()]);
+        run_program_assert_output(&U128_CONST, "run_test", &[], 1234567890_u128.into());
     }
 
     #[test]
@@ -947,75 +947,57 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            &[jit_panic!(error.clone())],
+            jit_panic!(error.clone()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(0u128.into(), 0u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(0u128.into(), 0u128.into()))),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), max_value.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(0u128.into(), 0u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(0u128.into(), 0u128.into()))),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            &[jit_panic!(error.clone())],
+            jit_panic!(error.clone()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(1u128.into(), 0u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(1u128.into(), 0u128.into()))),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), max_value.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(0u128.into(), 1u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(0u128.into(), 1u128.into()))),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[max_value.into(), 0u128.into()],
-            &[jit_panic!(error)],
+            jit_panic!(error),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[max_value.into(), 1u128.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(u128::MAX.into(), 0u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(u128::MAX.into(), 0u128.into()))),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[max_value.into(), max_value.into()],
-            &[jit_enum!(
-                0,
-                jit_struct!(jit_struct!(1u128.into(), 0u128.into()))
-            )],
+            jit_enum!(0, jit_struct!(jit_struct!(1u128.into(), 0u128.into()))),
         );
     }
 
@@ -1027,25 +1009,25 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
     }
 
@@ -1055,21 +1037,21 @@ mod test {
             &U128_FROM_FELT252,
             "run_test",
             &[Felt::from(0).into()],
-            &[jit_enum!(0, 0u128.into())],
+            jit_enum!(0, 0u128.into()),
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
             &[Felt::from(1).into()],
-            &[jit_enum!(0, 1u128.into())],
+            jit_enum!(0, 1u128.into()),
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
             &[Felt::from(u128::MAX).into()],
-            &[jit_enum!(0, u128::MAX.into())],
+            jit_enum!(0, u128::MAX.into()),
         );
 
         run_program_assert_output(
@@ -1080,7 +1062,7 @@ mod test {
                     .unwrap()
                     .into(),
             ],
-            &[jit_enum!(1, jit_struct!(1u128.into(), 0u128.into()))],
+            jit_enum!(1, jit_struct!(1u128.into(), 0u128.into())),
         );
     }
 
@@ -1090,13 +1072,13 @@ mod test {
             &U128_IS_ZERO,
             "run_test",
             &[0u128.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             &U128_IS_ZERO,
             "run_test",
             &[1u128.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -1115,7 +1097,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -1123,7 +1105,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JitValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -1167,7 +1149,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -1175,7 +1157,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JitValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -1208,23 +1190,13 @@ mod test {
     fn u128_to_felt252() {
         let program = &U128_TO_FELT252;
 
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0u128.into()],
-            &[Felt::from(0).into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1u128.into()],
-            &[Felt::from(1).into()],
-        );
+        run_program_assert_output(program, "run_test", &[0u128.into()], Felt::from(0).into());
+        run_program_assert_output(program, "run_test", &[1u128.into()], Felt::from(1).into());
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into()],
-            &[Felt::from(u128::MAX).into()],
+            Felt::from(u128::MAX).into(),
         );
     }
 
@@ -1232,14 +1204,14 @@ mod test {
     fn u128_sqrt() {
         let program = &U128_SQRT;
 
-        run_program_assert_output(program, "run_test", &[0u128.into()], &[0u64.into()]);
-        run_program_assert_output(program, "run_test", &[u128::MAX.into()], &[u64::MAX.into()]);
+        run_program_assert_output(program, "run_test", &[0u128.into()], 0u64.into());
+        run_program_assert_output(program, "run_test", &[u128::MAX.into()], u64::MAX.into());
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
             let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
 
-            run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
+            run_program_assert_output(program, "run_test", &[x.into()], y.into());
         }
     }
 
@@ -1251,31 +1223,31 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            &[jit_struct!(0u128.into(), 0u128.into())],
+            jit_struct!(0u128.into(), 0u128.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            &[jit_struct!(0u128.into(), 0u128.into())],
+            jit_struct!(0u128.into(), 0u128.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            &[jit_struct!(0u128.into(), 0u128.into())],
+            jit_struct!(0u128.into(), 0u128.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            &[jit_struct!(0u128.into(), 1u128.into())],
+            jit_struct!(0u128.into(), 1u128.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into(), u128::MAX.into()],
-            &[jit_struct!((u128::MAX - 1).into(), 1u128.into())],
+            jit_struct!((u128::MAX - 1).into(), 1u128.into()),
         );
     }
 }

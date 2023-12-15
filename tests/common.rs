@@ -20,19 +20,16 @@ use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
-    execution_result::ContractExecutionResult,
+    execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        syscall_handler::SyscallHandlerMeta,
-        MetadataStorage,
+        runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
+    module::NativeModule,
     starknet::StarkNetSyscallHandler,
     types::felt252::{HALF_PRIME, PRIME},
-    utils::{find_entry_point_by_idx, register_runtime_symbols, run_pass_manager},
+    utils::{find_entry_point_by_idx, run_pass_manager},
     values::JitValue,
-    ExecutionResult,
 };
 use lambdaworks_math::{
     field::{
@@ -44,14 +41,20 @@ use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
     utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
+    Context,
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::{felt_to_biguint, Felt};
 use std::{
-    env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
+    env::var,
+    fs,
+    iter::{once, Peekable},
+    ops::Neg,
+    path::Path,
+    str::FromStr,
+    sync::Arc,
 };
 
 #[allow(unused_macros)]
@@ -206,24 +209,11 @@ pub fn run_native_program(
     register_all_passes();
 
     let mut module = Module::new(Location::unknown(&context));
-
     let mut metadata = MetadataStorage::new();
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-    // Gas
-    let required_initial_gas = if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
 
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    };
+    // Make the runtime library and syscall handler available.
+    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -243,31 +233,37 @@ pub fn run_native_program(
     run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
-    let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-    #[cfg(feature = "with-debug-utils")]
-    metadata
-        .get::<cairo_native::metadata::debug_utils::DebugUtils>()
+    let native_module = NativeModule::new(module, registry, metadata);
+    let executor = JitNativeExecutor::new(native_module);
+    executor
+        .invoke_dynamic(entry_point_id, args, Some(u128::MAX))
         .unwrap()
-        .register_impls(&engine);
 
-    cairo_native::execute(
-        &engine,
-        &registry,
-        &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-            .expect("Test program entry point not found.")
-            .id,
-        args,
-        required_initial_gas,
-        Some(u64::MAX.into()),
-        None,
-    )
-    .expect("Test program execution failed.")
+    // let engine = ExecutionEngine::new(&module, 0, &[], false);
+
+    // #[cfg(feature = "with-runtime")]
+    // register_runtime_symbols(&engine);
+    // #[cfg(feature = "with-debug-utils")]
+    // metadata
+    //     .get::<cairo_native::metadata::debug_utils::DebugUtils>()
+    //     .unwrap()
+    //     .register_impls(&engine);
+
+    // cairo_native::execute(
+    //     &engine,
+    //     &registry,
+    //     &program
+    //         .funcs
+    //         .iter()
+    //         .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
+    //         .expect("Test program entry point not found.")
+    //         .id,
+    //     args,
+    //     required_initial_gas,
+    //     Some(u64::MAX.into()),
+    //     None,
+    // )
+    // .expect("Test program execution failed.")
 }
 
 /// Runs the program on the cairo-vm
@@ -354,7 +350,7 @@ pub fn compare_outputs(
         .expect("entry point should exist");
 
     let ret_types = &func.signature.ret_types;
-    let mut native_rets = native_result.return_values.iter().peekable();
+    let mut native_rets = once(&native_result.return_value).peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
     let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u128 = vm_result
@@ -366,12 +362,15 @@ pub fn compare_outputs(
     prop_assert_eq!(vm_gas, native_gas, "gas mismatch");
 
     #[track_caller]
-    fn check_next_type<'a>(
+    fn check_next_type<'a, I>(
         ty: &CoreTypeConcrete,
         native_rets: &mut impl Iterator<Item = &'a JitValue>,
-        vm_rets: &mut Peekable<Iter<'_, String>>,
+        vm_rets: &mut Peekable<I>,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> Result<(), TestCaseError> {
+    ) -> Result<(), TestCaseError>
+    where
+        I: Iterator<Item = &'a String>,
+    {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {

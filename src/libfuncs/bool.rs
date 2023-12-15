@@ -360,13 +360,11 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -384,32 +382,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -427,32 +425,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -470,32 +468,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -506,12 +504,10 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
-        assert_eq!(result, [JitValue::Felt252(1.into())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+        assert_eq!(result, JitValue::Felt252(1.into()));
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
-        assert_eq!(result, [JitValue::Felt252(0.into())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+        assert_eq!(result, JitValue::Felt252(0.into()));
     }
 }

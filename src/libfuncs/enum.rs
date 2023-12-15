@@ -536,21 +536,20 @@ mod test {
             &ENUM_INIT,
             "run_test",
             &[],
-            &[jit_struct!(
+            jit_struct!(
                 jit_enum!(0, Felt::from(-1).into()),
                 jit_enum!(0, Felt::from(5678).into()),
                 jit_enum!(1, 90u8.into()),
                 jit_enum!(2, 9012u16.into()),
                 jit_enum!(3, 34567890u32.into()),
                 jit_enum!(4, 1234567890123456u64.into()),
-            )],
+            ),
         );
     }
 
     #[test]
     fn enum_match() {
-        run_program_assert_output(&ENUM_MATCH, "match_a", &[], &[Felt::from(5).into()]);
-
-        run_program_assert_output(&ENUM_MATCH, "match_b", &[], &[5u8.into()]);
+        run_program_assert_output(&ENUM_MATCH, "match_a", &[], Felt::from(5).into());
+        run_program_assert_output(&ENUM_MATCH, "match_b", &[], 5u8.into());
     }
 }

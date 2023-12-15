@@ -1196,9 +1196,9 @@ mod test {
                 x
             }
         );
-        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_values;
+        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_value;
 
-        assert_eq!(result, &[JitValue::from([1u32, 2u32])]);
+        assert_eq!(result, JitValue::from([1u32, 2u32]));
     }
 
     #[test]
@@ -1212,9 +1212,9 @@ mod test {
                 numbers
             }
         };
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [[4u32].into()]);
+        assert_eq!(result, [4u32].into());
     }
 
     #[test]
@@ -1230,9 +1230,9 @@ mod test {
                 numbers.len()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [3u32.into()]);
+        assert_eq!(result, 3u32.into());
     }
 
     #[test]
@@ -1254,11 +1254,11 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
             result,
-            [jit_enum!(
+            jit_enum!(
                 0,
                 jit_struct!(jit_struct!(
                     4u32.into(),
@@ -1266,7 +1266,7 @@ mod test {
                     2u32.into(),
                     1u32.into()
                 ))
-            )]
+            )
         );
     }
 
@@ -1309,11 +1309,11 @@ mod test {
                 )
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
             result,
-            [jit_enum!(
+            jit_enum!(
                 0,
                 jit_struct!(jit_struct!(
                     20u32.into(),
@@ -1321,7 +1321,7 @@ mod test {
                     22u32.into(),
                     23u32.into()
                 ))
-            )]
+            )
         );
     }
 
@@ -1339,9 +1339,9 @@ mod test {
                 *numbers.at(0)
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
+        assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
     }
 
     #[test]
@@ -1356,9 +1356,9 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [jit_enum!(0, 4u32.into())]);
+        assert_eq!(result, jit_enum!(0, 4u32.into()));
 
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -1368,9 +1368,9 @@ mod test {
                 numbers.pop_front()
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
     }
 
     #[test]
@@ -1388,9 +1388,9 @@ mod test {
                 }
             }
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [4u32.into()]);
+        assert_eq!(result, 4u32.into());
     }
 
     #[test]
@@ -1420,9 +1420,9 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, [jit_enum!(0, jit_struct!(3u32.into()))]);
+        assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
     }
 
     #[test]
@@ -1447,13 +1447,13 @@ mod test {
             }
 
         );
-        let result = run_program(&program, "run_test", &[]).return_values;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
             result,
-            [jit_panic!(JitValue::felt_str(
+            jit_panic!(JitValue::felt_str(
                 "1637570914057682275393755530660268060279989363"
-            ))]
+            ))
         );
     }
 }
