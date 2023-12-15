@@ -196,11 +196,11 @@ fn invoke_dynamic(
         CoreTypeConcrete::Nullable(_) => todo!(),
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
+            let (_, tag_layout, variant_layouts) =
+                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+
             let (tag, ptr) = if type_info.is_memory_allocated(registry) {
                 let ptr = return_ptr.unwrap().1;
-                let (_, tag_layout, variant_layouts) =
-                    crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                        .unwrap();
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -222,9 +222,20 @@ fn invoke_dynamic(
                     .cast()
                 })
             } else {
+                // TODO: Shouldn't the pointer be always `None` within this block?
                 match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
                     0 => (0, return_ptr.map(|x| x.1).unwrap_or_else(NonNull::dangling)),
-                    _ => todo!(),
+                    _ => (
+                        match tag_layout.size() {
+                            0 => 0,
+                            1 => ret_registers[0] as u8 as usize,
+                            2 => ret_registers[0] as u16 as usize,
+                            4 => ret_registers[0] as u32 as usize,
+                            8 => ret_registers[0] as usize,
+                            _ => unreachable!(),
+                        },
+                        return_ptr.map(|x| x.1).unwrap_or_else(NonNull::dangling),
+                    ),
                 }
             };
             let value = Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry));
