@@ -752,6 +752,31 @@
 <a href="#752" id="752">752</a>
 <a href="#753" id="753">753</a>
 <a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -783,6 +808,8 @@
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+///
+/// A Boxed value or a non-null Nullable value is returned with it&#39;s inner value.
 </span><span class="attr">#[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 </span><span class="kw">pub enum </span>JITValue {
@@ -817,6 +844,8 @@
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    <span class="doccomment">/// Used as return value for Nullables that are null.
+    </span>Null,
 }
 
 <span class="comment">// Conversions
@@ -1228,6 +1257,9 @@
 
                     ptr
                 }
+                JITValue::Null =&gt; {
+                    <span class="macro">unimplemented!</span>(<span class="string">&quot;null is meant as return value for nullable for now&quot;</span>)
+                }
             }
         })
     }
@@ -1275,7 +1307,12 @@
 
                     <span class="self">Self</span>::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) =&gt; JITValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
+                CoreTypeConcrete::Box(info) =&gt; {
+                    <span class="kw">let </span>inner = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ptr();
+                    <span class="kw">let </span>value = JITValue::from_jit(inner, <span class="kw-2">&amp;</span>info.ty, registry);
+                    libc::free(inner.as_ptr().cast());
+                    value
+                }
                 CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
                     <span class="kw">let </span>data = ptr.cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">2</span>]&gt;().as_ref();
 
@@ -1308,7 +1345,20 @@
                 CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; JITValue::Sint64(<span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_ref()),
                 CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; JITValue::Sint128(<span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_ref()),
                 CoreTypeConcrete::NonZero(info) =&gt; JITValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
-                CoreTypeConcrete::Nullable(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Nullable(info) =&gt; {
+                    <span class="kw">let </span>inner_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ptr();
+                    <span class="kw">if </span>inner_ptr.is_null() {
+                        JITValue::Null
+                    } <span class="kw">else </span>{
+                        <span class="kw">let </span>value = JITValue::from_jit(
+                            NonNull::new_unchecked(inner_ptr).cast(),
+                            <span class="kw-2">&amp;</span>info.ty,
+                            registry,
+                        );
+                        libc::free(inner_ptr.cast());
+                        value
+                    }
+                }
                 CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::Enum(info) =&gt; {
                     <span class="kw">let </span>tag_layout = <span class="kw">crate</span>::utils::get_integer_layout(<span class="kw">match </span>info.variants.len() {
@@ -1462,7 +1512,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Box(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Box(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
