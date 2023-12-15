@@ -172,9 +172,6 @@ where
 
 #[cfg(test)]
 mod test {
-    use num_traits::Zero;
-    use starknet_types_core::felt::Felt;
-
     use crate::{
         utils::test::{jit_struct, load_cairo, run_program_assert_output},
         values::JITValue,
