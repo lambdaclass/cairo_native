@@ -6,9 +6,12 @@ aot_trampoline:
     # rdi <- fn_ptr: extern "C" fn()
     # rsi <- args_ptr: *const u64
     # rdx <- args_len: usize
+    # rcx <- ret_ptr: &mut [u64; 2]
 
     push    rbp                     # Push rbp (callee-saved).
+    push    rcx                     # Push rcx (ret_ptr).
     mov     rbp,    rsp             # Store the current stack pointer.
+    sub     rsp,    8               # Align the stack.
 
     mov     r10,    rdi             # We'll need rdi.
     mov     r11,    rsi             # We'll need rsi.
@@ -59,8 +62,11 @@ aot_trampoline:
     call    r10
 
     mov     rsp,    rbp
+    pop     rcx
     pop     rbp
 
-    # TODO: Store return registers (after finding which ones are returned).
+    # Store return registers.
+    mov     [rcx],      rax
+    mov     [rcx + 8],  rdx
 
     ret

@@ -5,7 +5,7 @@ use crate::{
 use starknet_types_core::felt::Felt;
 
 /// The result of the JIT execution.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
     pub return_value: JitValue,

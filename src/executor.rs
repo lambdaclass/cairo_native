@@ -1,18 +1,12 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
-use crate::{
-    execution_result::ExecutionResult,
-    types::TypeBuilder,
-    values::{JitValue, ValueBuilder},
-};
+use crate::{execution_result::ExecutionResult, types::TypeBuilder, values::JitValue};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-    ids::ConcreteTypeId,
     program::FunctionSignature,
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
-use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
@@ -36,7 +30,7 @@ extern "C" {
         fn_ptr: *const c_void,
         args_ptr: *const u64,
         args_len: usize,
-        ret_ptr: &mut [u64; 4],
+        ret_ptr: *mut u64,
     );
 }
 
@@ -62,7 +56,7 @@ fn invoke_dynamic(
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
-    mut gas: Option<u128>,
+    gas: Option<u128>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
@@ -70,156 +64,298 @@ fn invoke_dynamic(
     let mut invoke_data = Vec::new();
 
     // Generate return pointer (if necessary).
-    let return_ptr = if function_signature.ret_types.len() > 1
-        || function_signature
-            .ret_types
-            .last()
-            .is_some_and(|id| registry.get_type(id).unwrap().is_complex())
+    //
+    // Generated when either:
+    //   - There are more than one non-zst return values.
+    //     - All builtins except GasBuiltin and Starknet are ZST.
+    //     - The unit struct is a ZST.
+    //   - The return argument is complex.
+    let mut ret_types_iter = function_signature
+        .ret_types
+        .iter()
+        .filter(|id| {
+            let info = registry.get_type(id).unwrap();
+            !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
+        })
+        .peekable();
+
+    let num_return_args = ret_types_iter.clone().count();
+    let return_ptr = if num_return_args > 1
+        || ret_types_iter
+            .peek()
+            .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
     {
-        let layout = function_signature
-            .ret_types
-            .iter()
-            .fold(Layout::new::<()>(), |layout, id| {
-                let type_info = registry.get_type(id).unwrap();
-                layout
-                    .extend(type_info.layout(registry).unwrap())
-                    .unwrap()
-                    .0
-            });
+        let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
+            let type_info = registry.get_type(id).unwrap();
+            layout
+                .extend(type_info.layout(registry).unwrap())
+                .unwrap()
+                .0
+        });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
         invoke_data.push(return_ptr.as_ptr() as u64);
 
         Some((layout, return_ptr))
     } else {
-        invoke_data.push(0);
+        // invoke_data.push(0);
         None
     };
 
     // Generate argument list.
-    let mut values_iter = args.iter().peekable();
-    for type_id in &function_signature.param_types {
-        let value = values_iter.peek().unwrap();
-        if map_arg_to_values(&arena, &mut invoke_data, registry, type_id, value, gas).unwrap() {
-            values_iter.next().unwrap();
+    for (type_id, value) in function_signature
+        .param_types
+        .iter()
+        .filter(|id| {
+            let info = registry.get_type(id).unwrap();
+            !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
+        })
+        .zip(args)
+    {
+        let type_info = registry.get_type(type_id).unwrap();
+
+        // Process gas requirements and syscall handler.
+        match type_info {
+            CoreTypeConcrete::GasBuiltin(_) => match gas {
+                Some(gas) => {
+                    invoke_data.push(gas as u64);
+                    invoke_data.push((gas >> 64) as u64);
+                }
+                None => panic!("Gas is required"),
+            },
+            CoreTypeConcrete::StarkNet(_) => todo!("syscall handler"),
+            _ => {}
         }
+
+        map_arg_to_values(&arena, &mut invoke_data, registry, type_info, value).unwrap();
     }
 
     // Invoke the trampoline.
+    #[cfg(target_arch = "x86_64")]
+    let mut ret_registers = [0; 2];
+    #[cfg(target_arch = "aarch64")]
     let mut ret_registers = [0; 4];
+
     unsafe {
         aot_trampoline(
             function_ptr,
             invoke_data.as_ptr(),
             invoke_data.len(),
-            &mut ret_registers,
+            ret_registers.as_mut_ptr(),
         );
     }
 
+    // Parse final gas.
+
     // Parse return values.
-    let type_info = registry
-        .get_type(function_signature.ret_types.last().unwrap())
-        .unwrap();
+    let type_id = function_signature.ret_types.last().unwrap();
+    let type_info = registry.get_type(type_id).unwrap();
     let return_value = match type_info {
-        CoreTypeConcrete::Array(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                return_ptr,
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => unreachable!("Array<T> is complex"),
-        },
-        CoreTypeConcrete::EcPoint(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => unreachable!("EcPoint is complex"),
-        },
-        CoreTypeConcrete::EcState(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => unreachable!("EcState is complex"),
-        },
-        CoreTypeConcrete::Enum(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => unreachable!("Enum<...> is complex"),
-        },
-        CoreTypeConcrete::Felt252(_) => match return_ptr {
-            Some(_) => todo!(),
-            None => JitValue::Felt252(Felt::from_bytes_le(unsafe {
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap().1, type_id, registry),
+        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => todo!(),
+        CoreTypeConcrete::EcState(_) => todo!(),
+        CoreTypeConcrete::Felt252(_) => {
+            #[cfg(target_arch = "x86_64")]
+            let value = JitValue::from_jit(return_ptr.unwrap().1, type_id, registry);
+
+            #[cfg(target_arch = "aarch64")]
+            let value = JitValue::Felt252(Felt::from_bytes_le(unsafe {
                 std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-            })),
-        },
+            }));
+
+            value
+        }
+        CoreTypeConcrete::Uint8(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint8(ret_registers[0] as u8)
+        }
+        CoreTypeConcrete::Uint16(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint16(ret_registers[0] as u16)
+        }
+        CoreTypeConcrete::Uint32(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint32(ret_registers[0] as u32)
+        }
+        CoreTypeConcrete::Uint64(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint64(ret_registers[0])
+        }
+        CoreTypeConcrete::Uint128(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+        }
+        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => todo!(),
+        CoreTypeConcrete::Sint16(_) => todo!(),
+        CoreTypeConcrete::Sint32(_) => todo!(),
+        CoreTypeConcrete::Sint64(_) => todo!(),
+        CoreTypeConcrete::Sint128(_) => todo!(),
+        CoreTypeConcrete::NonZero(_) => todo!(),
+        CoreTypeConcrete::Nullable(_) => todo!(),
+        CoreTypeConcrete::Uninitialized(_) => todo!(),
+        CoreTypeConcrete::Enum(info) => {
+            let (tag, ptr) = if type_info.is_memory_allocated(registry) {
+                let ptr = return_ptr.unwrap().1;
+                let (_, tag_layout, variant_layouts) =
+                    crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
+                        .unwrap();
+
+                let tag = unsafe {
+                    match tag_layout.size() {
+                        0 => 0,
+                        1 => *ptr.cast::<u8>().as_ref() as usize,
+                        2 => *ptr.cast::<u16>().as_ref() as usize,
+                        4 => *ptr.cast::<u32>().as_ref() as usize,
+                        8 => *ptr.cast::<u64>().as_ref() as usize,
+                        _ => unreachable!(),
+                    }
+                };
+
+                (tag, unsafe {
+                    NonNull::new_unchecked(
+                        ptr.cast::<u8>()
+                            .as_ptr()
+                            .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                    )
+                    .cast()
+                })
+            } else {
+                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                    0 => (0, return_ptr.map(|x| x.1).unwrap_or_else(NonNull::dangling)),
+                    _ => todo!(),
+                }
+            };
+            let value = Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry));
+
+            JitValue::Enum {
+                tag,
+                value,
+                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+            }
+        }
+        CoreTypeConcrete::Struct(info) => {
+            if info.members.is_empty() {
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                }
+            } else {
+                JitValue::from_jit(return_ptr.unwrap().1, type_id, registry)
+            }
+        }
         CoreTypeConcrete::Felt252Dict(_) => todo!(),
-        CoreTypeConcrete::Struct(info) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                return_ptr,
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None if info.members.is_empty() => JitValue::Struct {
-                fields: Vec::new(),
-                debug_name: function_signature
-                    .ret_types
-                    .last()
-                    .unwrap()
-                    .debug_name
-                    .as_deref()
-                    .map(ToString::to_string),
-            },
-            None => unreachable!("Struct<...> is complex"),
-        },
-        CoreTypeConcrete::Uint128(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => JitValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64),
-        },
-        CoreTypeConcrete::Uint64(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => JitValue::Uint64(ret_registers[0]),
-        },
-        CoreTypeConcrete::Uint32(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => JitValue::Uint32(ret_registers[0] as u32),
-        },
-        CoreTypeConcrete::Uint16(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => JitValue::Uint16(ret_registers[0] as u16),
-        },
-        CoreTypeConcrete::Uint8(_) => match return_ptr {
-            Some((_, return_ptr)) => JitValue::from_jit(
-                unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-                function_signature.ret_types.last().unwrap(),
-                registry,
-            ),
-            None => JitValue::Uint8(ret_registers[0] as u8),
-        },
-        _ => todo!("unsupported return type"),
+        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Span(_) => todo!(),
+        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Bytes31(_) => todo!(),
+        _ => unreachable!(),
     };
+    // let return_value = match type_info {
+    //     CoreTypeConcrete::Array(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             return_ptr,
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => unreachable!("Array<T> is complex"),
+    //     },
+    //     CoreTypeConcrete::EcPoint(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => unreachable!("EcPoint is complex"),
+    //     },
+    //     CoreTypeConcrete::EcState(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => unreachable!("EcState is complex"),
+    //     },
+    //     CoreTypeConcrete::Enum(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => unreachable!("Enum<...> is complex"),
+    //     },
+    //     CoreTypeConcrete::Felt252(_) => match return_ptr {
+    //         Some(_) => todo!(),
+    //         None => JitValue::Felt252(Felt::from_bytes_le(unsafe {
+    //             std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+    //         })),
+    //     },
+    //     CoreTypeConcrete::Felt252Dict(_) => todo!(),
+    //     CoreTypeConcrete::Struct(info) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             return_ptr,
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None if info.members.is_empty() => JitValue::Struct {
+    //             fields: Vec::new(),
+    //             debug_name: function_signature
+    //                 .ret_types
+    //                 .last()
+    //                 .unwrap()
+    //                 .debug_name
+    //                 .as_deref()
+    //                 .map(ToString::to_string),
+    //         },
+    //         None => unreachable!("Struct<...> is complex"),
+    //     },
+    //     CoreTypeConcrete::Uint128(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => JitValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64),
+    //     },
+    //     CoreTypeConcrete::Uint64(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => JitValue::Uint64(ret_registers[0]),
+    //     },
+    //     CoreTypeConcrete::Uint32(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => JitValue::Uint32(ret_registers[0] as u32),
+    //     },
+    //     CoreTypeConcrete::Uint16(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => JitValue::Uint16(ret_registers[0] as u16),
+    //     },
+    //     CoreTypeConcrete::Uint8(_) => match return_ptr {
+    //         Some((_, return_ptr)) => JitValue::from_jit(
+    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
+    //             function_signature.ret_types.last().unwrap(),
+    //             registry,
+    //         ),
+    //         None => JitValue::Uint8(ret_registers[0] as u8),
+    //     },
+    //     _ => todo!("unsupported return type"),
+    // };
+
+    // FIXME: Arena deallocation.
+    std::mem::forget(arena);
 
     // TODO: Handle gas.
     ExecutionResult {
@@ -232,21 +368,15 @@ fn map_arg_to_values(
     arena: &Bump,
     invoke_data: &mut Vec<u64>,
     program_registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    type_id: &ConcreteTypeId,
+    type_info: &CoreTypeConcrete,
     value: &JitValue,
-    gas: Option<u128>,
-) -> Result<bool, Box<ProgramRegistryError>> {
-    let type_info = program_registry.get_type(type_id)?;
-
+) -> Result<(), Box<ProgramRegistryError>> {
     // TODO: Find out if builtins push an argument or not. My guess is that they do.
     match (type_info, value) {
         (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
             // TODO: Assert that `info.ty` matches all the values' types.
 
-            let type_info = match program_registry.get_type(type_id)? {
-                CoreTypeConcrete::Array(type_info) => program_registry.get_type(&type_info.ty)?,
-                _ => unreachable!(),
-            };
+            let type_info = program_registry.get_type(&info.ty)?;
             let type_layout = type_info.layout(program_registry).unwrap().pad_to_align();
 
             // This needs to be a heap-allocated pointer because it's the actual array data.
@@ -280,8 +410,48 @@ fn map_arg_to_values(
             invoke_data.extend(c.to_le_digits());
             invoke_data.extend(d.to_le_digits());
         }
-        (CoreTypeConcrete::Enum(_info), JitValue::Enum { .. }) => {
-            todo!()
+        (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
+            if type_info.is_memory_allocated(program_registry) {
+                let (layout, tag_layout, variant_layouts) =
+                    crate::types::r#enum::get_layout_for_variants(program_registry, &info.variants)
+                        .unwrap();
+
+                let ptr = arena.alloc_layout(layout);
+                unsafe {
+                    match tag_layout.size() {
+                        0 => {}
+                        1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
+                        2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
+                        4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
+                        8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
+                        _ => unreachable!(),
+                    }
+                }
+
+                let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
+                let payload_ptr = value
+                    .to_jit(arena, program_registry, &info.variants[*tag])
+                    .unwrap();
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        payload_ptr.cast::<u8>().as_ptr(),
+                        ptr.cast::<u8>().as_ptr().add(offset),
+                        variant_layouts[*tag].size(),
+                    );
+                }
+
+                invoke_data.push(ptr.as_ptr() as u64);
+            } else {
+                // Write the tag.
+                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                    0 => {}
+                    _ => todo!(),
+                }
+
+                // Write the payload.
+                let type_info = program_registry.get_type(&info.variants[*tag]).unwrap();
+                map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+            }
         }
         (CoreTypeConcrete::Felt252(_), JitValue::Felt252(value)) => {
             invoke_data.extend(value.to_le_digits());
@@ -309,9 +479,8 @@ fn map_arg_to_values(
                     arena,
                     invoke_data,
                     program_registry,
-                    field_type_id,
+                    program_registry.get_type(field_type_id)?,
                     field_value,
-                    gas,
                 )?;
             }
         }
@@ -337,12 +506,7 @@ fn map_arg_to_values(
         | (CoreTypeConcrete::Pedersen(_), _)
         | (CoreTypeConcrete::Poseidon(_), _)
         | (CoreTypeConcrete::RangeCheck(_), _)
-        | (CoreTypeConcrete::SegmentArena(_), _) => return Ok(false),
-        (CoreTypeConcrete::GasBuiltin(_), _) => {
-            let value = gas.unwrap();
-            invoke_data.push(value as u64);
-            invoke_data.push((value >> 64) as u64);
-        }
+        | (CoreTypeConcrete::SegmentArena(_), _) => {}
         (sierra_ty, arg_ty) => match sierra_ty {
             CoreTypeConcrete::Array(_) => todo!("Array {arg_ty:?}"),
             CoreTypeConcrete::Bitwise(_) => todo!("Bitwise {arg_ty:?}"),
@@ -383,5 +547,5 @@ fn map_arg_to_values(
         },
     }
 
-    Ok(true)
+    Ok(())
 }

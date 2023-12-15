@@ -17,7 +17,6 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -178,22 +177,10 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     digits.try_into().unwrap()
 }
 
-/// Converts a u32 slice into a Felt
-pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt {
-    let mut ret = vec![];
-
-    for limb in u32_limbs {
-        let bytes = limb.to_le_bytes();
-        ret.extend_from_slice(&bytes);
-    }
-
-    Felt::from_bytes_le_slice(&ret)
-}
-
 /// Creates the execution engine, with all symbols registered.
 pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(module, 3, &[], false);
+    let engine = ExecutionEngine::new(module, 0, &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -659,6 +646,7 @@ pub mod test {
         Context,
     };
     use pretty_assertions_sorted::assert_eq;
+    use starknet_types_core::felt::Felt;
     use std::{env::var, fs, path::Path};
 
     macro_rules! load_cairo {
@@ -722,7 +710,8 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or("/home/dev/cairo_native".to_string()))
+                .join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(

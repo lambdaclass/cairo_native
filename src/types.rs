@@ -82,6 +82,12 @@ where
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error>;
 
+    // fn is_builtin(&self) -> bool;
+    /// Return whether the type requires a return pointer when returning.
+    fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+    /// Return whether the Sierra type resolves to a zero-sized type.
+    fn is_zst(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+
     /// Generate the layout of the MLIR type.
     ///
     /// Used in both the compiler and the interface when calling the compiled code.
@@ -365,6 +371,135 @@ where
         }
     }
 
+    // fn is_builtin(&self) -> bool {
+    //     matches!(
+    //         self,
+    //         CoreTypeConcrete::Bitwise(_)
+    //             | CoreTypeConcrete::EcOp(_)
+    //             | CoreTypeConcrete::GasBuiltin(_)
+    //             | CoreTypeConcrete::BuiltinCosts(_)
+    //             | CoreTypeConcrete::RangeCheck(_)
+    //             | CoreTypeConcrete::Pedersen(_)
+    //             | CoreTypeConcrete::Poseidon(_)
+    //             | CoreTypeConcrete::StarkNet(_)
+    //             | CoreTypeConcrete::SegmentArena(_)
+    //     )
+    // }
+
+    fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+        match self {
+            // Builtins.
+            CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::EcOp(_)
+            | CoreTypeConcrete::GasBuiltin(_) // u128 is not complex
+            | CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::StarkNet(_) // u64 is not complex
+            | CoreTypeConcrete::SegmentArena(_) => false,
+
+            CoreTypeConcrete::Box(_)
+            | CoreTypeConcrete::Uint8(_)
+            | CoreTypeConcrete::Uint16(_)
+            | CoreTypeConcrete::Uint32(_)
+            | CoreTypeConcrete::Uint64(_)
+            | CoreTypeConcrete::Uint128(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::Sint8(_)
+            | CoreTypeConcrete::Sint16(_)
+            | CoreTypeConcrete::Sint32(_)
+            | CoreTypeConcrete::Sint64(_)
+            | CoreTypeConcrete::Sint128(_)
+            | CoreTypeConcrete::Nullable(_)
+            | CoreTypeConcrete::Felt252Dict(_)
+            | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
+
+            CoreTypeConcrete::Array(_) => true,
+            CoreTypeConcrete::EcPoint(_) => true,
+            CoreTypeConcrete::EcState(_) => true,
+            CoreTypeConcrete::Felt252DictEntry(_) => true,
+
+            CoreTypeConcrete::Felt252(_) => {
+                #[cfg(target_arch = "x86_64")]
+                let value = true;
+
+                #[cfg(target_arch = "aarch64")]
+                let value = false;
+
+                value
+            },
+
+            CoreTypeConcrete::NonZero(info)
+            | CoreTypeConcrete::Uninitialized(info)
+            | CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty).unwrap().is_complex(registry),
+
+            CoreTypeConcrete::Enum(_) => !self.is_zst(registry),
+            CoreTypeConcrete::Struct(_) => true,
+
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+        }
+    }
+
+    fn is_zst(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+        match self {
+            CoreTypeConcrete::Bitwise(_)
+            | CoreTypeConcrete::EcOp(_)
+            | CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::Pedersen(_)
+            | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::SegmentArena(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
+
+            CoreTypeConcrete::Array(_)
+            | CoreTypeConcrete::Box(_)
+            | CoreTypeConcrete::Bytes31(_)
+            | CoreTypeConcrete::EcPoint(_)
+            | CoreTypeConcrete::EcState(_)
+            | CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::GasBuiltin(_)
+            | CoreTypeConcrete::Uint8(_)
+            | CoreTypeConcrete::Uint16(_)
+            | CoreTypeConcrete::Uint32(_)
+            | CoreTypeConcrete::Uint64(_)
+            | CoreTypeConcrete::Uint128(_)
+            | CoreTypeConcrete::Sint8(_)
+            | CoreTypeConcrete::Sint16(_)
+            | CoreTypeConcrete::Sint32(_)
+            | CoreTypeConcrete::Sint64(_)
+            | CoreTypeConcrete::Sint128(_)
+            | CoreTypeConcrete::Felt252Dict(_)
+            | CoreTypeConcrete::Felt252DictEntry(_)
+            | CoreTypeConcrete::SquashedFelt252Dict(_)
+            | CoreTypeConcrete::StarkNet(_)
+            | CoreTypeConcrete::Nullable(_) => false,
+
+            CoreTypeConcrete::NonZero(info)
+            | CoreTypeConcrete::Uninitialized(info)
+            | CoreTypeConcrete::Snapshot(info) => {
+                let type_info = registry.get_type(&info.ty).unwrap();
+                type_info.is_zst(registry)
+            }
+
+            CoreTypeConcrete::Enum(info) => {
+                info.variants.is_empty()
+                    || (info.variants.len() == 1
+                        && registry
+                            .get_type(&info.variants[0])
+                            .unwrap()
+                            .is_zst(registry))
+            }
+            CoreTypeConcrete::Struct(info) => info
+                .members
+                .iter()
+                .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
+
+            CoreTypeConcrete::Span(_) => todo!(),
+        }
+    }
+
     fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error> {
         Ok(match self {
             CoreTypeConcrete::Array(_) => {
@@ -480,10 +615,26 @@ where
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(_) => true,
-            CoreTypeConcrete::Struct(info) => info.members.iter().any(|mem| {
+            CoreTypeConcrete::Enum(info) => {
+                // Enums are memory-allocated if either:
+                //   - Has only variant which is memory-allocated.
+                //   - Has more than one variants, at least one of them being non-ZST.
+                match info.variants.len() {
+                    0 => unreachable!(),
+                    1 => registry
+                        .get_type(&info.variants[0])
+                        .unwrap()
+                        .is_memory_allocated(registry),
+                    _ => info
+                        .variants
+                        .iter()
+                        .any(|type_id| !registry.get_type(type_id).unwrap().is_zst(registry)),
+                }
+            }
+            CoreTypeConcrete::Struct(info) => info.members.iter().any(|type_id| {
+                // Structs are memory-allocated if any of its members is memory-allocated.
                 registry
-                    .get_type(mem)
+                    .get_type(type_id)
                     .unwrap()
                     .is_memory_allocated(registry)
             }),

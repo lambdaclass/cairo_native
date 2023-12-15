@@ -1,8 +1,6 @@
 use crate::{
-    execution_result::ExecutionResult,
-    types::TypeBuilder,
-    utils::generate_function_name,
-    values::{JitValue, ValueBuilder},
+    execution_result::ExecutionResult, types::TypeBuilder, utils::generate_function_name,
+    values::JitValue,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,7 +25,7 @@ impl<TType, TLibfunc> AotNativeExecutor<TType, TLibfunc>
 where
     TType: GenericType,
     TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc> + ValueBuilder,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
 {
     pub fn new(library: Library, registry: ProgramRegistry<TType, TLibfunc>) -> Self {
         Self { library, registry }

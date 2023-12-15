@@ -427,9 +427,9 @@ pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
 /// Check out [the module](self) for more info.
 pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<TType, TLibfunc>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>>
 where
@@ -437,7 +437,9 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    let tag_layout = get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
+    let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
+
+    let tag_layout = get_integer_layout(tag_bits);
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
             .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
@@ -452,33 +454,43 @@ where
     });
 
     let i8_ty = IntegerType::new(context, 8).into();
-    Ok(llvm::r#type::r#struct(
-        context,
-        &match layout.align() {
-            1 => [
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::array(i8_ty, (layout.size() - 1) as u32),
-            ],
-            2 => [
-                IntegerType::new(context, 16).into(),
-                llvm::r#type::array(i8_ty, (layout.size() - 2) as u32),
-            ],
-            4 => [
-                IntegerType::new(context, 32).into(),
-                llvm::r#type::array(i8_ty, (layout.size() - 4) as u32),
-            ],
-            8 => [
-                IntegerType::new(context, 64).into(),
-                llvm::r#type::array(i8_ty, (layout.size() - 8) as u32),
-            ],
-            16 => [
-                IntegerType::new(context, 128).into(),
-                llvm::r#type::array(i8_ty, (layout.size() - 16) as u32),
-            ],
-            _ => unreachable!(),
-        },
-        false,
-    ))
+    Ok(if layout.size() == 0 {
+        llvm::r#type::array(i8_ty, 0)
+    } else {
+        match info.variants.len() {
+            0 => unreachable!(),
+            1 => llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, tag_bits).into(),
+                    registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+                ],
+                false,
+            ),
+            _ if info
+                .variants
+                .iter()
+                .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+            {
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, tag_bits).into(),
+                        llvm::r#type::array(i8_ty, 0),
+                    ],
+                    false,
+                )
+            }
+            _ => llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, (8 * layout.align()) as u32).into(),
+                    llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
+                ],
+                false,
+            ),
+        }
+    })
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
