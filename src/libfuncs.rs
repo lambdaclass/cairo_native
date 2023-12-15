@@ -42,6 +42,8 @@ pub mod nullable;
 pub mod pedersen;
 pub mod poseidon;
 pub mod sint16;
+pub mod sint32;
+pub mod sint64;
 pub mod sint8;
 pub mod snapshot_take;
 pub mod stark_net;
@@ -207,8 +209,12 @@ where
             CoreConcreteLibfunc::Sint16(info) => {
                 self::sint16::build(context, registry, entry, location, helper, metadata, info)
             }
-            CoreConcreteLibfunc::Sint32(_) => todo!(),
-            CoreConcreteLibfunc::Sint64(_) => todo!(),
+            CoreConcreteLibfunc::Sint32(info) => {
+                self::sint32::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint64(info) => {
+                self::sint64::build(context, registry, entry, location, helper, metadata, info)
+            }
             CoreConcreteLibfunc::Sint128(_) => todo!(),
             CoreConcreteLibfunc::Bytes31(_) => todo!(),
         }

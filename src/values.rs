@@ -59,6 +59,8 @@ pub enum JITValue {
     Sint8(i8),
     Sint16(i16),
     Sint32(i32),
+    Sint64(i64),
+    Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
 }
@@ -116,6 +118,18 @@ impl From<i16> for JITValue {
 impl From<i32> for JITValue {
     fn from(value: i32) -> Self {
         JITValue::Sint32(value)
+    }
+}
+
+impl From<i64> for JITValue {
+    fn from(value: i64) -> Self {
+        JITValue::Sint64(value)
+    }
+}
+
+impl From<i128> for JITValue {
+    fn from(value: i128) -> Self {
+        JITValue::Sint128(value)
     }
 }
 
@@ -420,6 +434,18 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Sint64(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i64>()).cast();
+                    *ptr.cast::<i64>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint128(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i128>()).cast();
+                    *ptr.cast::<i128>().as_mut() = *value;
+
+                    ptr
+                }
                 JITValue::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
@@ -525,8 +551,8 @@ impl JITValue {
                 CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => JITValue::Sint32(*ptr.cast::<i32>().as_ref()),
-                CoreTypeConcrete::Sint64(_) => todo!(),
-                CoreTypeConcrete::Sint128(_) => todo!(),
+                CoreTypeConcrete::Sint64(_) => JITValue::Sint64(*ptr.cast::<i64>().as_ref()),
+                CoreTypeConcrete::Sint128(_) => JITValue::Sint128(*ptr.cast::<i128>().as_ref()),
                 CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Nullable(_) => todo!(),
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -720,8 +746,8 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint8(_) => false,
             CoreTypeConcrete::Sint16(_) => false,
             CoreTypeConcrete::Sint32(_) => false,
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => false,
+            CoreTypeConcrete::Sint128(_) => false,
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
