@@ -22,7 +22,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith::{self, CmpiPredicate}, cf},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf,
+    },
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value,
         ValueLike,
@@ -197,8 +200,6 @@ where
             result
         }
         Felt252BinaryOperator::Div => {
-            // TODO: Implement `felt252_div` and `felt252_div_const`.
-            //todo!("Implement `felt252_div` and `felt252_div_const`")
             // The extended euclidean algorithm calculates the greatest common divisor of two integers,
             // as well as the bezout coefficients x and y such that for inputs a and b, ax+by=gcd(a,b)
             // We use this in felt division to find the modular inverse of a given number
@@ -208,20 +209,22 @@ where
             // The input MUST be non-zero
             // See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
             let start_block = helper.append_block(Block::new(&[(i512, location)]));
-            let loop_block = helper.append_block(Block::new(&[(i512, location), (i512, location), (i512, location), (i512, location)]));
+            let loop_block = helper.append_block(Block::new(&[
+                (i512, location),
+                (i512, location),
+                (i512, location),
+                (i512, location),
+            ]));
             let negative_check_block = helper.append_block(Block::new(&[]));
-            let negative_block = helper.append_block(Block::new(&[]));
-            let positive_block = helper.append_block(Block::new(&[]));
             // Block containing final result
             let inverse_result_block = helper.append_block(Block::new(&[(i512, location)]));
             // Egcd works by calculating a series of remainders, each the remainder of dividing the previous two
             // For the initial setup, r0 = PRIME, r1 = a
             // This order is chosen because if we reverse them, then the first iteration will just swap them
-            let prev_remainder = start_block.append_operation(arith::constant(
-                context,
-                attr_prime_i512,
-                location,
-            )).result(0)?.into();
+            let prev_remainder = start_block
+                .append_operation(arith::constant(context, attr_prime_i512, location))
+                .result(0)?
+                .into();
             let remainder = start_block.argument(0)?.into();
             // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             let prev_inverse = start_block
@@ -256,20 +259,25 @@ where
             // First calculate q = rem_(i-1)/rem_i, rounded down
             let quotient = loop_block
                 .append_operation(arith::divui(prev_remainder, remainder, location))
-                .result(0)?.into();
+                .result(0)?
+                .into();
             // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
             let rem_times_quo = loop_block
                 .append_operation(arith::muli(remainder, quotient, location))
-                .result(0)?.into();
+                .result(0)?
+                .into();
             let inv_times_quo = loop_block
                 .append_operation(arith::muli(inverse, quotient, location))
-                .result(0)?.into();
+                .result(0)?
+                .into();
             let next_remainder = loop_block
                 .append_operation(arith::subi(prev_remainder, rem_times_quo, location))
-                .result(0)?.into();
+                .result(0)?
+                .into();
             let next_inverse = loop_block
                 .append_operation(arith::subi(prev_inverse, inv_times_quo, location))
-                .result(0)?.into();
+                .result(0)?
+                .into();
 
             // If r_(i+1) is 0, then inv_i is the inverse
             let zero = loop_block
@@ -288,7 +296,8 @@ where
                     zero,
                     location,
                 ))
-                .result(0)?.into();
+                .result(0)?
+                .into();
             loop_block.append_operation(cf::cond_br(
                 context,
                 next_remainder_eq_zero,
@@ -320,35 +329,33 @@ where
                     zero,
                     location,
                 ))
-                .result(0)?.into();
-            negative_check_block.append_operation(cf::cond_br(
-                context,
-                is_negative,
-                negative_block,
-                positive_block,
-                &[],
-                &[],
+                .result(0)?
+                .into();
+            // if the inverse is < 0, add PRIME
+            let prime = negative_check_block
+                .append_operation(arith::constant(context, attr_prime_i512, location))
+                .result(0)?
+                .into();
+            let wrapped_inverse = negative_check_block
+                .append_operation(arith::addi(inverse, prime, location))
+                .result(0)?
+                .into();
+            let inverse = negative_check_block
+                .append_operation(arith::select(
+                    is_negative,
+                    wrapped_inverse,
+                    inverse,
+                    location,
+                ))
+                .result(0)?
+                .into();
+            negative_check_block.append_operation(cf::br(
+                inverse_result_block,
+                &[inverse],
                 location,
             ));
 
-            // if the inverse is >= 0, just return it
-            // TODO: check if its ok
-            //     self.op_return(&positive_block, &[inverse]);
-            positive_block.append_operation(cf::br(inverse_result_block, &[inverse], location));
-
-            // if the inverse is < 0, add PRIME then return it
-            let prime = negative_block.append_operation(arith::constant(
-                context,
-                attr_prime_i512,
-                location,
-            )).result(0)?.into();
-            // TODO: Maybe operations should be signed?
-            let wrapped = negative_block
-                .append_operation(arith::addi(inverse, prime, location))
-                .result(0)?.into();
-            //     self.op_return(&negative_block, &[wrapped]);
-            negative_block.append_operation(cf::br(inverse_result_block, &[wrapped], location));
-            // Logic start
+            // Div Logic Start
             // Fetch operands
             let lhs = entry
                 .append_operation(arith::extui(lhs, i512, location))
@@ -363,14 +370,16 @@ where
             // Fetch the result from the result block
             let inverse = inverse_result_block.argument(0)?.into();
             // Peform lhs * (1/ rhs)
-            let result = inverse_result_block.append_operation(arith::muli(lhs, inverse, location)).result(0)?.into();
-            // TODO: we should do modulo prime here
+            let result = inverse_result_block
+                .append_operation(arith::muli(lhs, inverse, location))
+                .result(0)?
+                .into();
             let result = inverse_result_block
                 .append_operation(arith::trunci(result, felt252_ty, location))
                 .result(0)?
                 .into();
             inverse_result_block.append_operation(helper.br(0, &[result], location));
-            return Ok(())
+            return Ok(());
         }
     };
 
