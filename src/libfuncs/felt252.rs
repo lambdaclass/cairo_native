@@ -320,7 +320,6 @@ where
                 .result(0)?
                 .into();
 
-            // TODO: Replace with arith::select?
             let is_negative = negative_check_block
                 .append_operation(arith::cmpi(
                     context,
