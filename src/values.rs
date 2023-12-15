@@ -678,12 +678,12 @@ impl JitValue {
             }
         }
 
-        let ty = registry.get_type(type_id).unwrap();
-        let ptr = if ty.is_memory_allocated(registry) {
-            unsafe { *ptr.cast::<NonNull<()>>().as_ref() }
-        } else {
-            ptr
-        };
+        // let ty = registry.get_type(type_id).unwrap();
+        // let ptr = if ty.is_memory_allocated(registry) {
+        //     unsafe { *ptr.cast::<NonNull<()>>().as_ref() }
+        // } else {
+        //     ptr
+        // };
 
         inner(ptr, type_id, registry)
     }

@@ -62,7 +62,7 @@ fn invoke_dynamic(
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
-    gas: Option<u128>,
+    mut gas: Option<u128>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
@@ -97,8 +97,12 @@ fn invoke_dynamic(
     };
 
     // Generate argument list.
-    for (type_id, value) in function_signature.param_types.iter().zip(args) {
-        map_arg_to_values(&arena, &mut invoke_data, registry, type_id, value).unwrap();
+    let mut values_iter = args.iter().peekable();
+    for type_id in &function_signature.param_types {
+        let value = values_iter.peek().unwrap();
+        if map_arg_to_values(&arena, &mut invoke_data, registry, type_id, value, gas).unwrap() {
+            values_iter.next().unwrap();
+        }
     }
 
     // Invoke the trampoline.
@@ -230,7 +234,8 @@ fn map_arg_to_values(
     program_registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     type_id: &ConcreteTypeId,
     value: &JitValue,
-) -> Result<(), Box<ProgramRegistryError>> {
+    gas: Option<u128>,
+) -> Result<bool, Box<ProgramRegistryError>> {
     let type_info = program_registry.get_type(type_id)?;
 
     // TODO: Find out if builtins push an argument or not. My guess is that they do.
@@ -306,6 +311,7 @@ fn map_arg_to_values(
                     program_registry,
                     field_type_id,
                     field_value,
+                    gas,
                 )?;
             }
         }
@@ -324,6 +330,18 @@ fn map_arg_to_values(
         }
         (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
             invoke_data.push(*value as u64);
+        }
+        (CoreTypeConcrete::Bitwise(_), _)
+        | (CoreTypeConcrete::BuiltinCosts(_), _)
+        | (CoreTypeConcrete::EcOp(_), _)
+        | (CoreTypeConcrete::Pedersen(_), _)
+        | (CoreTypeConcrete::Poseidon(_), _)
+        | (CoreTypeConcrete::RangeCheck(_), _)
+        | (CoreTypeConcrete::SegmentArena(_), _) => return Ok(false),
+        (CoreTypeConcrete::GasBuiltin(_), _) => {
+            let value = gas.unwrap();
+            invoke_data.push(value as u64);
+            invoke_data.push((value >> 64) as u64);
         }
         (sierra_ty, arg_ty) => match sierra_ty {
             CoreTypeConcrete::Array(_) => todo!("Array {arg_ty:?}"),
@@ -365,5 +383,5 @@ fn map_arg_to_values(
         },
     }
 
-    Ok(())
+    Ok(true)
 }

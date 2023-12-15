@@ -77,4 +77,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
 }
 
 criterion_group!(benches, bench_compile_time);
+
+#[cfg(not(test))]
 criterion_main!(benches);
+
+#[cfg(test)]
+fn main() {}

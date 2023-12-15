@@ -1,6 +1,5 @@
-use std::{path::Path, sync::Arc};
-
 use cairo_lang_sierra::program::Program;
+use std::{path::Path, sync::Arc};
 
 pub fn prepare_programs() -> impl Iterator<Item = (Arc<Program>, String)> {
     let programs = Path::new("programs/compile_benches")
