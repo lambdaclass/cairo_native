@@ -893,6 +893,7 @@ name = "cairo-native-runtime"
 version = "0.1.0"
 dependencies = [
  "cairo-lang-runner",
+ "lazy_static",
  "libc",
  "starknet-crypto 0.6.1",
  "starknet-curve 0.4.0",

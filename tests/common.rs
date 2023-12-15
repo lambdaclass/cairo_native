@@ -495,7 +495,15 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => {
+                prop_assert!(native_rets.peek().is_some());
+                check_next_type(
+                    reg.get_type(&info.ty).expect("type should exist"),
+                    &mut [native_rets.next().unwrap()].into_iter(),
+                    vm_rets,
+                    reg,
+                )?;
+            }
             CoreTypeConcrete::Nullable(_) => todo!(),
             CoreTypeConcrete::RangeCheck(_) => {
                 // runner: ignore
