@@ -1,11 +1,31 @@
 #![allow(non_snake_case)]
 
-use cairo_felt::Felt252;
-use cairo_lang_runner::short_string::as_cairo_short_string;
+use lazy_static::lazy_static;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
+use starknet_types_core::felt::{felt_to_bigint, Felt};
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+lazy_static! {
+    pub static ref HALF_PRIME: FieldElement = FieldElement::from_dec_str(
+        "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+    )
+    .unwrap();
+}
 
+pub(crate) fn as_cairo_short_string(value: &Felt) -> Option<String> {
+    let mut as_string = String::default();
+    let mut is_end = false;
+    for byte in value.to_bytes_be() {
+        if byte == 0 {
+            is_end = true;
+        } else if is_end || !byte.is_ascii() {
+            return None;
+        } else {
+            as_string.push(byte as char);
+        }
+    }
+    Some(as_string)
+}
 /// Based on `cairo-lang-runner`'s implementation.
 ///
 /// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800>
@@ -26,18 +46,25 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
         let mut data = *data.add(i);
         data.reverse();
 
-        let value = Felt252::from_bytes_be(&data);
+        let value = Felt::from_bytes_be(&data);
         if let Some(shortstring) = as_cairo_short_string(&value) {
             if writeln!(
                 target,
                 "[DEBUG]\t{shortstring: <31}\t(raw: {})",
-                value.to_bigint()
+                felt_to_bigint(value)
             )
             .is_err()
             {
                 return 1;
             };
-        } else if writeln!(target, "[DEBUG]\t{:<31}\t(raw: {})", ' ', value.to_bigint()).is_err() {
+        } else if writeln!(
+            target,
+            "[DEBUG]\t{:<31}\t(raw: {})",
+            ' ',
+            felt_to_bigint(value)
+        )
+        .is_err()
+        {
             return 1;
         }
     }
@@ -215,7 +242,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     .unwrap();
 
     match AffinePoint::from_x(x) {
-        Some(point) => {
+        Some(mut point) => {
+            // If y > PRIME/ 2 use PRIME - y
+            if point.y >= *HALF_PRIME {
+                point.y = -point.y
+            }
             point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
             point_ptr.as_mut()[1].reverse();
 

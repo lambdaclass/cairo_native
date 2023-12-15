@@ -1,4 +1,4 @@
-//! # `i16`-related libfuncs
+//! # `i32`-related libfuncs
 use super::{LibfuncBuilder, LibfuncHelper};
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         int::{
-            signed::{Sint16Concrete, Sint16Traits, SintConcrete},
+            signed::{Sint32Concrete, Sint32Traits, SintConcrete},
             IntConstConcreteLibfunc, IntOperationConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -43,7 +43,7 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    selector: &Sint16Concrete,
+    selector: &Sint32Concrete,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -75,7 +75,7 @@ where
     }
 }
 
-/// Generate MLIR operations for the `i16_const` libfunc.
+/// Generate MLIR operations for the `i32_const` libfunc.
 pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -83,7 +83,7 @@ pub fn build_const<'ctx, 'this, TType, TLibfunc>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &IntConstConcreteLibfunc<Sint16Traits>,
+    info: &IntConstConcreteLibfunc<Sint32Traits>,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -110,7 +110,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the i16 operation libfunc.
+/// Generate MLIR operations for the i32 operation libfunc.
 pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -222,7 +222,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_eq` libfunc.
+/// Generate MLIR operations for the `i32_eq` libfunc.
 pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -259,7 +259,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_is_zero` libfunc.
+/// Generate MLIR operations for the `i32_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -299,7 +299,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_widemul` libfunc.
+/// Generate MLIR operations for the `i32_widemul` libfunc.
 pub fn build_widemul<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -343,7 +343,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_to_felt252` libfunc.
+/// Generate MLIR operations for the `i32_to_felt252` libfunc.
 pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -378,7 +378,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_from_felt252` libfunc.
+/// Generate MLIR operations for the `i32_from_felt252` libfunc.
 pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
@@ -415,7 +415,7 @@ where
     let const_max = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{} : {}", i16::MAX, felt252_ty)).unwrap(),
+            Attribute::parse(context, &format!("{} : {}", i32::MAX, felt252_ty)).unwrap(),
             location,
         ))
         .result(0)?
@@ -456,7 +456,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `i16_diff` libfunc.
+/// Generate MLIR operations for the `i32_diff` libfunc.
 pub fn build_diff<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -508,70 +508,70 @@ mod test {
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
-        static ref I16_OVERFLOWING_ADD: (String, Program) = load_cairo! {
-            fn run_test(lhs: i16, rhs: i16) -> i16 {
+        static ref I32_OVERFLOWING_ADD: (String, Program) = load_cairo! {
+            fn run_test(lhs: i32, rhs: i32) -> i32 {
                 lhs + rhs
             }
         };
-        static ref I16_OVERFLOWING_SUB: (String, Program) = load_cairo! {
-            fn run_test(lhs: i16, rhs: i16) -> i16 {
+        static ref I32_OVERFLOWING_SUB: (String, Program) = load_cairo! {
+            fn run_test(lhs: i32, rhs: i32) -> i32 {
                 lhs - rhs
             }
         };
-        static ref I16_EQUAL: (String, Program) = load_cairo! {
-            fn run_test(lhs: i16, rhs: i16) -> bool {
+        static ref I32_EQUAL: (String, Program) = load_cairo! {
+            fn run_test(lhs: i32, rhs: i32) -> bool {
                 lhs == rhs
             }
         };
-        static ref I16_IS_ZERO: (String, Program) = load_cairo! {
+        static ref I32_IS_ZERO: (String, Program) = load_cairo! {
             use zeroable::IsZeroResult;
 
-            extern fn i16_is_zero(a: i16) -> IsZeroResult<i16> implicits() nopanic;
+            extern fn i32_is_zero(a: i32) -> IsZeroResult<i32> implicits() nopanic;
 
-            fn run_test(value: i16) -> bool {
-                match i16_is_zero(value) {
+            fn run_test(value: i32) -> bool {
+                match i32_is_zero(value) {
                     IsZeroResult::Zero(_) => true,
                     IsZeroResult::NonZero(_) => false,
                 }
             }
         };
-        static ref I16_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::i16_wide_mul;
-            fn run_test(lhs: i16, rhs: i16) -> i32 {
-                i16_wide_mul(lhs, rhs)
+        static ref I32_WIDEMUL: (String, Program) = load_cairo! {
+            use integer::i32_wide_mul;
+            fn run_test(lhs: i32, rhs: i32) -> i64 {
+                i32_wide_mul(lhs, rhs)
             }
         };
     }
 
     #[test]
-    fn i16_const_min() {
+    fn i32_const_min() {
         let program = load_cairo!(
-            fn run_test() -> i16 {
-                -32768_i16
+            fn run_test() -> i32 {
+                -2147483648_i32
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[i16::MIN.into()]);
+        run_program_assert_output(&program, "run_test", &[], &[i32::MIN.into()]);
     }
 
     #[test]
-    fn i16_const_max() {
+    fn i32_const_max() {
         let program = load_cairo!(
-            fn run_test() -> i16 {
-                32767_i16
+            fn run_test() -> i32 {
+                2147483647_i32
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[(i16::MAX).into()]);
+        run_program_assert_output(&program, "run_test", &[], &[(i32::MAX).into()]);
     }
 
     #[test]
-    fn i16_to_felt252() {
+    fn i32_to_felt252() {
         let program = load_cairo!(
             use traits::Into;
 
             fn run_test() -> felt252 {
-                2_i16.into()
+                2_i32.into()
             }
         );
 
@@ -579,12 +579,12 @@ mod test {
     }
 
     #[test]
-    fn i16_from_felt252() {
+    fn i32_from_felt252() {
         let program = load_cairo!(
             use traits::TryInto;
 
-            fn run_test() -> (Option<i16>, Option<i16>) {
-                (32767.try_into(), 32768.try_into())
+            fn run_test() -> (Option<i32>, Option<i32>) {
+                (2147483647.try_into(), 2147483648.try_into())
             }
         );
 
@@ -593,18 +593,18 @@ mod test {
             "run_test",
             &[],
             &[jit_struct!(
-                jit_enum!(0, 32767i16.into()),
+                jit_enum!(0, 2147483647i32.into()),
                 jit_enum!(1, jit_struct!()),
             )],
         );
     }
 
     #[test]
-    fn i16_overflowing_add() {
+    fn i32_overflowing_add() {
         #[track_caller]
-        fn run(lhs: i16, rhs: i16) {
-            let program = &I16_OVERFLOWING_ADD;
-            let error = Felt::from_bytes_be_slice(b"i16_add Overflow");
+        fn run(lhs: i32, rhs: i32) {
+            let program = &I32_OVERFLOWING_ADD;
+            let error = Felt::from_bytes_be_slice(b"i32_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -628,7 +628,7 @@ mod test {
             }
         }
 
-        const MAX: i16 = i16::MAX;
+        const MAX: i32 = i32::MAX;
 
         run(0, 0);
         run(0, 1);
@@ -652,11 +652,11 @@ mod test {
     }
 
     #[test]
-    fn i16_overflowing_sub() {
+    fn i32_overflowing_sub() {
         #[track_caller]
-        fn run(lhs: i16, rhs: i16) {
-            let program = &I16_OVERFLOWING_SUB;
-            let error = Felt::from_bytes_be_slice(b"i16_sub Overflow");
+        fn run(lhs: i32, rhs: i32) {
+            let program = &I32_OVERFLOWING_SUB;
+            let error = Felt::from_bytes_be_slice(b"i32_sub Overflow");
 
             let add = lhs.checked_sub(rhs);
 
@@ -680,7 +680,7 @@ mod test {
             }
         }
 
-        const MAX: i16 = i16::MAX;
+        const MAX: i32 = i32::MAX;
 
         run(0, 0);
         run(0, 1);
@@ -704,148 +704,148 @@ mod test {
     }
 
     #[test]
-    fn i16_equal() {
-        let program = &I16_EQUAL;
+    fn i32_equal() {
+        let program = &I32_EQUAL;
 
         run_program_assert_output(
             program,
             "run_test",
-            &[0i16.into(), 0i16.into()],
+            &[0i32.into(), 0i32.into()],
             &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1i16.into(), 0i16.into()],
+            &[1i32.into(), 0i32.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0i16.into(), 1i16.into()],
+            &[0i32.into(), 1i32.into()],
             &[jit_enum!(0, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[1i16.into(), 1i16.into()],
+            &[1i32.into(), 1i32.into()],
             &[jit_enum!(1, jit_struct!())],
         );
     }
 
     #[test]
-    fn i16_is_zero() {
-        let program = &I16_IS_ZERO;
+    fn i32_is_zero() {
+        let program = &I32_IS_ZERO;
 
         run_program_assert_output(
             program,
             "run_test",
-            &[0i16.into()],
-            &[jit_enum!(1, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-    }
-
-    #[test]
-    fn i16_safe_divmod() {
-        let program = &I16_IS_ZERO;
-
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i16.into(), 0i16.into()],
-            &[jit_enum!(1, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i16.into(), 1i16.into()],
-            &[jit_enum!(1, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i16.into(), i16::MAX.into()],
-            &[jit_enum!(1, jit_struct!())],
-        );
-
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into(), 0i16.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into(), 1i16.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into(), i16::MAX.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[i16::MAX.into(), 0i16.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[i16::MAX.into(), 1i16.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[i16::MAX.into(), i16::MAX.into()],
-            &[jit_enum!(0, jit_struct!())],
-        );
-    }
-
-    #[test]
-    fn i16_widemul() {
-        let program = &I16_WIDEMUL;
-
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i16.into(), 0i16.into()],
             &[0i32.into()],
+            &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[0i16.into(), 1i16.into()],
-            &[0i32.into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into(), 0i16.into()],
-            &[0i32.into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i16.into(), 1i16.into()],
             &[1i32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+    }
+
+    #[test]
+    fn i32_safe_divmod() {
+        let program = &I32_IS_ZERO;
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0i32.into(), 0i32.into()],
+            &[jit_enum!(1, jit_struct!())],
         );
         run_program_assert_output(
             program,
             "run_test",
-            &[i16::MAX.into(), i16::MAX.into()],
-            &[(i16::MAX as i32 * i16::MAX as i32).into()],
+            &[0i32.into(), 1i32.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0i32.into(), i32::MAX.into()],
+            &[jit_enum!(1, jit_struct!())],
+        );
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1i32.into(), 0i32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1i32.into(), 1i32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1i32.into(), i32::MAX.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[i32::MAX.into(), 0i32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[i32::MAX.into(), 1i32.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[i32::MAX.into(), i32::MAX.into()],
+            &[jit_enum!(0, jit_struct!())],
+        );
+    }
+
+    #[test]
+    fn i32_widemul() {
+        let program = &I32_WIDEMUL;
+
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0i32.into(), 0i32.into()],
+            &[0i64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[0i32.into(), 1i32.into()],
+            &[0i64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1i32.into(), 0i32.into()],
+            &[0i64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[1i32.into(), 1i32.into()],
+            &[1i64.into()],
+        );
+        run_program_assert_output(
+            program,
+            "run_test",
+            &[i32::MAX.into(), i32::MAX.into()],
+            &[(i32::MAX as i64 * i32::MAX as i64).into()],
         );
     }
 }
