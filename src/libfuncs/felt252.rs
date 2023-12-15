@@ -367,17 +367,21 @@ where
                 .into();
             // Calculate inverse of rhs, callling the inverse implementation's starting block
             entry.append_operation(cf::br(start_block, &[rhs], location));
-            // Fetch the result from the result block
+            // Fetch the inverse result from the result block
             let inverse = inverse_result_block.argument(0)?.into();
             // Peform lhs * (1/ rhs)
             let result = inverse_result_block
                 .append_operation(arith::muli(lhs, inverse, location))
                 .result(0)?
                 .into();
-            let result = inverse_result_block
-                .append_operation(arith::trunci(result, felt252_ty, location))
-                .result(0)?
-                .into();
+            // Apply modulo and convert result to felt252
+            mlir_asm! { context, inverse_result_block, location =>
+                ; result_mod = "arith.remui"(result, prime) : (i512, i512) -> i512
+                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i512, i512) -> bool_ty
+
+                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -> i512
+                ; result = "arith.trunci"(result) : (i512) -> felt252_ty
+            }
             inverse_result_block.append_operation(helper.br(0, &[result], location));
             return Ok(());
         }
