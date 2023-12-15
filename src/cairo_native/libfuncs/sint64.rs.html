@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/sint8.rs`."><title>sint8.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/sint64.rs`."><title>sint64.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -849,7 +849,10 @@
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! # `i8`-related libfuncs
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # `i64`-related libfuncs
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 
 <span class="kw">use crate</span>::{
@@ -864,7 +867,7 @@
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         int::{
-            signed::{Sint8Concrete, Sint8Traits, SintConcrete},
+            signed::{Sint64Concrete, Sint64Traits, SintConcrete},
             IntConstConcreteLibfunc, IntOperationConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -894,7 +897,7 @@
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    selector: <span class="kw-2">&amp;</span>Sint8Concrete,
+    selector: <span class="kw-2">&amp;</span>Sint64Concrete,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
     </span>TType: GenericType,
@@ -926,7 +929,7 @@
     }
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_const` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_const` libfunc.
 </span><span class="kw">pub fn </span>build_const&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -934,7 +937,7 @@
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: <span class="kw-2">&amp;</span>IntConstConcreteLibfunc&lt;Sint8Traits&gt;,
+    info: <span class="kw-2">&amp;</span>IntConstConcreteLibfunc&lt;Sint64Traits&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
     </span>TType: GenericType,
@@ -961,7 +964,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the i8 operation libfunc.
+<span class="doccomment">/// Generate MLIR operations for the i64 operation libfunc.
 </span><span class="kw">pub fn </span>build_operation&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1073,7 +1076,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_eq` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_eq` libfunc.
 </span><span class="kw">pub fn </span>build_equal&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1110,7 +1113,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_is_zero` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_is_zero` libfunc.
 </span><span class="kw">pub fn </span>build_is_zero&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1150,7 +1153,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_widemul` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_widemul` libfunc.
 </span><span class="kw">pub fn </span>build_widemul&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1194,7 +1197,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_to_felt252` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_to_felt252` libfunc.
 </span><span class="kw">pub fn </span>build_to_felt252&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1229,7 +1232,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_from_felt252` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_from_felt252` libfunc.
 </span><span class="kw">pub fn </span>build_from_felt252&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1266,7 +1269,7 @@
     <span class="kw">let </span>const_max = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i8::MAX, felt252_ty)).unwrap(),
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i64::MAX, felt252_ty)).unwrap(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1307,7 +1310,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `i8_diff` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `i64_diff` libfunc.
 </span><span class="kw">pub fn </span>build_diff&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
@@ -1359,70 +1362,70 @@
     <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
-        <span class="kw">static </span><span class="kw-2">ref </span>I8_OVERFLOWING_ADD: (String, Program) = <span class="macro">load_cairo! </span>{
-            <span class="kw">fn </span>run_test(lhs: i8, rhs: i8) -&gt; i8 {
+        <span class="kw">static </span><span class="kw-2">ref </span>I64_OVERFLOWING_ADD: (String, Program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">fn </span>run_test(lhs: i64, rhs: i64) -&gt; i64 {
                 lhs + rhs
             }
         };
-        <span class="kw">static </span><span class="kw-2">ref </span>I8_OVERFLOWING_SUB: (String, Program) = <span class="macro">load_cairo! </span>{
-            <span class="kw">fn </span>run_test(lhs: i8, rhs: i8) -&gt; i8 {
+        <span class="kw">static </span><span class="kw-2">ref </span>I64_OVERFLOWING_SUB: (String, Program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">fn </span>run_test(lhs: i64, rhs: i64) -&gt; i64 {
                 lhs - rhs
             }
         };
-        <span class="kw">static </span><span class="kw-2">ref </span>I8_EQUAL: (String, Program) = <span class="macro">load_cairo! </span>{
-            <span class="kw">fn </span>run_test(lhs: i8, rhs: i8) -&gt; bool {
+        <span class="kw">static </span><span class="kw-2">ref </span>I64_EQUAL: (String, Program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">fn </span>run_test(lhs: i64, rhs: i64) -&gt; bool {
                 lhs == rhs
             }
         };
-        <span class="kw">static </span><span class="kw-2">ref </span>I8_IS_ZERO: (String, Program) = <span class="macro">load_cairo! </span>{
+        <span class="kw">static </span><span class="kw-2">ref </span>I64_IS_ZERO: (String, Program) = <span class="macro">load_cairo! </span>{
             <span class="kw">use </span>zeroable::IsZeroResult;
 
-            <span class="kw">extern fn </span>i8_is_zero(a: i8) -&gt; IsZeroResult&lt;i8&gt; implicits() nopanic;
+            <span class="kw">extern fn </span>i64_is_zero(a: i64) -&gt; IsZeroResult&lt;i64&gt; implicits() nopanic;
 
-            <span class="kw">fn </span>run_test(value: i8) -&gt; bool {
-                <span class="kw">match </span>i8_is_zero(value) {
+            <span class="kw">fn </span>run_test(value: i64) -&gt; bool {
+                <span class="kw">match </span>i64_is_zero(value) {
                     IsZeroResult::Zero(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
                     IsZeroResult::NonZero(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
                 }
             }
         };
-        <span class="kw">static </span><span class="kw-2">ref </span>I8_WIDEMUL: (String, Program) = <span class="macro">load_cairo! </span>{
-            <span class="kw">use </span>integer::i8_wide_mul;
-            <span class="kw">fn </span>run_test(lhs: i8, rhs: i8) -&gt; i16 {
-                i8_wide_mul(lhs, rhs)
+        <span class="kw">static </span><span class="kw-2">ref </span>I64_WIDEMUL: (String, Program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">use </span>integer::i64_wide_mul;
+            <span class="kw">fn </span>run_test(lhs: i64, rhs: i64) -&gt; i128 {
+                i64_wide_mul(lhs, rhs)
             }
         };
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_const_min() {
+    </span><span class="kw">fn </span>i64_const_min() {
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-            <span class="kw">fn </span>run_test() -&gt; i8 {
-                -<span class="number">128_i8
+            <span class="kw">fn </span>run_test() -&gt; i64 {
+                -<span class="number">9223372036854775808_i64
             </span>}
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[i8::MIN.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[i64::MIN.into()]);
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_const_max() {
+    </span><span class="kw">fn </span>i64_const_max() {
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-            <span class="kw">fn </span>run_test() -&gt; i8 {
-                <span class="number">127_i8
+            <span class="kw">fn </span>run_test() -&gt; i64 {
+                <span class="number">9223372036854775807_i64
             </span>}
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[(i8::MAX).into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[(i64::MAX).into()]);
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_to_felt252() {
+    </span><span class="kw">fn </span>i64_to_felt252() {
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
             <span class="kw">use </span>traits::Into;
 
             <span class="kw">fn </span>run_test() -&gt; felt252 {
-                <span class="number">2_i8</span>.into()
+                <span class="number">2_i64</span>.into()
             }
         );
 
@@ -1430,12 +1433,15 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_from_felt252() {
+    </span><span class="kw">fn </span>i64_from_felt252() {
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
             <span class="kw">use </span>traits::TryInto;
 
-            <span class="kw">fn </span>run_test() -&gt; (<span class="prelude-ty">Option</span>&lt;i8&gt;, <span class="prelude-ty">Option</span>&lt;i8&gt;) {
-                (<span class="number">127</span>.try_into(), <span class="number">128</span>.try_into())
+            <span class="kw">fn </span>run_test() -&gt; (<span class="prelude-ty">Option</span>&lt;i64&gt;, <span class="prelude-ty">Option</span>&lt;i64&gt;) {
+                (
+                    <span class="number">9223372036854775807</span>.try_into(),
+                    <span class="number">9223372036854775808</span>.try_into(),
+                )
             }
         );
 
@@ -1444,18 +1450,18 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">127i8</span>.into()),
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">9223372036854775807i64</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
             )],
         );
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_overflowing_add() {
+    </span><span class="kw">fn </span>i64_overflowing_add() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(lhs: i8, rhs: i8) {
-            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_OVERFLOWING_ADD;
-            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;i8_add Overflow&quot;</span>);
+        </span><span class="kw">fn </span>run(lhs: i64, rhs: i64) {
+            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_OVERFLOWING_ADD;
+            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;i64_add Overflow&quot;</span>);
 
             <span class="kw">let </span>add = lhs.checked_add(rhs);
 
@@ -1479,7 +1485,7 @@
             }
         }
 
-        <span class="kw">const </span>MAX: i8 = i8::MAX;
+        <span class="kw">const </span>MAX: i64 = i64::MAX;
 
         run(<span class="number">0</span>, <span class="number">0</span>);
         run(<span class="number">0</span>, <span class="number">1</span>);
@@ -1503,11 +1509,11 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_overflowing_sub() {
+    </span><span class="kw">fn </span>i64_overflowing_sub() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(lhs: i8, rhs: i8) {
-            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_OVERFLOWING_SUB;
-            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;i8_sub Overflow&quot;</span>);
+        </span><span class="kw">fn </span>run(lhs: i64, rhs: i64) {
+            <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_OVERFLOWING_SUB;
+            <span class="kw">let </span>error = Felt::from_bytes_be_slice(<span class="string">b&quot;i64_sub Overflow&quot;</span>);
 
             <span class="kw">let </span>add = lhs.checked_sub(rhs);
 
@@ -1531,7 +1537,7 @@
             }
         }
 
-        <span class="kw">const </span>MAX: i8 = i8::MAX;
+        <span class="kw">const </span>MAX: i64 = i64::MAX;
 
         run(<span class="number">0</span>, <span class="number">0</span>);
         run(<span class="number">0</span>, <span class="number">1</span>);
@@ -1555,148 +1561,148 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_equal() {
-        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_EQUAL;
+    </span><span class="kw">fn </span>i64_equal() {
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_EQUAL;
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_is_zero() {
-        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_IS_ZERO;
+    </span><span class="kw">fn </span>i64_is_zero() {
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_IS_ZERO;
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_safe_divmod() {
-        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_IS_ZERO;
+    </span><span class="kw">fn </span>i64_safe_divmod() {
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_IS_ZERO;
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), i8::MAX.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), i64::MAX.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         );
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), i8::MAX.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), i64::MAX.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[i8::MAX.into(), <span class="number">0i8</span>.into()],
+            <span class="kw-2">&amp;</span>[i64::MAX.into(), <span class="number">0i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[i8::MAX.into(), <span class="number">1i8</span>.into()],
+            <span class="kw-2">&amp;</span>[i64::MAX.into(), <span class="number">1i64</span>.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[i8::MAX.into(), i8::MAX.into()],
+            <span class="kw-2">&amp;</span>[i64::MAX.into(), i64::MAX.into()],
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         );
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>i8_widemul() {
-        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I8_WIDEMUL;
+    </span><span class="kw">fn </span>i64_widemul() {
+        <span class="kw">let </span>program = <span class="kw-2">&amp;</span>I64_WIDEMUL;
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">0i8</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">0i64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i128</span>.into()],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">0i8</span>.into(), <span class="number">1i8</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i64</span>.into(), <span class="number">1i64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i128</span>.into()],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">0i8</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">0i64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">0i128</span>.into()],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">1i8</span>.into(), <span class="number">1i8</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i64</span>.into(), <span class="number">1i64</span>.into()],
+            <span class="kw-2">&amp;</span>[<span class="number">1i128</span>.into()],
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[i8::MAX.into(), i8::MAX.into()],
-            <span class="kw-2">&amp;</span>[(i8::MAX <span class="kw">as </span>i16 * i8::MAX <span class="kw">as </span>i16).into()],
+            <span class="kw-2">&amp;</span>[i64::MAX.into(), i64::MAX.into()],
+            <span class="kw-2">&amp;</span>[(i64::MAX <span class="kw">as </span>i128 * i64::MAX <span class="kw">as </span>i128).into()],
         );
     }
 }

@@ -1398,11 +1398,11 @@
     </span><span class="kw">fn </span>i16_const_min() {
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
             <span class="kw">fn </span>run_test() -&gt; i16 {
-                <span class="number">0_i16
+                -<span class="number">32768_i16
             </span>}
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[i16::MIN.into()]);
     }
 
     <span class="attr">#[test]

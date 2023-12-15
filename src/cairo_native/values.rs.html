@@ -726,6 +726,32 @@
 <a href="#726" id="726">726</a>
 <a href="#727" id="727">727</a>
 <a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -787,6 +813,8 @@
     Sint8(i8),
     Sint16(i16),
     Sint32(i32),
+    Sint64(i64),
+    Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
 }
@@ -844,6 +872,18 @@
 <span class="kw">impl </span>From&lt;i32&gt; <span class="kw">for </span>JITValue {
     <span class="kw">fn </span>from(value: i32) -&gt; <span class="self">Self </span>{
         JITValue::Sint32(value)
+    }
+}
+
+<span class="kw">impl </span>From&lt;i64&gt; <span class="kw">for </span>JITValue {
+    <span class="kw">fn </span>from(value: i64) -&gt; <span class="self">Self </span>{
+        JITValue::Sint64(value)
+    }
+}
+
+<span class="kw">impl </span>From&lt;i128&gt; <span class="kw">for </span>JITValue {
+    <span class="kw">fn </span>from(value: i128) -&gt; <span class="self">Self </span>{
+        JITValue::Sint128(value)
     }
 }
 
@@ -1148,6 +1188,18 @@
 
                     ptr
                 }
+                JITValue::Sint64(value) =&gt; {
+                    <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i64&gt;()).cast();
+                    <span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_mut() = <span class="kw-2">*</span>value;
+
+                    ptr
+                }
+                JITValue::Sint128(value) =&gt; {
+                    <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i128&gt;()).cast();
+                    <span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_mut() = <span class="kw-2">*</span>value;
+
+                    ptr
+                }
                 JITValue::EcPoint(a, b) =&gt; {
                     <span class="kw">let </span>ptr = arena
                         .alloc_layout(layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">2</span>).unwrap().<span class="number">0</span>)
@@ -1253,8 +1305,8 @@
                 CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; JITValue::Sint8(<span class="kw-2">*</span>ptr.cast::&lt;i8&gt;().as_ref()),
                 CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; JITValue::Sint16(<span class="kw-2">*</span>ptr.cast::&lt;i16&gt;().as_ref()),
                 CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; JITValue::Sint32(<span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_ref()),
-                CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-                CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; JITValue::Sint64(<span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_ref()),
+                CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; JITValue::Sint128(<span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_ref()),
                 CoreTypeConcrete::NonZero(info) =&gt; JITValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
                 CoreTypeConcrete::Nullable(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -1448,8 +1500,8 @@
             CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
