@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
+use num_traits::Zero;
 use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
@@ -521,7 +522,11 @@ impl JITValue {
 
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Box(info) => JITValue::from_jit(
+                    *ptr.cast::<NonNull<()>>().as_ptr(),
+                    dbg!(&info.ty),
+                    registry,
+                ),
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
@@ -554,7 +559,18 @@ impl JITValue {
                 CoreTypeConcrete::Sint64(_) => JITValue::Sint64(*ptr.cast::<i64>().as_ref()),
                 CoreTypeConcrete::Sint128(_) => JITValue::Sint128(*ptr.cast::<i128>().as_ref()),
                 CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Nullable(_) => todo!(),
+                CoreTypeConcrete::Nullable(info) => {
+                    let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
+                    if inner_ptr.is_null() {
+                        JITValue::Felt252(Felt::zero())
+                    } else {
+                        JITValue::from_jit(
+                            NonNull::new_unchecked(inner_ptr).cast(),
+                            &info.ty,
+                            registry,
+                        )
+                    }
+                }
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
@@ -708,7 +724,7 @@ impl ValueBuilder for CoreTypeConcrete {
         match self {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
-            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::Box(_) => false,
             CoreTypeConcrete::EcOp(_) => false,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
