@@ -35,7 +35,7 @@ mod common;
 #[test_case("tests/cases/uint/compare.cairo")]
 #[test_case("tests/cases/uint/consts.cairo")]
 #[test_case("tests/cases/uint/downcasts.cairo")]
-#[test_case("tests/cases/uint/safe_divmod.cairo" => ignore["TODO: cairo program is outdated"])]
+#[test_case("tests/cases/uint/safe_divmod.cairo")]
 #[test_case("tests/cases/uint/uint_addition.cairo")]
 #[test_case("tests/cases/uint/uint_subtraction.cairo")]
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
