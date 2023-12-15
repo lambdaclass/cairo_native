@@ -358,18 +358,19 @@ where
                 .append_operation(arith::extui(rhs, i512, location))
                 .result(0)?
                 .into();
-            // Calculate inverse of rhs, callling teh inverse implementation's starting block
-            negative_block.append_operation(cf::br(start_block, &[rhs], location));
+            // Calculate inverse of rhs, callling the inverse implementation's starting block
+            entry.append_operation(cf::br(start_block, &[rhs], location));
             // Fetch the result from the result block
             let inverse = inverse_result_block.argument(0)?.into();
             // Peform lhs * (1/ rhs)
-            let result = entry.append_operation(arith::muli(lhs, inverse, location)).result(0)?.into();
+            let result = inverse_result_block.append_operation(arith::muli(lhs, inverse, location)).result(0)?.into();
             // TODO: we should do modulo prime here
-            let result = entry
+            let result = inverse_result_block
                 .append_operation(arith::trunci(result, felt252_ty, location))
                 .result(0)?
                 .into();
-            result
+            inverse_result_block.append_operation(helper.br(0, &[result], location));
+            return Ok(())
         }
     };
 
