@@ -72,7 +72,7 @@ mod common;
 #[test_case("tests/cases/structs/nested.cairo")]
 #[test_case("tests/cases/structs/struct_snapshot_deconstruct.cairo")]
 // gas
-#[test_case("tests/cases/gas/available_gas.cairo" => ignore["unimplemented"])]
+#[test_case("tests/cases/gas/available_gas.cairo")]
 // bool
 #[test_case("tests/cases/bool/and.cairo")]
 #[test_case("tests/cases/bool/eq.cairo")]
@@ -91,7 +91,7 @@ mod common;
 #[test_case("tests/cases/array/pop_front_valid.cairo")]
 #[test_case("tests/cases/array/slice.cairo")]
 // nullable
-#[test_case("tests/cases/nullable/test_nullable.cairo" => ignore["unimplemented"])]
+#[test_case("tests/cases/nullable/test_nullable.cairo")]
 fn test_cases(program_path: &str) {
     compare_inputless_program(program_path)
 }

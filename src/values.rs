@@ -29,6 +29,8 @@ use crate::{
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+///
+/// A Boxed value or a non-null Nullable value is returned with it's inner value.
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
@@ -63,6 +65,8 @@ pub enum JITValue {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    /// Used as return value for Nullables that are null.
+    Null,
 }
 
 // Conversions
@@ -474,6 +478,9 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Null => {
+                    unimplemented!("null is meant as return value for nullable for now")
+                }
             }
         })
     }
@@ -521,7 +528,12 @@ impl JITValue {
 
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Box(info) => {
+                    let inner = *ptr.cast::<NonNull<()>>().as_ptr();
+                    let value = JITValue::from_jit(inner, &info.ty, registry);
+                    libc::free(inner.as_ptr().cast());
+                    value
+                }
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
@@ -554,7 +566,20 @@ impl JITValue {
                 CoreTypeConcrete::Sint64(_) => JITValue::Sint64(*ptr.cast::<i64>().as_ref()),
                 CoreTypeConcrete::Sint128(_) => JITValue::Sint128(*ptr.cast::<i128>().as_ref()),
                 CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Nullable(_) => todo!(),
+                CoreTypeConcrete::Nullable(info) => {
+                    let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
+                    if inner_ptr.is_null() {
+                        JITValue::Null
+                    } else {
+                        let value = JITValue::from_jit(
+                            NonNull::new_unchecked(inner_ptr).cast(),
+                            &info.ty,
+                            registry,
+                        );
+                        libc::free(inner_ptr.cast());
+                        value
+                    }
+                }
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
@@ -708,7 +733,7 @@ impl ValueBuilder for CoreTypeConcrete {
         match self {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
-            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::Box(_) => false,
             CoreTypeConcrete::EcOp(_) => false,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
