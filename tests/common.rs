@@ -436,7 +436,7 @@ pub fn compare_outputs(
                 } else {
                     panic!("invalid type")
                 };
-                prop_assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value, "mismatch on u8 value")
             }
             CoreTypeConcrete::Uint16(_) => {
                 prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
@@ -504,7 +504,26 @@ pub fn compare_outputs(
                     reg,
                 )?;
             }
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::Nullable(info) => {
+                prop_assert!(native_rets.peek().is_some());
+
+                // check for null
+                if vm_rets.peek().unwrap().as_str() == "0" {
+                    vm_rets.next();
+                    prop_assert_eq!(
+                        native_rets.next().expect("cairo-native missing next value"),
+                        &JITValue::Null,
+                        "native should return null"
+                    );
+                } else {
+                    check_next_type(
+                        reg.get_type(&info.ty).expect("type should exist"),
+                        &mut [native_rets.next().unwrap()].into_iter(),
+                        vm_rets,
+                        reg,
+                    )?;
+                }
+            }
             CoreTypeConcrete::RangeCheck(_) => {
                 // runner: ignore
                 // native: null

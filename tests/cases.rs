@@ -88,7 +88,7 @@ mod common;
 #[test_case("tests/cases/array/pop_front_valid.cairo")]
 #[test_case("tests/cases/array/slice.cairo")]
 // nullable
-#[test_case("tests/cases/nullable/test_nullable.cairo" => ignore["unimplemented"])]
+#[test_case("tests/cases/nullable/test_nullable.cairo")]
 fn test_cases(program_path: &str) {
     compare_inputless_program(program_path)
 }

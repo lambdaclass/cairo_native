@@ -1,8 +1,6 @@
 //! # Nullable libfuncs
 //!
 //! Like a Box but it can be null.
-//!
-//! If a Nullable value is returned as a JitValue, it will always be a Zero Felt when it's null.
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -177,7 +175,10 @@ mod test {
     use num_traits::Zero;
     use starknet_types_core::felt::Felt;
 
-    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        values::JITValue,
+    };
 
     #[test]
     fn run_null() {
@@ -211,7 +212,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[Felt::zero().into()]);
+        run_program_assert_output(&program, "run_test", &[], &[JITValue::Null]);
     }
 
     #[test]

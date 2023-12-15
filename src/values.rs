@@ -14,7 +14,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
-use num_traits::Zero;
 use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
@@ -30,6 +29,8 @@ use crate::{
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+///
+/// A Boxed value or a non-null Nullable value is returned with it's inner value.
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
@@ -64,6 +65,8 @@ pub enum JITValue {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    /// Used as return value for Nullables that are null.
+    Null,
 }
 
 // Conversions
@@ -475,6 +478,9 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Null => {
+                    unimplemented!("null is meant as return value for nullable for now")
+                }
             }
         })
     }
@@ -522,11 +528,12 @@ impl JITValue {
 
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) => JITValue::from_jit(
-                    *ptr.cast::<NonNull<()>>().as_ptr(),
-                    dbg!(&info.ty),
-                    registry,
-                ),
+                CoreTypeConcrete::Box(info) => {
+                    let inner = *ptr.cast::<NonNull<()>>().as_ptr();
+                    let value = JITValue::from_jit(inner, &info.ty, registry);
+                    libc::free(inner.as_ptr().cast());
+                    value
+                }
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
@@ -562,13 +569,15 @@ impl JITValue {
                 CoreTypeConcrete::Nullable(info) => {
                     let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
                     if inner_ptr.is_null() {
-                        JITValue::Felt252(Felt::zero())
+                        JITValue::Null
                     } else {
-                        JITValue::from_jit(
+                        let value = JITValue::from_jit(
                             NonNull::new_unchecked(inner_ptr).cast(),
                             &info.ty,
                             registry,
-                        )
+                        );
+                        libc::free(inner_ptr.cast());
+                        value
                     }
                 }
                 CoreTypeConcrete::Uninitialized(_) => todo!(),
