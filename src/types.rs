@@ -82,7 +82,8 @@ where
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error>;
 
-    // fn is_builtin(&self) -> bool;
+    /// Return whether the type is a builtin.
+    fn is_builtin(&self) -> bool;
     /// Return whether the type requires a return pointer when returning.
     fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
     /// Return whether the Sierra type resolves to a zero-sized type.
@@ -371,20 +372,20 @@ where
         }
     }
 
-    // fn is_builtin(&self) -> bool {
-    //     matches!(
-    //         self,
-    //         CoreTypeConcrete::Bitwise(_)
-    //             | CoreTypeConcrete::EcOp(_)
-    //             | CoreTypeConcrete::GasBuiltin(_)
-    //             | CoreTypeConcrete::BuiltinCosts(_)
-    //             | CoreTypeConcrete::RangeCheck(_)
-    //             | CoreTypeConcrete::Pedersen(_)
-    //             | CoreTypeConcrete::Poseidon(_)
-    //             | CoreTypeConcrete::StarkNet(_)
-    //             | CoreTypeConcrete::SegmentArena(_)
-    //     )
-    // }
+    fn is_builtin(&self) -> bool {
+        matches!(
+            self,
+            CoreTypeConcrete::Bitwise(_)
+                | CoreTypeConcrete::EcOp(_)
+                | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::BuiltinCosts(_)
+                | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::Pedersen(_)
+                | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::StarkNet(_)
+                | CoreTypeConcrete::SegmentArena(_)
+        )
+    }
 
     fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
         match self {

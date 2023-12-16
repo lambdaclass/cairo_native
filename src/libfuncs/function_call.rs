@@ -11,7 +11,7 @@ use crate::{
     },
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{generate_function_name, ProgramRegistryExt},
+    utils::generate_function_name,
 };
 use cairo_lang_sierra::{
     extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
@@ -47,58 +47,58 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let mut arguments = (0..entry.argument_count())
-        .map(|i| Result::Ok(entry.argument(i)?.into()))
-        .collect::<Result<Vec<_>>>()?;
+    let mut arguments = Vec::new();
+    let mut result_types = Vec::new();
 
-    let mut result_types = info.signature.branch_signatures[0]
-        .vars
-        .iter()
-        .map(|x| Result::Ok(registry.build_type(context, helper, registry, metadata, &x.ty)?))
-        .collect::<Result<Vec<_>>>()?;
+    for (idx, type_id) in info.function.signature.param_types.iter().enumerate() {
+        let type_info = registry.get_type(type_id)?;
 
-    // Allocate space for memory-allocated return types and move them from `result_types` into
-    // `arguments`.
+        if !(type_info.is_builtin() && type_info.is_zst(registry)) {
+            arguments.push(entry.argument(idx)?.into());
+        }
+    }
+
     let mut num_return_ptrs = 0;
-    for (idx, var_info) in info.signature.branch_signatures[0]
-        .vars
-        .iter()
-        .enumerate()
-        .rev()
-    {
-        let type_info = registry.get_type(&var_info.ty).unwrap();
-        if type_info.is_memory_allocated(registry) {
-            let layout = type_info.layout(registry)?;
-            let ty = result_types.remove(idx);
+    for type_id in &info.function.signature.ret_types {
+        let type_info = registry.get_type(type_id)?;
 
-            let k1 = helper
-                .init_block()
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let stack_ptr = helper
-                .init_block()
-                .append_operation(llvm::alloca(
-                    context,
-                    k1,
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                    AllocaOptions::new()
-                        .align(Some(IntegerAttribute::new(
-                            layout.align() as i64,
-                            IntegerType::new(context, 64).into(),
-                        )))
-                        .elem_type(Some(TypeAttribute::new(ty))),
-                ))
-                .result(0)?
-                .into();
+        if !(type_info.is_builtin() && type_info.is_zst(registry)) {
+            let ty = type_info.build(context, helper, registry, metadata, type_id)?;
 
-            arguments.insert(0, stack_ptr);
-            num_return_ptrs += 1;
+            if type_info.is_memory_allocated(registry) {
+                let layout = type_info.layout(registry)?;
+
+                let k1 = helper
+                    .init_block()
+                    .append_operation(arith::constant(
+                        context,
+                        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+                let stack_ptr = helper
+                    .init_block()
+                    .append_operation(llvm::alloca(
+                        context,
+                        k1,
+                        llvm::r#type::opaque_pointer(context),
+                        location,
+                        AllocaOptions::new()
+                            .align(Some(IntegerAttribute::new(
+                                layout.align() as i64,
+                                IntegerType::new(context, 64).into(),
+                            )))
+                            .elem_type(Some(TypeAttribute::new(ty))),
+                    ))
+                    .result(0)?
+                    .into();
+
+                arguments.insert(0, stack_ptr);
+                num_return_ptrs += 1;
+            } else {
+                result_types.push(ty);
+            }
         }
     }
 
@@ -138,31 +138,32 @@ where
                 .map(|ty| (ty, location))
                 .collect::<Vec<_>>(),
         ));
-
-        let mut iter = arguments.iter().copied();
-        let mut arg_index = 0;
-        cont_block.append_operation(
-            helper.br(
-                0,
-                &info.signature.branch_signatures[0]
-                    .vars
-                    .iter()
-                    .map(|var_info| {
-                        let type_info = registry.get_type(&var_info.ty)?;
-                        Result::Ok(if type_info.is_memory_allocated(registry) {
-                            iter.next().unwrap()
-                        } else {
-                            let value = cont_block.argument(arg_index)?.into();
-                            arg_index += 1;
-                            value
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-                location,
-            ),
-        );
-
         tailrec_meta.set_return_target(cont_block);
+
+        let mut results = Vec::new();
+        let mut count = 0;
+        let mut iter = arguments.iter().copied();
+        for var_info in &info.signature.branch_signatures[0].vars {
+            let type_info = registry.get_type(&var_info.ty)?;
+
+            results.push(if type_info.is_builtin() && type_info.is_zst(registry) {
+                entry
+                    .append_operation(llvm::undef(
+                        type_info.build(context, helper, registry, metadata, &var_info.ty)?,
+                        location,
+                    ))
+                    .result(0)?
+                    .into()
+            } else if type_info.is_memory_allocated(registry) {
+                iter.next().unwrap()
+            } else {
+                let value = cont_block.argument(count)?.into();
+                count += 1;
+                value
+            });
+        }
+
+        entry.append_operation(helper.br(0, &results, location));
     } else {
         let op0 = entry.append_operation(func::call(
             context,
@@ -172,26 +173,30 @@ where
             location,
         ));
 
+        let mut results = Vec::new();
+        let mut count = 0;
         let mut iter = arguments.iter().copied();
-        entry.append_operation(
-            helper.br(
-                0,
-                &info.signature.branch_signatures[0]
-                    .vars
-                    .iter()
-                    .enumerate()
-                    .map(|(i, var_info)| {
-                        let type_info = registry.get_type(&var_info.ty)?;
-                        Result::Ok(if type_info.is_memory_allocated(registry) {
-                            iter.next().unwrap()
-                        } else {
-                            op0.result(i)?.into()
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-                location,
-            ),
-        );
+        for var_info in &info.signature.branch_signatures[0].vars {
+            let type_info = registry.get_type(&var_info.ty)?;
+
+            results.push(if type_info.is_builtin() && type_info.is_zst(registry) {
+                entry
+                    .append_operation(llvm::undef(
+                        type_info.build(context, helper, registry, metadata, &var_info.ty)?,
+                        location,
+                    ))
+                    .result(0)?
+                    .into()
+            } else if type_info.is_memory_allocated(registry) {
+                iter.next().unwrap()
+            } else {
+                let value = op0.result(count)?.into();
+                count += 1;
+                value
+            });
+        }
+
+        entry.append_operation(helper.br(0, &results, location));
     }
 
     Ok(())

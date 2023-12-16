@@ -78,47 +78,29 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let type_info = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
+    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        registry
-            .get_type(&info.branch_signatures()[0].vars[0].ty)?
-            .variants()
-            .unwrap(),
+        type_info.variants().unwrap(),
     )?;
 
-    let ptr_ty = llvm::r#type::opaque_pointer(context);
-    let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
-
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    // Allocating only the space necessary for the current variant. This shouldn't cause any
-    // problems because the data won't be changed in place.
-    let stack_ptr = helper
-        .init_block()
-        .append_operation(llvm::alloca(
-            context,
-            k1,
-            ptr_ty,
-            location,
-            AllocaOptions::new()
-                .align(Some(IntegerAttribute::new(
-                    layout.align() as i64,
-                    IntegerType::new(context, 64).into(),
-                )))
-                .elem_type(Some(TypeAttribute::new(enum_ty))),
-        ))
-        .result(0)?
-        .into();
+    let enum_ty = llvm::r#type::r#struct(
+        context,
+        &[
+            tag_ty,
+            if payload_type_info.is_zst(registry) {
+                llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
+            } else {
+                variant_tys[info.index].0
+            },
+        ],
+        false,
+    );
 
     let tag_val = entry
         .append_operation(arith::constant(
@@ -129,7 +111,6 @@ where
         .result(0)?
         .into();
 
-    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let payload_val = if payload_type_info.is_memory_allocated(registry) {
         entry
             .append_operation(llvm::load(
@@ -162,29 +143,69 @@ where
         ))
         .result(0)?
         .into();
-    let val = entry
-        .append_operation(llvm::insert_value(
+    let val = if payload_type_info.is_zst(registry) {
+        val
+    } else {
+        entry
+            .append_operation(llvm::insert_value(
+                context,
+                val,
+                DenseI64ArrayAttribute::new(context, &[1]),
+                payload_val,
+                location,
+            ))
+            .result(0)?
+            .into()
+    };
+
+    if type_info.is_memory_allocated(registry) {
+        let ptr_ty = llvm::r#type::opaque_pointer(context);
+        let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
+
+        let k1 = helper
+            .init_block()
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        // Allocating only the space necessary for the current variant. This shouldn't cause any
+        // problems because the data won't be changed in place.
+        let stack_ptr = helper
+            .init_block()
+            .append_operation(llvm::alloca(
+                context,
+                k1,
+                ptr_ty,
+                location,
+                AllocaOptions::new()
+                    .align(Some(IntegerAttribute::new(
+                        layout.align() as i64,
+                        IntegerType::new(context, 64).into(),
+                    )))
+                    .elem_type(Some(TypeAttribute::new(enum_ty))),
+            ))
+            .result(0)?
+            .into();
+
+        entry.append_operation(llvm::store(
             context,
             val,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            payload_val,
+            stack_ptr,
             location,
-        ))
-        .result(0)?
-        .into();
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ));
 
-    entry.append_operation(llvm::store(
-        context,
-        val,
-        stack_ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
+        entry.append_operation(helper.br(0, &[stack_ptr], location));
+    } else {
+        entry.append_operation(helper.br(0, &[val], location));
+    }
 
-    entry.append_operation(helper.br(0, &[stack_ptr], location));
     Ok(())
 }
 
