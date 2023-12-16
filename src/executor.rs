@@ -456,7 +456,7 @@ fn map_arg_to_values(
                 // Write the tag.
                 match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
                     0 => {}
-                    _ => todo!(),
+                    _ => invoke_data.push(*tag as u64),
                 }
 
                 // Write the payload.
