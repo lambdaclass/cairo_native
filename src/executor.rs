@@ -146,6 +146,38 @@ fn invoke_dynamic(
     }
 
     // Parse final gas.
+    let mut count = 0;
+    let mut remaining_gas = None;
+    for type_id in &function_signature.ret_types {
+        let type_info = registry.get_type(type_id).unwrap();
+        match type_info {
+            CoreTypeConcrete::GasBuiltin(_) => {
+                remaining_gas = Some(
+                    gas.unwrap()
+                        - match return_ptr {
+                            Some((_, return_ptr)) => unsafe {
+                                *NonNull::new_unchecked(
+                                    return_ptr.cast::<u64>().as_ptr().add(count),
+                                )
+                                .cast::<u128>()
+                                .as_ref()
+                            },
+                            None => {
+                                // If there's no return ptr then the function only returned the gas. We don't
+                                // need to bother with the syscall handler builtin.
+                                ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
+                            }
+                        },
+                );
+                break;
+            }
+            CoreTypeConcrete::StarkNet(_) => count += 1,
+            _ if <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin(
+                type_info,
+            ) => {}
+            _ => break,
+        }
+    }
 
     // Parse return values.
     let type_id = function_signature.ret_types.last().unwrap();
@@ -368,9 +400,8 @@ fn invoke_dynamic(
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
 
-    // TODO: Handle gas.
     ExecutionResult {
-        remaining_gas: gas,
+        remaining_gas,
         return_value,
     }
 }
