@@ -308,8 +308,8 @@ where
     {
         let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
-        let val = if type_info.is_memory_allocated(registry) {
-            block
+        let payload_val = if type_info.is_memory_allocated(registry) {
+            let val = block
                 .append_operation(llvm::load(
                     context,
                     entry.argument(0)?.into(),
@@ -321,31 +321,41 @@ where
                     ))),
                 ))
                 .result(0)?
+                .into();
+
+            block
+                .append_operation(llvm::extract_value(
+                    context,
+                    val,
+                    DenseI64ArrayAttribute::new(context, &[1]),
+                    payload_ty,
+                    location,
+                ))
+                .result(0)?
                 .into()
         } else {
-            let val: Value = entry.argument(0)?.into();
-
             // If the enum is not memory-allocated it means that:
             //   - Either it's a C-style enum and all payloads have the same type.
-            //   - Or the enum only has a single variant, making the following check succeed.
-            assert_eq!(
-                crate::ffi::get_struct_field_type_at(&val.r#type(), 1),
-                payload_ty,
-            );
-
-            val
+            //   - Or the enum only has a single non-memory-allocated variant.
+            if variant_ids.len() == 1 {
+                block
+                    .append_operation(llvm::extract_value(
+                        context,
+                        entry.argument(0)?.into(),
+                        DenseI64ArrayAttribute::new(context, &[1]),
+                        payload_ty,
+                        location,
+                    ))
+                    .result(0)?
+                    .into()
+            } else {
+                assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
+                block
+                    .append_operation(llvm::undef(payload_ty, location))
+                    .result(0)?
+                    .into()
+            }
         };
-
-        let payload_val = block
-            .append_operation(llvm::extract_value(
-                context,
-                val,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                payload_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
 
         let payload_type_info = registry.get_type(&variant_ids[i])?;
         let payload_val = if payload_type_info.is_memory_allocated(registry) {
