@@ -10,7 +10,6 @@ mod common;
 
 fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> ExecutionResult {
     let entry_point_id = find_function_id(program, entry_point);
-    println!("{}", program);
 
     let context = NativeContext::new();
     let module = context.compile(program).unwrap();

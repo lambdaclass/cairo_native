@@ -453,16 +453,19 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
+// TODO: Remove from here.
 #[no_mangle]
 pub extern "C" fn __debug__breakpoint_marker() {
     println!("[DEBUG] Breakpoint marker.");
 }
 
+// TODO: Remove from here.
 #[no_mangle]
 pub extern "C" fn __debug__print_i1(value: bool) {
     println!("[DEBUG] {value}");
 }
 
+// TODO: Remove from here.
 #[no_mangle]
 pub extern "C" fn __debug__print_pointer(value: *const ()) {
     println!("[DEBUG] {value:018x?}");

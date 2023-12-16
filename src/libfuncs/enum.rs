@@ -27,7 +27,7 @@ use melior::{
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location,
+        Block, Location, Value, ValueLike,
     },
     Context,
 };
@@ -225,10 +225,9 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let variant_ids = registry
-        .get_type(&info.param_signatures()[0].ty)?
-        .variants()
-        .unwrap();
+    let type_info = registry.get_type(&info.param_signatures()[0].ty)?;
+
+    let variant_ids = type_info.variants().unwrap();
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
@@ -237,19 +236,32 @@ where
         variant_ids,
     )?;
 
-    let tag_val = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(0)?.into(),
-            tag_ty,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
-        ))
-        .result(0)?
-        .into();
+    let tag_val = if type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                tag_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into()
+    } else {
+        entry
+            .append_operation(llvm::extract_value(
+                context,
+                entry.argument(0)?.into(),
+                DenseI64ArrayAttribute::new(context, &[0]),
+                tag_ty,
+                location,
+            ))
+            .result(0)?
+            .into()
+    };
 
     let default_block = helper.append_block(Block::new(&[]));
     let variant_blocks = variant_tys
@@ -296,19 +308,33 @@ where
     {
         let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
-        let val = block
-            .append_operation(llvm::load(
-                context,
-                entry.argument(0)?.into(),
-                enum_ty,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    layout.align() as i64,
-                    IntegerType::new(context, 64).into(),
-                ))),
-            ))
-            .result(0)?
-            .into();
+        let val = if type_info.is_memory_allocated(registry) {
+            block
+                .append_operation(llvm::load(
+                    context,
+                    entry.argument(0)?.into(),
+                    enum_ty,
+                    location,
+                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                        layout.align() as i64,
+                        IntegerType::new(context, 64).into(),
+                    ))),
+                ))
+                .result(0)?
+                .into()
+        } else {
+            let val: Value = entry.argument(0)?.into();
+
+            // If the enum is not memory-allocated it means that:
+            //   - Either it's a C-style enum and all payloads have the same type.
+            //   - Or the enum only has a single variant, making the following check succeed.
+            assert_eq!(
+                crate::ffi::get_struct_field_type_at(&val.r#type(), 1),
+                payload_ty,
+            );
+
+            val
+        };
 
         let payload_val = block
             .append_operation(llvm::extract_value(
@@ -387,30 +413,49 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let type_info = registry.get_type(&info.param_signatures()[0].ty)?;
+
     // This libfunc's implementation is identical to `enum_match` aside from fetching the snapshotted enum's variants from the metadata:
-    let variants = metadata
+    let variants_ids = metadata
         .get::<EnumSnapshotVariantsMeta>()
         .unwrap()
         .get_variants(&info.param_signatures()[0].ty)
         .unwrap()
         .clone();
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
-        context, helper, registry, metadata, &variants,
+        context,
+        helper,
+        registry,
+        metadata,
+        &variants_ids,
     )?;
 
-    let tag_val = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(0)?.into(),
-            tag_ty,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
-        ))
-        .result(0)?
-        .into();
+    let tag_val = if type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                tag_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into()
+    } else {
+        entry
+            .append_operation(llvm::extract_value(
+                context,
+                entry.argument(0)?.into(),
+                DenseI64ArrayAttribute::new(context, &[0]),
+                tag_ty,
+                location,
+            ))
+            .result(0)?
+            .into()
+    };
 
     let default_block = helper.append_block(Block::new(&[]));
     let variant_blocks = variant_tys
@@ -455,19 +500,33 @@ where
     for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
         let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
-        let val = block
-            .append_operation(llvm::load(
-                context,
-                entry.argument(0)?.into(),
-                enum_ty,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    layout.align() as i64,
-                    IntegerType::new(context, 64).into(),
-                ))),
-            ))
-            .result(0)?
-            .into();
+        let val = if type_info.is_memory_allocated(registry) {
+            block
+                .append_operation(llvm::load(
+                    context,
+                    entry.argument(0)?.into(),
+                    enum_ty,
+                    location,
+                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                        layout.align() as i64,
+                        IntegerType::new(context, 64).into(),
+                    ))),
+                ))
+                .result(0)?
+                .into()
+        } else {
+            let val: Value = entry.argument(0)?.into();
+
+            // If the enum is not memory-allocated it means that:
+            //   - Either it's a C-style enum and all payloads have the same type.
+            //   - Or the enum only has a single variant, making the following check succeed.
+            assert_eq!(
+                crate::ffi::get_struct_field_type_at(&val.r#type(), 1),
+                payload_ty,
+            );
+
+            val
+        };
 
         let payload_val = block
             .append_operation(llvm::extract_value(
