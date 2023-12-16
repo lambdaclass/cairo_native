@@ -219,9 +219,18 @@ fn invoke_dynamic(
             JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
         }
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => todo!(),
-        CoreTypeConcrete::Sint16(_) => todo!(),
-        CoreTypeConcrete::Sint32(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint8(ret_registers[0] as i8)
+        }
+        CoreTypeConcrete::Sint16(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint16(ret_registers[0] as i16)
+        }
+        CoreTypeConcrete::Sint32(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint32(ret_registers[0] as i32)
+        }
         CoreTypeConcrete::Sint64(_) => todo!(),
         CoreTypeConcrete::Sint128(_) => todo!(),
         CoreTypeConcrete::NonZero(_) => todo!(),
@@ -296,106 +305,6 @@ fn invoke_dynamic(
         CoreTypeConcrete::Bytes31(_) => todo!(),
         _ => unreachable!(),
     };
-    // let return_value = match type_info {
-    //     CoreTypeConcrete::Array(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             return_ptr,
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => unreachable!("Array<T> is complex"),
-    //     },
-    //     CoreTypeConcrete::EcPoint(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => unreachable!("EcPoint is complex"),
-    //     },
-    //     CoreTypeConcrete::EcState(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => unreachable!("EcState is complex"),
-    //     },
-    //     CoreTypeConcrete::Enum(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => unreachable!("Enum<...> is complex"),
-    //     },
-    //     CoreTypeConcrete::Felt252(_) => match return_ptr {
-    //         Some(_) => todo!(),
-    //         None => JitValue::Felt252(Felt::from_bytes_le(unsafe {
-    //             std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-    //         })),
-    //     },
-    //     CoreTypeConcrete::Felt252Dict(_) => todo!(),
-    //     CoreTypeConcrete::Struct(info) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             return_ptr,
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None if info.members.is_empty() => JitValue::Struct {
-    //             fields: Vec::new(),
-    //             debug_name: function_signature
-    //                 .ret_types
-    //                 .last()
-    //                 .unwrap()
-    //                 .debug_name
-    //                 .as_deref()
-    //                 .map(ToString::to_string),
-    //         },
-    //         None => unreachable!("Struct<...> is complex"),
-    //     },
-    //     CoreTypeConcrete::Uint128(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => JitValue::Uint128(ret_registers[0] as u128 | (ret_registers[1] as u128) << 64),
-    //     },
-    //     CoreTypeConcrete::Uint64(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => JitValue::Uint64(ret_registers[0]),
-    //     },
-    //     CoreTypeConcrete::Uint32(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => JitValue::Uint32(ret_registers[0] as u32),
-    //     },
-    //     CoreTypeConcrete::Uint16(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => JitValue::Uint16(ret_registers[0] as u16),
-    //     },
-    //     CoreTypeConcrete::Uint8(_) => match return_ptr {
-    //         Some((_, return_ptr)) => JitValue::from_jit(
-    //             unsafe { NonNull::new_unchecked(return_ptr.as_ptr()) },
-    //             function_signature.ret_types.last().unwrap(),
-    //             registry,
-    //         ),
-    //         None => JitValue::Uint8(ret_registers[0] as u8),
-    //     },
-    //     _ => todo!("unsupported return type"),
-    // };
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
@@ -540,6 +449,15 @@ fn map_arg_to_values(
             invoke_data.push(*value as u64);
         }
         (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
+            invoke_data.push(*value as u64);
+        }
+        (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
+            invoke_data.push(*value as u64);
+        }
+        (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
+            invoke_data.push(*value as u64);
+        }
+        (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
             invoke_data.push(*value as u64);
         }
         (CoreTypeConcrete::Bitwise(_), _)
