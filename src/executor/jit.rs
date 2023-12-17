@@ -9,8 +9,10 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
+    program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
+use libc::c_void;
 use melior::ExecutionEngine;
 use mlir_sys::{mlirExecutionEngineLookup, MlirExecutionEngine, MlirStringRef};
 
@@ -52,44 +54,15 @@ impl<'m> JitNativeExecutor<'m> {
         args: &[JitValue],
         mut gas: Option<u128>,
     ) -> Result<ExecutionResult, RunnerError> {
-        let function_name = generate_function_name(function_id);
-        let function_name = format!("_mlir_ciface_{function_name}");
-
-        // Arguments and return values are hardcoded since they'll be handled by the trampoline.
-        let function_ptr = unsafe {
-            // FIXME: Code a PR to extract the raw pointer from `ExecutionEngine`s.
-            mlirExecutionEngineLookup(
-                *std::mem::transmute::<&ExecutionEngine, &MlirExecutionEngine>(&self.engine),
-                MlirStringRef {
-                    data: function_name.as_ptr() as *const i8,
-                    length: function_name.len(),
-                },
-            )
-        };
-
-        let function_signature = &self
-            .program_registry()
-            .get_function(function_id)
-            .unwrap()
-            .signature;
-
-        if let (Some(gas), Some(required_init_gas)) = (
-            gas.as_mut(),
-            self.native_module.get_required_init_gas(function_id),
-        ) {
-            if required_init_gas > *gas {
-                panic!("Not enough gas");
-            }
-
-            *gas -= required_init_gas;
-        }
+        self.process_required_initial_gas(function_id, gas.as_mut());
 
         Ok(super::invoke_dynamic(
             self.program_registry(),
-            function_ptr,
-            function_signature,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
             args,
             gas,
+            None,
         ))
     }
 
@@ -98,28 +71,61 @@ impl<'m> JitNativeExecutor<'m> {
     /// See [`cairo_native::jit_runner::execute_contract`]
     pub fn execute_contract(
         &self,
-        _fn_id: &FunctionId,
-        _calldata: &[JitValue],
-        _gas: u128,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        mut gas: Option<u128>,
     ) -> Result<ContractExecutionResult, RunnerError> {
-        let _registry = self.program_registry();
-        let _syscall_handler = self
+        self.process_required_initial_gas(function_id, gas.as_mut());
+
+        let syscall_handler = self
             .module()
             .get_metadata::<SyscallHandlerMeta>()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
 
-        // Note: It appears this isn't being checked when running contracts on the VM.
-        // let required_initial_gas = self.native_module.get_required_init_gas(fn_id);
+        ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            self.program_registry(),
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            args,
+            gas,
+            Some(syscall_handler.as_ptr()),
+        ))
+    }
 
-        todo!()
-        // execute_contract(
-        //     &self.engine,
-        //     registry,
-        //     fn_id,
-        //     calldata,
-        //     None,
-        //     gas,
-        //     syscall_handler,
-        // )
+    fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
+        let function_name = generate_function_name(function_id);
+        let function_name = format!("_mlir_ciface_{function_name}");
+
+        // Arguments and return values are hardcoded since they'll be handled by the trampoline.
+        unsafe {
+            // FIXME: Code a PR to extract the raw pointer from `ExecutionEngine`s.
+            mlirExecutionEngineLookup(
+                *std::mem::transmute::<&ExecutionEngine, &MlirExecutionEngine>(&self.engine),
+                MlirStringRef {
+                    data: function_name.as_ptr() as *const i8,
+                    length: function_name.len(),
+                },
+            )
+        }
+    }
+
+    fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
+        &self
+            .program_registry()
+            .get_function(function_id)
+            .unwrap()
+            .signature
+    }
+
+    fn process_required_initial_gas(&self, function_id: &FunctionId, gas: Option<&mut u128>) {
+        if let (Some(gas), Some(required_init_gas)) =
+            (gas, self.native_module.get_required_init_gas(function_id))
+        {
+            if required_init_gas > *gas {
+                panic!("Not enough gas");
+            }
+
+            *gas -= required_init_gas;
+        }
     }
 }

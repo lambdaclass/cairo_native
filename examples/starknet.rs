@@ -320,7 +320,7 @@ fn main() {
     let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute_contract(fn_id, &[JitValue::Felt252(Felt::from(1))], u64::MAX.into())
+        .execute_contract(fn_id, &[JitValue::Felt252(Felt::from(1))], Some(u128::MAX))
         .expect("failed to execute the given contract");
 
     println!();

@@ -58,6 +58,7 @@ fn invoke_dynamic(
     function_signature: &FunctionSignature,
     args: &[JitValue],
     gas: Option<u128>,
+    syscall_handler: Option<NonNull<()>>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
@@ -120,7 +121,10 @@ fn invoke_dynamic(
                 }
                 None => panic!("Gas is required"),
             },
-            CoreTypeConcrete::StarkNet(_) => todo!("syscall handler"),
+            CoreTypeConcrete::StarkNet(_) => match syscall_handler {
+                Some(syscall_handler) => invoke_data.push(syscall_handler.as_ptr() as u64),
+                None => panic!("Syscall handler is required"),
+            },
             _ => map_arg_to_values(
                 &arena,
                 &mut invoke_data,

@@ -330,7 +330,7 @@ fn main() {
                 JitValue::Felt252(Felt::from(4)),
                 JitValue::Felt252(Felt::from(6)),
             ],
-            u64::MAX.into(),
+            Some(u128::MAX),
         )
         .expect("failed to execute the given contract");
 

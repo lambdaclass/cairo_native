@@ -1,5 +1,7 @@
 use crate::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
+    context::NativeContext,
+    executor::AotNativeExecutor,
+    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
     utils::SHARED_LIBRARY_EXT,
 };
 use cairo_lang_sierra::{
@@ -51,6 +53,7 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
             shared_library,
             ProgramRegistry::new(program).unwrap(),
             module.get_metadata::<GasMetadata>().cloned(),
+            module.get_metadata::<SyscallHandlerMeta>().cloned(),
         );
 
         let executor = Rc::new(executor);
