@@ -34,6 +34,7 @@ extern "C" {
     );
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum NativeExecutor<'m> {
     Aot(AotNativeExecutor<CoreType, CoreLibfunc>),
     Jit(JitNativeExecutor<'m>),
@@ -80,7 +81,7 @@ fn invoke_dynamic(
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
-    let return_ptr = if num_return_args > 1
+    let mut return_ptr = if num_return_args > 1
         || ret_types_iter
             .peek()
             .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
@@ -96,22 +97,18 @@ fn invoke_dynamic(
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
         invoke_data.push(return_ptr.as_ptr() as u64);
 
-        Some((layout, return_ptr))
+        Some(return_ptr)
     } else {
         // invoke_data.push(0);
         None
     };
 
     // Generate argument list.
-    for (type_id, value) in function_signature
-        .param_types
-        .iter()
-        .filter(|id| {
-            let info = registry.get_type(id).unwrap();
-            !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
-        })
-        .zip(args)
-    {
+    let mut iter = args.iter();
+    for type_id in function_signature.param_types.iter().filter(|id| {
+        let info = registry.get_type(id).unwrap();
+        !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
+    }) {
         let type_info = registry.get_type(type_id).unwrap();
 
         // Process gas requirements and syscall handler.
@@ -124,10 +121,15 @@ fn invoke_dynamic(
                 None => panic!("Gas is required"),
             },
             CoreTypeConcrete::StarkNet(_) => todo!("syscall handler"),
-            _ => {}
+            _ => map_arg_to_values(
+                &arena,
+                &mut invoke_data,
+                registry,
+                type_info,
+                iter.next().unwrap(),
+            )
+            .unwrap(),
         }
-
-        map_arg_to_values(&arena, &mut invoke_data, registry, type_info, value).unwrap();
     }
 
     // Invoke the trampoline.
@@ -146,32 +148,26 @@ fn invoke_dynamic(
     }
 
     // Parse final gas.
-    let mut count = 0;
     let mut remaining_gas = None;
     for type_id in &function_signature.ret_types {
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
-                remaining_gas = Some(
-                    gas.unwrap()
-                        - match return_ptr {
-                            Some((_, return_ptr)) => unsafe {
-                                *NonNull::new_unchecked(
-                                    return_ptr.cast::<u64>().as_ptr().add(count),
-                                )
-                                .cast::<u128>()
-                                .as_ref()
-                            },
-                            None => {
-                                // If there's no return ptr then the function only returned the gas. We don't
-                                // need to bother with the syscall handler builtin.
-                                ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
-                            }
-                        },
-                );
+                remaining_gas = Some(match &mut return_ptr {
+                    Some(return_ptr) => unsafe {
+                        let ptr = return_ptr.cast::<u128>();
+                        *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
+                        *ptr.as_ref()
+                    },
+                    None => {
+                        // If there's no return ptr then the function only returned the gas. We don't
+                        // need to bother with the syscall handler builtin.
+                        ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
+                    }
+                });
                 break;
             }
-            CoreTypeConcrete::StarkNet(_) => count += 1,
+            CoreTypeConcrete::StarkNet(_) => todo!(),
             _ if <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin(
                 type_info,
             ) => {}
@@ -183,13 +179,13 @@ fn invoke_dynamic(
     let type_id = function_signature.ret_types.last().unwrap();
     let type_info = registry.get_type(type_id).unwrap();
     let return_value = match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap().1, type_id, registry),
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
         CoreTypeConcrete::Box(_) => todo!(),
         CoreTypeConcrete::EcPoint(_) => todo!(),
         CoreTypeConcrete::EcState(_) => todo!(),
         CoreTypeConcrete::Felt252(_) => {
             #[cfg(target_arch = "x86_64")]
-            let value = JitValue::from_jit(return_ptr.unwrap().1, type_id, registry);
+            let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 
             #[cfg(target_arch = "aarch64")]
             let value = JitValue::Felt252(Felt::from_bytes_le(unsafe {
@@ -241,7 +237,7 @@ fn invoke_dynamic(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry) {
-                let ptr = return_ptr.unwrap().1;
+                let ptr = return_ptr.unwrap();
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -265,7 +261,7 @@ fn invoke_dynamic(
             } else {
                 // TODO: Shouldn't the pointer be always `None` within this block?
                 match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
-                    0 => (0, return_ptr.map(|x| x.1).unwrap_or_else(NonNull::dangling)),
+                    0 => (0, return_ptr.unwrap_or_else(NonNull::dangling)),
                     _ => (
                         match tag_layout.size() {
                             0 => 0,
@@ -275,7 +271,7 @@ fn invoke_dynamic(
                             8 => ret_registers[0] as usize,
                             _ => unreachable!(),
                         },
-                        return_ptr.map(|x| x.1).unwrap_or_else(NonNull::dangling),
+                        return_ptr.unwrap_or_else(NonNull::dangling),
                     ),
                 }
             };
@@ -294,7 +290,7 @@ fn invoke_dynamic(
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
                 }
             } else {
-                JitValue::from_jit(return_ptr.unwrap().1, type_id, registry)
+                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => todo!(),

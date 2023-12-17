@@ -71,7 +71,9 @@ use itertools::Itertools;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, func, index, llvm, memref,
+        cf, func, index,
+        llvm::{self, LoadStoreOptions},
+        memref,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
@@ -200,8 +202,7 @@ where
 
     // Extract memory-allocated return types from ret_types and insert them in arg_types as a
     // pointer.
-    let mut num_return_ptrs = 0;
-    for (idx, type_info) in function
+    let return_types = function
         .signature
         .ret_types
         .iter()
@@ -210,20 +211,29 @@ where
             if type_info.is_builtin() && type_info.is_zst(registry) {
                 None
             } else {
-                Some(type_info)
+                Some((type_id, type_info))
             }
         })
-        .collect::<Vec<_>>()
-        .into_iter()
-        .enumerate()
-        .rev()
+        .collect::<Vec<_>>();
+    // Possible values:
+    //   None        => Doesn't return anything.
+    //   Some(false) => Has a complex return type.
+    //   Some(true)  => Has a manual return type which is in `arg_types[0]`.
+    let has_return_ptr = if return_types.len() > 1 {
+        Some(false)
+    } else if return_types
+        .first()
+        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
     {
-        if type_info.is_memory_allocated(registry) {
-            ret_types.remove(idx);
-            arg_types.insert(0, llvm::r#type::opaque_pointer(context));
-            num_return_ptrs += 1;
-        }
-    }
+        assert_eq!(ret_types.len(), 1);
+
+        ret_types.remove(0);
+        arg_types.insert(0, llvm::r#type::opaque_pointer(context));
+
+        Some(true)
+    } else {
+        None
+    };
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
@@ -493,20 +503,69 @@ where
                                 Location::unknown(context),
                             ));
 
-                            let recursive_values = function
-                                .signature
-                                .ret_types
-                                .iter()
-                                .zip(&values)
-                                .filter_map(|(type_id, value)| {
-                                    let type_info = registry.get_type(type_id).unwrap();
-                                    if type_info.is_memory_allocated(registry) {
-                                        None
-                                    } else {
-                                        Some(*value)
-                                    }
-                                })
-                                .collect::<Vec<_>>();
+                            let recursive_values = match has_return_ptr {
+                                Some(true) => function
+                                    .signature
+                                    .ret_types
+                                    .iter()
+                                    .zip(&values)
+                                    .filter_map(|(type_id, value)| {
+                                        let type_info = registry.get_type(type_id).unwrap();
+                                        if type_info.is_zst(registry)
+                                            || type_info.is_memory_allocated(registry)
+                                        {
+                                            None
+                                        } else {
+                                            Some(*value)
+                                        }
+                                    })
+                                    .collect::<Vec<_>>(),
+                                Some(false) => function
+                                    .signature
+                                    .ret_types
+                                    .iter()
+                                    .zip(&values)
+                                    .filter_map(|(type_id, value)| {
+                                        let type_info = registry.get_type(type_id).unwrap();
+                                        if type_info.is_zst(registry) {
+                                            None
+                                        } else {
+                                            let value = *value;
+
+                                            Some(if type_info.is_memory_allocated(registry) {
+                                                let ty = type_info
+                                                    .build(
+                                                        context, module, registry, metadata,
+                                                        type_id,
+                                                    )
+                                                    .unwrap();
+                                                let layout = type_info.layout(registry).unwrap();
+
+                                                block
+                                                    .append_operation(llvm::load(
+                                                        context,
+                                                        value,
+                                                        ty,
+                                                        Location::unknown(context),
+                                                        LoadStoreOptions::new().align(Some(
+                                                            IntegerAttribute::new(
+                                                                layout.align() as i64,
+                                                                IntegerType::new(context, 64)
+                                                                    .into(),
+                                                            ),
+                                                        )),
+                                                    ))
+                                                    .result(0)
+                                                    .unwrap()
+                                                    .into()
+                                            } else {
+                                                value
+                                            })
+                                        }
+                                    })
+                                    .collect::<Vec<_>>(),
+                                None => todo!(),
+                            };
 
                             block.append_operation(cf::cond_br(
                                 context,
@@ -530,34 +589,20 @@ where
                         }
                     }
 
-                    // If returning a memory-allocated value, copy its data instead of returning anything.
-                    let mut ret_ptr_iter = (0..num_return_ptrs).rev();
-                    for (idx, type_info) in function
-                        .signature
-                        .ret_types
-                        .iter()
-                        .filter_map(|type_id| {
-                            let type_info = registry.get_type(type_id).unwrap();
-                            if type_info.is_builtin() && type_info.is_zst(registry) {
-                                None
-                            } else {
-                                Some(type_info)
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .enumerate()
-                        .rev()
-                    {
-                        if type_info.is_memory_allocated(registry) {
-                            let layout = type_info.layout(registry).unwrap();
-                            let ptr = values.remove(idx);
+                    match has_return_ptr {
+                        Some(true) => {
+                            let (ret_type_id, ret_type_info) = return_types[0];
+                            let ret_layout = ret_type_info
+                                .layout(registry)
+                                .map_err(make_type_builder_error(ret_type_id))?;
+
+                            let ptr = values.remove(0);
 
                             let num_bytes = block
                                 .append_operation(arith::constant(
                                     context,
                                     IntegerAttribute::new(
-                                        layout.size() as i64,
+                                        ret_layout.size() as i64,
                                         IntegerType::new(context, 64).into(),
                                     )
                                     .into(),
@@ -579,9 +624,7 @@ where
                                 context,
                                 StringAttribute::new(context, "llvm.memcpy.inline"),
                                 &[
-                                    pre_entry_block
-                                        .argument(ret_ptr_iter.next().unwrap())?
-                                        .into(),
+                                    pre_entry_block.argument(0)?.into(),
                                     ptr,
                                     num_bytes,
                                     is_volatile,
@@ -590,6 +633,36 @@ where
                                 Location::unknown(context),
                             ));
                         }
+                        Some(false) => {
+                            for (value, (type_id, type_info)) in
+                                values.iter_mut().zip(&return_types)
+                            {
+                                if type_info.is_memory_allocated(registry) {
+                                    let layout = type_info
+                                        .layout(registry)
+                                        .map_err(make_type_builder_error(type_id))?;
+
+                                    *value = block
+                                        .append_operation(llvm::load(
+                                            context,
+                                            *value,
+                                            type_info
+                                                .build(context, module, registry, metadata, type_id)
+                                                .map_err(make_type_builder_error(type_id))?,
+                                            Location::unknown(context),
+                                            LoadStoreOptions::new().align(Some(
+                                                IntegerAttribute::new(
+                                                    layout.align() as i64,
+                                                    IntegerType::new(context, 64).into(),
+                                                ),
+                                            )),
+                                        ))
+                                        .result(0)?
+                                        .into();
+                                }
+                            }
+                        }
+                        None => {}
                     }
 
                     block.append_operation(func::r#return(&values, Location::unknown(context)));
@@ -603,7 +676,11 @@ where
     pre_entry_block.append_operation(cf::br(
         &entry_block,
         &(0..entry_block.argument_count())
-            .map(|i| Ok(pre_entry_block.argument(num_return_ptrs + i)?.into()))
+            .map(|i| {
+                Ok(pre_entry_block
+                    .argument((has_return_ptr == Some(true)) as usize + i)?
+                    .into())
+            })
             .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
         Location::unknown(context),
     ));

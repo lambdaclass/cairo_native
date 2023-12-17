@@ -159,9 +159,6 @@ where
     };
 
     if type_info.is_memory_allocated(registry) {
-        let ptr_ty = llvm::r#type::opaque_pointer(context);
-        let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, variant_tys[info.index].0], false);
-
         let k1 = helper
             .init_block()
             .append_operation(arith::constant(
@@ -171,21 +168,25 @@ where
             ))
             .result(0)?
             .into();
-        // Allocating only the space necessary for the current variant. This shouldn't cause any
-        // problems because the data won't be changed in place.
         let stack_ptr = helper
             .init_block()
             .append_operation(llvm::alloca(
                 context,
                 k1,
-                ptr_ty,
+                llvm::r#type::opaque_pointer(context),
                 location,
                 AllocaOptions::new()
                     .align(Some(IntegerAttribute::new(
                         layout.align() as i64,
                         IntegerType::new(context, 64).into(),
                     )))
-                    .elem_type(Some(TypeAttribute::new(enum_ty))),
+                    .elem_type(Some(TypeAttribute::new(type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
+                        &info.branch_signatures()[0].vars[0].ty,
+                    )?))),
             ))
             .result(0)?
             .into();

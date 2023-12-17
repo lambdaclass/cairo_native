@@ -3,7 +3,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
-    context::NativeContext, executor::AotNativeExecutor, utils::find_function_id, values::JitValue,
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
+    utils::find_function_id, values::JitValue,
 };
 use std::path::Path;
 
@@ -24,6 +25,7 @@ fn main() {
     let executor = AotNativeExecutor::new(
         shared_lib,
         ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap(),
+        native_program.get_metadata::<GasMetadata>().cloned(),
     );
 
     executor.invoke_dynamic(

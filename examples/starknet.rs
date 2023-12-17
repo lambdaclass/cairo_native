@@ -315,8 +315,6 @@ fn main() {
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
 
-    dbg!(&entry_point_fn.signature);
-
     let fn_id = &entry_point_fn.id;
 
     let native_executor = JitNativeExecutor::new(native_program);

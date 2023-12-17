@@ -50,7 +50,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[JitValue],
-        gas: Option<u128>,
+        mut gas: Option<u128>,
     ) -> Result<ExecutionResult, RunnerError> {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
@@ -72,6 +72,17 @@ impl<'m> JitNativeExecutor<'m> {
             .get_function(function_id)
             .unwrap()
             .signature;
+
+        if let (Some(gas), Some(required_init_gas)) = (
+            gas.as_mut(),
+            self.native_module.get_required_init_gas(function_id),
+        ) {
+            if required_init_gas > *gas {
+                panic!("Not enough gas");
+            }
+
+            *gas -= required_init_gas;
+        }
 
         Ok(super::invoke_dynamic(
             self.program_registry(),

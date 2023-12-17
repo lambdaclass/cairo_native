@@ -1,4 +1,7 @@
-use crate::{context::NativeContext, executor::AotNativeExecutor, utils::SHARED_LIBRARY_EXT};
+use crate::{
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
+    utils::SHARED_LIBRARY_EXT,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,
@@ -44,8 +47,11 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
         crate::ffi::object_to_shared_lib(&object_data, &shared_library_path).unwrap();
 
         let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
-        let executor =
-            AotNativeExecutor::new(shared_library, ProgramRegistry::new(program).unwrap());
+        let executor = AotNativeExecutor::new(
+            shared_library,
+            ProgramRegistry::new(program).unwrap(),
+            module.get_metadata::<GasMetadata>().cloned(),
+        );
 
         let executor = Rc::new(executor);
         self.cache.insert(key, executor.clone());

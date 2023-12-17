@@ -622,7 +622,7 @@ pub mod test {
         executor::JitNativeExecutor,
         metadata::{
             runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta,
-            MetadataStorage,
+            MetadataStorage, gas::{GasMetadata, MetadataComputationConfig},
         },
         module::NativeModule,
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -764,6 +764,11 @@ pub mod test {
         metadata
             .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
             .unwrap();
+
+        if program.type_declarations.iter().any(|decl| decl.long_id.generic_id.0 == "GasBuiltin") {
+            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            metadata.insert(gas_metadata);
+        }
 
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
