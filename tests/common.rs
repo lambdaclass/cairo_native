@@ -323,7 +323,7 @@ where
     let native_executor = JitNativeExecutor::new(native_program);
 
     native_executor
-        .execute_contract(entry_point_id, args, u64::MAX as u128)
+        .execute_contract(entry_point_id, args, u128::MAX.into())
         .expect("failed to execute the given contract")
 }
 

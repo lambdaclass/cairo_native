@@ -3,6 +3,7 @@ use crate::{execution_result::ExecutionResult, types::TypeBuilder, values::JitVa
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    ids::ConcreteTypeId,
     program::FunctionSignature,
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
@@ -180,131 +181,12 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let type_id = function_signature.ret_types.last().unwrap();
-    let type_info = registry.get_type(type_id).unwrap();
-    let return_value = match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::Box(_) => todo!(),
-        CoreTypeConcrete::EcPoint(_) => todo!(),
-        CoreTypeConcrete::EcState(_) => todo!(),
-        CoreTypeConcrete::Felt252(_) => {
-            #[cfg(target_arch = "x86_64")]
-            let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
-
-            #[cfg(target_arch = "aarch64")]
-            let value = JitValue::Felt252(Felt::from_bytes_le(unsafe {
-                std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-            }));
-
-            value
-        }
-        CoreTypeConcrete::Uint8(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint8(ret_registers[0] as u8)
-        }
-        CoreTypeConcrete::Uint16(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint16(ret_registers[0] as u16)
-        }
-        CoreTypeConcrete::Uint32(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint32(ret_registers[0] as u32)
-        }
-        CoreTypeConcrete::Uint64(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint64(ret_registers[0])
-        }
-        CoreTypeConcrete::Uint128(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
-        }
-        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint8(ret_registers[0] as i8)
-        }
-        CoreTypeConcrete::Sint16(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint16(ret_registers[0] as i16)
-        }
-        CoreTypeConcrete::Sint32(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint32(ret_registers[0] as i32)
-        }
-        CoreTypeConcrete::Sint64(_) => todo!(),
-        CoreTypeConcrete::Sint128(_) => todo!(),
-        CoreTypeConcrete::NonZero(_) => todo!(),
-        CoreTypeConcrete::Nullable(_) => todo!(),
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
-        CoreTypeConcrete::Enum(info) => {
-            let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
-
-            let (tag, ptr) = if type_info.is_memory_allocated(registry) {
-                let ptr = return_ptr.unwrap();
-
-                let tag = unsafe {
-                    match tag_layout.size() {
-                        0 => 0,
-                        1 => *ptr.cast::<u8>().as_ref() as usize,
-                        2 => *ptr.cast::<u16>().as_ref() as usize,
-                        4 => *ptr.cast::<u32>().as_ref() as usize,
-                        8 => *ptr.cast::<u64>().as_ref() as usize,
-                        _ => unreachable!(),
-                    }
-                };
-
-                (tag, unsafe {
-                    NonNull::new_unchecked(
-                        ptr.cast::<u8>()
-                            .as_ptr()
-                            .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
-                    )
-                    .cast()
-                })
-            } else {
-                // TODO: Shouldn't the pointer be always `None` within this block?
-                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
-                    0 => (0, return_ptr.unwrap_or_else(NonNull::dangling)),
-                    _ => (
-                        match tag_layout.size() {
-                            0 => 0,
-                            1 => ret_registers[0] as u8 as usize,
-                            2 => ret_registers[0] as u16 as usize,
-                            4 => ret_registers[0] as u32 as usize,
-                            8 => ret_registers[0] as usize,
-                            _ => unreachable!(),
-                        },
-                        return_ptr.unwrap_or_else(NonNull::dangling),
-                    ),
-                }
-            };
-            let value = Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry));
-
-            JitValue::Enum {
-                tag,
-                value,
-                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-            }
-        }
-        CoreTypeConcrete::Struct(info) => {
-            if info.members.is_empty() {
-                JitValue::Struct {
-                    fields: Vec::new(),
-                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-                }
-            } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
-            }
-        }
-        CoreTypeConcrete::Felt252Dict(_) => todo!(),
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-        CoreTypeConcrete::Span(_) => todo!(),
-        CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => todo!(),
-        _ => unreachable!(),
-    };
+    let return_value = parse_result(
+        function_signature.ret_types.last().unwrap(),
+        registry,
+        return_ptr,
+        ret_registers,
+    );
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
@@ -460,6 +342,11 @@ fn map_arg_to_values(
         (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
             invoke_data.push(*value as u64);
         }
+        (CoreTypeConcrete::NonZero(info), _) => {
+            // TODO: Check that the value is indeed non-zero.
+            let type_info = program_registry.get_type(&info.ty)?;
+            map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+        }
         (CoreTypeConcrete::Bitwise(_), _)
         | (CoreTypeConcrete::BuiltinCosts(_), _)
         | (CoreTypeConcrete::EcOp(_), _)
@@ -508,4 +395,140 @@ fn map_arg_to_values(
     }
 
     Ok(())
+}
+
+fn parse_result(
+    type_id: &ConcreteTypeId,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    return_ptr: Option<NonNull<()>>,
+    #[cfg(target_arch = "x86_64")] ret_registers: [u64; 2],
+    #[cfg(target_arch = "aarch64")] ret_registers: [u64; 4],
+) -> JitValue {
+    let type_info = registry.get_type(type_id).unwrap();
+
+    match type_info {
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Felt252(_) => {
+            #[cfg(target_arch = "x86_64")]
+            let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+
+            #[cfg(target_arch = "aarch64")]
+            let value = JitValue::Felt252(Felt::from_bytes_le(unsafe {
+                std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+            }));
+
+            value
+        }
+        CoreTypeConcrete::Uint8(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint8(ret_registers[0] as u8)
+        }
+        CoreTypeConcrete::Uint16(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint16(ret_registers[0] as u16)
+        }
+        CoreTypeConcrete::Uint32(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint32(ret_registers[0] as u32)
+        }
+        CoreTypeConcrete::Uint64(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint64(ret_registers[0])
+        }
+        CoreTypeConcrete::Uint128(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+        }
+        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint8(ret_registers[0] as i8)
+        }
+        CoreTypeConcrete::Sint16(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint16(ret_registers[0] as i16)
+        }
+        CoreTypeConcrete::Sint32(_) => {
+            assert!(return_ptr.is_none());
+            JitValue::Sint32(ret_registers[0] as i32)
+        }
+        CoreTypeConcrete::Sint64(_) => todo!(),
+        CoreTypeConcrete::Sint128(_) => todo!(),
+        CoreTypeConcrete::NonZero(info) => {
+            parse_result(&info.ty, registry, return_ptr, ret_registers)
+        }
+        CoreTypeConcrete::Nullable(_) => todo!(),
+        CoreTypeConcrete::Uninitialized(_) => todo!(),
+        CoreTypeConcrete::Enum(info) => {
+            let (_, tag_layout, variant_layouts) =
+                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+
+            let (tag, ptr) = if type_info.is_memory_allocated(registry) {
+                let ptr = return_ptr.unwrap();
+
+                let tag = unsafe {
+                    match tag_layout.size() {
+                        0 => 0,
+                        1 => *ptr.cast::<u8>().as_ref() as usize,
+                        2 => *ptr.cast::<u16>().as_ref() as usize,
+                        4 => *ptr.cast::<u32>().as_ref() as usize,
+                        8 => *ptr.cast::<u64>().as_ref() as usize,
+                        _ => unreachable!(),
+                    }
+                };
+
+                (tag, unsafe {
+                    NonNull::new_unchecked(
+                        ptr.cast::<u8>()
+                            .as_ptr()
+                            .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                    )
+                    .cast()
+                })
+            } else {
+                // TODO: Shouldn't the pointer be always `None` within this block?
+                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                    0 => (0, return_ptr.unwrap_or_else(NonNull::dangling)),
+                    _ => (
+                        match tag_layout.size() {
+                            0 => 0,
+                            1 => ret_registers[0] as u8 as usize,
+                            2 => ret_registers[0] as u16 as usize,
+                            4 => ret_registers[0] as u32 as usize,
+                            8 => ret_registers[0] as usize,
+                            _ => unreachable!(),
+                        },
+                        return_ptr.unwrap_or_else(NonNull::dangling),
+                    ),
+                }
+            };
+            let value = Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry));
+
+            JitValue::Enum {
+                tag,
+                value,
+                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+            }
+        }
+        CoreTypeConcrete::Struct(info) => {
+            if info.members.is_empty() {
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                }
+            } else {
+                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+            }
+        }
+        CoreTypeConcrete::Felt252Dict(_) => todo!(),
+        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Span(_) => todo!(),
+        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Bytes31(_) => todo!(),
+        _ => unreachable!(),
+    }
 }
