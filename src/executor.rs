@@ -85,7 +85,7 @@ fn invoke_dynamic(
             let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
             let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
 
-            !is_builtin(info) || !is_zst(info, registry)
+            !(is_builtin(info) && is_zst(info, registry))
         })
         .peekable();
 
@@ -129,7 +129,7 @@ fn invoke_dynamic(
                 }
                 None => panic!("Gas is required"),
             },
-            CoreTypeConcrete::StarkNet(_) => match syscall_handler {
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
                 Some(syscall_handler) => invoke_data.push(syscall_handler.as_ptr() as u64),
                 None => panic!("Syscall handler is required"),
             },
@@ -311,7 +311,16 @@ fn map_arg_to_values(
                 )?;
             }
         }
-        (CoreTypeConcrete::Felt252(_), JitValue::Felt252(value)) => {
+        (
+            CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::StarkNet(
+                StarkNetTypeConcrete::ClassHash(_)
+                | StarkNetTypeConcrete::ContractAddress(_)
+                | StarkNetTypeConcrete::StorageAddress(_)
+                | StarkNetTypeConcrete::StorageBaseAddress(_),
+            ),
+            JitValue::Felt252(value),
+        ) => {
             invoke_data.extend(value.to_le_digits());
         }
         (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
