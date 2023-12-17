@@ -23,7 +23,10 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     metadata::{
-        runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta, MetadataStorage,
+        gas::{GasMetadata, MetadataComputationConfig},
+        runtime_bindings::RuntimeBindingsMeta,
+        syscall_handler::SyscallHandlerMeta,
+        MetadataStorage,
     },
     module::NativeModule,
     starknet::StarkNetSyscallHandler,
@@ -67,7 +70,7 @@ macro_rules! load_cairo {
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
 
-pub(crate) const GAS: u64 = u64::MAX;
+pub const DEFAULT_GAS: u64 = u64::MAX;
 
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
@@ -185,6 +188,7 @@ pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[JitValue],
+    gas: Option<u128>,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -211,8 +215,12 @@ pub fn run_native_program(
     let mut module = Module::new(Location::unknown(&context));
     let mut metadata = MetadataStorage::new();
 
-    // Make the runtime library and syscall handler available.
+    // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+    metadata.insert(GasMetadata::new(
+        program,
+        MetadataComputationConfig::default(),
+    ));
 
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
@@ -235,9 +243,7 @@ pub fn run_native_program(
 
     let native_module = NativeModule::new(module, registry, metadata);
     let executor = JitNativeExecutor::new(native_module);
-    executor
-        .invoke_dynamic(entry_point_id, args, Some(u128::MAX))
-        .unwrap()
+    executor.invoke_dynamic(entry_point_id, args, gas).unwrap()
 
     // let engine = ExecutionEngine::new(&module, 0, &[], false);
 
@@ -287,9 +293,8 @@ pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
-
-    let result_native = run_native_program(program, "main", &[]);
+    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128));
 
     compare_outputs(
         &program.1,

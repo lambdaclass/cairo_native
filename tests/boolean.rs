@@ -3,13 +3,11 @@ use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JitValue;
-use common::compare_outputs;
+use common::{compare_outputs, DEFAULT_GAS};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
 mod common;
-
-const GAS: usize = usize::MAX;
 
 lazy_static! {
     static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -122,10 +120,15 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Arg::Value(DeprecatedFelt::from(a))],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-    let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[JitValue::Felt252(a.into())],
+        Some(DEFAULT_GAS as u128),
+    );
 
     compare_outputs(
         &program.1,
@@ -140,10 +143,15 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Arg::Value(DeprecatedFelt::from(a))],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-    let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[JitValue::Felt252(a.into())],
+        Some(DEFAULT_GAS as u128),
+    );
 
     compare_outputs(
         &program.1,
@@ -160,8 +168,13 @@ proptest! {
         let program = &BOOL_TO_FELT252;
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from(a)),
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
@@ -177,8 +190,13 @@ proptest! {
         let program = &BOOL_NOT;
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from(a)),
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a.into())],
+            Some(DEFAULT_GAS as u128)
+        );
 
         compare_outputs(
             &program.1,
@@ -195,8 +213,13 @@ proptest! {
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from(a)),
             Arg::Value(DeprecatedFelt::from(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
@@ -213,8 +236,13 @@ proptest! {
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from(a)),
             Arg::Value(DeprecatedFelt::from(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
@@ -231,8 +259,13 @@ proptest! {
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from(a)),
             Arg::Value(DeprecatedFelt::from(b))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,

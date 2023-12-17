@@ -1,4 +1,4 @@
-use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
+use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
@@ -8,8 +8,6 @@ use lazy_static::lazy_static;
 use proptest::prelude::*;
 
 mod common;
-
-const GAS: usize = usize::MAX;
 
 lazy_static! {
 
@@ -62,10 +60,15 @@ proptest! {
             program,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
@@ -82,10 +85,15 @@ proptest! {
             program,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
@@ -102,10 +110,15 @@ proptest! {
             program,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(program, "run_test", &[JitValue::Felt252(a), JitValue::Felt252(b)]);
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,
