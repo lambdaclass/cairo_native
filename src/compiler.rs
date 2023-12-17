@@ -874,10 +874,26 @@ where
         .map(|ty| Ok((ty?, Location::unknown(context))))
         .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?;
 
-        for (id, ty) in function.signature.param_types.iter().zip(args.iter_mut()) {
-            let type_info = registry.get_type(id)?;
-            if type_info.is_memory_allocated(registry) {
-                ty.0 = llvm::r#type::opaque_pointer(context);
+        for (type_info, (ty, _)) in function
+            .signature
+            .param_types
+            .iter()
+            .filter_map(|type_id| {
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                if type_info.is_builtin() && type_info.is_zst(registry) {
+                    None
+                } else {
+                    Some(Ok(type_info))
+                }
+            })
+            .zip(args.iter_mut())
+        {
+            if type_info?.is_memory_allocated(registry) {
+                *ty = llvm::r#type::opaque_pointer(context);
             }
         }
 
