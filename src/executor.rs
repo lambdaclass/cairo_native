@@ -2,7 +2,10 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{execution_result::ExecutionResult, types::TypeBuilder, values::JitValue};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
+    },
     ids::ConcreteTypeId,
     program::FunctionSignature,
     program_registry::{ProgramRegistry, ProgramRegistryError},
@@ -424,7 +427,13 @@ fn parse_result(
         CoreTypeConcrete::Box(_) => todo!(),
         CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
         CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::Felt252(_) => {
+        CoreTypeConcrete::Felt252(_)
+        | CoreTypeConcrete::StarkNet(
+            StarkNetTypeConcrete::ClassHash(_)
+            | StarkNetTypeConcrete::ContractAddress(_)
+            | StarkNetTypeConcrete::StorageAddress(_)
+            | StarkNetTypeConcrete::StorageBaseAddress(_),
+        ) => {
             #[cfg(target_arch = "x86_64")]
             let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 

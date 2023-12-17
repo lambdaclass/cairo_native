@@ -397,7 +397,7 @@ where
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::StarkNet(_) // u64 is not complex
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
             CoreTypeConcrete::Box(_)
@@ -421,7 +421,13 @@ where
             CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252DictEntry(_) => true,
 
-            CoreTypeConcrete::Felt252(_) => {
+            CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::StarkNet(
+                StarkNetTypeConcrete::ClassHash(_)
+                | StarkNetTypeConcrete::ContractAddress(_)
+                | StarkNetTypeConcrete::StorageAddress(_)
+                | StarkNetTypeConcrete::StorageBaseAddress(_)
+            ) => {
                 #[cfg(target_arch = "x86_64")]
                 let value = true;
 
@@ -439,6 +445,7 @@ where
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
