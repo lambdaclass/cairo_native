@@ -81,7 +81,11 @@ fn invoke_dynamic(
         .iter()
         .filter(|id| {
             let info = registry.get_type(id).unwrap();
-            !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
+
+            let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
+            let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
+
+            !is_builtin(info) || !is_zst(info, registry)
         })
         .peekable();
 
@@ -133,6 +137,7 @@ fn invoke_dynamic(
                 &arena,
                 &mut invoke_data,
                 registry,
+                type_id,
                 type_info,
                 iter.next().unwrap(),
             )
@@ -209,6 +214,7 @@ fn map_arg_to_values(
     arena: &Bump,
     invoke_data: &mut Vec<u64>,
     program_registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    type_id: &ConcreteTypeId,
     type_info: &CoreTypeConcrete,
     value: &JitValue,
 ) -> Result<(), Box<ProgramRegistryError>> {
@@ -295,7 +301,14 @@ fn map_arg_to_values(
 
                 // Write the payload.
                 let type_info = program_registry.get_type(&info.variants[*tag]).unwrap();
-                map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+                map_arg_to_values(
+                    arena,
+                    invoke_data,
+                    program_registry,
+                    &info.variants[*tag],
+                    type_info,
+                    value,
+                )?;
             }
         }
         (CoreTypeConcrete::Felt252(_), JitValue::Felt252(value)) => {
@@ -305,18 +318,14 @@ fn map_arg_to_values(
             #[cfg(not(feature = "cairo-native-runtime"))]
             unimplemented!("enable the `cairo-native-runtime` feature to use felt252 dicts");
 
-            #[cfg(feature = "cairo-native-runtime")]
-            // invoke_data.push(value.iter().fold(
-            //     unsafe { cairo_native_runtime::cairo_native__alloc_dict() },
-            //     |ptr, (key, val)| unsafe {
-            //         cairo_native_runtime::cairo_native__dict_insert(
-            //             ptr,
-            //             &key.to_le_bytes(),
-            //             todo!(),
-            //         )
-            //     },
-            // ) as u64);
-            todo!("Flatten felt252_dict into Vec<u64> for the AOT interface's arguments'.")
+            // TODO: Assert that `info.ty` matches all the values' types.
+
+            invoke_data.push(
+                value
+                    .to_jit(arena, program_registry, type_id)
+                    .unwrap()
+                    .as_ptr() as u64,
+            );
         }
         (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => {
             for (field_type_id, field_value) in info.members.iter().zip(fields) {
@@ -324,6 +333,7 @@ fn map_arg_to_values(
                     arena,
                     invoke_data,
                     program_registry,
+                    field_type_id,
                     program_registry.get_type(field_type_id)?,
                     field_value,
                 )?;
@@ -357,11 +367,25 @@ fn map_arg_to_values(
         (CoreTypeConcrete::NonZero(info), _) => {
             // TODO: Check that the value is indeed non-zero.
             let type_info = program_registry.get_type(&info.ty)?;
-            map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+            map_arg_to_values(
+                arena,
+                invoke_data,
+                program_registry,
+                &info.ty,
+                type_info,
+                value,
+            )?;
         }
         (CoreTypeConcrete::Snapshot(info), _) => {
             let type_info = program_registry.get_type(&info.ty)?;
-            map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+            map_arg_to_values(
+                arena,
+                invoke_data,
+                program_registry,
+                &info.ty,
+                type_info,
+                value,
+            )?;
         }
         (CoreTypeConcrete::Bitwise(_), _)
         | (CoreTypeConcrete::BuiltinCosts(_), _)
@@ -444,39 +468,41 @@ fn parse_result(
 
             value
         }
-        CoreTypeConcrete::Uint8(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint8(ret_registers[0] as u8)
-        }
-        CoreTypeConcrete::Uint16(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint16(ret_registers[0] as u16)
-        }
-        CoreTypeConcrete::Uint32(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint32(ret_registers[0] as u32)
-        }
-        CoreTypeConcrete::Uint64(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint64(ret_registers[0])
-        }
-        CoreTypeConcrete::Uint128(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
-        }
+        CoreTypeConcrete::Uint8(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Uint8(ret_registers[0] as u8),
+        },
+        CoreTypeConcrete::Uint16(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint16(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Uint16(ret_registers[0] as u16),
+        },
+        CoreTypeConcrete::Uint32(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint32(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Uint32(ret_registers[0] as u32),
+        },
+        CoreTypeConcrete::Uint64(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Uint64(ret_registers[0]),
+        },
+        CoreTypeConcrete::Uint128(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() }),
+            None => {
+                JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+            }
+        },
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint8(ret_registers[0] as i8)
-        }
-        CoreTypeConcrete::Sint16(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint16(ret_registers[0] as i16)
-        }
-        CoreTypeConcrete::Sint32(_) => {
-            assert!(return_ptr.is_none());
-            JitValue::Sint32(ret_registers[0] as i32)
-        }
+        CoreTypeConcrete::Sint8(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Sint8(ret_registers[0] as i8),
+        },
+        CoreTypeConcrete::Sint16(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Sint16(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Sint16(ret_registers[0] as i16),
+        },
+        CoreTypeConcrete::Sint32(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Sint32(ret_registers[0] as i32),
+        },
         CoreTypeConcrete::Sint64(_) => todo!(),
         CoreTypeConcrete::Sint128(_) => todo!(),
         CoreTypeConcrete::NonZero(info) => {
@@ -545,7 +571,14 @@ fn parse_result(
                 JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
             }
         }
-        CoreTypeConcrete::Felt252Dict(_) => todo!(),
+        CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            None => JitValue::from_jit(
+                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
+                type_id,
+                registry,
+            ),
+        },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
         CoreTypeConcrete::Span(_) => todo!(),

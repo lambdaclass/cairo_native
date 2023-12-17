@@ -361,24 +361,7 @@ impl JitValue {
                             value_map.insert(key, value_malloc_ptr);
                         }
 
-                        let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> =
-                            arena
-                                .alloc_layout(Layout::new::<
-                                    NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>,
-                                >())
-                                .cast();
-
-                        let map_ptr: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = arena
-                            .alloc_layout(
-                                Layout::new::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
-                                    .pad_to_align(),
-                            )
-                            .cast();
-
-                        std::ptr::write(map_ptr.as_ptr(), value_map);
-                        std::ptr::write(target.as_ptr(), map_ptr);
-
-                        target.cast()
+                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -613,9 +596,10 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let ptr = ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
-                    let ptr = *ptr.as_ptr();
-                    let map = Box::from_raw(ptr.as_ptr());
+                    let map = Box::from_raw(
+                        ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
+                            .as_ptr(),
+                    );
 
                     let mut output_map = HashMap::with_capacity(map.len());
 
@@ -623,8 +607,6 @@ impl JitValue {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                     }
-
-                    Box::leak(map); // we must leak to avoid a double free
 
                     JitValue::Felt252Dict {
                         value: output_map,

@@ -150,8 +150,25 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    let map: Box<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = Box::default();
-    Box::into_raw(map) as _
+    Box::into_raw(Box::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>::default()) as _
+}
+
+/// Frees the dictionary.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_free(
+    ptr: *mut HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+) {
+    let mut map = Box::from_raw(ptr);
+
+    // Free the entries manually.
+    for (_, entry) in map.drain() {
+        libc::free(entry.as_ptr().cast());
+    }
 }
 
 /// Gets the value for a given key, the returned pointer is null if not found.
@@ -162,12 +179,12 @@ pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    map: *mut std::ffi::c_void,
+    ptr: *const HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
     key: &[u8; 32],
-) -> *mut std::ffi::c_void {
-    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+) -> *const std::ffi::c_void {
+    let map: &HashMap<[u8; 32], NonNull<std::ffi::c_void>> = &*ptr;
 
-    if let Some(v) = (*ptr).get(key) {
+    if let Some(v) = map.get(key) {
         v.as_ptr()
     } else {
         std::ptr::null_mut()
@@ -182,11 +199,11 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_insert(
-    map: *mut std::ffi::c_void,
+    ptr: *mut HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
     key: &[u8; 32],
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
-    let ptr = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
+    let ptr = ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
     let old_ptr = (*ptr).insert(*key, value);
 
     if let Some(v) = old_ptr {
@@ -194,23 +211,6 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
     } else {
         std::ptr::null_mut()
     }
-}
-
-/// Frees the dictionary.
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-#[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_free(map: *mut std::ffi::c_void) {
-    let dict = map.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
-    let dict = Box::from_raw(dict);
-
-    for (_, entry) in dict.into_iter() {
-        libc::free(entry.as_ptr().cast());
-    }
-    // freed by box drop
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
