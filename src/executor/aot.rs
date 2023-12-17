@@ -66,7 +66,9 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             self.extract_signature(function_id),
             args,
             gas,
-            None,
+            self.syscall_handler
+                .as_ref()
+                .map(|syscall_handler| syscall_handler.as_ptr()),
         )
     }
 

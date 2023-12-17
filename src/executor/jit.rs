@@ -62,7 +62,9 @@ impl<'m> JitNativeExecutor<'m> {
             self.extract_signature(function_id),
             args,
             gas,
-            None,
+            self.module()
+                .get_metadata::<SyscallHandlerMeta>()
+                .map(|syscall_handler| syscall_handler.as_ptr()),
         ))
     }
 
