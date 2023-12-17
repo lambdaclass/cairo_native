@@ -170,9 +170,14 @@ fn invoke_dynamic(
                         ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
                     }
                 });
-                break;
             }
-            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => match &mut return_ptr {
+                Some(return_ptr) => unsafe {
+                    let ptr = return_ptr.cast::<*mut ()>();
+                    *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
+                },
+                None => {}
+            },
             _ if <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin(
                 type_info,
             ) => {}
@@ -213,7 +218,11 @@ fn map_arg_to_values(
             let type_layout = type_info.layout(program_registry).unwrap().pad_to_align();
 
             // This needs to be a heap-allocated pointer because it's the actual array data.
-            let ptr = unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) };
+            let ptr = if values.is_empty() {
+                null_mut()
+            } else {
+                unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) }
+            };
 
             for (idx, value) in values.iter().enumerate() {
                 unsafe {
@@ -344,6 +353,10 @@ fn map_arg_to_values(
         }
         (CoreTypeConcrete::NonZero(info), _) => {
             // TODO: Check that the value is indeed non-zero.
+            let type_info = program_registry.get_type(&info.ty)?;
+            map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
+        }
+        (CoreTypeConcrete::Snapshot(info), _) => {
             let type_info = program_registry.get_type(&info.ty)?;
             map_arg_to_values(arena, invoke_data, program_registry, type_info, value)?;
         }

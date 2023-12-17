@@ -15,6 +15,7 @@ use cairo_lang_sierra::{
 use libc::c_void;
 use melior::ExecutionEngine;
 use mlir_sys::{mlirExecutionEngineLookup, MlirExecutionEngine, MlirStringRef};
+use starknet_types_core::felt::Felt;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct JitNativeExecutor<'m> {
@@ -74,7 +75,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn execute_contract(
         &self,
         function_id: &FunctionId,
-        args: &[JitValue],
+        args: &[Felt],
         mut gas: Option<u128>,
     ) -> Result<ContractExecutionResult, RunnerError> {
         self.process_required_initial_gas(function_id, gas.as_mut());
@@ -84,11 +85,18 @@ impl<'m> JitNativeExecutor<'m> {
             .get_metadata::<SyscallHandlerMeta>()
             .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
 
+        // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             self.program_registry(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
-            args,
+            &[JitValue::Struct {
+                fields: vec![JitValue::Array(
+                    args.iter().cloned().map(JitValue::Felt252).collect(),
+                )],
+                // TODO: Populate `debug_name`.
+                debug_name: None,
+            }],
             gas,
             Some(syscall_handler.as_ptr()),
         ))

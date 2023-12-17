@@ -3,7 +3,6 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JitValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -320,7 +319,7 @@ fn main() {
     let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute_contract(fn_id, &[JitValue::Felt252(Felt::from(1))], Some(u128::MAX))
+        .execute_contract(fn_id, &[Felt::from(1)], Some(u128::MAX))
         .expect("failed to execute the given contract");
 
     println!();

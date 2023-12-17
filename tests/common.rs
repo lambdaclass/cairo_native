@@ -304,7 +304,7 @@ pub fn compare_inputless_program(program_path: &str) {
 pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
     entry_point_function_idx: usize,
-    args: &[JitValue],
+    args: &[Felt],
     handler: &mut T,
 ) -> ContractExecutionResult
 where
