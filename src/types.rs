@@ -459,7 +459,7 @@ where
             CoreTypeConcrete::Sint32(_) => get_integer_layout(32),
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 layout"),
+            CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
         })
     }
 
