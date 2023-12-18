@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb build-alexandria
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria
 
 #
 # Environment detection.
@@ -84,12 +84,12 @@ ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos install-scarb
+deps: build-cairo-2-compiler-macos deps-macos install-scarb-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
 
-deps-macos: build-cairo-2-compiler-macos
+deps-macos: build-cairo-2-compiler-macos install-scarb-macos
 	-brew install llvm@17 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
@@ -119,6 +119,9 @@ cairo-%.tar:
 
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path
+
+install-scarb:
+	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh
 
 build-alexandria:
 	cd tests/alexandria; scarb build
