@@ -251,12 +251,7 @@ pub fn run_native_program(
     cairo_native::execute(
         &engine,
         &registry,
-        &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-            .expect("Test program entry point not found.")
-            .id,
+        entry_point_id,
         args,
         required_initial_gas,
         Some(u64::MAX.into()),
