@@ -179,7 +179,7 @@ fn invoke_dynamic(
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(_) => match &mut return_ptr {
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match &mut return_ptr {
                 Some(return_ptr) => unsafe {
                     let ptr = return_ptr.cast::<*mut ()>();
                     *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
