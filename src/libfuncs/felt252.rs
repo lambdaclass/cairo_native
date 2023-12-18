@@ -143,7 +143,7 @@ where
                         .prime();
                     (&operation.c + prime.to_bigint().expect("always is Some"))
                         .to_biguint()
-                        .expect("always is positive")
+                        .expect("always positive")
                 }
                 _ => operation.c.to_biguint().expect("sign already checked"),
             };
