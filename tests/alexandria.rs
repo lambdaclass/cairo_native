@@ -17,6 +17,7 @@ use test_case::test_case;
 
 mod common;
 #[test_case("fib")]
+#[test_case("karatsuba" => ignore["SIGKILL"])]
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }
