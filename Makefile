@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean build-alexandria install-scarb
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria
 
 #
 # Environment detection.
