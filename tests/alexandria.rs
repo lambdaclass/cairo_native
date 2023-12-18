@@ -1,18 +1,7 @@
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
-
-use crate::common::GAS;
-use cairo_lang_compiler::project::setup_project;
-use cairo_lang_compiler::{compile_prepared_db, db::RootDatabase, CompilerConfig};
-use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
 use common::{compare_outputs, run_native_program, run_vm_program};
-use std::env::var;
-use std::sync::Arc;
+use std::{fs::File, io::BufReader};
 use test_case::test_case;
 
 mod common;
