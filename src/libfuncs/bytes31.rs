@@ -25,6 +25,7 @@ use melior::{
     ir::{Attribute, Block, Location, Value},
     Context,
 };
+use num_bigint::BigUint;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -158,9 +159,11 @@ where
         &info.branch_signatures()[0].vars[1].ty,
     )?;
 
+    let max_value = BigUint::from(2u32).pow(248) - 1u32;
+
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", u8::MAX, felt252_ty)).unwrap(),
+        Attribute::parse(context, &format!("{} : {}", max_value, felt252_ty)).unwrap(),
         location,
     ));
     let const_max = op.result(0)?.into();

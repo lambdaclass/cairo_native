@@ -748,7 +748,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint64(_) => false,
             CoreTypeConcrete::Uint128(_) => false,
             CoreTypeConcrete::Uint128MulGuarantee(_) => false,
-            CoreTypeConcrete::NonZero(_) => false,
+            CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -775,7 +775,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint32(_) => false,
             CoreTypeConcrete::Sint64(_) => false,
             CoreTypeConcrete::Sint128(_) => false,
-            CoreTypeConcrete::Bytes31(_) => todo!("implement whether bytes31 is complex"),
+            CoreTypeConcrete::Bytes31(_) => false,
         }
     }
 }

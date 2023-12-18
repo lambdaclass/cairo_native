@@ -406,9 +406,11 @@ pub fn execute(
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_)
             | CoreTypeConcrete::SegmentArena(_) => {
                 // ignore returned builtins
+            }
+            CoreTypeConcrete::Uint128MulGuarantee(_) => {
+                // ignore guarantee
             }
             _ => {
                 let value = JITValue::from_jit(ptr, type_id, registry);
