@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb build-alexandria
 
 #
 # Environment detection.
@@ -84,7 +84,7 @@ ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos install-scarb-macos
+deps: build-cairo-2-compiler-macos deps-macos install-scarb
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
@@ -117,21 +117,8 @@ cairo-%-macos.tar:
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
 
-SCARB_VERSION = 2.4.0
-
-install-scarb-macos:
-	curl -L -o scarb-$(SCARB_VERSION).tar https://github.com/software-mansion/scarb/releases/download/v2.4.0/scarb-v2.4.0-aarch64-apple-darwin.tar.gz
-	tar -xzvf scarb-$(SCARB_VERSION).tar
-	mv scarb-v$(SCARB_VERSION)-aarch64-apple-darwin/bin/scarb scarb
-	rm -rf scarb-v$(SCARB_VERSION)-aarch64-apple-darwin
-	rm scarb-$(SCARB_VERSION).tar
-
 install-scarb:
-	curl -L -o scarb-$(SCARB_VERSION).tar https://github.com/software-mansion/scarb/releases/download/v2.4.0/scarb-v2.4.0-x86_64-unknown-linux-musl.tar.gz
-	tar -xzvf scarb-$(SCARB_VERSION).tar
-	mv scarb-v$(SCARB_VERSION)-x86_64-unknown-linux-musl/bin/scarb scarb
-	rm -rf scarb-v$(SCARB_VERSION)-x86_64-unknown-linux-musl
-	rm scarb-$(SCARB_VERSION).tar
+	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s --  --no-modify-path
 
 build-alexandria:
-	cd tests/alexandria; ../../scarb build
+	cd tests/alexandria; scarb build
