@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean build-alexandria install-scarb
 
 #
 # Environment detection.
@@ -52,7 +52,7 @@ check: check-llvm
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-test: check-llvm needs-cairo2
+test: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile optimized-dev --all-targets --all-features
 
 proptest: check-llvm needs-cairo2
@@ -119,3 +119,6 @@ cairo-%.tar:
 
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
+
+build-alexandria:
+	cd tests/alexandria; scarb build
