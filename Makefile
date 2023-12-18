@@ -81,10 +81,10 @@ clean:
 
 deps:
 ifeq ($(UNAME), Linux)
-deps: build-cairo-2-compiler
+deps: build-cairo-2-compiler build-alexandria-lib
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos
+deps: build-cairo-2-compiler-macos deps-macos build-alexandria-lib
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
@@ -116,3 +116,12 @@ cairo-%-macos.tar:
 
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
+
+
+ALEXANDRIA_TAG=cairo-v2.3.0-rc0
+alexandria-lib-dir = alexandria
+
+build-alexandria-lib: | $(alexandria-lib-dir)
+
+$(alexandria-lib-dir):
+	git clone --depth=1  -b$(ALEXANDRIA_TAG) https://github.com/keep-starknet-strange/alexandria.git
