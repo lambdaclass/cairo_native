@@ -8,15 +8,18 @@ use test_case::test_case;
 mod common;
 // alexandria_math
 #[test_case("fib")]
-#[test_case("karatsuba" => ignore["SIGKILL"])]
+#[test_case("karatsuba" => ignore["System out of memory"])]
 #[test_case("armstrong_number")]
 #[test_case("aliquot_sum" => ignore["System out of memory"])]
 #[test_case("collatz_sequence" => ignore["Result mismatch"])]
 #[test_case("extended_euclidean_algorithm")]
+// alexandria_data_structures
+#[test_case("vec" => ignore["Gas mismatch"])]
+#[test_case("stack" => ignore["Gas mismatch"])]
+#[test_case("queue")]
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }
-
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {
     // Load file compiled using `scarb build``
