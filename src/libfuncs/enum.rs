@@ -5,7 +5,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
@@ -88,7 +88,7 @@ where
         registry
             .get_type(&info.branch_signatures()[0].vars[0].ty)?
             .variants()
-            .unwrap(),
+            .expect("enum should always have variants"),
     )?;
 
     let enum_ty = registry.build_type(
@@ -211,7 +211,7 @@ where
         registry
             .get_type(&info.param_signatures()[0].ty)?
             .variants()
-            .unwrap(),
+            .expect("enum should always have variants"),
     )?;
 
     let enum_ty = registry.build_type(
@@ -363,9 +363,9 @@ where
     // This libfunc's implementation is identical to `enum_match` aside from fetching the snapshotted enum's variants from the metadata:
     let variants = metadata
         .get::<EnumSnapshotVariantsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .get_variants(&info.param_signatures()[0].ty)
-        .unwrap()
+        .expect("enum should always have variants")
         .clone();
     let (layout, (tag_ty, tag_layout), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context, helper, registry, metadata, &variants,

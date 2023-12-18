@@ -48,7 +48,10 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
         let executor = NativeExecutor::new(module);
         self.cache
             .insert(key.clone(), Rc::new(RefCell::new(executor)));
-        self.cache.get_mut(&key).cloned().unwrap()
+        self.cache
+            .get_mut(&key)
+            .cloned()
+            .expect("we just inserted the key so it exists")
     }
 }
 

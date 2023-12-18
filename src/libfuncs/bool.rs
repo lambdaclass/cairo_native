@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -107,7 +107,7 @@ where
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -172,7 +172,7 @@ where
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -191,7 +191,8 @@ where
 
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("1 : {tag_ty}")).unwrap(),
+        Attribute::parse(context, &format!("1 : {tag_ty}"))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     let const_1 = op.result(0)?.into();
@@ -239,7 +240,7 @@ where
 
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();

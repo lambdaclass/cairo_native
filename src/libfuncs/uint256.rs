@@ -684,7 +684,7 @@ mod test {
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::{BigUint, ToBigUint};
+    use num_bigint::BigUint;
     use num_traits::One;
     use starknet_types_core::felt::Felt;
     use std::ops::Shl;
@@ -864,20 +864,21 @@ mod test {
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
-            let y: u128 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u128 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect("should always fit into a u128");
 
             run((0, x), y.into());
         }
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
-            let y: u128 = x
-                .to_biguint()
-                .unwrap()
+            let y: u128 = BigUint::from(x)
                 .shl(128usize)
                 .sqrt()
                 .try_into()
-                .unwrap();
+                .expect("should always fit into a u128");
 
             run((x, 0), y.into());
         }
