@@ -880,6 +880,7 @@ dependencies = [
  "num-traits 0.2.17",
  "pretty_assertions_sorted",
  "proptest",
+ "serde_json",
  "starknet-types-core",
  "tempfile",
  "test-case",

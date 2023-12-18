@@ -81,10 +81,10 @@ clean:
 
 deps:
 ifeq ($(UNAME), Linux)
-deps: build-cairo-2-compiler
+deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos
+deps: build-cairo-2-compiler-macos deps-macos install-scarb
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
@@ -116,3 +116,6 @@ cairo-%-macos.tar:
 
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
+
+install-scarb:
+	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
