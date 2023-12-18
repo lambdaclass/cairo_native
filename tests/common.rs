@@ -192,7 +192,7 @@ pub fn run_native_program(
     let entry_point_id = &program
         .funcs
         .iter()
-        .find(|x| dbg!(x.id.debug_name.as_deref()) == Some(dbg!(&entry_point)))
+        .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
         .expect("Test program entry point not found.")
         .id;
 
