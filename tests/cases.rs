@@ -11,7 +11,7 @@ mod common;
 #[test_case("tests/cases/felt_ops/felt_is_zero.cairo")]
 #[test_case("tests/cases/felt_ops/mul.cairo")]
 #[test_case("tests/cases/felt_ops/negation.cairo")]
-#[test_case("tests/cases/felt_ops/div.cairo"  => ignore["not implemented yet"])]
+#[test_case("tests/cases/felt_ops/div.cairo")]
 // generic tests
 #[test_case("tests/cases/fib_counter.cairo")]
 #[test_case("tests/cases/fib_local.cairo")]
