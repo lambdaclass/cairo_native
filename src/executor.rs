@@ -364,6 +364,13 @@ fn map_arg_to_values(
         (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
             invoke_data.push(*value as u64);
         }
+        (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
+            invoke_data.push(*value as u64);
+            invoke_data.push((value >> 64) as u64);
+        }
+        (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
+            invoke_data.push(*value as u64);
+        }
         (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
             invoke_data.push(*value as u64);
         }
@@ -457,7 +464,12 @@ fn parse_result(
 
     match type_info {
         CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::Box(info) => unsafe {
+            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
+            let value = JitValue::from_jit(ptr, &info.ty, registry);
+            libc::free(ptr.cast().as_ptr());
+            value
+        },
         CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
         CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
         CoreTypeConcrete::Felt252(_)
@@ -512,12 +524,32 @@ fn parse_result(
             Some(return_ptr) => JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() }),
             None => JitValue::Sint32(ret_registers[0] as i32),
         },
-        CoreTypeConcrete::Sint64(_) => todo!(),
-        CoreTypeConcrete::Sint128(_) => todo!(),
+        CoreTypeConcrete::Sint64(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() }),
+            None => JitValue::Sint64(ret_registers[0] as i64),
+        },
+        CoreTypeConcrete::Sint128(_) => match return_ptr {
+            Some(return_ptr) => JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() }),
+            None => {
+                JitValue::Sint128(((ret_registers[1] as i128) << 64) | ret_registers[0] as i128)
+            }
+        },
         CoreTypeConcrete::NonZero(info) => {
             parse_result(&info.ty, registry, return_ptr, ret_registers)
         }
-        CoreTypeConcrete::Nullable(_) => todo!(),
+        CoreTypeConcrete::Nullable(info) => unsafe {
+            let ptr = return_ptr.map_or(ret_registers[0] as *mut (), |x| {
+                *x.cast::<*mut ()>().as_ref()
+            });
+            if ptr.is_null() {
+                JitValue::Null
+            } else {
+                let ptr = NonNull::new_unchecked(ptr);
+                let value = JitValue::from_jit(ptr, &info.ty, registry);
+                libc::free(ptr.as_ptr().cast());
+                value
+            }
+        },
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =

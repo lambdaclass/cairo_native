@@ -445,7 +445,7 @@ pub fn compare_outputs(
                 } else {
                     panic!("invalid type")
                 };
-                prop_assert_eq!(vm_value, native_value)
+                prop_assert_eq!(vm_value, native_value, "mismatch on u8 value")
             }
             CoreTypeConcrete::Uint16(_) => {
                 prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
@@ -504,8 +504,35 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value)
             }
             CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::NonZero(info) => {
+                prop_assert!(native_rets.peek().is_some());
+                check_next_type(
+                    reg.get_type(&info.ty).expect("type should exist"),
+                    &mut [native_rets.next().unwrap()].into_iter(),
+                    vm_rets,
+                    reg,
+                )?;
+            }
+            CoreTypeConcrete::Nullable(info) => {
+                prop_assert!(native_rets.peek().is_some());
+
+                // check for null
+                if vm_rets.peek().unwrap().as_str() == "0" {
+                    vm_rets.next();
+                    prop_assert_eq!(
+                        native_rets.next().expect("cairo-native missing next value"),
+                        &JitValue::Null,
+                        "native should return null"
+                    );
+                } else {
+                    check_next_type(
+                        reg.get_type(&info.ty).expect("type should exist"),
+                        &mut [native_rets.next().unwrap()].into_iter(),
+                        vm_rets,
+                        reg,
+                    )?;
+                }
+            }
             CoreTypeConcrete::RangeCheck(_) => {
                 // runner: ignore
                 // native: null
@@ -682,7 +709,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
-                // If the i16 value is negative we will get PRIME - val from the vm
+                // If the i32 value is negative we will get PRIME - val from the vm
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
@@ -693,8 +720,42 @@ pub fn compare_outputs(
                 };
                 prop_assert_eq!(vm_value, native_value.into())
             }
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint64(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i64 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i64 = if let JitValue::Sint64(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
+            CoreTypeConcrete::Sint128(_) => {
+                prop_assert!(vm_rets.peek().is_some(), "cairo-vm missing next value");
+                prop_assert!(
+                    native_rets.peek().is_some(),
+                    "cairo-native missing next value"
+                );
+                let mut vm_value: BigInt = BigInt::from_str(vm_rets.next().unwrap()).unwrap();
+                // If the i128 value is negative we will get PRIME - val from the vm
+                if vm_value > *HALF_PRIME {
+                    vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                }
+                let native_value: i128 = if let JitValue::Sint128(v) = native_rets.next().unwrap() {
+                    *v
+                } else {
+                    panic!("invalid type")
+                };
+                prop_assert_eq!(vm_value, native_value.into())
+            }
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
 

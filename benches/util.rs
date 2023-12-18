@@ -1,21 +1,31 @@
+use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
+use walkdir::WalkDir;
 
-pub fn prepare_programs() -> impl Iterator<Item = (Arc<Program>, String)> {
-    let programs = Path::new("programs/compile_benches")
-        .read_dir()
-        .unwrap()
+pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
+    WalkDir::new(path)
+        .into_iter()
         .filter_map(|entry| {
-            let path = entry.unwrap().path();
+            let e = entry.unwrap();
+            let path = e.path();
             match path.extension().map(|x| x.to_str().unwrap()) {
                 Some("cairo") => Some((
-                    cairo_native::utils::cairo_to_sierra(&path),
-                    path.file_name().unwrap().to_str().unwrap().to_string(),
+                    cairo_native::utils::cairo_to_sierra(path),
+                    path.display().to_string(),
                 )),
                 _ => None,
             }
         })
-        .collect::<Vec<_>>(); // collect so iter is not lazy evaluated on bench
+        .collect::<Vec<_>>()
+}
 
-    programs.into_iter()
+#[allow(unused)] // its used but clippy doesn't detect it well
+pub fn create_vm_runner(program: &Program) -> SierraCasmRunner {
+    SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        Default::default(),
+    )
+    .unwrap()
 }

@@ -621,8 +621,10 @@ pub mod test {
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
         metadata::{
-            runtime_bindings::RuntimeBindingsMeta, syscall_handler::SyscallHandlerMeta,
-            MetadataStorage, gas::{GasMetadata, MetadataComputationConfig},
+            gas::{GasMetadata, MetadataComputationConfig},
+            runtime_bindings::RuntimeBindingsMeta,
+            syscall_handler::SyscallHandlerMeta,
+            MetadataStorage,
         },
         module::NativeModule,
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -710,7 +712,7 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR")).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(
@@ -765,7 +767,11 @@ pub mod test {
             .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
             .unwrap();
 
-        if program.type_declarations.iter().any(|decl| decl.long_id.generic_id.0 == "GasBuiltin") {
+        if program
+            .type_declarations
+            .iter()
+            .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
+        {
             let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
             metadata.insert(gas_metadata);
         }

@@ -5,12 +5,12 @@ use util::prepare_programs;
 mod util;
 
 pub fn bench_compile_time(c: &mut Criterion) {
+    let programs = prepare_programs("programs/compile_benches");
+
     {
         let mut c = c.benchmark_group("Compilation With Independent Context");
 
-        let programs = prepare_programs();
-
-        for (program, filename) in programs {
+        for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let native_context = NativeContext::new();
@@ -24,11 +24,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
     {
         let mut c = c.benchmark_group("Compilation With Shared Context");
 
-        let programs = prepare_programs();
-
         let native_context = NativeContext::new();
 
-        for (program, filename) in programs {
+        for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     native_context.compile(program).unwrap();
@@ -41,9 +39,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
     {
         let mut c = c.benchmark_group("Compilation With Independent Context To Object Code");
 
-        let programs = prepare_programs();
-
-        for (program, filename) in programs {
+        for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let native_context = NativeContext::new();
@@ -59,11 +55,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
     {
         let mut c = c.benchmark_group("Compilation With Shared Context To Object Code");
 
-        let programs = prepare_programs();
-
         let native_context = NativeContext::new();
 
-        for (program, filename) in programs {
+        for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let module = native_context.compile(black_box(program)).unwrap();

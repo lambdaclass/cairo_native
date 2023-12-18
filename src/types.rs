@@ -366,8 +366,20 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint64(info) => self::uint64::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            CoreTypeConcrete::Sint128(info) => self::uint128::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }

@@ -547,11 +547,11 @@ mod test {
     fn i8_const_min() {
         let program = load_cairo!(
             fn run_test() -> i8 {
-                0_i8
+                -128_i8
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], 0i8.into());
+        run_program_assert_output(&program, "run_test", &[], i8::MIN.into());
     }
 
     #[test]

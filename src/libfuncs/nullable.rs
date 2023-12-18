@@ -1,4 +1,6 @@
 //! # Nullable libfuncs
+//!
+//! Like a Box but it can be null.
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -170,7 +172,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        values::JitValue,
+    };
 
     #[test]
     fn run_null() {
@@ -187,6 +192,24 @@ mod test {
         );
 
         run_program_assert_output(&program, "run_test", &[], jit_struct!());
+    }
+
+    #[test]
+    fn run_null_jit() {
+        let program = load_cairo!(
+            use nullable::null;
+            use nullable::match_nullable;
+            use nullable::FromNullableResult;
+            use nullable::nullable_from_box;
+            use box::BoxTrait;
+
+            fn run_test() -> Nullable<u8> {
+                let a: Nullable<u8> = null();
+                a
+            }
+        );
+
+        run_program_assert_output(&program, "run_test", &[], JitValue::Null);
     }
 
     #[test]
