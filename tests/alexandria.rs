@@ -1,3 +1,4 @@
+use crate::common::GAS;
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use common::{compare_outputs, run_native_program, run_vm_program};
@@ -5,8 +6,13 @@ use std::{fs::File, io::BufReader};
 use test_case::test_case;
 
 mod common;
+// alexandria_math
 #[test_case("fib")]
 #[test_case("karatsuba" => ignore["SIGKILL"])]
+#[test_case("armstrong_number")]
+#[test_case("aliquot_sum" => ignore["System out of memory"])]
+#[test_case("collatz_sequence" => ignore["Result mismatch"])]
+#[test_case("extended_euclidean_algorithm")]
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }
