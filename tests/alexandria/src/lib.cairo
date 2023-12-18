@@ -22,13 +22,15 @@ mod alexandria {
     }
 
     fn extended_euclidean_algorithm() -> (u128, u128, u128) {
-        alexandria_math::extended_euclidean_algorithm::extended_euclidean_algorithm(384292543952858, 158915958590)
+        alexandria_math::extended_euclidean_algorithm::extended_euclidean_algorithm(
+            384292543952858, 158915958590
+        )
     }
 
     // Alexandria Data Structures
 
     use alexandria_data_structures::vec::{Felt252Vec, VecTrait};
-    fn vec() -> (felt252, felt252, felt252){
+    fn vec() -> (felt252, felt252, felt252) {
         let mut vec = VecTrait::<Felt252Vec, felt252>::new();
         vec.push(12);
         vec.push(99);
@@ -48,18 +50,17 @@ mod alexandria {
     }
 
     use alexandria_data_structures::queue::{Queue, QueueTrait};
-    fn queue() -> (Option<felt252>, Option<felt252>, Option<felt252>, bool){
+    fn queue() -> (Option<felt252>, Option<felt252>, Option<felt252>, bool) {
         let mut queue = QueueTrait::<felt252>::new();
         queue.enqueue(3);
         queue.enqueue(31);
         queue.enqueue(13);
         (queue.dequeue(), queue.dequeue(), queue.dequeue(), queue.is_empty())
-
     }
 
     use alexandria_data_structures::bit_array::{BitArray, BitArrayTrait};
     fn bit_array() -> Option<felt252> {
-    let mut bit_array: BitArray = Default::default();
+        let mut bit_array: BitArray = Default::default();
         bit_array.write_word_be(340282366920938463463374607431768211455, 128);
         bit_array.pop_front();
         bit_array.append_bit(true);
@@ -82,28 +83,27 @@ mod alexandria {
         let decoded = Base64Decoder::decode(encoded.clone());
         (encoded, decoded)
     }
+// Compiling the following functions generates invalid MLIR, please uncomment once the bug is fixed
 
-    // Compiling the following functions generates invalid MLIR, please uncomment once the bug is fixed
-    
-    // use alexandria_encoding::reversible::{U16ReversibleBits, U32ReversibleBits, U64ReversibleBits, U128ReversibleBits, U256ReversibleBits};
-    // fn reverse_bits() -> (u16, u32, u64, u128, u256) {
-    //     (
-    //         U16ReversibleBits::reverse_bits(@333),
-    //         U32ReversibleBits::reverse_bits(@3333333),
-    //         U64ReversibleBits::reverse_bits(@3333333333333),
-    //         U128ReversibleBits::reverse_bits(@333333333333333333333),
-    //         U256ReversibleBits::reverse_bits(@33333333333333333333333333),
-    //     )
-    // }
+// use alexandria_encoding::reversible::{U16ReversibleBits, U32ReversibleBits, U64ReversibleBits, U128ReversibleBits, U256ReversibleBits};
+// fn reverse_bits() -> (u16, u32, u64, u128, u256) {
+//     (
+//         U16ReversibleBits::reverse_bits(@333),
+//         U32ReversibleBits::reverse_bits(@3333333),
+//         U64ReversibleBits::reverse_bits(@3333333333333),
+//         U128ReversibleBits::reverse_bits(@333333333333333333333),
+//         U256ReversibleBits::reverse_bits(@33333333333333333333333333),
+//     )
+// }
 
-    // use alexandria_encoding::reversible::{U16Reversible, U32Reversible, U64Reversible, U128Reversible, U256Reversible};
-    // fn reverse_bytes() -> (u16, u32, u64, u128, u256) {
-    //     (
-    //         U16Reversible::reverse_bytes(@333),
-    //         U32Reversible::reverse_bytes(@3333333),
-    //         U64Reversible::reverse_bytes(@3333333333333),
-    //         U128Reversible::reverse_bytes(@333333333333333333333),
-    //         U256Reversible::reverse_bytes(@33333333333333333333333333),
-    //     )
-    // }
+// use alexandria_encoding::reversible::{U16Reversible, U32Reversible, U64Reversible, U128Reversible, U256Reversible};
+// fn reverse_bytes() -> (u16, u32, u64, u128, u256) {
+//     (
+//         U16Reversible::reverse_bytes(@333),
+//         U32Reversible::reverse_bytes(@3333333),
+//         U64Reversible::reverse_bytes(@3333333333333),
+//         U128Reversible::reverse_bytes(@333333333333333333333),
+//         U256Reversible::reverse_bytes(@33333333333333333333333333),
+//     )
+// }
 }
