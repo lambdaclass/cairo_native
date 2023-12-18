@@ -120,18 +120,18 @@ cairo-%.tar:
 SCARB_VERSION = 2.4.0
 
 install-scarb-macos:
-	curl -L -o scarb-$(SCARB_VERSION).tar https://github.com/software-mansion/scarb/releases/download/v2.4.0/scarb-v2.4.0-aarch64-apple-darwin.tar.gz
+	curl -L -o scarb-$(SCARB_VERSION).tar https://github.com/software-mansion/scarb/releases/download/v2.4.0/scarb-v2.4.0-aarch64-apple-darwin.tar.gz \
 	tar -xzvf scarb-$(SCARB_VERSION).tar
 	mv scarb-v$(SCARB_VERSION)-aarch64-apple-darwin/bin/scarb scarb
 	rm -rf scarb-v$(SCARB_VERSION)-aarch64-apple-darwin
-	rm -rf scarb-$(SCARB_VERSION).tar
+	rm scarb-$(SCARB_VERSION).tar
 
 install-scarb:
 	curl -L -o scarb-$(SCARB_VERSION).tar https://github.com/software-mansion/scarb/releases/download/v2.4.0/scarb-v2.4.0-x86_64-unknown-linux-musl.tar.gz
 	tar -xzvf scarb-$(SCARB_VERSION).tar
 	mv scarb-v$(SCARB_VERSION)-x86_64-unknown-linux-musl/bin/scarb scarb
 	rm -rf scarb-v$(SCARB_VERSION)-x86_64-unknown-linux-musl
-	rm -rf scarb-$(SCARB_VERSION).tar
+	rm scarb-$(SCARB_VERSION).tar
 
 build-alexandria:
 	cd tests/alexandria; ../../scarb build
