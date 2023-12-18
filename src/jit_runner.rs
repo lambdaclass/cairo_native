@@ -290,7 +290,7 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Felt252Dict(_) => {
+            CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 let next = params_it
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
@@ -303,10 +303,11 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => {
+                unreachable!("a entry can't be created as argument or return value")
+            }
             CoreTypeConcrete::Span(_) => {
-                todo!()
+                todo!("implement span to_jit")
             }
             CoreTypeConcrete::StarkNet(selector) => {
                 match selector {
@@ -405,6 +406,7 @@ pub fn execute(
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::EcOp(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
             | CoreTypeConcrete::SegmentArena(_) => {
                 // ignore returned builtins
             }

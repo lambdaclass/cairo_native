@@ -559,7 +559,6 @@ impl JITValue {
                 CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
                 CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
                 CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
                 CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => JITValue::Sint32(*ptr.cast::<i32>().as_ref()),
@@ -580,7 +579,9 @@ impl JITValue {
                         value
                     }
                 }
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
+                CoreTypeConcrete::Uninitialized(_) => {
+                    todo!("implement uninit from_jit or ignore the return value")
+                }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
                         0 | 1 => 0,
@@ -681,6 +682,7 @@ impl JITValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::Uint128MulGuarantee(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)
                 }
@@ -698,9 +700,9 @@ impl JITValue {
                     StarkNetTypeConcrete::System(_) => unimplemented!("should be handled before"),
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
-                CoreTypeConcrete::Span(_) => todo!(),
+                CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
+                CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
             }
         }
     }
@@ -745,8 +747,8 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint32(_) => false,
             CoreTypeConcrete::Uint64(_) => false,
             CoreTypeConcrete::Uint128(_) => false,
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => false,
+            CoreTypeConcrete::NonZero(_) => false,
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -773,7 +775,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint32(_) => false,
             CoreTypeConcrete::Sint64(_) => false,
             CoreTypeConcrete::Sint128(_) => false,
-            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!("implement whether bytes31 is complex"),
         }
     }
 }
