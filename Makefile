@@ -58,7 +58,7 @@ test: check-llvm needs-cairo2 build-alexandria
 proptest: check-llvm needs-cairo2
 	cargo test --profile optimized-dev --all-targets --all-features proptest
 
-coverage: check-llvm needs-cairo2
+coverage: check-llvm needs-cairo2 build-alexandria
 	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
 
 doc: check-llvm
