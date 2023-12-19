@@ -4426,7 +4426,6 @@ mod test {
     use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-
     use starknet_types_core::felt::Felt;
 
     lazy_static! {

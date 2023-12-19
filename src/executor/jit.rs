@@ -107,16 +107,7 @@ impl<'m> JitNativeExecutor<'m> {
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
-        unsafe {
-            // FIXME: Code a PR to extract the raw pointer from `ExecutionEngine`s.
-            mlirExecutionEngineLookup(
-                *std::mem::transmute::<&ExecutionEngine, &MlirExecutionEngine>(&self.engine),
-                MlirStringRef {
-                    data: function_name.as_ptr() as *const i8,
-                    length: function_name.len(),
-                },
-            )
-        }
+        self.engine.lookup(&function_name) as *mut c_void
     }
 
     fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
