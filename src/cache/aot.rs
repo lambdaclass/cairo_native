@@ -1,14 +1,8 @@
 use crate::{
-    context::NativeContext,
-    executor::AotNativeExecutor,
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
-    utils::SHARED_LIBRARY_EXT,
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
+    module::NativeModule, utils::SHARED_LIBRARY_EXT,
 };
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
-    program_registry::ProgramRegistry,
-};
+use cairo_lang_sierra::program::Program;
 use libloading::Library;
 use std::{
     collections::HashMap,
@@ -17,12 +11,18 @@ use std::{
     rc::Rc,
 };
 
-pub struct AotProgramCache<'a, K: PartialEq + Eq + Hash> {
+pub struct AotProgramCache<'a, K>
+where
+    K: PartialEq + Eq + Hash,
+{
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor<CoreType, CoreLibfunc>>>,
+    cache: HashMap<K, Rc<AotNativeExecutor>>,
 }
 
-impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
+impl<'a, K> AotProgramCache<'a, K>
+where
+    K: PartialEq + Eq + Hash,
+{
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
             context,
@@ -30,19 +30,19 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor<CoreType, CoreLibfunc>>> {
+    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
-    pub fn compile_and_insert(
-        &mut self,
-        key: K,
-        program: &Program,
-    ) -> Rc<AotNativeExecutor<CoreType, CoreLibfunc>> {
-        let module = self.context.compile(program).expect("should compile");
+    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> Rc<AotNativeExecutor> {
+        let NativeModule {
+            module,
+            registry,
+            metadata,
+        } = self.context.compile(program).expect("should compile");
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(module.module()).unwrap();
+        let object_data = crate::ffi::module_to_object(&module).unwrap();
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()
@@ -56,9 +56,8 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
         let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
         let executor = AotNativeExecutor::new(
             shared_library,
-            ProgramRegistry::new(program).unwrap(),
-            module.get_metadata::<GasMetadata>().cloned(),
-            module.get_metadata::<SyscallHandlerMeta>().cloned(),
+            registry,
+            metadata.get::<GasMetadata>().cloned(),
         );
 
         let executor = Rc::new(executor);
@@ -68,7 +67,10 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
     }
 }
 
-impl<'a, K: PartialEq + Eq + Hash> Debug for AotProgramCache<'a, K> {
+impl<'a, K> Debug for AotProgramCache<'a, K>
+where
+    K: PartialEq + Eq + Hash,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("AotProgramCache")
     }

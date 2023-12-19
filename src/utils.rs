@@ -795,10 +795,17 @@ pub mod test {
         run_pass_manager(&context, &mut module)
             .expect("Could not apply passes to the compiled test program.");
 
+        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
+
         let native_module = NativeModule::new(module, registry, metadata);
         let executor = JitNativeExecutor::new(native_module);
         executor
-            .invoke_dynamic(entry_point_id, args, Some(u128::MAX))
+            .invoke_dynamic(
+                entry_point_id,
+                args,
+                Some(u128::MAX),
+                syscall_handler.as_ref(),
+            )
             .unwrap()
     }
 

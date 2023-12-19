@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect_vec();
 
     let result = native_executor
-        .invoke_dynamic(&entry_point.id, &params, Some(u64::MAX.into()))
+        .invoke_dynamic(&entry_point.id, &params, Some(u64::MAX.into()), None)
         .unwrap();
 
     match args.outputs {

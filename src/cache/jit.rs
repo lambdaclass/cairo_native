@@ -9,7 +9,10 @@ use std::{
 };
 
 /// A Cache for programs with the same context.
-pub struct JitProgramCache<'a, K: PartialEq + Eq + Hash> {
+pub struct JitProgramCache<'a, K>
+where
+    K: Eq + Hash + PartialEq,
+{
     context: &'a NativeContext,
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
     // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
@@ -21,24 +24,16 @@ impl<'a, K> JitProgramCache<'a, K>
 where
     K: Eq + Hash + PartialEq,
 {
-    // Return the native context.
-    pub const fn context(&self) -> &'a NativeContext {
-        self.context
-    }
-}
-
-impl<'a, K: PartialEq + Eq + Hash> Debug for JitProgramCache<'a, K> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("JitProgramCache")
-    }
-}
-
-impl<'a, K: Clone + PartialEq + Eq + Hash> JitProgramCache<'a, K> {
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
             context,
             cache: Default::default(),
         }
+    }
+
+    // Return the native context.
+    pub const fn context(&self) -> &'a NativeContext {
+        self.context
     }
 
     pub fn get(&self, key: &K) -> Option<Rc<RefCell<JitNativeExecutor<'a>>>> {
@@ -57,6 +52,15 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> JitProgramCache<'a, K> {
         self.cache.insert(key, executor.clone());
 
         executor
+    }
+}
+
+impl<'a, K> Debug for JitProgramCache<'a, K>
+where
+    K: Eq + Hash + PartialEq,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("JitProgramCache")
     }
 }
 

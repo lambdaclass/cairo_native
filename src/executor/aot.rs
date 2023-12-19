@@ -1,16 +1,12 @@
 use crate::{
-    error::jit_engine::{ErrorImpl, RunnerError},
+    error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
-    types::TypeBuilder,
     utils::generate_function_name,
     values::JitValue,
 };
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        GenericLibfunc, GenericType,
-    },
+    extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
     program::FunctionSignature,
     program_registry::ProgramRegistry,
@@ -19,45 +15,34 @@ use libc::c_void;
 use libloading::Library;
 use starknet_types_core::felt::Felt;
 
-pub struct AotNativeExecutor<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-{
+pub struct AotNativeExecutor {
     library: Library,
-    registry: ProgramRegistry<TType, TLibfunc>,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
     gas_metadata: Option<GasMetadata>,
-    syscall_handler: Option<SyscallHandlerMeta>,
 }
 
-impl<TType, TLibfunc> AotNativeExecutor<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-{
+impl AotNativeExecutor {
     pub fn new(
         library: Library,
-        registry: ProgramRegistry<TType, TLibfunc>,
+        registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: Option<GasMetadata>,
-        syscall_handler: Option<SyscallHandlerMeta>,
     ) -> Self {
         Self {
             library,
             registry,
             gas_metadata,
-            syscall_handler,
         }
     }
 }
 
-impl AotNativeExecutor<CoreType, CoreLibfunc> {
+impl AotNativeExecutor {
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
         args: &[JitValue],
         mut gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> ExecutionResult {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
@@ -67,9 +52,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
             self.extract_signature(function_id),
             args,
             gas,
-            self.syscall_handler
-                .as_ref()
-                .map(|syscall_handler| syscall_handler.as_ptr()),
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
         )
     }
 
@@ -78,13 +61,9 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
         function_id: &FunctionId,
         args: &[Felt],
         mut gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ContractExecutionResult, RunnerError> {
         self.process_required_initial_gas(function_id, gas.as_mut());
-
-        let syscall_handler = self
-            .syscall_handler
-            .as_ref()
-            .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
 
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
@@ -99,7 +78,7 @@ impl AotNativeExecutor<CoreType, CoreLibfunc> {
                 debug_name: None,
             }],
             gas,
-            Some(syscall_handler.as_ptr()),
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
 

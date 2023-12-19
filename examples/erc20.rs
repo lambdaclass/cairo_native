@@ -307,10 +307,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
@@ -319,7 +316,7 @@ fn main() {
     let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute_contract(
+        .invoke_contract_dynamic(
             fn_id,
             &[
                 Felt::from_bytes_be_slice(b"name"),
@@ -330,6 +327,7 @@ fn main() {
                 Felt::from(6),
             ],
             Some(u128::MAX),
+            Some(&SyscallHandlerMeta::new(&mut SyscallHandler)),
         )
         .expect("failed to execute the given contract");
 

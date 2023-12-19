@@ -40,12 +40,12 @@ extern "C" {
 
 #[allow(clippy::large_enum_variant)]
 pub enum NativeExecutor<'m> {
-    Aot(AotNativeExecutor<CoreType, CoreLibfunc>),
+    Aot(AotNativeExecutor),
     Jit(JitNativeExecutor<'m>),
 }
 
-impl<'m> From<AotNativeExecutor<CoreType, CoreLibfunc>> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor<CoreType, CoreLibfunc>) -> Self {
+impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
+    fn from(value: AotNativeExecutor) -> Self {
         Self::Aot(value)
     }
 }

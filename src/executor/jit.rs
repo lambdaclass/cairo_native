@@ -1,7 +1,7 @@
 use crate::{
-    error::jit_engine::{ErrorImpl, RunnerError},
+    error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::syscall_handler::SyscallHandlerMeta,
+    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
     module::NativeModule,
     utils::{create_engine, generate_function_name},
     values::JitValue,
@@ -13,36 +13,41 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use melior::ExecutionEngine;
+use melior::{ir::Module, ExecutionEngine};
 use starknet_types_core::felt::Felt;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct JitNativeExecutor<'m> {
     engine: ExecutionEngine,
-    // NativeModule needs to be kept alive with the executor or it will segfault when trying to execute.
-    native_module: NativeModule<'m>,
+
+    module: Module<'m>,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
+
+    gas_metadata: Option<GasMetadata>,
 }
 
 impl<'m> JitNativeExecutor<'m> {
     pub fn new(native_module: NativeModule<'m>) -> Self {
-        let module = native_module.module();
-        let engine = create_engine(module, native_module.metadata());
+        let NativeModule {
+            module,
+            registry,
+            metadata,
+        } = native_module;
+
         Self {
-            engine,
-            native_module,
+            engine: create_engine(&module, &metadata),
+            module,
+            registry,
+            gas_metadata: metadata.get::<GasMetadata>().cloned(),
         }
     }
 
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
-        self.native_module.program_registry()
+        &self.registry
     }
 
-    pub fn module(&self) -> &NativeModule<'m> {
-        &self.native_module
-    }
-
-    pub fn module_mut(&mut self) -> &mut NativeModule<'m> {
-        &mut self.native_module
+    pub fn module(&self) -> &Module<'m> {
+        &self.module
     }
 
     /// Execute a program with the given params.
@@ -53,40 +58,32 @@ impl<'m> JitNativeExecutor<'m> {
         function_id: &FunctionId,
         args: &[JitValue],
         mut gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
         Ok(super::invoke_dynamic(
-            self.program_registry(),
+            &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             gas,
-            self.module()
-                .get_metadata::<SyscallHandlerMeta>()
-                .map(|syscall_handler| syscall_handler.as_ptr()),
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
 
-    /// Execute a contract with the given calldata.
-    ///
-    /// See [`cairo_native::jit_runner::execute_contract`]
-    pub fn execute_contract(
+    pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
         args: &[Felt],
         mut gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ContractExecutionResult, RunnerError> {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
-        let syscall_handler = self
-            .module()
-            .get_metadata::<SyscallHandlerMeta>()
-            .ok_or(RunnerError::from(ErrorImpl::MissingSyscallHandler))?;
-
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
-            self.program_registry(),
+            &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             &[JitValue::Struct {
@@ -97,7 +94,7 @@ impl<'m> JitNativeExecutor<'m> {
                 debug_name: None,
             }],
             gas,
-            Some(syscall_handler.as_ptr()),
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
 
@@ -118,9 +115,12 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     fn process_required_initial_gas(&self, function_id: &FunctionId, gas: Option<&mut u128>) {
-        if let (Some(gas), Some(required_init_gas)) =
-            (gas, self.native_module.get_required_init_gas(function_id))
-        {
+        if let (Some(gas), Some(required_init_gas)) = (
+            gas,
+            self.gas_metadata
+                .as_ref()
+                .and_then(|gas_metadata| gas_metadata.get_initial_required_gas(function_id)),
+        ) {
             if required_init_gas > *gas {
                 panic!("Not enough gas");
             }

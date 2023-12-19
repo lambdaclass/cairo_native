@@ -11,9 +11,9 @@ use std::{any::Any, fmt::Debug};
 /// It is conformed by the MLIR module, the Sierra program registry
 /// and the program metadata.
 pub struct NativeModule<'m> {
-    module: Module<'m>,
-    registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: MetadataStorage,
+    pub(crate) module: Module<'m>,
+    pub(crate) registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub(crate) metadata: MetadataStorage,
 }
 
 impl<'m> NativeModule<'m> {
