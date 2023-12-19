@@ -122,6 +122,7 @@ install-scarb:
 
 install-scarb-macos:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh
+	$(shell source $HOME)
 
 build-alexandria:
 	cd tests/alexandria; scarb build
