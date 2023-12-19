@@ -4706,6 +4706,8 @@
 <a href="#4706" id="4706">4706</a>
 <a href="#4707" id="4707">4707</a>
 <a href="#4708" id="4708">4708</a>
+<a href="#4709" id="4709">4709</a>
+<a href="#4710" id="4710">4710</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -4845,9 +4847,11 @@
         StarkNetConcreteLibfunc::SendMessageToL1(info) =&gt; {
             build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::Testing(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        StarkNetConcreteLibfunc::Secp256(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        StarkNetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        StarkNetConcreteLibfunc::Testing(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement starknet testing libfunc&quot;</span>),
+        StarkNetConcreteLibfunc::Secp256(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement starknet Secp256 libfunc&quot;</span>),
+        StarkNetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; {
+            <span class="macro">todo!</span>(<span class="string">&quot;implement starknet GetExecutionInfoV2 libfunc&quot;</span>)
+        }
     }
 }
 

@@ -561,6 +561,9 @@
 <a href="#561" id="561">561</a>
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -597,6 +600,7 @@
 <span class="kw">pub mod </span>bitwise;
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>builtin_costs;
+<span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>ec_op;
 <span class="kw">pub mod </span>ec_point;
 <span class="kw">pub mod </span>ec_state;
@@ -826,7 +830,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            <span class="self">Self</span>::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement span type&quot;</span>),
             <span class="self">Self</span>::SquashedFelt252Dict(info) =&gt; <span class="self">self</span>::squashed_felt252_dict::build(
                 context,
                 module,
@@ -932,7 +936,9 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Bytes31(info) =&gt; {
+                <span class="self">self</span>::bytes31::build(context, module, registry, metadata, info)
+            }
         }
     }
 
@@ -1010,7 +1016,7 @@
                 StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
                 StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
                 StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*mut </span>()&gt;(),
-                StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement Secp256Point type&quot;</span>),
             },
             CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
             CoreTypeConcrete::Snapshot(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>,
@@ -1019,7 +1025,7 @@
             CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">32</span>),
             CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">64</span>),
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">248</span>),
         })
     }
 

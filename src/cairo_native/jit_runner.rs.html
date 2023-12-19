@@ -454,6 +454,10 @@
 <a href="#454" id="454">454</a>
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT runner
 
 </span><span class="kw">use crate</span>::{
@@ -746,7 +750,7 @@
 
                 params_ptrs.push(next.to_jit(<span class="kw-2">&amp;</span>arena, registry, param_type_id)<span class="question-mark">?</span>);
             }
-            CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) =&gt; {
+            CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>next = params_it
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))<span class="question-mark">?</span>;
@@ -759,10 +763,11 @@
 
                 params_ptrs.push(next.to_jit(<span class="kw-2">&amp;</span>arena, registry, param_type_id)<span class="question-mark">?</span>);
             }
-            CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; {
+                <span class="macro">unreachable!</span>(<span class="string">&quot;a entry can&#39;t be created as argument or return value&quot;</span>)
+            }
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; {
-                <span class="macro">todo!</span>()
+                <span class="macro">todo!</span>(<span class="string">&quot;implement span to_jit&quot;</span>)
             }
             CoreTypeConcrete::StarkNet(selector) =&gt; {
                 <span class="kw">match </span>selector {
@@ -867,6 +872,9 @@
             | CoreTypeConcrete::EcOp(<span class="kw">_</span>)
             | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// ignore returned builtins
+            </span>}
+            CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; {
+                <span class="comment">// ignore guarantee
             </span>}
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">let </span>value = JITValue::from_jit(ptr, type_id, registry);

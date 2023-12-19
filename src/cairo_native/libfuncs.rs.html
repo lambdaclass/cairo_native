@@ -493,6 +493,9 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -521,6 +524,7 @@
 <span class="kw">pub mod </span>r#bool;
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>branch_align;
+<span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>cast;
 <span class="kw">pub mod </span>debug;
 <span class="kw">pub mod </span>drop;
@@ -714,7 +718,9 @@
             CoreConcreteLibfunc::Sint128(info) =&gt; {
                 <span class="self">self</span>::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
-            CoreConcreteLibfunc::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreConcreteLibfunc::Bytes31(selector) =&gt; <span class="self">self</span>::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 

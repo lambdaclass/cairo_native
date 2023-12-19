@@ -777,6 +777,8 @@
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
 <a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -1338,7 +1340,6 @@
                 CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; JITValue::Uint32(<span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_ref()),
                 CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; JITValue::Uint64(<span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_ref()),
                 CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; JITValue::Uint128(<span class="kw-2">*</span>ptr.cast::&lt;u128&gt;().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; JITValue::Sint8(<span class="kw-2">*</span>ptr.cast::&lt;i8&gt;().as_ref()),
                 CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; JITValue::Sint16(<span class="kw-2">*</span>ptr.cast::&lt;i16&gt;().as_ref()),
                 CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; JITValue::Sint32(<span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_ref()),
@@ -1359,7 +1360,9 @@
                         value
                     }
                 }
-                CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">todo!</span>(<span class="string">&quot;implement uninit from_jit or ignore the return value&quot;</span>)
+                }
                 CoreTypeConcrete::Enum(info) =&gt; {
                     <span class="kw">let </span>tag_layout = <span class="kw">crate</span>::utils::get_integer_layout(<span class="kw">match </span>info.variants.len() {
                         <span class="number">0 </span>| <span class="number">1 </span>=&gt; <span class="number">0</span>,
@@ -1460,6 +1463,7 @@
                 | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
                 | CoreTypeConcrete::EcOp(<span class="kw">_</span>)
                 | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
+                | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
                 | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
                     <span class="macro">unimplemented!</span>(<span class="string">&quot;handled before: {:?}&quot;</span>, type_id)
                 }
@@ -1477,9 +1481,9 @@
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;should be handled before&quot;</span>),
                     StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 },
-                CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement span from_jit&quot;</span>),
                 CoreTypeConcrete::Snapshot(info) =&gt; <span class="self">Self</span>::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
-                CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement bytes31 from_jit&quot;</span>),
             }
         }
     }
@@ -1524,7 +1528,7 @@
             CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::NonZero(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Nullable(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
@@ -1552,7 +1556,7 @@
             CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 }
