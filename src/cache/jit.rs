@@ -1,6 +1,12 @@
 use crate::{context::NativeContext, executor::JitNativeExecutor};
 use cairo_lang_sierra::program::Program;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, hash::Hash, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::{self, Debug},
+    hash::Hash,
+    rc::Rc,
+};
 
 /// A Cache for programs with the same context.
 pub struct JitProgramCache<'a, K: PartialEq + Eq + Hash> {
@@ -22,8 +28,8 @@ where
 }
 
 impl<'a, K: PartialEq + Eq + Hash> Debug for JitProgramCache<'a, K> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("ProgramCache")
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("JitProgramCache")
     }
 }
 

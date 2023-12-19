@@ -10,7 +10,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libloading::Library;
-use std::{collections::HashMap, hash::Hash, rc::Rc};
+use std::{
+    collections::HashMap,
+    fmt::{self, Debug},
+    hash::Hash,
+    rc::Rc,
+};
 
 pub struct AotProgramCache<'a, K: PartialEq + Eq + Hash> {
     context: &'a NativeContext,
@@ -60,5 +65,11 @@ impl<'a, K: PartialEq + Eq + Hash> AotProgramCache<'a, K> {
         self.cache.insert(key, executor.clone());
 
         executor
+    }
+}
+
+impl<'a, K: PartialEq + Eq + Hash> Debug for AotProgramCache<'a, K> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("AotProgramCache")
     }
 }

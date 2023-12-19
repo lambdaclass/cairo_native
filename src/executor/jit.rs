@@ -14,7 +14,6 @@ use cairo_lang_sierra::{
 };
 use libc::c_void;
 use melior::ExecutionEngine;
-use mlir_sys::{mlirExecutionEngineLookup, MlirExecutionEngine, MlirStringRef};
 use starknet_types_core::felt::Felt;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.

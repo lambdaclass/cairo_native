@@ -4,6 +4,7 @@ use std::hash::Hash;
 mod aot;
 mod jit;
 
+#[derive(Debug)]
 pub enum ProgramCache<'a, K>
 where
     K: PartialEq + Eq + Hash,
