@@ -42,7 +42,7 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("karatsuba" => ignore["System out of memory"])]
 #[test_case("armstrong_number")]
 #[test_case("aliquot_sum" => ignore["System out of memory"])]
-#[test_case("collatz_sequence" => ignore["Result mismatch"])]
+#[test_case("collatz_sequence")]
 #[test_case("extended_euclidean_algorithm")]
 // alexandria_data_structures
 #[test_case("vec" => ignore["Gas mismatch"])]
