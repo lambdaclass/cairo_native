@@ -368,14 +368,14 @@ pub fn compare_outputs(
         match ty {
             CoreTypeConcrete::Array(info) => {
                 if let JITValue::Array(data) = native_rets.next().unwrap() {
-                    // When it comes to arrays, the vm result contains the starting and ending address of the array in memory,
+                    // When it comes to arrays, the vm result contains the starting and ending addresses of the array in memory,
                     // so we need to fetch each value from the relocated vm memory
                     // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
                     let start_address: usize = vm_rets.next().unwrap().parse().unwrap();
                     let end_address: usize = vm_rets.next().unwrap().parse().unwrap();
                     assert!(
                         end_address - start_address == data.len(),
-                        "Mismatched array len"
+                        "Comparison between arrays containing non-simple types is not implemented"
                     );
                     for (i, value) in data.iter().enumerate() {
                         // We can't mutate the peekable, so we will create a new one for this value
