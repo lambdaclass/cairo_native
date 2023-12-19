@@ -483,7 +483,7 @@ fn parse_result(
             let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 
             #[cfg(target_arch = "aarch64")]
-            let value = JitValue::Felt252(Felt::from_bytes_le(unsafe {
+            let value = JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
                 std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
             }));
 
