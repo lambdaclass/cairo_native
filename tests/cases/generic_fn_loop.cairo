@@ -6,12 +6,8 @@ fn main() -> (u16, u64) {
 }
 
 fn bar<T, +Drop<T>>(a: T) -> T {
-   let mut i: usize = 0;
     loop {
-        if i == 10 {
-            break;
-        }
-        i += 1;
+        break;
     };
    a
 }
