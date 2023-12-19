@@ -10,6 +10,7 @@ use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::{
     Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
+use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
     ids::FunctionId,
@@ -361,17 +362,27 @@ pub fn compare_outputs(
         native_rets: &mut impl Iterator<Item = &'a JITValue>,
         vm_rets: &mut Peekable<Iter<'_, String>>,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
+        vm_memory: &Vec<Option<Felt252>>,
     ) -> Result<(), TestCaseError> {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
                 if let JITValue::Array(data) = native_rets.next().unwrap() {
                     for value in data {
+                        // When it comes to arrays, the vm result contains the address of each element instead of the value,
+                        // so we need to fetch them from the relocated vm memory
+                        // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
+                        let address: usize = vm_rets.next().unwrap().parse().unwrap();
+                        let memory_value = format!("{}",vm_memory[address].clone().unwrap());
+                        // We can't mutate the peekable, so we will create a new one for this value
+                        let vm_rets = vec![memory_value];
+                        let mut vm_rets = vm_rets.iter().peekable();
                         check_next_type(
                             reg.get_type(&info.ty).expect("type should exist"),
                             &mut [value].into_iter(),
-                            vm_rets,
+                            &mut vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -497,6 +508,7 @@ pub fn compare_outputs(
                     &mut [native_rets.next().unwrap()].into_iter(),
                     vm_rets,
                     reg,
+                    vm_memory,
                 )?;
             }
             CoreTypeConcrete::Nullable(info) => {
@@ -516,6 +528,7 @@ pub fn compare_outputs(
                         &mut [native_rets.next().unwrap()].into_iter(),
                         vm_rets,
                         reg,
+                        vm_memory,
                     )?;
                 }
             }
@@ -569,6 +582,7 @@ pub fn compare_outputs(
                             &mut [&**value].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     } else {
                         let vm_tag = {
@@ -617,6 +631,7 @@ pub fn compare_outputs(
                             &mut [&**value].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -631,6 +646,7 @@ pub fn compare_outputs(
                             &mut [container].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -750,7 +766,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(ty, &mut native_rets, &mut vm_rets, &reg)?;
+        check_next_type(ty, &mut native_rets, &mut vm_rets, &reg, &vm_result.memory)?;
     }
 
     Ok(())
