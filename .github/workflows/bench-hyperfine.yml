@@ -20,6 +20,7 @@ jobs:
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v3

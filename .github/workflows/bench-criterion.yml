@@ -1,0 +1,38 @@
+name: Bench
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bench-hyperfine:
+    name: Criterion Benches
+    runs-on: [self-hosted, macOS]
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
+      LLVM_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
+      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
+    steps:
+      - uses: actions/checkout@v3
+      - name: Rustup toolchain install
+        uses: dtolnay/rust-toolchain@1.72.1
+        with:
+            components: clippy
+      - name: Install deps
+        run: make deps
+      - uses: boa-dev/criterion-compare-action@v3
+        with:
+            # Needed. The name of the branch to compare with. This default uses the branch which is being pulled against
+            branchName: ${{ github.base_ref }}
+            # Optional. Default is `${{ github.token }}`.
+            token: ${{ secrets.GITHUB_TOKEN }}
