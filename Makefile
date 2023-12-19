@@ -120,7 +120,7 @@ cairo-%.tar:
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path
 
-install-scarb:
+install-scarb-macos:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh
 
 build-alexandria:
