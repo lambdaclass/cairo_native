@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -10,7 +11,6 @@ use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_runner::{
     Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
     ids::FunctionId,
@@ -368,13 +368,19 @@ pub fn compare_outputs(
         match ty {
             CoreTypeConcrete::Array(info) => {
                 if let JITValue::Array(data) = native_rets.next().unwrap() {
-                    for value in data {
-                        // When it comes to arrays, the vm result contains the address of each element instead of the value,
-                        // so we need to fetch them from the relocated vm memory
-                        // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
-                        let address: usize = vm_rets.next().unwrap().parse().unwrap();
-                        let memory_value = format!("{}",vm_memory[address].clone().unwrap());
+                    // When it comes to arrays, the vm result contains the starting and ending address of the array in memory,
+                    // so we need to fetch each value from the relocated vm memory
+                    // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
+                    let start_address: usize = vm_rets.next().unwrap().parse().unwrap();
+                    let end_address: usize = vm_rets.next().unwrap().parse().unwrap();
+                    assert!(
+                        end_address - start_address == data.len(),
+                        "Mismatched array len"
+                    );
+                    for (i, value) in data.iter().enumerate() {
                         // We can't mutate the peekable, so we will create a new one for this value
+                        let memory_value =
+                            format!("{}", vm_memory[start_address + i].clone().unwrap());
                         let vm_rets = vec![memory_value];
                         let mut vm_rets = vm_rets.iter().peekable();
                         check_next_type(
