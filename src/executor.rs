@@ -15,6 +15,7 @@ use std::{
     alloc::Layout,
     arch::global_asm,
     ptr::{null_mut, NonNull},
+    rc::Rc,
 };
 
 mod aot;
@@ -38,21 +39,20 @@ extern "C" {
     );
 }
 
-#[allow(clippy::large_enum_variant)]
 pub enum NativeExecutor<'m> {
-    Aot(AotNativeExecutor),
-    Jit(JitNativeExecutor<'m>),
+    Aot(Rc<AotNativeExecutor>),
+    Jit(Rc<JitNativeExecutor<'m>>),
 }
 
 impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
     fn from(value: AotNativeExecutor) -> Self {
-        Self::Aot(value)
+        Self::Aot(Rc::new(value))
     }
 }
 
 impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     fn from(value: JitNativeExecutor<'m>) -> Self {
-        Self::Jit(value)
+        Self::Jit(Rc::new(value))
     }
 }
 

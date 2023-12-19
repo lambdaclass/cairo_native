@@ -1,7 +1,6 @@
 use crate::{context::NativeContext, executor::JitNativeExecutor};
 use cairo_lang_sierra::program::Program;
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
@@ -17,7 +16,7 @@ where
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
     // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
     // Send nor Sync.
-    cache: HashMap<K, Rc<RefCell<JitNativeExecutor<'a>>>>,
+    cache: HashMap<K, Rc<JitNativeExecutor<'a>>>,
 }
 
 impl<'a, K> JitProgramCache<'a, K>
@@ -36,19 +35,15 @@ where
         self.context
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<RefCell<JitNativeExecutor<'a>>>> {
+    pub fn get(&self, key: &K) -> Option<Rc<JitNativeExecutor<'a>>> {
         self.cache.get(key).cloned()
     }
 
-    pub fn compile_and_insert(
-        &mut self,
-        key: K,
-        program: &Program,
-    ) -> Rc<RefCell<JitNativeExecutor<'a>>> {
+    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> Rc<JitNativeExecutor<'a>> {
         let module = self.context.compile(program).expect("should compile");
         let executor = JitNativeExecutor::new(module);
 
-        let executor = Rc::new(RefCell::new(executor));
+        let executor = Rc::new(executor);
         self.cache.insert(key, executor.clone());
 
         executor
