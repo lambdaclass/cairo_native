@@ -26,6 +26,7 @@ pub mod bitwise;
 pub mod r#bool;
 pub mod r#box;
 pub mod branch_align;
+pub mod bytes31;
 pub mod cast;
 pub mod debug;
 pub mod drop;
@@ -219,7 +220,9 @@ where
             CoreConcreteLibfunc::Sint128(info) => {
                 self::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
-            CoreConcreteLibfunc::Bytes31(_) => todo!(),
+            CoreConcreteLibfunc::Bytes31(selector) => self::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 

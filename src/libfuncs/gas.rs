@@ -48,7 +48,7 @@ where
         GasConcreteLibfunc::WithdrawGas(info) => {
             build_withdraw_gas(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::RedepositGas(_) => todo!(),
+        GasConcreteLibfunc::RedepositGas(_) => todo!("implement redeposit gas libfunc"),
         GasConcreteLibfunc::GetAvailableGas(info) => {
             build_get_available_gas(context, registry, entry, location, helper, metadata, info)
         }
