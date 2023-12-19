@@ -243,33 +243,9 @@ pub fn run_native_program(
 
     let native_module = NativeModule::new(module, registry, metadata);
     let executor = JitNativeExecutor::new(native_module);
-    executor.invoke_dynamic(entry_point_id, args, gas).unwrap()
-
-    // let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-    // #[cfg(feature = "with-runtime")]
-    // register_runtime_symbols(&engine);
-    // #[cfg(feature = "with-debug-utils")]
-    // metadata
-    //     .get::<cairo_native::metadata::debug_utils::DebugUtils>()
-    //     .unwrap()
-    //     .register_impls(&engine);
-
-    // cairo_native::execute(
-    //     &engine,
-    //     &registry,
-    //     &program
-    //         .funcs
-    //         .iter()
-    //         .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-    //         .expect("Test program entry point not found.")
-    //         .id,
-    //     args,
-    //     required_initial_gas,
-    //     Some(u64::MAX.into()),
-    //     None,
-    // )
-    // .expect("Test program execution failed.")
+    executor
+        .invoke_dynamic(entry_point_id, args, gas, None)
+        .unwrap()
 }
 
 /// Runs the program on the cairo-vm
@@ -317,10 +293,7 @@ where
 {
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(handler))
-        .unwrap();
+    let native_program = native_context.compile(sierra_program).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
@@ -328,7 +301,12 @@ where
     let native_executor = JitNativeExecutor::new(native_program);
 
     native_executor
-        .execute_contract(entry_point_id, args, u128::MAX.into())
+        .invoke_contract_dynamic(
+            entry_point_id,
+            args,
+            u128::MAX.into(),
+            Some(&SyscallHandlerMeta::new(handler)),
+        )
         .expect("failed to execute the given contract")
 }
 

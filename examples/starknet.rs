@@ -304,10 +304,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 
@@ -319,7 +316,12 @@ fn main() {
     let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute_contract(fn_id, &[Felt::from(1)], Some(u128::MAX))
+        .invoke_contract_dynamic(
+            fn_id,
+            &[Felt::from(1)],
+            Some(u128::MAX),
+            Some(&SyscallHandlerMeta::new(&mut SyscallHandler)),
+        )
         .expect("failed to execute the given contract");
 
     println!();

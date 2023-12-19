@@ -3,11 +3,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
-    context::NativeContext,
-    executor::AotNativeExecutor,
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
-    utils::find_function_id,
-    values::JitValue,
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
+    utils::find_function_id, values::JitValue,
 };
 use std::path::Path;
 
@@ -29,7 +26,6 @@ fn main() {
         shared_lib,
         ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap(),
         native_program.get_metadata::<GasMetadata>().cloned(),
-        native_program.get_metadata::<SyscallHandlerMeta>().cloned(),
     );
 
     executor.invoke_dynamic(
@@ -44,6 +40,7 @@ fn main() {
             // Call::calldata
             JitValue::Felt252(0.into()),
         ])],
+        None,
         None,
     );
 
