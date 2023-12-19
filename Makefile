@@ -84,7 +84,7 @@ ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos install-scarb-macos
+deps: deps-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
