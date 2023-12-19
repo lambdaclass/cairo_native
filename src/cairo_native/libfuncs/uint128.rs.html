@@ -1279,12 +1279,16 @@
 <a href="#1279" id="1279">1279</a>
 <a href="#1280" id="1280">1280</a>
 <a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -1433,7 +1437,8 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {u128_ty}&quot;</span>)).unwrap();
+    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {u128_ty}&quot;</span>))
+        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
         ; k0 = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_c } : () -&gt; u128_ty
@@ -2091,7 +2096,7 @@
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_bigint::ToBigUint;
+    <span class="kw">use </span>num_bigint::BigUint;
 
     <span class="kw">use </span>starknet_types_core::felt::Felt;
 
@@ -2518,7 +2523,10 @@
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..u128::BITS {
             <span class="kw">let </span>x = <span class="number">1u128 </span>&lt;&lt; i;
-            <span class="kw">let </span>y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            <span class="kw">let </span>y: u64 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect(<span class="string">&quot;should always fit into a u128&quot;</span>);
 
             run_program_assert_output(program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[x.into()], <span class="kw-2">&amp;</span>[y.into()]);
         }

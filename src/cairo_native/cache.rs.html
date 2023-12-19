@@ -144,9 +144,9 @@
     ) -&gt; Rc&lt;RefCell&lt;NativeExecutor&lt;<span class="lifetime">&#39;a</span>&gt;&gt;&gt; {
         <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program).expect(<span class="string">&quot;should compile&quot;</span>);
         <span class="kw">let </span>executor = NativeExecutor::new(module);
-        <span class="self">self</span>.cache
-            .insert(key.clone(), Rc::new(RefCell::new(executor)));
-        <span class="self">self</span>.cache.get_mut(<span class="kw-2">&amp;</span>key).cloned().unwrap()
+        <span class="kw">let </span>executor = Rc::new(RefCell::new(executor));
+        <span class="self">self</span>.cache.insert(key.clone(), executor.clone());
+        executor
     }
 }
 

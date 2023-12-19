@@ -1375,7 +1375,7 @@
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::{
@@ -1572,7 +1572,7 @@
                     }
                 ),
             )
-            .unwrap(),
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1696,8 +1696,8 @@
 
     <span class="kw">let </span>result = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)<span class="question-mark">?
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)<span class="question-mark">?
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
@@ -1821,8 +1821,8 @@
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)<span class="question-mark">?</span>;
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>state = entry
         .append_operation(llvm::load(
@@ -1948,8 +1948,8 @@
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .libfunc_ec_state_add_mul(
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.libfunc_ec_state_add_mul(
             context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
         )<span class="question-mark">?</span>;
 
@@ -2046,8 +2046,8 @@
 
     <span class="kw">let </span>is_zero = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .libfunc_ec_state_try_finalize_nz(context, helper, entry, point_ptr, state_ptr, location)<span class="question-mark">?
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.libfunc_ec_state_try_finalize_nz(context, helper, entry, point_ptr, state_ptr, location)<span class="question-mark">?
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
@@ -2101,7 +2101,7 @@
     <span class="kw">let </span>x = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252&quot;</span>).unwrap(),
+            Attribute::parse(context, <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252&quot;</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2109,7 +2109,7 @@
     <span class="kw">let </span>y = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252&quot;</span>).unwrap(),
+            Attribute::parse(context, <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252&quot;</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2246,8 +2246,8 @@
 
     <span class="kw">let </span>result = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .libfunc_ec_point_try_new_nz(context, helper, entry, point_ptr, location)<span class="question-mark">?
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.libfunc_ec_point_try_new_nz(context, helper, entry, point_ptr, location)<span class="question-mark">?
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 

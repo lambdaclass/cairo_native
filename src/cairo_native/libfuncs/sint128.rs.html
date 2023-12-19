@@ -765,12 +765,14 @@
 <a href="#765" id="765">765</a>
 <a href="#766" id="766">766</a>
 <a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i128`-related libfuncs
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -868,7 +870,8 @@
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>)).unwrap(),
+        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>))
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
@@ -1137,7 +1140,8 @@
     <span class="kw">let </span>const_max = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i128::MAX, felt252_ty)).unwrap(),
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i128::MAX, felt252_ty))
+                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

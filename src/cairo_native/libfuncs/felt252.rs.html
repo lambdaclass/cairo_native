@@ -807,12 +807,28 @@
 <a href="#807" id="807">807</a>
 <a href="#808" id="808">808</a>
 <a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
@@ -907,18 +923,24 @@
         context,
         <span class="kw-2">&amp;</span><span class="macro">format!</span>(
             <span class="string">&quot;{} : {i256}&quot;</span>,
-            metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;().unwrap().prime()
+            metadata
+                .get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;()
+                .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                </span>.prime()
         ),
     )
-    .unwrap();
+    .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
     <span class="kw">let </span>attr_prime_i512 = Attribute::parse(
         context,
         <span class="kw-2">&amp;</span><span class="macro">format!</span>(
             <span class="string">&quot;{} : {i512}&quot;</span>,
-            metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;().unwrap().prime()
+            metadata
+                .get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;()
+                .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                </span>.prime()
         ),
     )
-    .unwrap();
+    .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>attr_cmp_uge = IntegerAttribute::new(
         CmpiPredicate::Uge <span class="kw">as </span>i64,
@@ -940,15 +962,19 @@
         Felt252BinaryOperationConcrete::WithConst(operation) =&gt; {
             <span class="kw">let </span>value = <span class="kw">match </span>operation.c.sign() {
                 Sign::Minus =&gt; {
-                    <span class="kw">let </span>prime = metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;().unwrap().prime();
-                    (<span class="kw-2">&amp;</span>operation.c + prime.to_bigint().unwrap())
+                    <span class="kw">let </span>prime = metadata
+                        .get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;()
+                        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                        </span>.prime();
+                    (<span class="kw-2">&amp;</span>operation.c + prime.to_bigint().expect(<span class="string">&quot;always is Some&quot;</span>))
                         .to_biguint()
-                        .unwrap()
+                        .expect(<span class="string">&quot;always positive&quot;</span>)
                 }
-                <span class="kw">_ </span>=&gt; operation.c.to_biguint().unwrap(),
+                <span class="kw">_ </span>=&gt; operation.c.to_biguint().expect(<span class="string">&quot;sign already checked&quot;</span>),
             };
 
-            <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>)).unwrap();
+            <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>))
+                .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?</span>;
 
             <span class="comment">// TODO: Ensure that the constant is on the right side of the operation.
             </span><span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
@@ -1218,10 +1244,15 @@
 {
     <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
         Sign::Minus =&gt; {
-            <span class="kw">let </span>prime = metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;().unwrap().prime();
-            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().unwrap()).to_biguint().unwrap()
+            <span class="kw">let </span>prime = metadata
+                .get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;()
+                .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                </span>.prime();
+            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().expect(<span class="string">&quot;always is Some&quot;</span>))
+                .to_biguint()
+                .expect(<span class="string">&quot;always is positive&quot;</span>)
         }
-        <span class="kw">_ </span>=&gt; info.c.to_biguint().unwrap(),
+        <span class="kw">_ </span>=&gt; info.c.to_biguint().expect(<span class="string">&quot;sign already checked&quot;</span>),
     };
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
@@ -1232,7 +1263,8 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>)).unwrap();
+    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>))
+        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
         ; k0 = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_c } : () -&gt; felt252_ty

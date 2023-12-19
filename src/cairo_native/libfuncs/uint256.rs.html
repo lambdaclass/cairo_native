@@ -883,6 +883,7 @@
 <a href="#883" id="883">883</a>
 <a href="#884" id="884">884</a>
 <a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u256`-related libfuncs
 //!
 //! TODO
@@ -1569,7 +1570,7 @@
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_bigint::{BigUint, ToBigUint};
+    <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>num_traits::One;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
     <span class="kw">use </span>std::ops::Shl;
@@ -1749,20 +1750,21 @@
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..u128::BITS {
             <span class="kw">let </span>x = <span class="number">1u128 </span>&lt;&lt; i;
-            <span class="kw">let </span>y: u128 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            <span class="kw">let </span>y: u128 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect(<span class="string">&quot;should always fit into a u128&quot;</span>);
 
             run((<span class="number">0</span>, x), y.into());
         }
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..u128::BITS {
             <span class="kw">let </span>x = <span class="number">1u128 </span>&lt;&lt; i;
-            <span class="kw">let </span>y: u128 = x
-                .to_biguint()
-                .unwrap()
+            <span class="kw">let </span>y: u128 = BigUint::from(x)
                 .shl(<span class="number">128usize</span>)
                 .sqrt()
                 .try_into()
-                .unwrap();
+                .expect(<span class="string">&quot;should always fit into a u128&quot;</span>);
 
             run((x, <span class="number">0</span>), y.into());
         }

@@ -1088,12 +1088,17 @@
 <a href="#1088" id="1088">1088</a>
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u16`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -1200,7 +1205,8 @@
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>)).unwrap(),
+        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>))
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
@@ -1757,7 +1763,8 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, u16::MAX, felt252_ty)).unwrap(),
+        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, u16::MAX, felt252_ty))
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     <span class="kw">let </span>const_max = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -1801,7 +1808,7 @@
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-    <span class="kw">use </span>num_bigint::ToBigUint;
+    <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
@@ -2136,7 +2143,10 @@
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..u16::BITS {
             <span class="kw">let </span>x = <span class="number">1u16 </span>&lt;&lt; i;
-            <span class="kw">let </span>y: u8 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            <span class="kw">let </span>y: u8 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect(<span class="string">&quot;should always fit into a u16&quot;</span>);
 
             run_program_assert_output(program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[x.into()], <span class="kw-2">&amp;</span>[y.into()]);
         }

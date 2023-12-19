@@ -597,7 +597,7 @@
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
@@ -680,7 +680,7 @@
         registry
             .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
             </span>.variants()
-            .unwrap(),
+            .expect(<span class="string">&quot;enum should always have variants&quot;</span>),
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>enum_ty = registry.build_type(
@@ -803,7 +803,7 @@
         registry
             .get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?
             </span>.variants()
-            .unwrap(),
+            .expect(<span class="string">&quot;enum should always have variants&quot;</span>),
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>enum_ty = registry.build_type(
@@ -955,9 +955,9 @@
     <span class="comment">// This libfunc&#39;s implementation is identical to `enum_match` aside from fetching the snapshotted enum&#39;s variants from the metadata:
     </span><span class="kw">let </span>variants = metadata
         .get::&lt;EnumSnapshotVariantsMeta&gt;()
-        .unwrap()
-        .get_variants(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        </span>.get_variants(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)
+        .expect(<span class="string">&quot;enum should always have variants&quot;</span>)
         .clone();
     <span class="kw">let </span>(layout, (tag_ty, tag_layout), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
         context, helper, registry, metadata, <span class="kw-2">&amp;</span>variants,

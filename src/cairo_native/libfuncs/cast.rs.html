@@ -307,6 +307,10 @@
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 //!
 //! TODO
@@ -474,8 +478,12 @@
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>src_width = src_ty.integer_width().unwrap();
-    <span class="kw">let </span>dst_width = dst_ty.integer_width().unwrap();
+    <span class="kw">let </span>src_width = src_ty
+        .integer_width()
+        .expect(<span class="string">&quot;casts always happen between numerical types&quot;</span>);
+    <span class="kw">let </span>dst_width = dst_ty
+        .integer_width()
+        .expect(<span class="string">&quot;casts always happen between numerical types&quot;</span>);
     <span class="macro">assert!</span>(src_width &lt;= dst_width);
 
     <span class="kw">let </span>result = <span class="kw">if </span>src_width == dst_width {

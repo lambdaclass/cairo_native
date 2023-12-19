@@ -849,12 +849,14 @@
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i32`-related libfuncs
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -953,7 +955,8 @@
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>)).unwrap(),
+        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {value_ty}&quot;</span>))
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
@@ -1266,7 +1269,8 @@
     <span class="kw">let </span>const_max = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i32::MAX, felt252_ty)).unwrap(),
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, i32::MAX, felt252_ty))
+                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

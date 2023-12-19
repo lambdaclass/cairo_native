@@ -106,7 +106,7 @@
         <span class="prelude-val">Some</span>(x) =&gt; x,
         <span class="prelude-val">None </span>=&gt; metadata
             .insert(EnumSnapshotVariantsMeta::default())
-            .unwrap(),
+            .expect(<span class="string">&quot;should not fail because we checked there is no metadata beforehand&quot;</span>),
     }
     .set_mapping(info.self_ty, registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.variants());
 

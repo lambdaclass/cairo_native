@@ -280,6 +280,8 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 //!
 //! TODO
@@ -287,7 +289,7 @@
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::{gas::GasCost, MetadataStorage},
@@ -392,7 +394,8 @@
     <span class="kw">let </span>gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, cost.unwrap_or(<span class="number">0</span>), u128_type)).unwrap(),
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, cost.unwrap_or(<span class="number">0</span>), u128_type))
+                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -456,7 +459,8 @@
     <span class="kw">let </span>gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, cost.unwrap_or(<span class="number">0</span>), u128_type)).unwrap(),
+            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} : {}&quot;</span>, cost.unwrap_or(<span class="number">0</span>), u128_type))
+                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

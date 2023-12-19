@@ -437,12 +437,13 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Boolean libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -546,7 +547,7 @@
     <span class="kw">let </span>enum_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect(<span class="string">&quot;bool is a enum and has variants&quot;</span>)
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -611,7 +612,7 @@
     <span class="kw">let </span>enum_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect(<span class="string">&quot;bool is a enum and has variants&quot;</span>)
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -630,7 +631,8 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {tag_ty}&quot;</span>)).unwrap(),
+        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {tag_ty}&quot;</span>))
+            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     <span class="kw">let </span>const_1 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -678,7 +680,7 @@
 
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect(<span class="string">&quot;bool is a enum and has variants&quot;</span>)
         .len()
         .next_power_of_two()
         .trailing_zeros();
