@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -110,7 +110,8 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        Attribute::parse(context, &format!("{value} : {value_ty}"))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
@@ -668,7 +669,8 @@ where
 
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty)).unwrap(),
+        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     let const_max = op.result(0)?.into();
@@ -712,7 +714,7 @@ mod test {
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
+    use num_bigint::BigUint;
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
@@ -1055,7 +1057,10 @@ mod test {
 
         for i in 0..u64::BITS {
             let x = 1u64 << i;
-            let y: u32 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u32 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect("should always fit int oa u64");
 
             run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }
