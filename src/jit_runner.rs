@@ -335,7 +335,10 @@ pub fn execute(
 
                         params_ptrs.push(
                             arena
-                                .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
+                                .alloc(
+                                    NonNull::new(syscall_addr as *mut ())
+                                        .expect("the ptr is not null"),
+                                )
                                 .cast(),
                         );
                     }
@@ -393,7 +396,8 @@ pub fn execute(
     for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
         let ty = registry.get_type(type_id)?;
 
-        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
+        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _)
+            .expect("the ptr is not null");
 
         match ty {
             CoreTypeConcrete::GasBuiltin(_) => {

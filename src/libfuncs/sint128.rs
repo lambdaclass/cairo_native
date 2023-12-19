@@ -3,7 +3,7 @@ use super::{LibfuncBuilder, LibfuncHelper};
 
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -101,7 +101,8 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        Attribute::parse(context, &format!("{value} : {value_ty}"))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
@@ -370,7 +371,8 @@ where
     let const_max = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{} : {}", i128::MAX, felt252_ty)).unwrap(),
+            Attribute::parse(context, &format!("{} : {}", i128::MAX, felt252_ty))
+                .ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?
