@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
@@ -98,18 +98,24 @@ where
         context,
         &format!(
             "{} : {i256}",
-            metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime()
+            metadata
+                .get::<PrimeModuloMeta<Felt252>>()
+                .ok_or(ErrorImpl::MissingMetadata)?
+                .prime()
         ),
     )
-    .unwrap();
+    .ok_or(ErrorImpl::ParseAttributeError)?;
     let attr_prime_i512 = Attribute::parse(
         context,
         &format!(
             "{} : {i512}",
-            metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime()
+            metadata
+                .get::<PrimeModuloMeta<Felt252>>()
+                .ok_or(ErrorImpl::MissingMetadata)?
+                .prime()
         ),
     )
-    .unwrap();
+    .ok_or(ErrorImpl::ParseAttributeError)?;
 
     let attr_cmp_uge = IntegerAttribute::new(
         CmpiPredicate::Uge as i64,
@@ -131,15 +137,19 @@ where
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
                 Sign::Minus => {
-                    let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
-                    (&operation.c + prime.to_bigint().unwrap())
+                    let prime = metadata
+                        .get::<PrimeModuloMeta<Felt252>>()
+                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .prime();
+                    (&operation.c + prime.to_bigint().expect("always is Some"))
                         .to_biguint()
-                        .unwrap()
+                        .expect("always positive")
                 }
-                _ => operation.c.to_biguint().unwrap(),
+                _ => operation.c.to_biguint().expect("sign already checked"),
             };
 
-            let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap();
+            let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
+                .ok_or(ErrorImpl::MissingMetadata)?;
 
             // TODO: Ensure that the constant is on the right side of the operation.
             mlir_asm! { context, entry, location =>
@@ -409,10 +419,15 @@ where
 {
     let value = match info.c.sign() {
         Sign::Minus => {
-            let prime = metadata.get::<PrimeModuloMeta<Felt252>>().unwrap().prime();
-            (&info.c + prime.to_bigint().unwrap()).to_biguint().unwrap()
+            let prime = metadata
+                .get::<PrimeModuloMeta<Felt252>>()
+                .ok_or(ErrorImpl::MissingMetadata)?
+                .prime();
+            (&info.c + prime.to_bigint().expect("always is Some"))
+                .to_biguint()
+                .expect("always is positive")
         }
-        _ => info.c.to_biguint().unwrap(),
+        _ => info.c.to_biguint().expect("sign already checked"),
     };
 
     let felt252_ty = registry.build_type(
@@ -423,7 +438,8 @@ where
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}")).unwrap();
+    let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
+        .ok_or(ErrorImpl::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> felt252_ty

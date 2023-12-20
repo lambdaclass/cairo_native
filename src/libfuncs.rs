@@ -26,6 +26,7 @@ pub mod bitwise;
 pub mod r#bool;
 pub mod r#box;
 pub mod branch_align;
+pub mod bytes31;
 pub mod cast;
 pub mod debug;
 pub mod drop;
@@ -219,7 +220,9 @@ where
             CoreConcreteLibfunc::Sint128(info) => {
                 self::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
-            CoreConcreteLibfunc::Bytes31(_) => todo!(),
+            CoreConcreteLibfunc::Bytes31(selector) => self::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 
@@ -402,7 +405,7 @@ where
         default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
         branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
         location: Location<'ctx>,
-    ) -> Operation<'ctx> {
+    ) -> Result<Operation<'ctx>, CoreLibfuncBuilderError> {
         let default_destination = match default.0 {
             BranchTarget::Jump(x) => (x, Cow::Borrowed(default.1)),
             BranchTarget::Return(i) => {
@@ -453,7 +456,7 @@ where
             });
         }
 
-        cf::switch(
+        Ok(cf::switch(
             context,
             &case_values,
             flag,
@@ -464,8 +467,7 @@ where
                 .map(|(x, y)| (*x, y.as_ref()))
                 .collect::<Vec<_>>(),
             location,
-        )
-        .unwrap()
+        )?)
     }
 }
 

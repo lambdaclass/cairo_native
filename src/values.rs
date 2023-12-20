@@ -577,7 +577,9 @@ impl JitValue {
                         value
                     }
                 }
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
+                CoreTypeConcrete::Uninitialized(_) => {
+                    todo!("implement uninit from_jit or ignore the return value")
+                }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
                         0 | 1 => 0,
@@ -674,6 +676,7 @@ impl JitValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::Uint128MulGuarantee(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)
                 }
@@ -693,9 +696,9 @@ impl JitValue {
                     }
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
-                CoreTypeConcrete::Span(_) => todo!(),
+                CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
+                CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
             }
         }
     }

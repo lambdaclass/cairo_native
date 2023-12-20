@@ -137,9 +137,11 @@ where
         StarkNetConcreteLibfunc::SendMessageToL1(info) => {
             build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::Testing(_) => todo!(),
-        StarkNetConcreteLibfunc::Secp256(_) => todo!(),
-        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => todo!(),
+        StarkNetConcreteLibfunc::Testing(_) => todo!("implement starknet testing libfunc"),
+        StarkNetConcreteLibfunc::Secp256(_) => todo!("implement starknet Secp256 libfunc"),
+        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => {
+            todo!("implement starknet GetExecutionInfoV2 libfunc")
+        }
     }
 }
 

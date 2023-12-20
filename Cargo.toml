@@ -71,6 +71,7 @@ pretty_assertions_sorted = "1.2.3"
 proptest = "1.2"
 test-case = "3.2.1"
 walkdir = "2"
+serde_json = { version = "1.0"}
 
 [build-dependencies]
 cc = "1.0"

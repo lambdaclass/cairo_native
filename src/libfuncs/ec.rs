@@ -5,7 +5,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::{
@@ -202,7 +202,7 @@ where
                     }
                 ),
             )
-            .unwrap(),
+            .ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -326,7 +326,7 @@ where
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)?
         .result(0)?
         .into();
@@ -451,7 +451,7 @@ where
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)?;
 
     let state = entry
@@ -578,7 +578,7 @@ where
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .libfunc_ec_state_add_mul(
             context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
         )?;
@@ -676,7 +676,7 @@ where
 
     let is_zero = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .libfunc_ec_state_try_finalize_nz(context, helper, entry, point_ptr, state_ptr, location)?
         .result(0)?
         .into();
@@ -731,7 +731,7 @@ where
     let x = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").unwrap(),
+            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -739,7 +739,7 @@ where
     let y = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").unwrap(),
+            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -876,7 +876,7 @@ where
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(ErrorImpl::MissingMetadata)?
         .libfunc_ec_point_try_new_nz(context, helper, entry, point_ptr, location)?
         .result(0)?
         .into();

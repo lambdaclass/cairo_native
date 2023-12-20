@@ -5,7 +5,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::{gas::GasCost, MetadataStorage},
@@ -48,7 +48,7 @@ where
         GasConcreteLibfunc::WithdrawGas(info) => {
             build_withdraw_gas(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::RedepositGas(_) => todo!(),
+        GasConcreteLibfunc::RedepositGas(_) => todo!("implement redeposit gas libfunc"),
         GasConcreteLibfunc::GetAvailableGas(info) => {
             build_get_available_gas(context, registry, entry, location, helper, metadata, info)
         }
@@ -110,7 +110,8 @@ where
     let gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type)).unwrap(),
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
+                .ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -174,7 +175,8 @@ where
     let gas_cost_val = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type)).unwrap(),
+            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
+                .ok_or(ErrorImpl::ParseAttributeError)?,
             location,
         ))
         .result(0)?

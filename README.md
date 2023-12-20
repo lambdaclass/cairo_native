@@ -58,6 +58,9 @@ This is a list of the current progress implementing each **libfunc**.
 1. `bool_to_felt252`
 1. `bool_xor_impl`
 1. `branch_align`
+1. `bytes31_const`
+1. `bytes31_to_felt252`
+1. `bytes31_try_from_felt252`
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
 1. `contract_address_const` (StarkNet)

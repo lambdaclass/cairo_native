@@ -49,7 +49,7 @@ where
         Some(x) => x,
         None => metadata
             .insert(EnumSnapshotVariantsMeta::default())
-            .unwrap(),
+            .expect("should not fail because we checked there is no metadata beforehand"),
     }
     .set_mapping(info.self_ty, registry.get_type(&info.ty)?.variants());
 

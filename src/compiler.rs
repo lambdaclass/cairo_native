@@ -405,7 +405,7 @@ where
 
                             metadata
                                 .insert(TailRecursionMeta::new(op0.result(0)?.into(), &entry_block))
-                                .unwrap();
+                                .expect("should not have this metadata inserted yet");
                         }
                     }
 
@@ -759,7 +759,9 @@ where
                 if let std::collections::btree_map::Entry::Vacant(e) = blocks.entry(statement_idx.0)
                 {
                     e.insert(Block::new(&[]));
-                    blocks.get_mut(&statement_idx.0).unwrap()
+                    blocks
+                        .get_mut(&statement_idx.0)
+                        .expect("the block should exist")
                 } else {
                     panic!("statement index already present in block");
                 }
