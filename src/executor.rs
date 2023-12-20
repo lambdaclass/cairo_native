@@ -234,6 +234,7 @@ impl<'a> ArgumentMapper<'a> {
         &self.invoke_data
     }
 
+    #[cfg_attr(target_arch = "x86_64", allow(unused_mut))]
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
@@ -247,14 +248,12 @@ impl<'a> ArgumentMapper<'a> {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
             if self.invoke_data.len() >= 8 {
-                println!("Aligning everything");
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
                 }
             } else if self.invoke_data.len() + 1 >= 8 {
                 self.invoke_data.push(0);
             } else if self.invoke_data.len() + values.len() >= 8 {
-                println!("Aligning partially {}", self.invoke_data.len());
                 let chunk;
                 (chunk, values) = values.split_at(4);
                 self.invoke_data.extend(chunk);
