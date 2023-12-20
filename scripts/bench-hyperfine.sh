@@ -66,6 +66,7 @@ run_bench() {
         -o "$OUTPUT_DIR/$base_name.ll" \
         >> /dev/stderr
 
+
     "$MLIR_DIR/bin/clang" \
         -O3 \
         -Wno-override-module \
@@ -89,6 +90,8 @@ run_bench() {
         -Wl,-rpath "target/release" \
         -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
+
+    cat $OUTPUT_DIR/$base_name
 
     hyperfine \
         --warmup 3 \
