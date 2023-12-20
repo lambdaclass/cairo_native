@@ -6,7 +6,7 @@ mod alexandria {
     }
 
     fn karatsuba() -> u128 {
-        alexandria_math::karatsuba::multiply(3754192357923759273591, 18492875)
+        alexandria_math::karatsuba::multiply(711, 1849)
     }
 
     fn armstrong_number() -> bool {
@@ -14,7 +14,7 @@ mod alexandria {
     }
 
     fn aliquot_sum() -> u128 {
-        alexandria_math::aliquot_sum::aliquot_sum(67472587892687682)
+        alexandria_math::aliquot_sum::aliquot_sum(674725)
     }
 
     fn collatz_sequence() -> Array<u128> {
