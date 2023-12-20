@@ -646,6 +646,45 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Struct(info) => {
                 if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
+                    // Check if it is a Panic result
+                    if let Some(&JITValue::Struct {
+                        fields: _,
+                        ref debug_name,
+                    }) = fields.get(0)
+                    {
+                        if debug_name == &Some("core::panics::Panic".to_owned()) {
+                            // The next field of the original struct will be an Array
+                            // But contrary to the standard Array return values, this one will contain the
+                            // actual felt values in the array instead of it's start and end addresses
+                            // So we need to handle it separately
+                            assert!(
+                                fields.len() == 2,
+                                "Panic result has incorrect number of fields"
+                            );
+                            if let JITValue::Array(panic_data) = &fields[1] {
+                                // This is easier than crafting a ConcreteType::Felt252 variant
+                                let felt_concrete_type =
+                                    match reg.get_type(&info.members[1]).unwrap() {
+                                        CoreTypeConcrete::Array(info) => {
+                                            reg.get_type(&info.ty).expect("type should exist")
+                                        }
+                                        _ => unreachable!(),
+                                    };
+                                for value in panic_data {
+                                    check_next_type(
+                                        felt_concrete_type,
+                                        &mut [value].into_iter(),
+                                        vm_rets,
+                                        reg,
+                                        vm_memory,
+                                    )?;
+                                }
+                                return Ok(());
+                            } else {
+                                panic!("Panic result should have an Array as its second field")
+                            }
+                        }
+                    }
                     for (field, container) in info.members.iter().zip(fields.iter()) {
                         check_next_type(
                             reg.get_type(field).unwrap(),
