@@ -681,7 +681,7 @@ pub fn compare_outputs(
                                 }
                                 return Ok(());
                             } else {
-                                panic!("Panic result should have an Array as its second field")
+                                panic!("Panic result should have an Array as it's second field")
                             }
                         }
                     }
