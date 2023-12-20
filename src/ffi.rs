@@ -160,20 +160,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
-            vec![
-                "-demangle",
-                "-no_deduplicate",
-                "-dynamic",
-                "-dylib",
-                "-L/usr/local/lib",
-                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
-                "-L/Users/esteve/Documents/LambdaClass/cairo_native/target/debug/", // change me
-                &file_path,
-                "-o",
-                &output_path,
-                "-lSystem",
-                "-lcairo_native_runtime",
-            ];
             let mut args: Vec<Cow<'static, str>> = vec![
                 "-demangle".into(),
                 "-no_deduplicate".into(),
