@@ -18,6 +18,7 @@ use llvm_sys::{
 use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::MlirOperation;
 use std::{
+    borrow::Cow,
     error::Error,
     ffi::{c_void, CStr},
     fmt::Display,
@@ -153,10 +154,13 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     file.write_all(object)?;
     let file = file.into_temp_path();
 
-    let args: &[&str] = {
+    let file_path = file.display().to_string();
+    let output_path = output_filename.display().to_string();
+
+    let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
-            &[
+            vec![
                 "-demangle",
                 "-no_deduplicate",
                 "-dynamic",
@@ -164,30 +168,60 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-L/usr/local/lib",
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
                 "-L/Users/esteve/Documents/LambdaClass/cairo_native/target/debug/", // change me
-                &file.display().to_string(),
+                &file_path,
                 "-o",
-                &output_filename.display().to_string(),
+                &output_path,
                 "-lSystem",
                 "-lcairo_native_runtime",
-            ]
+            ];
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "-demangle".into(),
+                "-no_deduplicate".into(),
+                "-dynamic".into(),
+                "-dylib".into(),
+                "-L/usr/local/lib".into(),
+                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib".into(),
+            ];
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_LIBRUNTIME_DIR") {
+                args.extend([Cow::from(format!("-L{extra_dir}"))]);
+            }
+
+            args.extend([
+                Cow::from(file_path),
+                "-o",
+                Cow::from(output_path),
+                "-lSystem",
+                "-lcairo_native_runtime",
+            ]);
+            args
         }
         #[cfg(target_os = "linux")]
         {
-            &[
-                "--hash-style=gnu",
-                "--eh-frame-hdr",
-                "-shared",
-                "-L/home/dev/cairo_native/target/release", // change me
-                "-rpath=/home/dev/cairo_native/target/release", // change me
-                "-rpath-link=/home/dev/cairo_native/target/release", // change me
-                "-L/lib/../lib64",
-                "-L/usr/lib/../lib64",
-                "-o",
-                &output_filename.display().to_string(),
-                "-lc",
-                "-lcairo_native_runtime",
-                &file.display().to_string(),
-            ]
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "--hash-style=gnu".into(),
+                "--eh-frame-hdr".into(),
+                "-shared".into(),
+                "-L/lib/../lib64".into(),
+                "-L/usr/lib/../lib64".into(),
+            ];
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_LIBRUNTIME_DIR") {
+                args.extend([
+                    Cow::from(format!("-L{extra_dir}")),
+                    format!("-rpath={extra_dir}").into(),
+                    format!("-rpath-link={extra_dir}").into(),
+                ]);
+            }
+
+            args.extend([
+                "-o".into(),
+                Cow::from(output_path),
+                "-lc".into(),
+                "-lcairo_native_runtime".into(),
+                Cow::from(file_path),
+            ]);
+            args
         }
         #[cfg(target_os = "windows")]
         {
@@ -196,7 +230,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     };
 
     let mut linker = std::process::Command::new("ld");
-    let proc = linker.args(args.iter()).output()?;
+    let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
     if proc.status.success() {
         Ok(())
     } else {
