@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, ErrorImpl, Result},
+        libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,

@@ -676,7 +676,6 @@ impl JitValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
-                | CoreTypeConcrete::Uint128MulGuarantee(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)
                 }
