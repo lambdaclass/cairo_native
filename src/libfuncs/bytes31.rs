@@ -226,16 +226,14 @@ mod test {
             &BYTES31_ROUNDTRIP,
             "run_test",
             &[Felt::from(2).into()],
-            &[jit_enum!(0, jit_struct!(Felt::from(2).into()))],
+            jit_enum!(0, jit_struct!(Felt::from(2).into())),
         );
 
         run_program_assert_output(
             &BYTES31_ROUNDTRIP,
             "run_test",
             &[Felt::MAX.into()],
-            &[jit_panic!(Felt::from_bytes_be_slice(
-                b"Option::unwrap failed."
-            ))],
+            jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")),
         );
     }
 }

@@ -1,7 +1,6 @@
-use crate::common::GAS;
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use common::{compare_outputs, run_native_program, run_vm_program};
+use common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use std::{fs::File, io::BufReader};
 use test_case::test_case;
 
@@ -24,9 +23,9 @@ fn compare_inputless_function(function_name: &str) {
     let program: (String, Program, SierraCasmRunner) = (module_name.to_string(), program, runner);
     let program = &program;
 
-    let result_vm = run_vm_program(program, function_name, &[], Some(GAS as usize)).unwrap();
-
-    let result_native = run_native_program(program, function_name, &[]);
+    let result_vm =
+        run_vm_program(program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(program, function_name, &[], Some(DEFAULT_GAS as u128));
 
     compare_outputs(
         &program.1,
