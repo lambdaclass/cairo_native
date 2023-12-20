@@ -90,9 +90,9 @@
 
 use crate::error::libfuncs::Result;
 use melior::{
-    dialect::{func, llvm},
+    dialect::{arith, func, llvm},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
         Block, Identifier, Location, Module, Region, Value,
     },
@@ -243,8 +243,17 @@ impl DebugUtils {
                 context,
                 StringAttribute::new(context, "__debug__print_felt252"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 252).into()], &[])
-                        .into(),
+                    FunctionType::new(
+                        context,
+                        &[
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                        ],
+                        &[],
+                    )
+                    .into(),
                 ),
                 Region::new(),
                 &[(
@@ -255,10 +264,64 @@ impl DebugUtils {
             ));
         }
 
+        let k64 = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(64, IntegerType::new(context, 64).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let l0 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l1 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l2 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l3 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
         block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "__debug__print_felt252"),
-            &[value],
+            &[l0, l1, l2, l3],
             &[],
             location,
         ));
@@ -319,13 +382,15 @@ extern "C" fn print_pointer_impl(value: *const ()) {
 }
 
 extern "C" fn print_pointer_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
-    let felt_biguint = BigUint::from_bytes_le(
-        &l0.to_le_bytes()
-            .into_iter()
-            .chain(l1.to_le_bytes())
-            .chain(l2.to_le_bytes())
-            .chain(l3.to_le_bytes())
-            .collect::<Vec<_>>(),
+    println!(
+        "[DEBUG] {}",
+        BigUint::from_bytes_le(
+            &l0.to_le_bytes()
+                .into_iter()
+                .chain(l1.to_le_bytes())
+                .chain(l2.to_le_bytes())
+                .chain(l3.to_le_bytes())
+                .collect::<Vec<_>>(),
+        ),
     );
-    println!("[DEBUG FELT:] {felt_biguint:?}");
 }
