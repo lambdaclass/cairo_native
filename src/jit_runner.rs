@@ -204,11 +204,61 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
-            CoreTypeConcrete::Sint32(_) => todo!(),
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint8(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint8".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint16(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint16(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint16".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint32(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint32(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint32".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint64(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint64(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint64".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
+            CoreTypeConcrete::Sint128(_) => {
+                let next = params_it
+                    .next()
+                    .ok_or_else(|| make_missing_parameter(param_type_id))?;
+
+                if !matches!(next, JITValue::Sint128(_)) {
+                    Err(make_unexpected_value_error("JITValue::Sint128".to_string()))?;
+                }
+
+                params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
+            }
             CoreTypeConcrete::NonZero(info) => {
                 let next = params_it
                     .next()
@@ -240,7 +290,7 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Felt252Dict(_) => {
+            CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 let next = params_it
                     .next()
                     .ok_or_else(|| make_missing_parameter(param_type_id))?;
@@ -253,10 +303,11 @@ pub fn execute(
 
                 params_ptrs.push(next.to_jit(&arena, registry, param_type_id)?);
             }
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => {
+                unreachable!("a entry can't be created as argument or return value")
+            }
             CoreTypeConcrete::Span(_) => {
-                todo!()
+                todo!("implement span to_jit")
             }
             CoreTypeConcrete::StarkNet(selector) => {
                 match selector {
@@ -284,7 +335,10 @@ pub fn execute(
 
                         params_ptrs.push(
                             arena
-                                .alloc(NonNull::new(syscall_addr as *mut ()).unwrap())
+                                .alloc(
+                                    NonNull::new(syscall_addr as *mut ())
+                                        .expect("the ptr is not null"),
+                                )
                                 .cast(),
                         );
                     }
@@ -342,7 +396,8 @@ pub fn execute(
     for (type_id, offset) in entry_point.signature.ret_types.iter().zip(offsets) {
         let ty = registry.get_type(type_id)?;
 
-        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _).unwrap();
+        let ptr = NonNull::new(((ret_ptr.as_ptr() as usize) + offset) as *mut _)
+            .expect("the ptr is not null");
 
         match ty {
             CoreTypeConcrete::GasBuiltin(_) => {
@@ -357,6 +412,9 @@ pub fn execute(
             | CoreTypeConcrete::EcOp(_)
             | CoreTypeConcrete::SegmentArena(_) => {
                 // ignore returned builtins
+            }
+            CoreTypeConcrete::Uint128MulGuarantee(_) => {
+                // ignore guarantee
             }
             _ => {
                 let value = JITValue::from_jit(ptr, type_id, registry);

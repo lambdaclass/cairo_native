@@ -28,6 +28,7 @@ enum RuntimeBinding {
     DictNew,
     DictGet,
     DictInsert,
+    DictFree,
 }
 
 /// Runtime library bindings metadata.
@@ -512,6 +513,47 @@ impl RuntimeBindingsMeta {
         )))
     }
 
+    /// Register if necessary, then invoke the `dict_alloc_new()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_alloc_free<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        ptr: Value<'c, 'a>,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictFree) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_free"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[llvm::r#type::opaque_pointer(context)], &[])
+                        .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_free"),
+            &[ptr],
+            &[],
+            location,
+        )))
+    }
+
     /// Register if necessary, then invoke the `dict_get()` function.
     ///
     /// Gets the value for a given key, the returned pointer is null if not found.
@@ -524,7 +566,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>, // ptr to the dict
-        key_ptr: Value<'c, 'a>,  // key must be a ptr to felt252
+        key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -575,7 +617,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>,  // ptr to the dict
-        key_ptr: Value<'c, 'a>,   // key must be a ptr to felt252
+        key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
         value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>

@@ -26,6 +26,7 @@ pub mod bitwise;
 pub mod r#bool;
 pub mod r#box;
 pub mod branch_align;
+pub mod bytes31;
 pub mod cast;
 pub mod debug;
 pub mod drop;
@@ -41,6 +42,11 @@ pub mod mem;
 pub mod nullable;
 pub mod pedersen;
 pub mod poseidon;
+pub mod sint128;
+pub mod sint16;
+pub mod sint32;
+pub mod sint64;
+pub mod sint8;
 pub mod snapshot_take;
 pub mod stark_net;
 pub mod r#struct;
@@ -199,12 +205,24 @@ where
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            CoreConcreteLibfunc::Sint8(_) => todo!(),
-            CoreConcreteLibfunc::Sint16(_) => todo!(),
-            CoreConcreteLibfunc::Sint32(_) => todo!(),
-            CoreConcreteLibfunc::Sint64(_) => todo!(),
-            CoreConcreteLibfunc::Sint128(_) => todo!(),
-            CoreConcreteLibfunc::Bytes31(_) => todo!(),
+            Self::Sint8(info) => {
+                self::sint8::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint16(info) => {
+                self::sint16::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint32(info) => {
+                self::sint32::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint64(info) => {
+                self::sint64::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Sint128(info) => {
+                self::sint128::build(context, registry, entry, location, helper, metadata, info)
+            }
+            CoreConcreteLibfunc::Bytes31(selector) => self::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 
@@ -387,7 +405,7 @@ where
         default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
         branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
         location: Location<'ctx>,
-    ) -> Operation<'ctx> {
+    ) -> Result<Operation<'ctx>, CoreLibfuncBuilderError> {
         let default_destination = match default.0 {
             BranchTarget::Jump(x) => (x, Cow::Borrowed(default.1)),
             BranchTarget::Return(i) => {
@@ -438,7 +456,7 @@ where
             });
         }
 
-        cf::switch(
+        Ok(cf::switch(
             context,
             &case_values,
             flag,
@@ -449,8 +467,7 @@ where
                 .map(|(x, y)| (*x, y.as_ref()))
                 .collect::<Vec<_>>(),
             location,
-        )
-        .unwrap()
+        )?)
     }
 }
 

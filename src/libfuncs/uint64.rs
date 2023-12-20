@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -110,7 +110,8 @@ where
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        Attribute::parse(context, &format!("{value} : {value_ty}"))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
@@ -668,7 +669,8 @@ where
 
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty)).unwrap(),
+        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty))
+            .ok_or(ErrorImpl::ParseAttributeError)?,
         location,
     ));
     let const_max = op.result(0)?.into();
@@ -710,10 +712,10 @@ mod test {
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
         values::JITValue,
     };
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
+    use num_bigint::BigUint;
+    use starknet_types_core::felt::Felt;
 
     lazy_static! {
         static ref U64_OVERFLOWING_ADD: (String, Program) = load_cairo! {
@@ -800,7 +802,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[Felt252::new(2).into()]);
+        run_program_assert_output(&program, "run_test", &[], &[Felt::from(2).into()]);
     }
 
     #[test]
@@ -832,7 +834,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u64, rhs: u64) {
             let program = &U64_OVERFLOWING_ADD;
-            let error = Felt252::from_bytes_be(b"u64_add Overflow");
+            let error = Felt::from_bytes_be_slice(b"u64_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -884,7 +886,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u64, rhs: u64) {
             let program = &U64_OVERFLOWING_SUB;
-            let error = Felt252::from_bytes_be(b"u64_sub Overflow");
+            let error = Felt::from_bytes_be_slice(b"u64_sub Overflow");
 
             let add = lhs.checked_sub(rhs);
 
@@ -1055,7 +1057,10 @@ mod test {
 
         for i in 0..u64::BITS {
             let x = 1u64 << i;
-            let y: u32 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u32 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect("should always fit int oa u64");
 
             run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }

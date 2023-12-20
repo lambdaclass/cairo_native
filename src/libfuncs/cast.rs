@@ -165,8 +165,12 @@ where
     let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let dst_ty = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
 
-    let src_width = src_ty.integer_width().unwrap();
-    let dst_width = dst_ty.integer_width().unwrap();
+    let src_width = src_ty
+        .integer_width()
+        .expect("casts always happen between numerical types");
+    let dst_width = dst_ty
+        .integer_width()
+        .expect("casts always happen between numerical types");
     assert!(src_width <= dst_width);
 
     let result = if src_width == dst_width {
