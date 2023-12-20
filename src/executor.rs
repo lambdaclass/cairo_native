@@ -1,5 +1,8 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
-use crate::{execution_result::ExecutionResult, types::TypeBuilder, values::JitValue};
+use crate::{
+    execution_result::ExecutionResult, types::TypeBuilder, utils::get_integer_layout,
+    values::JitValue,
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
@@ -67,7 +70,7 @@ fn invoke_dynamic(
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
     let arena = Bump::new();
-    let mut invoke_data = Vec::new();
+    let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
     // Generate return pointer (if necessary).
     //
@@ -104,11 +107,13 @@ fn invoke_dynamic(
         });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        invoke_data.push(return_ptr.as_ptr() as u64);
+        invoke_data.push_aligned(
+            get_integer_layout(64).align(),
+            &[return_ptr.as_ptr() as u64],
+        );
 
         Some(return_ptr)
     } else {
-        // invoke_data.push(0);
         None
     };
 
@@ -124,24 +129,23 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => match gas {
                 Some(gas) => {
-                    invoke_data.push(gas as u64);
-                    invoke_data.push((gas >> 64) as u64);
+                    invoke_data.push_aligned(
+                        get_integer_layout(128).align(),
+                        &[gas as u64, (gas >> 64) as u64],
+                    );
                 }
                 None => panic!("Gas is required"),
             },
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
-                Some(syscall_handler) => invoke_data.push(syscall_handler.as_ptr() as u64),
+                Some(syscall_handler) => invoke_data.push_aligned(
+                    get_integer_layout(64).align(),
+                    &[syscall_handler.as_ptr() as u64],
+                ),
                 None => panic!("Syscall handler is required"),
             },
-            _ => map_arg_to_values(
-                &arena,
-                &mut invoke_data,
-                registry,
-                type_id,
-                type_info,
-                iter.next().unwrap(),
-            )
-            .unwrap(),
+            _ => invoke_data
+                .push(type_id, type_info, iter.next().unwrap())
+                .unwrap(),
         }
     }
 
@@ -154,8 +158,8 @@ fn invoke_dynamic(
     unsafe {
         aot_trampoline(
             function_ptr,
-            invoke_data.as_ptr(),
-            invoke_data.len(),
+            invoke_data.invoke_data().as_ptr(),
+            invoke_data.invoke_data().len(),
             ret_registers.as_mut_ptr(),
         );
     }
@@ -210,247 +214,278 @@ fn invoke_dynamic(
     }
 }
 
-fn map_arg_to_values(
-    arena: &Bump,
-    invoke_data: &mut Vec<u64>,
-    program_registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    type_id: &ConcreteTypeId,
-    type_info: &CoreTypeConcrete,
-    value: &JitValue,
-) -> Result<(), Box<ProgramRegistryError>> {
-    // TODO: Find out if builtins push an argument or not. My guess is that they do.
-    match (type_info, value) {
-        (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
-            // TODO: Assert that `info.ty` matches all the values' types.
+pub struct ArgumentMapper<'a> {
+    arena: &'a Bump,
+    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
 
-            let type_info = program_registry.get_type(&info.ty)?;
-            let type_layout = type_info.layout(program_registry).unwrap().pad_to_align();
+    invoke_data: Vec<u64>,
+}
 
-            // This needs to be a heap-allocated pointer because it's the actual array data.
-            let ptr = if values.is_empty() {
-                null_mut()
-            } else {
-                unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) }
-            };
+impl<'a> ArgumentMapper<'a> {
+    pub fn new(arena: &'a Bump, registry: &'a ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
+        Self {
+            arena,
+            registry,
+            invoke_data: Vec::new(),
+        }
+    }
 
-            for (idx, value) in values.iter().enumerate() {
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        value
-                            .to_jit(arena, program_registry, &info.ty)
-                            .unwrap()
-                            .cast()
-                            .as_ptr(),
-                        (ptr as usize + type_layout.size() * idx) as *mut u8,
-                        type_layout.size(),
-                    );
+    pub fn invoke_data(&self) -> &[u64] {
+        &self.invoke_data
+    }
+
+    pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
+        assert!(align.is_power_of_two());
+        assert!(align <= 16);
+
+        // x86_64's max alignment is 8 bytes.
+        #[cfg(target_arch = "x86_64")]
+        assert!(align < 16);
+
+        #[cfg(target_arch = "aarch64")]
+        if align == 16 {
+            // This works because on both aarch64 and x86_64 the stack is already aligned to
+            // 16 bytes when the trampoline starts pushing values.
+            if self.invoke_data.len() >= 8 {
+                println!("Aligning everything");
+                if self.invoke_data.len() & 1 != 0 {
+                    self.invoke_data.push(0);
                 }
+            } else if self.invoke_data.len() + 1 >= 8 {
+                self.invoke_data.push(0);
+            } else if self.invoke_data.len() + values.len() >= 8 {
+                println!("Aligning partially {}", self.invoke_data.len());
+                let chunk;
+                (chunk, values) = values.split_at(4);
+                self.invoke_data.extend(chunk);
+                self.invoke_data.push(0);
             }
+        }
 
-            invoke_data.push(ptr as u64);
-            invoke_data.push(values.len() as u64);
-            invoke_data.push(values.len() as u64);
-        }
-        (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-            invoke_data.extend(a.to_le_digits());
-            invoke_data.extend(b.to_le_digits());
-        }
-        (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-            invoke_data.extend(a.to_le_digits());
-            invoke_data.extend(b.to_le_digits());
-            invoke_data.extend(c.to_le_digits());
-            invoke_data.extend(d.to_le_digits());
-        }
-        (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
-            if type_info.is_memory_allocated(program_registry) {
-                let (layout, tag_layout, variant_layouts) =
-                    crate::types::r#enum::get_layout_for_variants(program_registry, &info.variants)
-                        .unwrap();
+        self.invoke_data.extend(values);
+    }
 
-                let ptr = arena.alloc_layout(layout);
-                unsafe {
-                    match tag_layout.size() {
-                        0 => {}
-                        1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
-                        2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
-                        4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
-                        8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
-                        _ => unreachable!(),
+    pub fn push(
+        &mut self,
+        type_id: &ConcreteTypeId,
+        type_info: &CoreTypeConcrete,
+        value: &JitValue,
+    ) -> Result<(), Box<ProgramRegistryError>> {
+        match (type_info, value) {
+            (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
+                // TODO: Assert that `info.ty` matches all the values' types.
+
+                let type_info = self.registry.get_type(&info.ty)?;
+                let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
+
+                // This needs to be a heap-allocated pointer because it's the actual array data.
+                let ptr = if values.is_empty() {
+                    null_mut()
+                } else {
+                    unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) }
+                };
+
+                for (idx, value) in values.iter().enumerate() {
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            value
+                                .to_jit(self.arena, self.registry, &info.ty)
+                                .unwrap()
+                                .cast()
+                                .as_ptr(),
+                            (ptr as usize + type_layout.size() * idx) as *mut u8,
+                            type_layout.size(),
+                        );
                     }
                 }
 
-                let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
-                let payload_ptr = value
-                    .to_jit(arena, program_registry, &info.variants[*tag])
-                    .unwrap();
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        payload_ptr.cast::<u8>().as_ptr(),
-                        ptr.cast::<u8>().as_ptr().add(offset),
-                        variant_layouts[*tag].size(),
-                    );
-                }
-
-                invoke_data.push(ptr.as_ptr() as u64);
-            } else {
-                // Write the tag.
-                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
-                    0 => {}
-                    _ => invoke_data.push(*tag as u64),
-                }
-
-                // Write the payload.
-                let type_info = program_registry.get_type(&info.variants[*tag]).unwrap();
-                map_arg_to_values(
-                    arena,
-                    invoke_data,
-                    program_registry,
-                    &info.variants[*tag],
-                    type_info,
-                    value,
-                )?;
+                self.push_aligned(
+                    get_integer_layout(64).align(),
+                    &[ptr as u64, values.len() as u64, values.len() as u64],
+                );
             }
-        }
-        (
-            CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::StarkNet(
-                StarkNetTypeConcrete::ClassHash(_)
-                | StarkNetTypeConcrete::ContractAddress(_)
-                | StarkNetTypeConcrete::StorageAddress(_)
-                | StarkNetTypeConcrete::StorageBaseAddress(_),
+            (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
+                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
+                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
+            }
+            (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
+                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
+                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
+                self.push_aligned(get_integer_layout(252).align(), &c.to_le_digits());
+                self.push_aligned(get_integer_layout(252).align(), &d.to_le_digits());
+            }
+            (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
+                if type_info.is_memory_allocated(self.registry) {
+                    let (layout, tag_layout, variant_layouts) =
+                        crate::types::r#enum::get_layout_for_variants(
+                            self.registry,
+                            &info.variants,
+                        )
+                        .unwrap();
+
+                    let ptr = self.arena.alloc_layout(layout);
+                    unsafe {
+                        match tag_layout.size() {
+                            0 => {}
+                            1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
+                            2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
+                            4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
+                            8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
+                    let payload_ptr = value
+                        .to_jit(self.arena, self.registry, &info.variants[*tag])
+                        .unwrap();
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            payload_ptr.cast::<u8>().as_ptr(),
+                            ptr.cast::<u8>().as_ptr().add(offset),
+                            variant_layouts[*tag].size(),
+                        );
+                    }
+
+                    self.invoke_data.push(ptr.as_ptr() as u64);
+                } else {
+                    // Write the tag.
+                    match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                        0 => {}
+                        _ => self.invoke_data.push(*tag as u64),
+                    }
+
+                    // Write the payload.
+                    let type_info = self.registry.get_type(&info.variants[*tag]).unwrap();
+                    self.push(&info.variants[*tag], type_info, value)?;
+                }
+            }
+            (
+                CoreTypeConcrete::Felt252(_)
+                | CoreTypeConcrete::StarkNet(
+                    StarkNetTypeConcrete::ClassHash(_)
+                    | StarkNetTypeConcrete::ContractAddress(_)
+                    | StarkNetTypeConcrete::StorageAddress(_)
+                    | StarkNetTypeConcrete::StorageBaseAddress(_),
+                ),
+                JitValue::Felt252(value),
+            ) => {
+                self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
+            }
+            (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
+                #[cfg(not(feature = "cairo-native-runtime"))]
+                unimplemented!("enable the `cairo-native-runtime` feature to use felt252 dicts");
+
+                // TODO: Assert that `info.ty` matches all the values' types.
+
+                self.invoke_data.push(
+                    value
+                        .to_jit(self.arena, self.registry, type_id)
+                        .unwrap()
+                        .as_ptr() as u64,
+                );
+            }
+            (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => {
+                for (field_type_id, field_value) in info.members.iter().zip(fields) {
+                    self.push(
+                        field_type_id,
+                        self.registry.get_type(field_type_id)?,
+                        field_value,
+                    )?;
+                }
+            }
+            (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
+                get_integer_layout(128).align(),
+                &[*value as u64, (value >> 64) as u64],
             ),
-            JitValue::Felt252(value),
-        ) => {
-            invoke_data.extend(value.to_le_digits());
-        }
-        (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
-            #[cfg(not(feature = "cairo-native-runtime"))]
-            unimplemented!("enable the `cairo-native-runtime` feature to use felt252 dicts");
-
-            // TODO: Assert that `info.ty` matches all the values' types.
-
-            invoke_data.push(
-                value
-                    .to_jit(arena, program_registry, type_id)
-                    .unwrap()
-                    .as_ptr() as u64,
-            );
-        }
-        (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => {
-            for (field_type_id, field_value) in info.members.iter().zip(fields) {
-                map_arg_to_values(
-                    arena,
-                    invoke_data,
-                    program_registry,
-                    field_type_id,
-                    program_registry.get_type(field_type_id)?,
-                    field_value,
-                )?;
+            (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
+                self.push_aligned(get_integer_layout(64).align(), &[*value]);
             }
+            (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
+                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
+                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
+                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
+                self.push_aligned(
+                    get_integer_layout(128).align(),
+                    &[*value as u64, (value >> 64) as u64],
+                );
+            }
+            (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
+                self.push_aligned(get_integer_layout(64).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
+                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
+                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
+                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
+            }
+            (CoreTypeConcrete::NonZero(info), _) => {
+                // TODO: Check that the value is indeed non-zero.
+                let type_info = self.registry.get_type(&info.ty)?;
+                self.push(&info.ty, type_info, value)?;
+            }
+            (CoreTypeConcrete::Snapshot(info), _) => {
+                let type_info = self.registry.get_type(&info.ty)?;
+                self.push(&info.ty, type_info, value)?;
+            }
+            (CoreTypeConcrete::Bitwise(_), _)
+            | (CoreTypeConcrete::BuiltinCosts(_), _)
+            | (CoreTypeConcrete::EcOp(_), _)
+            | (CoreTypeConcrete::Pedersen(_), _)
+            | (CoreTypeConcrete::Poseidon(_), _)
+            | (CoreTypeConcrete::RangeCheck(_), _)
+            | (CoreTypeConcrete::SegmentArena(_), _) => {}
+            (sierra_ty, arg_ty) => match sierra_ty {
+                CoreTypeConcrete::Array(_) => todo!("Array {arg_ty:?}"),
+                CoreTypeConcrete::Bitwise(_) => todo!("Bitwise {arg_ty:?}"),
+                CoreTypeConcrete::Box(_) => todo!("Box {arg_ty:?}"),
+                CoreTypeConcrete::EcOp(_) => todo!("EcOp {arg_ty:?}"),
+                CoreTypeConcrete::EcPoint(_) => todo!("EcPoint {arg_ty:?}"),
+                CoreTypeConcrete::EcState(_) => todo!("EcState {arg_ty:?}"),
+                CoreTypeConcrete::Felt252(_) => todo!("Felt252 {arg_ty:?}"),
+                CoreTypeConcrete::GasBuiltin(_) => todo!("GasBuiltin {arg_ty:?}"),
+                CoreTypeConcrete::BuiltinCosts(_) => todo!("BuiltinCosts {arg_ty:?}"),
+                CoreTypeConcrete::Uint8(_) => todo!("Uint8 {arg_ty:?}"),
+                CoreTypeConcrete::Uint16(_) => todo!("Uint16 {arg_ty:?}"),
+                CoreTypeConcrete::Uint32(_) => todo!("Uint32 {arg_ty:?}"),
+                CoreTypeConcrete::Uint64(_) => todo!("Uint64 {arg_ty:?}"),
+                CoreTypeConcrete::Uint128(_) => todo!("Uint128 {arg_ty:?}"),
+                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!("Uint128MulGuarantee {arg_ty:?}"),
+                CoreTypeConcrete::Sint8(_) => todo!("Sint8 {arg_ty:?}"),
+                CoreTypeConcrete::Sint16(_) => todo!("Sint16 {arg_ty:?}"),
+                CoreTypeConcrete::Sint32(_) => todo!("Sint32 {arg_ty:?}"),
+                CoreTypeConcrete::Sint64(_) => todo!("Sint64 {arg_ty:?}"),
+                CoreTypeConcrete::Sint128(_) => todo!("Sint128 {arg_ty:?}"),
+                CoreTypeConcrete::NonZero(_) => todo!("NonZero {arg_ty:?}"),
+                CoreTypeConcrete::Nullable(_) => todo!("Nullable {arg_ty:?}"),
+                CoreTypeConcrete::RangeCheck(_) => todo!("RangeCheck {arg_ty:?}"),
+                CoreTypeConcrete::Uninitialized(_) => todo!("Uninitialized {arg_ty:?}"),
+                CoreTypeConcrete::Enum(_) => todo!("Enum {arg_ty:?}"),
+                CoreTypeConcrete::Struct(_) => todo!("Struct {arg_ty:?}"),
+                CoreTypeConcrete::Felt252Dict(_) => todo!("Felt252Dict {arg_ty:?}"),
+                CoreTypeConcrete::Felt252DictEntry(_) => todo!("Felt252DictEntry {arg_ty:?}"),
+                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!("SquashedFelt252Dict {arg_ty:?}"),
+                CoreTypeConcrete::Pedersen(_) => todo!("Pedersen {arg_ty:?}"),
+                CoreTypeConcrete::Poseidon(_) => todo!("Poseidon {arg_ty:?}"),
+                CoreTypeConcrete::Span(_) => todo!("Span {arg_ty:?}"),
+                CoreTypeConcrete::StarkNet(_) => todo!("StarkNet {arg_ty:?}"),
+                CoreTypeConcrete::SegmentArena(_) => todo!("SegmentArena {arg_ty:?}"),
+                CoreTypeConcrete::Snapshot(_) => todo!("Snapshot {arg_ty:?}"),
+                CoreTypeConcrete::Bytes31(_) => todo!("Bytes31 {arg_ty:?}"),
+            },
         }
-        (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => {
-            invoke_data.push(*value as u64);
-            invoke_data.push((value >> 64) as u64);
-        }
-        (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
-            invoke_data.push(*value);
-        }
-        (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
-            invoke_data.push(*value as u64);
-            invoke_data.push((value >> 64) as u64);
-        }
-        (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
-            invoke_data.push(*value as u64);
-        }
-        (CoreTypeConcrete::NonZero(info), _) => {
-            // TODO: Check that the value is indeed non-zero.
-            let type_info = program_registry.get_type(&info.ty)?;
-            map_arg_to_values(
-                arena,
-                invoke_data,
-                program_registry,
-                &info.ty,
-                type_info,
-                value,
-            )?;
-        }
-        (CoreTypeConcrete::Snapshot(info), _) => {
-            let type_info = program_registry.get_type(&info.ty)?;
-            map_arg_to_values(
-                arena,
-                invoke_data,
-                program_registry,
-                &info.ty,
-                type_info,
-                value,
-            )?;
-        }
-        (CoreTypeConcrete::Bitwise(_), _)
-        | (CoreTypeConcrete::BuiltinCosts(_), _)
-        | (CoreTypeConcrete::EcOp(_), _)
-        | (CoreTypeConcrete::Pedersen(_), _)
-        | (CoreTypeConcrete::Poseidon(_), _)
-        | (CoreTypeConcrete::RangeCheck(_), _)
-        | (CoreTypeConcrete::SegmentArena(_), _) => {}
-        (sierra_ty, arg_ty) => match sierra_ty {
-            CoreTypeConcrete::Array(_) => todo!("Array {arg_ty:?}"),
-            CoreTypeConcrete::Bitwise(_) => todo!("Bitwise {arg_ty:?}"),
-            CoreTypeConcrete::Box(_) => todo!("Box {arg_ty:?}"),
-            CoreTypeConcrete::EcOp(_) => todo!("EcOp {arg_ty:?}"),
-            CoreTypeConcrete::EcPoint(_) => todo!("EcPoint {arg_ty:?}"),
-            CoreTypeConcrete::EcState(_) => todo!("EcState {arg_ty:?}"),
-            CoreTypeConcrete::Felt252(_) => todo!("Felt252 {arg_ty:?}"),
-            CoreTypeConcrete::GasBuiltin(_) => todo!("GasBuiltin {arg_ty:?}"),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!("BuiltinCosts {arg_ty:?}"),
-            CoreTypeConcrete::Uint8(_) => todo!("Uint8 {arg_ty:?}"),
-            CoreTypeConcrete::Uint16(_) => todo!("Uint16 {arg_ty:?}"),
-            CoreTypeConcrete::Uint32(_) => todo!("Uint32 {arg_ty:?}"),
-            CoreTypeConcrete::Uint64(_) => todo!("Uint64 {arg_ty:?}"),
-            CoreTypeConcrete::Uint128(_) => todo!("Uint128 {arg_ty:?}"),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!("Uint128MulGuarantee {arg_ty:?}"),
-            CoreTypeConcrete::Sint8(_) => todo!("Sint8 {arg_ty:?}"),
-            CoreTypeConcrete::Sint16(_) => todo!("Sint16 {arg_ty:?}"),
-            CoreTypeConcrete::Sint32(_) => todo!("Sint32 {arg_ty:?}"),
-            CoreTypeConcrete::Sint64(_) => todo!("Sint64 {arg_ty:?}"),
-            CoreTypeConcrete::Sint128(_) => todo!("Sint128 {arg_ty:?}"),
-            CoreTypeConcrete::NonZero(_) => todo!("NonZero {arg_ty:?}"),
-            CoreTypeConcrete::Nullable(_) => todo!("Nullable {arg_ty:?}"),
-            CoreTypeConcrete::RangeCheck(_) => todo!("RangeCheck {arg_ty:?}"),
-            CoreTypeConcrete::Uninitialized(_) => todo!("Uninitialized {arg_ty:?}"),
-            CoreTypeConcrete::Enum(_) => todo!("Enum {arg_ty:?}"),
-            CoreTypeConcrete::Struct(_) => todo!("Struct {arg_ty:?}"),
-            CoreTypeConcrete::Felt252Dict(_) => todo!("Felt252Dict {arg_ty:?}"),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!("Felt252DictEntry {arg_ty:?}"),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!("SquashedFelt252Dict {arg_ty:?}"),
-            CoreTypeConcrete::Pedersen(_) => todo!("Pedersen {arg_ty:?}"),
-            CoreTypeConcrete::Poseidon(_) => todo!("Poseidon {arg_ty:?}"),
-            CoreTypeConcrete::Span(_) => todo!("Span {arg_ty:?}"),
-            CoreTypeConcrete::StarkNet(_) => todo!("StarkNet {arg_ty:?}"),
-            CoreTypeConcrete::SegmentArena(_) => todo!("SegmentArena {arg_ty:?}"),
-            CoreTypeConcrete::Snapshot(_) => todo!("Snapshot {arg_ty:?}"),
-            CoreTypeConcrete::Bytes31(_) => todo!("Bytes31 {arg_ty:?}"),
-        },
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 fn parse_result(

@@ -163,7 +163,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-dylib",
                 "-L/usr/local/lib",
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
-                "-L/Users/esteve/Documents/LambdaClass/cairo_native/target/debug/", // change me
+                "-L/Users/esteve/Documents/LambdaClass/cairo_native/target/release/", // change me
                 &file.display().to_string(),
                 "-o",
                 &output_filename.display().to_string(),

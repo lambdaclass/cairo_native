@@ -712,7 +712,10 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| {
+                "/Users/esteve/Documents/LambdaClass/cairo_native".to_string()
+            }))
+            .join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(
