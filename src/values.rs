@@ -28,10 +28,10 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Educe, Debug, Clone)]
-#[educe(PartialEq, Eq)]
+#[derive(Clone, Educe)]
+#[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
-    Felt252(Felt),
+    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
