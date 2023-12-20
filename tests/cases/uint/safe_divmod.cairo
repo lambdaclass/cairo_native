@@ -231,8 +231,8 @@ fn u256_divmod(a: u256, b: u256) -> (u256, u256, bool) {
     let rhs = u256_try_as_non_zero(b);
     match rhs {
         Option::Some(x) => {
-            let (res_l, res_r, c) = u256_safe_divmod(a, x);
-            (res_l, res_r, c)
+            let (res_l, res_r, _) = u256_safe_divmod(a, x);
+            (res_l, res_r, true)
         },
         Option::None(()) => (0_u256, 0_u256, false),
     }
@@ -242,8 +242,8 @@ fn u512_divmod(a: u512, b: u256) -> (u512, u256, bool) {
 	let rhs = u256_try_as_non_zero(b);
 	match rhs {
 		Option::Some(x) => {
-			let (res_l, res_r, c) = u512_safe_div_rem_by_u256(a, x);
-			(res_l, res_r, c)
+			let (res_l, res_r) = u512_safe_div_rem_by_u256(a, x);
+			(res_l, res_r, true)
 		},
 		Option::None(()) => (
             u512 {

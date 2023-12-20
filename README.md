@@ -58,6 +58,9 @@ This is a list of the current progress implementing each **libfunc**.
 1. `bool_to_felt252`
 1. `bool_xor_impl`
 1. `branch_align`
+1. `bytes31_const`
+1. `bytes31_to_felt252`
+1. `bytes31_try_from_felt252`
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
 1. `contract_address_const` (StarkNet)
@@ -423,7 +426,7 @@ This is a usage example using the API for an easy Cairo program that requires th
 Example code to run a program:
 
 ```rust
-use cairo_felt::Felt252;
+use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::values::JITValue;
@@ -442,7 +445,7 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+    let params = &[JITValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
@@ -464,7 +467,7 @@ fn main() {
 Example code to run a Starknet contract:
 
 ```rust
-use cairo_felt::Felt252;
+use starknet_types_core::felt::Felt;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
@@ -516,7 +519,7 @@ fn main() {
         .execute_contract(
             fn_id,
             // The calldata
-            &[JITValue::Felt252(Felt252::new(1))],
+            &[JITValue::Felt252(Felt::from(1))],
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");
@@ -532,9 +535,9 @@ impl StarkNetSyscallHandler for SyscallHandler {
         &mut self,
         block_number: u64,
         _gas: &mut u128,
-    ) -> SyscallResult<cairo_felt::Felt252> {
+    ) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
-        Ok(Felt252::from_bytes_be(b"get_block_hash ok"))
+        Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
     }
 
     fn get_execution_info(
@@ -565,22 +568,22 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn deploy(
         &mut self,
-        class_hash: cairo_felt::Felt252,
-        contract_address_salt: cairo_felt::Felt252,
-        calldata: &[cairo_felt::Felt252],
+        class_hash: Felt,
+        contract_address_salt: Felt,
+        calldata: &[Felt],
         deploy_from_zero: bool,
         _gas: &mut u128,
-    ) -> SyscallResult<(cairo_felt::Felt252, Vec<cairo_felt::Felt252>)> {
+    ) -> SyscallResult<(Felt, Vec<Felt>)> {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt252::new(1)).collect(),
+            calldata.iter().map(|x| x + &Felt::from(1)).collect(),
         ))
     }
 
     fn replace_class(
         &mut self,
-        class_hash: cairo_felt::Felt252,
+        class_hash: Felt,
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `replace_class({class_hash})` from MLIR.");
@@ -589,45 +592,45 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn library_call(
         &mut self,
-        class_hash: cairo_felt::Felt252,
-        function_selector: cairo_felt::Felt252,
-        calldata: &[cairo_felt::Felt252],
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: &[Felt],
         _gas: &mut u128,
-    ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+    ) -> SyscallResult<Vec<Felt>> {
         println!(
             "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
     }
 
     fn call_contract(
         &mut self,
-        address: cairo_felt::Felt252,
-        entry_point_selector: cairo_felt::Felt252,
-        calldata: &[cairo_felt::Felt252],
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: &[Felt],
         _gas: &mut u128,
-    ) -> SyscallResult<Vec<cairo_felt::Felt252>> {
+    ) -> SyscallResult<Vec<Felt>> {
         println!(
             "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
         );
-        Ok(calldata.iter().map(|x| x * &Felt252::new(3)).collect())
+        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
     }
 
     fn storage_read(
         &mut self,
         address_domain: u32,
-        address: cairo_felt::Felt252,
+        address: Felt,
         _gas: &mut u128,
-    ) -> SyscallResult<cairo_felt::Felt252> {
+    ) -> SyscallResult<Felt> {
         println!("Called `storage_read({address_domain}, {address})` from MLIR.");
-        Ok(address * &Felt252::new(3))
+        Ok(address * Felt::from(3))
     }
 
     fn storage_write(
         &mut self,
         address_domain: u32,
-        address: cairo_felt::Felt252,
-        value: cairo_felt::Felt252,
+        address: Felt,
+        value: Felt,
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
@@ -636,8 +639,8 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn emit_event(
         &mut self,
-        keys: &[cairo_felt::Felt252],
-        data: &[cairo_felt::Felt252],
+        keys: &[Felt],
+        data: &[Felt],
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
@@ -646,8 +649,8 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
     fn send_message_to_l1(
         &mut self,
-        to_address: cairo_felt::Felt252,
-        payload: &[cairo_felt::Felt252],
+        to_address: Felt,
+        payload: &[Felt],
         _gas: &mut u128,
     ) -> SyscallResult<()> {
         println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
@@ -660,7 +663,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt252::from(1234567890).to_le_bytes()))
+        Ok(U256(Felt::from(1234567890).to_le_bytes()))
     }
 
     /*

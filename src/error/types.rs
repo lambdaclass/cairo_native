@@ -47,4 +47,8 @@ pub enum ErrorImpl {
     ProgramRegistryError(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
+    #[error(transparent)]
+    MlirError(#[from] melior::Error),
+    #[error(transparent)]
+    LibFuncError(#[from] crate::error::libfuncs::Error),
 }

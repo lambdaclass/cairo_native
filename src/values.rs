@@ -5,7 +5,6 @@
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 use bumpalo::Bump;
-use cairo_felt::Felt252;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
+use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -29,29 +29,28 @@ use crate::{
 /// They map to the cairo/sierra types.
 ///
 /// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+///
+/// A Boxed value or a non-null Nullable value is returned with it's inner value.
 #[derive(Educe, Debug, Clone)]
 #[educe(PartialEq, Eq)]
 pub enum JITValue {
-    Felt252(Felt252),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
         fields: Vec<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     }, // element types can differ
     Enum {
         tag: usize,
         value: Box<Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Felt252Dict {
-        value: HashMap<Felt252, Self>,
+        value: HashMap<Felt, Self>,
         #[educe(PartialEq(ignore))]
-        #[educe(Eq(ignore))]
         debug_name: Option<String>,
     },
     Uint8(u8),
@@ -59,14 +58,21 @@ pub enum JITValue {
     Uint32(u32),
     Uint64(u64),
     Uint128(u128),
-    EcPoint(Felt252, Felt252),
-    EcState(Felt252, Felt252, Felt252, Felt252),
+    Sint8(i8),
+    Sint16(i16),
+    Sint32(i32),
+    Sint64(i64),
+    Sint128(i128),
+    EcPoint(Felt, Felt),
+    EcState(Felt, Felt, Felt, Felt),
+    /// Used as return value for Nullables that are null.
+    Null,
 }
 
 // Conversions
 
-impl From<Felt252> for JITValue {
-    fn from(value: Felt252) -> Self {
+impl From<Felt> for JITValue {
+    fn from(value: Felt) -> Self {
         JITValue::Felt252(value)
     }
 }
@@ -98,6 +104,36 @@ impl From<u64> for JITValue {
 impl From<u128> for JITValue {
     fn from(value: u128) -> Self {
         JITValue::Uint128(value)
+    }
+}
+
+impl From<i8> for JITValue {
+    fn from(value: i8) -> Self {
+        JITValue::Sint8(value)
+    }
+}
+
+impl From<i16> for JITValue {
+    fn from(value: i16) -> Self {
+        JITValue::Sint16(value)
+    }
+}
+
+impl From<i32> for JITValue {
+    fn from(value: i32) -> Self {
+        JITValue::Sint32(value)
+    }
+}
+
+impl From<i64> for JITValue {
+    fn from(value: i64) -> Self {
+        JITValue::Sint64(value)
+    }
+}
+
+impl From<i128> for JITValue {
+    fn from(value: i128) -> Self {
+        JITValue::Sint128(value)
     }
 }
 
@@ -144,7 +180,7 @@ impl JITValue {
                 JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint());
+                    let data = felt252_bigint(felt_to_bigint(*value));
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -314,7 +350,7 @@ impl JITValue {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
-                            let key = key.to_le_bytes();
+                            let key = key.to_bytes_le();
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
@@ -384,13 +420,43 @@ impl JITValue {
 
                     ptr
                 }
+                JITValue::Sint8(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i8>()).cast();
+                    *ptr.cast::<i8>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint16(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i16>()).cast();
+                    *ptr.cast::<i16>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint32(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i32>()).cast();
+                    *ptr.cast::<i32>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint64(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i64>()).cast();
+                    *ptr.cast::<i64>().as_mut() = *value;
+
+                    ptr
+                }
+                JITValue::Sint128(value) => {
+                    let ptr = arena.alloc_layout(Layout::new::<i128>()).cast();
+                    *ptr.cast::<i128>().as_mut() = *value;
+
+                    ptr
+                }
                 JITValue::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
                     let data = [a, b];
 
                     ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
@@ -402,15 +468,18 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
-                    let c = felt252_bigint(c.to_bigint());
-                    let d = felt252_bigint(d.to_bigint());
+                    let a = felt252_bigint(felt_to_bigint(*a));
+                    let b = felt252_bigint(felt_to_bigint(*b));
+                    let c = felt252_bigint(felt_to_bigint(*c));
+                    let d = felt252_bigint(felt_to_bigint(*d));
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
 
                     ptr
+                }
+                JITValue::Null => {
+                    unimplemented!("null is meant as return value for nullable for now")
                 }
             }
         })
@@ -455,9 +524,16 @@ impl JITValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
+                    libc::free(data_ptr.as_ptr().cast());
+
                     Self::Array(array_value)
                 }
-                CoreTypeConcrete::Box(info) => JITValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Box(info) => {
+                    let inner = *ptr.cast::<NonNull<()>>().as_ptr();
+                    let value = JITValue::from_jit(inner, &info.ty, registry);
+                    libc::free(inner.as_ptr().cast());
+                    value
+                }
                 CoreTypeConcrete::EcPoint(_) => {
                     let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
 
@@ -483,15 +559,29 @@ impl JITValue {
                 CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
                 CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
                 CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
-                CoreTypeConcrete::Sint32(_) => todo!(),
-                CoreTypeConcrete::Sint64(_) => todo!(),
-                CoreTypeConcrete::Sint128(_) => todo!(),
+                CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
+                CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
+                CoreTypeConcrete::Sint32(_) => JITValue::Sint32(*ptr.cast::<i32>().as_ref()),
+                CoreTypeConcrete::Sint64(_) => JITValue::Sint64(*ptr.cast::<i64>().as_ref()),
+                CoreTypeConcrete::Sint128(_) => JITValue::Sint128(*ptr.cast::<i128>().as_ref()),
                 CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Nullable(_) => todo!(),
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
+                CoreTypeConcrete::Nullable(info) => {
+                    let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
+                    if inner_ptr.is_null() {
+                        JITValue::Null
+                    } else {
+                        let value = JITValue::from_jit(
+                            NonNull::new_unchecked(inner_ptr).cast(),
+                            &info.ty,
+                            registry,
+                        );
+                        libc::free(inner_ptr.cast());
+                        value
+                    }
+                }
+                CoreTypeConcrete::Uninitialized(_) => {
+                    todo!("implement uninit from_jit or ignore the return value")
+                }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
                         0 | 1 => 0,
@@ -567,11 +657,15 @@ impl JITValue {
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt252::from_bytes_le(key.as_slice());
+                        let key = Felt::from_bytes_le_slice(key.as_slice());
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        // we need to free all the elements, which are allocated by libc realloc.
+                        libc::free(val_ptr.as_ptr());
                     }
 
-                    Box::leak(map); // we must leak to avoid a double free
+                    // we must leak to avoid a double free
+                    // as it was allocated in the arena and will be freed by it.
+                    Box::leak(map);
 
                     JITValue::Felt252Dict {
                         value: output_map,
@@ -588,6 +682,7 @@ impl JITValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::Uint128MulGuarantee(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)
                 }
@@ -605,9 +700,9 @@ impl JITValue {
                     StarkNetTypeConcrete::System(_) => unimplemented!("should be handled before"),
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
-                CoreTypeConcrete::Span(_) => todo!(),
+                CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
+                CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
             }
         }
     }
@@ -620,7 +715,7 @@ impl JITValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(Felt252::from(value))
+        Self::Felt252(biguint_to_felt(&value))
     }
 }
 
@@ -640,7 +735,7 @@ impl ValueBuilder for CoreTypeConcrete {
         match self {
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::Bitwise(_) => false,
-            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::Box(_) => false,
             CoreTypeConcrete::EcOp(_) => false,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
@@ -652,7 +747,7 @@ impl ValueBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Uint32(_) => false,
             CoreTypeConcrete::Uint64(_) => false,
             CoreTypeConcrete::Uint128(_) => false,
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => false,
             CoreTypeConcrete::NonZero(_) => todo!(),
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
@@ -675,12 +770,12 @@ impl ValueBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(_) => false,
-            CoreTypeConcrete::Sint8(_) => todo!(),
-            CoreTypeConcrete::Sint16(_) => todo!(),
-            CoreTypeConcrete::Sint32(_) => todo!(),
-            CoreTypeConcrete::Sint64(_) => todo!(),
-            CoreTypeConcrete::Sint128(_) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => false,
+            CoreTypeConcrete::Sint16(_) => false,
+            CoreTypeConcrete::Sint32(_) => false,
+            CoreTypeConcrete::Sint64(_) => false,
+            CoreTypeConcrete::Sint128(_) => false,
+            CoreTypeConcrete::Bytes31(_) => false,
         }
     }
 }

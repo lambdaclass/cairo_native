@@ -46,9 +46,9 @@ impl<'a, K: Clone + PartialEq + Eq + Hash> ProgramCache<'a, K> {
     ) -> Rc<RefCell<NativeExecutor<'a>>> {
         let module = self.context.compile(program).expect("should compile");
         let executor = NativeExecutor::new(module);
-        self.cache
-            .insert(key.clone(), Rc::new(RefCell::new(executor)));
-        self.cache.get_mut(&key).cloned().unwrap()
+        let executor = Rc::new(RefCell::new(executor));
+        self.cache.insert(key.clone(), executor.clone());
+        executor
     }
 }
 

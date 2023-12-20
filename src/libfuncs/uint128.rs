@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -152,7 +152,8 @@ where
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}")).unwrap();
+    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
+        .ok_or(ErrorImpl::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty
@@ -808,11 +809,11 @@ mod test {
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
         values::JITValue,
     };
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
-    use num_traits::Num;
+    use num_bigint::BigUint;
+
+    use starknet_types_core::felt::Felt;
 
     lazy_static! {
         static ref U128_BYTE_REVERSE: (String, Program) = load_cairo! {
@@ -941,7 +942,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JITValue::Felt252(Felt252::from_bytes_be(b"u128 is 0"));
+        let error = JITValue::Felt252(Felt::from_bytes_be_slice(b"u128 is 0"));
 
         run_program_assert_output(
             program,
@@ -1054,21 +1055,21 @@ mod test {
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::new(0).into()],
+            &[Felt::from(0).into()],
             &[jit_enum!(0, 0u128.into())],
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::new(1).into()],
+            &[Felt::from(1).into()],
             &[jit_enum!(0, 1u128.into())],
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt252::new(u128::MAX).into()],
+            &[Felt::from(u128::MAX).into()],
             &[jit_enum!(0, u128::MAX.into())],
         );
 
@@ -1076,7 +1077,7 @@ mod test {
             &U128_FROM_FELT252,
             "run_test",
             &[
-                Felt252::from_str_radix("340282366920938463463374607431768211456", 10)
+                Felt::from_dec_str("340282366920938463463374607431768211456")
                     .unwrap()
                     .into(),
             ],
@@ -1105,7 +1106,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u128, rhs: u128) {
             let program = &U128_ADD;
-            let error = Felt252::from_bytes_be(b"u128_add Overflow");
+            let error = Felt::from_bytes_be_slice(b"u128_add Overflow");
 
             let add = lhs.checked_add(rhs);
 
@@ -1157,7 +1158,7 @@ mod test {
         #[track_caller]
         fn run(lhs: u128, rhs: u128) {
             let program = &U128_SUB;
-            let error = Felt252::from_bytes_be(b"u128_sub Overflow");
+            let error = Felt::from_bytes_be_slice(b"u128_sub Overflow");
 
             let res = lhs.checked_sub(rhs);
 
@@ -1212,19 +1213,19 @@ mod test {
             program,
             "run_test",
             &[0u128.into()],
-            &[Felt252::new(0).into()],
+            &[Felt::from(0).into()],
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into()],
-            &[Felt252::new(1).into()],
+            &[Felt::from(1).into()],
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into()],
-            &[Felt252::new(u128::MAX).into()],
+            &[Felt::from(u128::MAX).into()],
         );
     }
 
@@ -1237,7 +1238,10 @@ mod test {
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
-            let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u64 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect("should always fit into a u128");
 
             run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
         }

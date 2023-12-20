@@ -49,6 +49,10 @@ pub enum ErrorImpl {
     ProgramRegistryError(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
+    #[error("error parsing attribute")]
+    ParseAttributeError,
+    #[error("missing metadata")]
+    MissingMetadata,
 }
 
 impl From<super::CoreTypeBuilderError> for ErrorImpl {
@@ -58,6 +62,8 @@ impl From<super::CoreTypeBuilderError> for ErrorImpl {
             super::types::ErrorImpl::ProgramRegistryError(e) => Self::ProgramRegistryError(e),
             super::types::ErrorImpl::TryFromIntError(e) => Self::TryFromIntError(e),
             super::types::ErrorImpl::LayoutErrorPolyfill(e) => Self::LayoutErrorPolyfill(e),
+            super::types::ErrorImpl::MlirError(e) => Self::MlirError(e),
+            super::types::ErrorImpl::LibFuncError(e) => e.source,
         }
     }
 }

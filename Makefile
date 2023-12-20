@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria
 
 #
 # Environment detection.
@@ -52,13 +52,13 @@ check: check-llvm
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-test: check-llvm needs-cairo2
+test: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile optimized-dev --all-targets --all-features
 
 proptest: check-llvm needs-cairo2
 	cargo test --profile optimized-dev --all-targets --all-features proptest
 
-coverage: check-llvm needs-cairo2
+coverage: check-llvm needs-cairo2 build-alexandria
 	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
 
 doc: check-llvm
@@ -81,15 +81,15 @@ clean:
 
 deps:
 ifeq ($(UNAME), Linux)
-deps: build-cairo-2-compiler
+deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
-deps: build-cairo-2-compiler-macos deps-macos
+deps: deps-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
 
-deps-macos: build-cairo-2-compiler-macos
+deps-macos: build-cairo-2-compiler-macos install-scarb-macos
 	-brew install llvm@17 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
@@ -116,3 +116,14 @@ cairo-%-macos.tar:
 
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
+
+SCARB_VERSION = 2.4.0
+
+install-scarb:
+	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path --version $(SCARB_VERSION)
+
+install-scarb-macos:
+	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --version $(SCARB_VERSION)
+
+build-alexandria:
+	cd tests/alexandria; scarb build
