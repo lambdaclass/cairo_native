@@ -358,7 +358,6 @@ impl DebugUtils {
         }
 
         if self.active_map.contains(&DebugBinding::PrintFelt252) {
-            dbg!("registering felt252 print");
             unsafe {
                 engine.register_symbol(
                     "__debug__print_felt252",
