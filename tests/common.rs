@@ -647,9 +647,9 @@ pub fn compare_outputs(
             CoreTypeConcrete::Struct(info) => {
                 if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
                     // Check if it is a Panic result
-                    if let Some(&JITValue::Struct {
+                    if let Some(JITValue::Struct {
                         fields: _,
-                        ref debug_name,
+                        debug_name,
                     }) = fields.get(0)
                     {
                         if debug_name == &Some("core::panics::Panic".to_owned()) {
