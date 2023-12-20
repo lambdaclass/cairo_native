@@ -304,6 +304,6 @@ fn keccak_test() {
         run_native_starknet_contract(&program, entry_point.function_idx, &[], &mut SyscallHandler);
 
     assert!(!result.failure_flag);
-    assert_eq!(result.remaining_gas, 18446744073709422805);
+    assert_eq!(result.remaining_gas, 18446744073709421435);
     assert_eq!(result.return_values, vec![1.into()]);
 }
