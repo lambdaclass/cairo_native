@@ -40,8 +40,8 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("fib")]
 #[test_case("karatsuba")]
 #[test_case("armstrong_number")]
+#[test_case("collatz_sequence")]
 #[test_case("aliquot_sum")]
-#[test_case("collatz_sequence" => ignore["Result mismatch"])]
 #[test_case("extended_euclidean_algorithm")]
 // alexandria_data_structures
 #[test_case("vec" => ignore["Gas mismatch"])]
