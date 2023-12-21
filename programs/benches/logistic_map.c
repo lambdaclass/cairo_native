@@ -20,7 +20,7 @@ typedef struct map_return_values
 
 
 static void run_bench(map_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_logistic_map::logistic_map::main")));
+    __attribute__((weakref("_mlir_ciface_logistic_map::logistic_map::main(f2)")));
 
 
 int main()

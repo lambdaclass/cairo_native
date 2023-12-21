@@ -6,7 +6,7 @@ mod alexandria {
     }
 
     fn karatsuba() -> u128 {
-        alexandria_math::karatsuba::multiply(3754192357923759273591, 18492875)
+        alexandria_math::karatsuba::multiply(711, 1849)
     }
 
     fn armstrong_number() -> bool {
@@ -14,7 +14,7 @@ mod alexandria {
     }
 
     fn aliquot_sum() -> u128 {
-        alexandria_math::aliquot_sum::aliquot_sum(67472587892687682)
+        alexandria_math::aliquot_sum::aliquot_sum(674725)
     }
 
     fn collatz_sequence() -> Array<u128> {
@@ -83,27 +83,31 @@ mod alexandria {
         let decoded = Base64Decoder::decode(encoded.clone());
         (encoded, decoded)
     }
-// Compiling the following functions generates invalid MLIR, please uncomment once the bug is fixed
 
-// use alexandria_encoding::reversible::{U16ReversibleBits, U32ReversibleBits, U64ReversibleBits, U128ReversibleBits, U256ReversibleBits};
-// fn reverse_bits() -> (u16, u32, u64, u128, u256) {
-//     (
-//         U16ReversibleBits::reverse_bits(@333),
-//         U32ReversibleBits::reverse_bits(@3333333),
-//         U64ReversibleBits::reverse_bits(@3333333333333),
-//         U128ReversibleBits::reverse_bits(@333333333333333333333),
-//         U256ReversibleBits::reverse_bits(@33333333333333333333333333),
-//     )
-// }
+    use alexandria_encoding::reversible::{
+        U16ReversibleBits, U32ReversibleBits, U64ReversibleBits, U128ReversibleBits,
+        U256ReversibleBits
+    };
+    fn reverse_bits() -> (u16, u32, u64, u128, u256) {
+        (
+            U16ReversibleBits::reverse_bits(@333),
+            U32ReversibleBits::reverse_bits(@3333333),
+            U64ReversibleBits::reverse_bits(@3333333333333),
+            U128ReversibleBits::reverse_bits(@333333333333333333333),
+            U256ReversibleBits::reverse_bits(@33333333333333333333333333),
+        )
+    }
 
-// use alexandria_encoding::reversible::{U16Reversible, U32Reversible, U64Reversible, U128Reversible, U256Reversible};
-// fn reverse_bytes() -> (u16, u32, u64, u128, u256) {
-//     (
-//         U16Reversible::reverse_bytes(@333),
-//         U32Reversible::reverse_bytes(@3333333),
-//         U64Reversible::reverse_bytes(@3333333333333),
-//         U128Reversible::reverse_bytes(@333333333333333333333),
-//         U256Reversible::reverse_bytes(@33333333333333333333333333),
-//     )
-// }
+    use alexandria_encoding::reversible::{
+        U16Reversible, U32Reversible, U64Reversible, U128Reversible, U256Reversible
+    };
+    fn reverse_bytes() -> (u16, u32, u64, u128, u256) {
+        (
+            U16Reversible::reverse_bytes(@333),
+            U32Reversible::reverse_bytes(@3333333),
+            U64Reversible::reverse_bytes(@3333333333333),
+            U128Reversible::reverse_bytes(@333333333333333333333),
+            U256Reversible::reverse_bytes(@33333333333333333333333333),
+        )
+    }
 }

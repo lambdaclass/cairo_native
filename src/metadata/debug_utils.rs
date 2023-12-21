@@ -90,14 +90,15 @@
 
 use crate::error::libfuncs::Result;
 use melior::{
-    dialect::{func, llvm},
+    dialect::{arith, func, llvm},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
         Block, Identifier, Location, Module, Region, Value,
     },
     Context, ExecutionEngine,
 };
+use num_bigint::BigUint;
 use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -105,6 +106,7 @@ enum DebugBinding {
     BreakpointMarker,
     PrintI1,
     PrintPointer,
+    PrintFelt252,
 }
 
 #[derive(Debug, Default)]
@@ -225,6 +227,108 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn print_felt252<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintFelt252) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_felt252"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                            IntegerType::new(context, 64).into(),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        let k64 = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(64, IntegerType::new(context, 64).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let l0 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l1 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l2 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let value = block
+            .append_operation(arith::shrui(value, k64, location))
+            .result(0)?
+            .into();
+        let l3 = block
+            .append_operation(arith::trunci(
+                value,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_felt252"),
+            &[l0, l1, l2, l3],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
@@ -252,6 +356,15 @@ impl DebugUtils {
                 );
             }
         }
+
+        if self.active_map.contains(&DebugBinding::PrintFelt252) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_felt252",
+                    print_pointer_felt252 as *const fn(u64, u64, u64, u64) -> () as *mut (),
+                );
+            }
+        }
     }
 }
 
@@ -265,4 +378,18 @@ extern "C" fn print_i1_impl(value: bool) {
 
 extern "C" fn print_pointer_impl(value: *const ()) {
     println!("[DEBUG] {value:018x?}");
+}
+
+extern "C" fn print_pointer_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
+    println!(
+        "[DEBUG] {}",
+        BigUint::from_bytes_le(
+            &l0.to_le_bytes()
+                .into_iter()
+                .chain(l1.to_le_bytes())
+                .chain(l2.to_le_bytes())
+                .chain(l3.to_le_bytes())
+                .collect::<Vec<_>>(),
+        ),
+    );
 }
