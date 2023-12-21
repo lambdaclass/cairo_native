@@ -38,9 +38,9 @@ fn compare_inputless_function(function_name: &str) {
 
 // alexandria_math
 #[test_case("fib")]
-#[test_case("karatsuba" => ignore["System out of memory"])]
+#[test_case("karatsuba")]
 #[test_case("armstrong_number")]
-#[test_case("aliquot_sum" => ignore["System out of memory"])]
+#[test_case("aliquot_sum")]
 #[test_case("collatz_sequence" => ignore["Result mismatch"])]
 #[test_case("extended_euclidean_algorithm")]
 // alexandria_data_structures
@@ -50,8 +50,8 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("bit_array" => ignore["Gas mismatch"])]
 // alexandria_encoding
 #[test_case("base64_encode" => ignore["Gas mismatch"])]
-#[test_case("reverse_bits" => ignore["Invalid MlIR"])]
-#[test_case("reverse_bytes"=> ignore["Invalid MlIR"])]
+#[test_case("reverse_bits")]
+#[test_case("reverse_bytes")]
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }

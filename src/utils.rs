@@ -38,11 +38,13 @@ pub const SHARED_LIBRARY_EXT: &str = "so";
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
 pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
-    function_id
-        .debug_name
-        .as_deref()
-        .map(Cow::Borrowed)
-        .unwrap_or_else(|| Cow::Owned(format!("f{}", function_id.id)))
+    // Generic functions can omit their type in the debug_name, leading to multiple functions
+    // having the same name, we solve this by adding the id number even if the function has a debug_name
+    if let Some(name) = function_id.debug_name.as_deref() {
+        Cow::Owned(format!("{}(f{})", name, function_id.id))
+    } else {
+        Cow::Owned(format!("f{}", function_id.id))
+    }
 }
 
 /// Return the layout for an integer of arbitrary width.

@@ -21,7 +21,7 @@ typedef struct fib_return_values
 
 
 static void run_bench(fib_return_values_t *, void *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_fib_2M::fib_2M::main")));
+    __attribute__((weakref("_mlir_ciface_fib_2M::fib_2M::main(f1)")));
 
 
 int main()
