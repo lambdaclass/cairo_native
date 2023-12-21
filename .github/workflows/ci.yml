@@ -144,6 +144,8 @@ jobs:
           scarb-version: "2.4.0"
       - name: Install deps
         run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
       - name: Run tests
         run: make test
   coverage:
@@ -171,6 +173,8 @@ jobs:
           scarb-version: "2.4.0"
       - name: Install deps
         run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
       - name: test and generate coverage
         run: make coverage
       - name: Upload coverage to Codecov
