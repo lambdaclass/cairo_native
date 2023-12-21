@@ -14,7 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, Sign};
-use starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
+use starknet_types_core::felt::Felt;
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
@@ -180,7 +180,7 @@ impl JITValue {
                 JITValue::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(felt_to_bigint(*value));
+                    let data = felt252_bigint(value.to_bigint());
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -455,8 +455,8 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(felt_to_bigint(*a));
-                    let b = felt252_bigint(felt_to_bigint(*b));
+                    let a = felt252_bigint(a.to_bigint());
+                    let b = felt252_bigint(b.to_bigint());
                     let data = [a, b];
 
                     ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
@@ -468,10 +468,10 @@ impl JITValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
 
-                    let a = felt252_bigint(felt_to_bigint(*a));
-                    let b = felt252_bigint(felt_to_bigint(*b));
-                    let c = felt252_bigint(felt_to_bigint(*c));
-                    let d = felt252_bigint(felt_to_bigint(*d));
+                    let a = felt252_bigint(a.to_bigint());
+                    let b = felt252_bigint(b.to_bigint());
+                    let c = felt252_bigint(c.to_bigint());
+                    let d = felt252_bigint(d.to_bigint());
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
@@ -715,7 +715,7 @@ impl JITValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(biguint_to_felt(&value))
+        Self::Felt252(Felt::from(&value))
     }
 }
 
