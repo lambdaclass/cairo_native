@@ -90,7 +90,7 @@ run_bench() {
         -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 
-    hyperfine \
+    CAIRO_NATIVE_RUNTIME_LIBDIR="$ROOT_DIR/target/release" hyperfine \
         --warmup 3 \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --export-json "$OUTPUT_DIR/$base_name.json" \
