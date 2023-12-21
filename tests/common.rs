@@ -49,7 +49,7 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use starknet_types_core::felt::{felt_to_biguint, Felt};
+use starknet_types_core::felt::Felt;
 use std::{
     env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
 };
@@ -390,8 +390,8 @@ pub fn compare_outputs(
                     let vm_a = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
                     let vm_b = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
 
-                    let native_value_a = felt_to_biguint(*a);
-                    let native_value_b = felt_to_biguint(*b);
+                    let native_value_a = a.to_biguint();
+                    let native_value_b = b.to_biguint();
                     prop_assert_eq!(vm_a, native_value_a, "felt value mismatch in ecpoint");
                     prop_assert_eq!(vm_b, native_value_b, "felt value mismatch in ecpoint");
                 } else {
@@ -408,7 +408,7 @@ pub fn compare_outputs(
                 let vm_value = vm_rets.next().unwrap();
 
                 if let JITValue::Felt252(felt) = native_rets.next().unwrap() {
-                    let native_value = felt_to_biguint(*felt);
+                    let native_value = felt.to_biguint();
                     let vm_value = BigUint::from_str(vm_value).unwrap();
                     prop_assert_eq!(vm_value, native_value, "felt value mismatch");
                 } else {
