@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, Result},
+        libfuncs::{Error, ErrorImpl, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -152,7 +152,8 @@ where
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}")).unwrap();
+    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
+        .ok_or(ErrorImpl::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty
@@ -810,7 +811,7 @@ mod test {
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::ToBigUint;
+    use num_bigint::BigUint;
 
     use starknet_types_core::felt::Felt;
 
@@ -1209,7 +1210,10 @@ mod test {
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
-            let y: u64 = x.to_biguint().unwrap().sqrt().try_into().unwrap();
+            let y: u64 = BigUint::from(x)
+                .sqrt()
+                .try_into()
+                .expect("should always fit into a u128");
 
             run_program_assert_output(program, "run_test", &[x.into()], y.into());
         }

@@ -111,7 +111,7 @@ where
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -195,7 +195,7 @@ where
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -278,7 +278,7 @@ where
 
     let tag_bits = enum_ty
         .variants()
-        .unwrap()
+        .expect("bool is a enum and has variants")
         .len()
         .next_power_of_two()
         .trailing_zeros();

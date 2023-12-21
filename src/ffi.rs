@@ -175,10 +175,10 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
 
             args.extend([
                 Cow::from(file_path),
-                "-o",
+                "-o".into(),
                 Cow::from(output_path),
-                "-lSystem",
-                "-lcairo_native_runtime",
+                "-lSystem".into(),
+                "-lcairo_native_runtime".into(),
             ]);
             args
         }

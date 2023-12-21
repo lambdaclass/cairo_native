@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         None => {
             if args.print_outputs {
-                todo!()
+                println!("{:#?}", result);
             }
         }
     }

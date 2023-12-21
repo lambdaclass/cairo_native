@@ -28,10 +28,10 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Educe, Debug, Clone)]
-#[educe(PartialEq, Eq)]
+#[derive(Clone, Educe)]
+#[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
-    Felt252(Felt),
+    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -577,7 +577,9 @@ impl JitValue {
                         value
                     }
                 }
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
+                CoreTypeConcrete::Uninitialized(_) => {
+                    todo!("implement uninit from_jit or ignore the return value")
+                }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
                         0 | 1 => 0,
@@ -693,9 +695,9 @@ impl JitValue {
                     }
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
-                CoreTypeConcrete::Span(_) => todo!(),
+                CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
+                CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
             }
         }
     }

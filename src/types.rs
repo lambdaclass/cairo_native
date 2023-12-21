@@ -34,6 +34,7 @@ pub mod array;
 pub mod bitwise;
 pub mod r#box;
 pub mod builtin_costs;
+pub mod bytes31;
 pub mod ec_op;
 pub mod ec_point;
 pub mod ec_state;
@@ -274,7 +275,7 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Span(_) => todo!(),
+            Self::Span(_) => todo!("implement span type"),
             Self::SquashedFelt252Dict(info) => self::squashed_felt252_dict::build(
                 context,
                 module,
@@ -380,7 +381,9 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Bytes31(info) => {
+                self::bytes31::build(context, module, registry, metadata, info)
+            }
         }
     }
 
@@ -594,7 +597,7 @@ where
                 StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
-                StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                StarkNetTypeConcrete::Secp256Point(_) => todo!("implement Secp256Point type"),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
@@ -603,7 +606,7 @@ where
             CoreTypeConcrete::Sint32(_) => get_integer_layout(32),
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
         })
     }
 
