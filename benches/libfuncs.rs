@@ -12,7 +12,6 @@ pub fn bench_libfuncs(c: &mut Criterion) {
         let mut c = c.benchmark_group("Libfunc Execution Time");
 
         for (program, filename) in &programs {
-
             let entry = program
                 .funcs
                 .iter()
