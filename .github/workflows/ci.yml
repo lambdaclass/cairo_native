@@ -125,6 +125,7 @@ jobs:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
     env:
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -149,6 +150,7 @@ jobs:
     name: coverage
     runs-on: [self-hosted, macOS]
     env:
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
