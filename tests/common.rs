@@ -639,7 +639,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::Struct(info) => {
                 if let JitValue::Struct { fields, .. } = native_rets.next().unwrap() {
                     // Check if it is a Panic result
-                    if let Some(JITValue::Struct {
+                    if let Some(JitValue::Struct {
                         fields: _,
                         debug_name,
                     }) = fields.get(0)
@@ -653,7 +653,7 @@ pub fn compare_outputs(
                                 fields.len() == 2,
                                 "Panic result has incorrect number of fields"
                             );
-                            if let JITValue::Array(panic_data) = &fields[1] {
+                            if let JitValue::Array(panic_data) = &fields[1] {
                                 // This is easier than crafting a ConcreteType::Felt252 variant
                                 let felt_concrete_type =
                                     match reg.get_type(&info.members[1]).unwrap() {
