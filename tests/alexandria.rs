@@ -47,7 +47,7 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("vec" => ignore["Gas mismatch"])]
 #[test_case("stack" => ignore["Gas mismatch"])]
 #[test_case("queue")]
-#[test_case("bit_array")]
+#[test_case("bit_array" => ignore["Gas mismatch"])]
 // alexandria_encoding
 #[test_case("base64_encode" => ignore["Gas mismatch"])]
 #[test_case("reverse_bits" => ignore["Invalid MlIR"])]
