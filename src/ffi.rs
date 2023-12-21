@@ -169,7 +169,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib".into(),
             ];
 
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_LIBRUNTIME_DIR") {
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
                 args.extend([Cow::from(format!("-L{extra_dir}"))]);
             }
 
@@ -192,7 +192,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-L/usr/lib/../lib64".into(),
             ];
 
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_LIBRUNTIME_DIR") {
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
                 args.extend([
                     Cow::from(format!("-L{extra_dir}")),
                     format!("-rpath={extra_dir}").into(),
