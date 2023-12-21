@@ -282,6 +282,9 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 //!
 //! TODO
@@ -563,7 +566,10 @@
         );
 
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]);
-        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="prelude-val">Some</span>(<span class="number">18446744073709535875u128</span>));
+        <span class="macro">assert_eq!</span>(
+            result.remaining_gas,
+            <span class="prelude-val">Some</span>(<span class="number">340282366920938463463374607431768195715</span>),
+        );
     }
 }
 </code></pre></div></section></main></body></html>

@@ -438,12 +438,46 @@
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Boolean libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::{
-        libfuncs::{Error, ErrorImpl, <span class="prelude-ty">Result</span>},
+        libfuncs::{Error, <span class="prelude-ty">Result</span>},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -459,7 +493,11 @@
 };
 <span class="kw">use </span>melior::{
     dialect::{arith, llvm},
-    ir::{attribute::DenseI64ArrayAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        r#type::IntegerType,
+        Block, Location,
+    },
     Context,
 };
 
@@ -534,7 +572,7 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
     bin_op: BoolOp,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
@@ -556,22 +594,26 @@
     <span class="kw">let </span>lhs = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op = entry.append_operation(llvm::extract_value(
-        context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-    <span class="kw">let </span>lhs_tag = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>op = entry.append_operation(llvm::extract_value(
-        context,
-        rhs,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-    <span class="kw">let </span>rhs_tag = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            lhs,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            tag_ty,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>rhs_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            rhs,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            tag_ty,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
     <span class="kw">let </span>op = <span class="kw">match </span>bin_op {
         BoolOp::And =&gt; entry.append_operation(arith::andi(lhs_tag, rhs_tag, location)),
@@ -580,16 +622,31 @@
     };
     <span class="kw">let </span>new_tag_value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op = entry.append_operation(llvm::insert_value(
-        context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        new_tag_value,
-        location,
-    ));
-    <span class="kw">let </span>value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>res = entry
+        .append_operation(llvm::undef(
+            enum_ty.build(
+                context,
+                helper,
+                registry,
+                metadata,
+                <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+            )<span class="question-mark">?</span>,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>res = entry
+        .append_operation(llvm::insert_value(
+            context,
+            res,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            new_tag_value,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[res], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -600,7 +657,7 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
@@ -619,20 +676,20 @@
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
 
     <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span>op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-    <span class="kw">let </span>tag_value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>tag_value = entry
+        .append_operation(llvm::extract_value(
+            context,
+            value,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            tag_ty,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;1 : {tag_ty}&quot;</span>))
-            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+        IntegerAttribute::new(<span class="number">1</span>, tag_ty).into(),
         location,
     ));
     <span class="kw">let </span>const_1 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -640,16 +697,31 @@
     <span class="kw">let </span>op = entry.append_operation(arith::xori(tag_value, const_1, location));
     <span class="kw">let </span>new_tag_value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op = entry.append_operation(llvm::insert_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        new_tag_value,
-        location,
-    ));
-    <span class="kw">let </span>value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>res = entry
+        .append_operation(llvm::undef(
+            enum_ty.build(
+                context,
+                helper,
+                registry,
+                metadata,
+                <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+            )<span class="question-mark">?</span>,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>res = entry
+        .append_operation(llvm::insert_value(
+            context,
+            res,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            new_tag_value,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[res], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -687,22 +759,22 @@
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
 
     <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span>op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-    <span class="kw">let </span>tag_value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>tag_value = entry
+        .append_operation(llvm::extract_value(
+            context,
+            value,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            tag_ty,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
     <span class="kw">let </span>op = entry.append_operation(arith::extui(tag_value, felt252_ty, location));
 
     <span class="kw">let </span>result = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
-
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -710,7 +782,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JITValue,
+        values::JitValue,
     };
 
     <span class="attr">#[test]
@@ -723,13 +795,11 @@
             }
         );
 
-        <span class="kw">let </span>result =
-            run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]).return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]).return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
-        <span class="kw">let </span>result =
-            run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]).return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]).return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
     }
 
     <span class="attr">#[test]
@@ -747,32 +817,32 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
     }
 
     <span class="attr">#[test]
@@ -790,32 +860,32 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
     }
 
     <span class="attr">#[test]
@@ -833,32 +903,32 @@
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
 
         <span class="kw">let </span>result = run_program(
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
         )
-        .return_values;
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]);
+        .return_value;
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
     }
 
     <span class="attr">#[test]
@@ -869,13 +939,11 @@
             }
         );
 
-        <span class="kw">let </span>result =
-            run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]).return_values;
-        <span class="macro">assert_eq!</span>(result, [JITValue::Felt252(<span class="number">1</span>.into())]);
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]).return_value;
+        <span class="macro">assert_eq!</span>(result, JitValue::Felt252(<span class="number">1</span>.into()));
 
-        <span class="kw">let </span>result =
-            run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]).return_values;
-        <span class="macro">assert_eq!</span>(result, [JITValue::Felt252(<span class="number">0</span>.into())]);
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]).return_value;
+        <span class="macro">assert_eq!</span>(result, JitValue::Felt252(<span class="number">0</span>.into()));
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compile","execute","execute_contract","module_to_object","object_to_shared_lib"],"mod":["cache","context","debug_info","error","execution_result","executor","libfuncs","metadata","module","starknet","types","utils","values"],"struct":["ExecutionResult","LLVMCompileError"]};
+window.SIDEBAR_ITEMS = {"fn":["compile","module_to_object","object_to_shared_lib"],"mod":["cache","context","debug_info","error","execution_result","executor","libfuncs","metadata","module","starknet","types","utils","values"],"struct":["LLVMCompileError"]};

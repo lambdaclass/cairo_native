@@ -192,6 +192,38 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -199,8 +231,8 @@
     },
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
-        LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
-        LLVM_InitializeAllTargets,
+        LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
+        LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
     },
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
@@ -212,6 +244,7 @@
 <span class="kw">use </span>melior::ir::{Module, Type, TypeLike};
 <span class="kw">use </span>mlir_sys::MlirOperation;
 <span class="kw">use </span>std::{
+    borrow::Cow,
     error::Error,
     ffi::{c_void, CStr},
     fmt::Display,
@@ -263,6 +296,7 @@
         LLVM_InitializeAllTargetInfos();
         LLVM_InitializeAllTargetMCs();
         LLVM_InitializeAllAsmPrinters();
+        LLVM_InitializeAllAsmParsers();
     });
 
     <span class="kw">unsafe </span>{
@@ -298,7 +332,8 @@
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            <span class="comment">// TODO: Convert this into a flag instead of hardcoding it to `-O0`.
+            </span>LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
@@ -345,35 +380,60 @@
     file.write_all(object)<span class="question-mark">?</span>;
     <span class="kw">let </span>file = file.into_temp_path();
 
-    <span class="kw">let </span>args: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = {
+    <span class="kw">let </span>file_path = file.display().to_string();
+    <span class="kw">let </span>output_path = output_filename.display().to_string();
+
+    <span class="kw">let </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = {
         <span class="attr">#[cfg(target_os = <span class="string">&quot;macos&quot;</span>)]
         </span>{
-            <span class="kw-2">&amp;</span>[
-                <span class="string">&quot;-demangle&quot;</span>,
-                <span class="string">&quot;-no_deduplicate&quot;</span>,
-                <span class="string">&quot;-dynamic&quot;</span>,
-                <span class="string">&quot;-dylib&quot;</span>,
-                <span class="string">&quot;-L/usr/local/lib&quot;</span>,
-                <span class="string">&quot;-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib&quot;</span>,
-                <span class="kw-2">&amp;</span>file.display().to_string(),
-                <span class="string">&quot;-o&quot;</span>,
-                <span class="kw-2">&amp;</span>output_filename.display().to_string(),
-                <span class="string">&quot;-lSystem&quot;</span>,
-            ]
+            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
+                <span class="string">&quot;-demangle&quot;</span>.into(),
+                <span class="string">&quot;-no_deduplicate&quot;</span>.into(),
+                <span class="string">&quot;-dynamic&quot;</span>.into(),
+                <span class="string">&quot;-dylib&quot;</span>.into(),
+                <span class="string">&quot;-L/usr/local/lib&quot;</span>.into(),
+                <span class="string">&quot;-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib&quot;</span>.into(),
+            ];
+
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">&quot;CAIRO_NATIVE_RUNTIME_LIBDIR&quot;</span>) {
+                args.extend([Cow::from(<span class="macro">format!</span>(<span class="string">&quot;-L{extra_dir}&quot;</span>))]);
+            }
+
+            args.extend([
+                Cow::from(file_path),
+                <span class="string">&quot;-o&quot;</span>.into(),
+                Cow::from(output_path),
+                <span class="string">&quot;-lSystem&quot;</span>.into(),
+                <span class="string">&quot;-lcairo_native_runtime&quot;</span>.into(),
+            ]);
+            args
         }
         <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
         </span>{
-            <span class="kw-2">&amp;</span>[
-                <span class="string">&quot;--hash-style=gnu&quot;</span>,
-                <span class="string">&quot;--eh-frame-hdr&quot;</span>,
-                <span class="string">&quot;-shared&quot;</span>,
-                <span class="string">&quot;-o&quot;</span>,
-                <span class="kw-2">&amp;</span>output_filename.display().to_string(),
-                <span class="string">&quot;-L/lib/../lib64&quot;</span>,
-                <span class="string">&quot;-L/usr/lib/../lib64&quot;</span>,
-                <span class="string">&quot;-lc&quot;</span>,
-                <span class="kw-2">&amp;</span>file.display().to_string(),
-            ]
+            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
+                <span class="string">&quot;--hash-style=gnu&quot;</span>.into(),
+                <span class="string">&quot;--eh-frame-hdr&quot;</span>.into(),
+                <span class="string">&quot;-shared&quot;</span>.into(),
+                <span class="string">&quot;-L/lib/../lib64&quot;</span>.into(),
+                <span class="string">&quot;-L/usr/lib/../lib64&quot;</span>.into(),
+            ];
+
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">&quot;CAIRO_NATIVE_RUNTIME_LIBDIR&quot;</span>) {
+                args.extend([
+                    Cow::from(<span class="macro">format!</span>(<span class="string">&quot;-L{extra_dir}&quot;</span>)),
+                    <span class="macro">format!</span>(<span class="string">&quot;-rpath={extra_dir}&quot;</span>).into(),
+                    <span class="macro">format!</span>(<span class="string">&quot;-rpath-link={extra_dir}&quot;</span>).into(),
+                ]);
+            }
+
+            args.extend([
+                <span class="string">&quot;-o&quot;</span>.into(),
+                Cow::from(output_path),
+                <span class="string">&quot;-lc&quot;</span>.into(),
+                <span class="string">&quot;-lcairo_native_runtime&quot;</span>.into(),
+                Cow::from(file_path),
+            ]);
+            args
         }
         <span class="attr">#[cfg(target_os = <span class="string">&quot;windows&quot;</span>)]
         </span>{
@@ -382,8 +442,12 @@
     };
 
     <span class="kw">let </span><span class="kw-2">mut </span>linker = std::process::Command::new(<span class="string">&quot;ld&quot;</span>);
-    <span class="kw">let </span>proc = linker.args(args.iter()).spawn()<span class="question-mark">?</span>;
-    proc.wait_with_output()<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(())
+    <span class="kw">let </span>proc = linker.args(args.iter().map(|x| x.as_ref())).output()<span class="question-mark">?</span>;
+    <span class="kw">if </span>proc.status.success() {
+        <span class="prelude-val">Ok</span>(())
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>msg = String::from_utf8_lossy(<span class="kw-2">&amp;</span>proc.stderr);
+        <span class="macro">panic!</span>(<span class="string">&quot;error linking:\n{}&quot;</span>, msg);
+    }
 }
 </code></pre></div></section></main></body></html>

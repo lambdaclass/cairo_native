@@ -101,9 +101,9 @@
 /// It is conformed by the MLIR module, the Sierra program registry
 /// and the program metadata.
 </span><span class="kw">pub struct </span>NativeModule&lt;<span class="lifetime">&#39;m</span>&gt; {
-    module: Module&lt;<span class="lifetime">&#39;m</span>&gt;,
-    registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    metadata: MetadataStorage,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) module: Module&lt;<span class="lifetime">&#39;m</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) metadata: MetadataStorage,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; NativeModule&lt;<span class="lifetime">&#39;m</span>&gt; {

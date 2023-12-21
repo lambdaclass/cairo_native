@@ -1566,7 +1566,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1605,11 +1605,11 @@
         };
     }
 
-    <span class="kw">fn </span>u256(value: BigUint) -&gt; JITValue {
+    <span class="kw">fn </span>u256(value: BigUint) -&gt; JitValue {
         <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
         <span class="macro">jit_struct!</span>(
-            JITValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-            JITValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
         )
     }
 
@@ -1619,32 +1619,32 @@
             <span class="kw-2">&amp;</span>U256_IS_ZERO,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[u256(<span class="number">0u32</span>.into())],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>U256_IS_ZERO,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[u256(<span class="number">1u32</span>.into())],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>U256_IS_ZERO,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[u256(BigUint::one() &lt;&lt; <span class="number">128u32</span>)],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>U256_IS_ZERO,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[u256((BigUint::one() &lt;&lt; <span class="number">128u32</span>) + <span class="number">1u32</span>)],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u256_safe_divmod() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(lhs: (u128, u128), rhs: (u128, u128), result: JITValue) {
+        </span><span class="kw">fn </span>run(lhs: (u128, u128), rhs: (u128, u128), result: JitValue) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>U256_SAFE_DIVMOD,
                 <span class="string">&quot;run_test&quot;</span>,
@@ -1652,7 +1652,7 @@
                     <span class="macro">jit_struct!</span>(lhs.<span class="number">1</span>.into(), lhs.<span class="number">0</span>.into()),
                     <span class="macro">jit_struct!</span>(rhs.<span class="number">1</span>.into(), rhs.<span class="number">0</span>.into()),
                 ],
-                <span class="kw-2">&amp;</span>[result],
+                result,
             )
         }
 
@@ -1735,12 +1735,12 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u256_sqrt() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(value: (u128, u128), result: JITValue) {
+        </span><span class="kw">fn </span>run(value: (u128, u128), result: JitValue) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>U256_SQRT,
                 <span class="string">&quot;run_test&quot;</span>,
                 <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(value.<span class="number">1</span>.into(), value.<span class="number">0</span>.into())],
-                <span class="kw-2">&amp;</span>[result],
+                result,
             )
         }
 

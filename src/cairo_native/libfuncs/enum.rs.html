@@ -590,6 +590,60 @@
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -602,7 +656,6 @@
     },
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{padding_needed_for, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -615,13 +668,12 @@
 <span class="kw">use </span>melior::{
     dialect::{
         arith, cf,
-        llvm::{<span class="self">self</span>, LoadStoreOptions},
+        llvm::{<span class="self">self</span>, AllocaOptions, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Identifier, Location,
+        Block, Location, Value, ValueLike,
     },
     Context,
 };
@@ -672,109 +724,134 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>(layout, (tag_ty, tag_layout), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
+    <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>payload_type_info = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>(layout, (tag_ty, <span class="kw">_</span>), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        registry
-            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-            </span>.variants()
-            .expect(<span class="string">&quot;enum should always have variants&quot;</span>),
+        type_info.variants().unwrap(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>enum_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
-    )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(info.index.try_into()<span class="question-mark">?</span>, tag_ty).into(),
-        location,
-    ));
-
-    <span class="kw">let </span>concrete_enum_ty = llvm::r#type::r#struct(
+    <span class="kw">let </span>enum_ty = llvm::r#type::r#struct(
         context,
         <span class="kw-2">&amp;</span>[
             tag_ty,
-            llvm::r#type::array(
-                IntegerType::new(context, <span class="number">8</span>).into(),
-                padding_needed_for(<span class="kw-2">&amp;</span>tag_layout, variant_tys[info.index].<span class="number">1</span>.align()).try_into()<span class="question-mark">?</span>,
-            ),
-            variant_tys[info.index].<span class="number">0</span>,
+            <span class="kw">if </span>payload_type_info.is_zst(registry) {
+                llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>)
+            } <span class="kw">else </span>{
+                variant_tys[info.index].<span class="number">0
+            </span>},
         ],
         <span class="bool-val">false</span>,
     );
 
-    <span class="kw">let </span>op1 = entry.append_operation(llvm::undef(concrete_enum_ty, location));
-    <span class="kw">let </span>op2 = entry.append_operation(llvm::insert_value(
-        context,
-        op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        location,
-    ));
-    <span class="kw">let </span>op3 = entry.append_operation(llvm::insert_value(
-        context,
-        op2.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">2</span>]),
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        location,
-    ));
+    <span class="kw">let </span>tag_val = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(info.index <span class="kw">as </span>i64, tag_ty).into(),
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
-    <span class="kw">let </span>op4 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
-        location,
-    ));
-    <span class="kw">let </span>op5 = helper.init_block().append_operation(
-        OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
-            .add_attributes(<span class="kw-2">&amp;</span>[(
-                Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
-                IntegerAttribute::new(
-                    layout.align().try_into()<span class="question-mark">?</span>,
+    <span class="kw">let </span>payload_val = <span class="kw">if </span>payload_type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                variant_tys[info.index].<span class="number">0</span>,
+                location,
+                LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                    variant_tys[info.index].<span class="number">1</span>.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
-                )
-                .into(),
-            )])
-            .add_operands(<span class="kw-2">&amp;</span>[op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-            .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(enum_ty, <span class="number">0</span>)])
-            .build()<span class="question-mark">?</span>,
-    );
+                ))),
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    } <span class="kw">else </span>{
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
+    };
 
-    <span class="kw">let </span>op6 = entry.append_operation(
-        OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
-            .add_operands(<span class="kw-2">&amp;</span>[op5.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-            .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(concrete_enum_ty, <span class="number">0</span>)])
-            .build()<span class="question-mark">?</span>,
-    );
-    entry.append_operation(llvm::store(
-        context,
-        op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        op6.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout.align().try_into()<span class="question-mark">?</span>,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-        ))),
-    ));
+    <span class="kw">let </span>val = entry
+        .append_operation(llvm::undef(enum_ty, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>val = entry
+        .append_operation(llvm::insert_value(
+            context,
+            val,
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+            tag_val,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>val = <span class="kw">if </span>payload_type_info.is_zst(registry) {
+        val
+    } <span class="kw">else </span>{
+        entry
+            .append_operation(llvm::insert_value(
+                context,
+                val,
+                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                payload_val,
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    };
 
-    <span class="kw">let </span>op7 = entry.append_operation(llvm::load(
-        context,
-        op5.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        enum_ty,
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout.align().try_into()<span class="question-mark">?</span>,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-        ))),
-    ));
+    <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+        <span class="kw">let </span>k1 = helper
+            .init_block()
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+        <span class="kw">let </span>stack_ptr = helper
+            .init_block()
+            .append_operation(llvm::alloca(
+                context,
+                k1,
+                llvm::r#type::opaque_pointer(context),
+                location,
+                AllocaOptions::new()
+                    .align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                        layout.align() <span class="kw">as </span>i64,
+                        IntegerType::new(context, <span class="number">64</span>).into(),
+                    )))
+                    .elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
+                        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+                    )<span class="question-mark">?</span>))),
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op7.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+        entry.append_operation(llvm::store(
+            context,
+            val,
+            stack_ptr,
+            location,
+            LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                layout.align() <span class="kw">as </span>i64,
+                IntegerType::new(context, <span class="number">64</span>).into(),
+            ))),
+        ));
+
+        entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[stack_ptr], location));
+    } <span class="kw">else </span>{
+        entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[val], location));
+    }
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -795,54 +872,43 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>(layout, (tag_ty, tag_layout), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
+    <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>variant_ids = type_info.variants().unwrap();
+    <span class="kw">let </span>(layout, (tag_ty, <span class="kw">_</span>), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        registry
-            .get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?
-            </span>.variants()
-            .expect(<span class="string">&quot;enum should always have variants&quot;</span>),
+        variant_ids,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>enum_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
-    )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>op0 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
-        location,
-    ));
-    <span class="kw">let </span>op1 = helper.init_block().append_operation(
-        OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
-            .add_attributes(<span class="kw-2">&amp;</span>[(
-                Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
-                IntegerAttribute::new(
-                    layout.align().try_into()<span class="question-mark">?</span>,
+    <span class="kw">let </span>tag_val = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                tag_ty,
+                location,
+                LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                    layout.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
-                )
-                .into(),
-            )])
-            .add_operands(<span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-            .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(enum_ty, <span class="number">0</span>)])
-            .build()<span class="question-mark">?</span>,
-    );
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout.align().try_into()<span class="question-mark">?</span>,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-        ))),
-    ));
+                ))),
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    } <span class="kw">else </span>{
+        entry
+            .append_operation(llvm::extract_value(
+                context,
+                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+                tag_ty,
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    };
 
     <span class="kw">let </span>default_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>variant_blocks = variant_tys
@@ -850,22 +916,14 @@
         .map(|<span class="kw">_</span>| helper.append_block(Block::new(<span class="kw-2">&amp;</span>[])))
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="kw">let </span>op2 = entry.append_operation(llvm::extract_value(
-        context,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-
-    <span class="kw">let </span>case_values: Vec&lt;i64&gt; = (<span class="number">0</span>..variant_tys.len())
+    <span class="kw">let </span>case_values = (<span class="number">0</span>..variant_tys.len())
         .map(i64::try_from)
         .collect::&lt;std::result::Result&lt;Vec&lt;<span class="kw">_</span>&gt;, TryFromIntError&gt;&gt;()<span class="question-mark">?</span>;
 
     entry.append_operation(cf::switch(
         context,
         <span class="kw-2">&amp;</span>case_values,
-        op2.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        tag_val,
         tag_ty,
         (default_block, <span class="kw-2">&amp;</span>[]),
         <span class="kw-2">&amp;</span>variant_blocks
@@ -876,61 +934,121 @@
         location,
     )<span class="question-mark">?</span>);
 
-    {
-        <span class="kw">let </span>op3 = default_block.append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
-            location,
-        ));
+    <span class="comment">// Default block.
+    </span>{
+        <span class="kw">let </span>val = default_block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
 
-        default_block.append_operation(cf::assert(
-            context,
-            op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            <span class="string">&quot;Invalid enum tag.&quot;</span>,
-            location,
-        ));
-        default_block
-            .append_operation(OperationBuilder::new(<span class="string">&quot;llvm.unreachable&quot;</span>, location).build()<span class="question-mark">?</span>);
+        default_block.append_operation(cf::assert(context, val, <span class="string">&quot;Invalid enum tag.&quot;</span>, location));
+        default_block.append_operation(llvm::unreachable(location));
     }
 
-    <span class="kw">for </span>(i, (block, (payload_ty, payload_layout))) <span class="kw">in
+    <span class="comment">// Enum variants.
+    </span><span class="kw">for </span>(i, (block, (payload_ty, payload_layout))) <span class="kw">in
         </span>variant_blocks.into_iter().zip(variant_tys).enumerate()
     {
-        <span class="kw">let </span>concrete_enum_ty = llvm::r#type::r#struct(
-            context,
-            <span class="kw-2">&amp;</span>[
-                tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, <span class="number">8</span>).into(),
-                    padding_needed_for(<span class="kw-2">&amp;</span>tag_layout, payload_layout.align()).try_into()<span class="question-mark">?</span>,
-                ),
-                payload_ty,
-            ],
-            <span class="bool-val">false</span>,
-        );
+        <span class="kw">let </span>enum_ty = llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>[tag_ty, payload_ty], <span class="bool-val">false</span>);
 
-        <span class="kw">let </span>op3 = block.append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
-                .add_operands(<span class="kw-2">&amp;</span>[op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(concrete_enum_ty, <span class="number">0</span>)])
-                .build()<span class="question-mark">?</span>,
-        );
-        <span class="kw">let </span>op4 = block.append_operation(llvm::load(
-            context,
-            op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            concrete_enum_ty,
-            location,
-            LoadStoreOptions::default(),
-        ));
-        <span class="kw">let </span>op5 = block.append_operation(llvm::extract_value(
-            context,
-            op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">2</span>]),
-            payload_ty,
-            location,
-        ));
+        <span class="kw">let </span>payload_val = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            <span class="kw">let </span>val = block
+                .append_operation(llvm::load(
+                    context,
+                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                    enum_ty,
+                    location,
+                    LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                        layout.align() <span class="kw">as </span>i64,
+                        IntegerType::new(context, <span class="number">64</span>).into(),
+                    ))),
+                ))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into();
 
-        block.append_operation(helper.br(i, <span class="kw-2">&amp;</span>[op5.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+            block
+                .append_operation(llvm::extract_value(
+                    context,
+                    val,
+                    DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                    payload_ty,
+                    location,
+                ))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into()
+        } <span class="kw">else </span>{
+            <span class="comment">// If the enum is not memory-allocated it means that:
+            //   - Either it&#39;s a C-style enum and all payloads have the same type.
+            //   - Or the enum only has a single non-memory-allocated variant.
+            </span><span class="kw">if </span>variant_ids.len() == <span class="number">1 </span>{
+                block
+                    .append_operation(llvm::extract_value(
+                        context,
+                        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                        payload_ty,
+                        location,
+                    ))
+                    .result(<span class="number">0</span>)<span class="question-mark">?
+                    </span>.into()
+            } <span class="kw">else </span>{
+                <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry));
+                block
+                    .append_operation(llvm::undef(payload_ty, location))
+                    .result(<span class="number">0</span>)<span class="question-mark">?
+                    </span>.into()
+            }
+        };
+
+        <span class="kw">let </span>payload_type_info = registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>;
+        <span class="kw">let </span>payload_val = <span class="kw">if </span>payload_type_info.is_memory_allocated(registry) {
+            <span class="kw">let </span>k1 = helper
+                .init_block()
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                    location,
+                ))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into();
+            <span class="kw">let </span>stack_ptr = helper
+                .init_block()
+                .append_operation(llvm::alloca(
+                    context,
+                    k1,
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                    AllocaOptions::new()
+                        .align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                            payload_layout.align() <span class="kw">as </span>i64,
+                            IntegerType::new(context, <span class="number">64</span>).into(),
+                        )))
+                        .elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(payload_ty))),
+                ))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into();
+
+            block.append_operation(llvm::store(
+                context,
+                payload_val,
+                stack_ptr,
+                location,
+                LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                    payload_layout.align() <span class="kw">as </span>i64,
+                    IntegerType::new(context, <span class="number">64</span>).into(),
+                ))),
+            ));
+
+            stack_ptr
+        } <span class="kw">else </span>{
+            payload_val
+        };
+
+        block.append_operation(helper.br(i, <span class="kw-2">&amp;</span>[payload_val], location));
     }
 
     <span class="prelude-val">Ok</span>(())
@@ -952,54 +1070,49 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+
     <span class="comment">// This libfunc&#39;s implementation is identical to `enum_match` aside from fetching the snapshotted enum&#39;s variants from the metadata:
-    </span><span class="kw">let </span>variants = metadata
+    </span><span class="kw">let </span>variants_ids = metadata
         .get::&lt;EnumSnapshotVariantsMeta&gt;()
         .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
         </span>.get_variants(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)
         .expect(<span class="string">&quot;enum should always have variants&quot;</span>)
         .clone();
-    <span class="kw">let </span>(layout, (tag_ty, tag_layout), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
-        context, helper, registry, metadata, <span class="kw-2">&amp;</span>variants,
-    )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>enum_ty = registry.build_type(
+    <span class="kw">let </span>(layout, (tag_ty, <span class="kw">_</span>), variant_tys) = <span class="kw">crate</span>::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
         metadata,
-        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+        <span class="kw-2">&amp;</span>variants_ids,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op0 = helper.init_block().append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
-        location,
-    ));
-    <span class="kw">let </span>op1 = helper.init_block().append_operation(
-        OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
-            .add_attributes(<span class="kw-2">&amp;</span>[(
-                Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
-                IntegerAttribute::new(
-                    layout.align().try_into()<span class="question-mark">?</span>,
+    <span class="kw">let </span>tag_val = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                tag_ty,
+                location,
+                LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                    layout.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
-                )
-                .into(),
-            )])
-            .add_operands(<span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-            .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(enum_ty, <span class="number">0</span>)])
-            .build()<span class="question-mark">?</span>,
-    );
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout.align().try_into()<span class="question-mark">?</span>,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-        ))),
-    ));
+                ))),
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    } <span class="kw">else </span>{
+        entry
+            .append_operation(llvm::extract_value(
+                context,
+                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+                tag_ty,
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    };
 
     <span class="kw">let </span>default_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>variant_blocks = variant_tys
@@ -1007,22 +1120,14 @@
         .map(|<span class="kw">_</span>| helper.append_block(Block::new(<span class="kw-2">&amp;</span>[])))
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="kw">let </span>op2 = entry.append_operation(llvm::extract_value(
-        context,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-        tag_ty,
-        location,
-    ));
-
-    <span class="kw">let </span>case_values: Vec&lt;i64&gt; = (<span class="number">0</span>..variant_tys.len())
+    <span class="kw">let </span>case_values = (<span class="number">0</span>..variant_tys.len())
         .map(i64::try_from)
         .collect::&lt;std::result::Result&lt;Vec&lt;<span class="kw">_</span>&gt;, TryFromIntError&gt;&gt;()<span class="question-mark">?</span>;
 
     entry.append_operation(cf::switch(
         context,
         <span class="kw-2">&amp;</span>case_values,
-        op2.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        tag_val,
         tag_ty,
         (default_block, <span class="kw-2">&amp;</span>[]),
         <span class="kw-2">&amp;</span>variant_blocks
@@ -1033,61 +1138,65 @@
         location,
     )<span class="question-mark">?</span>);
 
-    {
-        <span class="kw">let </span>op3 = default_block.append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
-            location,
-        ));
+    <span class="comment">// Default block.
+    </span>{
+        <span class="kw">let </span>val = default_block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
 
-        default_block.append_operation(cf::assert(
-            context,
-            op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            <span class="string">&quot;Invalid enum tag.&quot;</span>,
-            location,
-        ));
-        default_block
-            .append_operation(OperationBuilder::new(<span class="string">&quot;llvm.unreachable&quot;</span>, location).build()<span class="question-mark">?</span>);
+        default_block.append_operation(cf::assert(context, val, <span class="string">&quot;Invalid enum tag.&quot;</span>, location));
+        default_block.append_operation(llvm::unreachable(location));
     }
 
-    <span class="kw">for </span>(i, (block, (payload_ty, payload_layout))) <span class="kw">in
-        </span>variant_blocks.into_iter().zip(variant_tys).enumerate()
-    {
-        <span class="kw">let </span>concrete_enum_ty = llvm::r#type::r#struct(
-            context,
-            <span class="kw-2">&amp;</span>[
-                tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, <span class="number">8</span>).into(),
-                    padding_needed_for(<span class="kw-2">&amp;</span>tag_layout, payload_layout.align()).try_into()<span class="question-mark">?</span>,
-                ),
+    <span class="comment">// Enum variants.
+    </span><span class="kw">for </span>(i, (block, (payload_ty, <span class="kw">_</span>))) <span class="kw">in </span>variant_blocks.into_iter().zip(variant_tys).enumerate() {
+        <span class="kw">let </span>enum_ty = llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>[tag_ty, payload_ty], <span class="bool-val">false</span>);
+
+        <span class="kw">let </span>val = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            block
+                .append_operation(llvm::load(
+                    context,
+                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                    enum_ty,
+                    location,
+                    LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                        layout.align() <span class="kw">as </span>i64,
+                        IntegerType::new(context, <span class="number">64</span>).into(),
+                    ))),
+                ))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into()
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>val: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+
+            <span class="comment">// If the enum is not memory-allocated it means that:
+            //   - Either it&#39;s a C-style enum and all payloads have the same type.
+            //   - Or the enum only has a single variant, making the following check succeed.
+            </span><span class="macro">assert_eq!</span>(
+                <span class="kw">crate</span>::ffi::get_struct_field_type_at(<span class="kw-2">&amp;</span>val.r#type(), <span class="number">1</span>),
                 payload_ty,
-            ],
-            <span class="bool-val">false</span>,
-        );
+            );
 
-        <span class="kw">let </span>op3 = block.append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.bitcast&quot;</span>, location)
-                .add_operands(<span class="kw-2">&amp;</span>[op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(concrete_enum_ty, <span class="number">0</span>)])
-                .build()<span class="question-mark">?</span>,
-        );
-        <span class="kw">let </span>op4 = block.append_operation(llvm::load(
-            context,
-            op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            concrete_enum_ty,
-            location,
-            LoadStoreOptions::default(),
-        ));
-        <span class="kw">let </span>op5 = block.append_operation(llvm::extract_value(
-            context,
-            op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">2</span>]),
-            payload_ty,
-            location,
-        ));
+            val
+        };
 
-        block.append_operation(helper.br(i, <span class="kw-2">&amp;</span>[op5.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+        <span class="kw">let </span>payload_val = block
+            .append_operation(llvm::extract_value(
+                context,
+                val,
+                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+                payload_ty,
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+
+        block.append_operation(helper.br(i, <span class="kw-2">&amp;</span>[payload_val], location));
     }
 
     <span class="prelude-val">Ok</span>(())
@@ -1164,22 +1273,21 @@
             <span class="kw-2">&amp;</span>ENUM_INIT,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
+            <span class="macro">jit_struct!</span>(
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(-<span class="number">1</span>).into()),
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">5678</span>).into()),
                 <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="number">90u8</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">2</span>, <span class="number">9012u16</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">3</span>, <span class="number">34567890u32</span>.into()),
                 <span class="macro">jit_enum!</span>(<span class="number">4</span>, <span class="number">1234567890123456u64</span>.into()),
-            )],
+            ),
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>enum_match() {
-        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt::from(<span class="number">5</span>).into()]);
-
-        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_b&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">5u8</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_a&quot;</span>, <span class="kw-2">&amp;</span>[], Felt::from(<span class="number">5</span>).into());
+        run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">&quot;match_b&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">5u8</span>.into());
     }
 }
 </code></pre></div></section></main></body></html>

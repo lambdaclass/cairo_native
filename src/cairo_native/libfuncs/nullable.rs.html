@@ -416,7 +416,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
 
     <span class="attr">#[test]
@@ -433,7 +433,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="macro">jit_struct!</span>());
     }
 
     <span class="attr">#[test]
@@ -451,7 +451,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[JITValue::Null]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], JitValue::Null);
     }
 
     <span class="attr">#[test]
@@ -478,8 +478,8 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">4u8</span>.into()], <span class="kw-2">&amp;</span>[<span class="number">4u8</span>.into()]);
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>.into()], <span class="kw-2">&amp;</span>[<span class="number">99u8</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">4u8</span>.into()], <span class="number">4u8</span>.into());
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>.into()], <span class="number">99u8</span>.into());
     }
 }
 </code></pre></div></section></main></body></html>

@@ -2614,7 +2614,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
-        values::JITValue,
+        values::JitValue,
     };
     <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
 
@@ -2627,14 +2627,14 @@
                 x
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[[<span class="number">1u32</span>, <span class="number">2u32</span>].into()]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[[<span class="number">1u32</span>, <span class="number">2u32</span>].into()]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, <span class="kw-2">&amp;</span>[JITValue::from([<span class="number">1u32</span>, <span class="number">2u32</span>])]);
+        <span class="macro">assert_eq!</span>(result, JitValue::from([<span class="number">1u32</span>, <span class="number">2u32</span>]));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>run_append() {
-        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
+        <span class="kw">let </span>program = <span class="macro">load_cairo! </span>{
             <span class="kw">use </span>array::ArrayTrait;
 
             <span class="kw">fn </span>run_test() -&gt; Array&lt;u32&gt; {
@@ -2642,10 +2642,10 @@
                 numbers.append(<span class="number">4_u32</span>);
                 numbers
             }
-        );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        };
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [[<span class="number">4u32</span>].into()]);
+        <span class="macro">assert_eq!</span>(result, [<span class="number">4u32</span>].into());
     }
 
     <span class="attr">#[test]
@@ -2661,9 +2661,9 @@
                 numbers.len()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="number">3u32</span>.into()]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">3u32</span>.into());
     }
 
     <span class="attr">#[test]
@@ -2685,11 +2685,11 @@
                 )
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
         <span class="macro">assert_eq!</span>(
             result,
-            [<span class="macro">jit_enum!</span>(
+            <span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
                 <span class="macro">jit_struct!</span>(<span class="macro">jit_struct!</span>(
                     <span class="number">4u32</span>.into(),
@@ -2697,7 +2697,7 @@
                     <span class="number">2u32</span>.into(),
                     <span class="number">1u32</span>.into()
                 ))
-            )]
+            )
         );
     }
 
@@ -2740,11 +2740,11 @@
                 )
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
         <span class="macro">assert_eq!</span>(
             result,
-            [<span class="macro">jit_enum!</span>(
+            <span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
                 <span class="macro">jit_struct!</span>(<span class="macro">jit_struct!</span>(
                     <span class="number">20u32</span>.into(),
@@ -2752,7 +2752,7 @@
                     <span class="number">22u32</span>.into(),
                     <span class="number">23u32</span>.into()
                 ))
-            )]
+            )
         );
     }
 
@@ -2770,9 +2770,9 @@
                 <span class="kw-2">*</span>numbers.at(<span class="number">0</span>)
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into()))]);
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into())));
     }
 
     <span class="attr">#[test]
@@ -2787,9 +2787,9 @@
                 numbers.pop_front()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">4u32</span>.into())]);
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">4u32</span>.into()));
 
         <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
             <span class="kw">use </span>array::ArrayTrait;
@@ -2799,9 +2799,9 @@
                 numbers.pop_front()
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]);
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
     }
 
     <span class="attr">#[test]
@@ -2819,9 +2819,9 @@
                 }
             }
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="number">4u32</span>.into()]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">4u32</span>.into());
     }
 
     <span class="attr">#[test]
@@ -2851,9 +2851,9 @@
             }
 
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, [<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into()))]);
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u32</span>.into())));
     }
 
     <span class="attr">#[test]
@@ -2878,13 +2878,13 @@
             }
 
         );
-        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_values;
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
         <span class="macro">assert_eq!</span>(
             result,
-            [<span class="macro">jit_panic!</span>(JITValue::felt_str(
+            <span class="macro">jit_panic!</span>(JitValue::felt_str(
                 <span class="string">&quot;1637570914057682275393755530660268060279989363&quot;
-            </span>))]
+            </span>))
         );
     }
 }

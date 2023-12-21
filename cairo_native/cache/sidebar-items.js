@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ProgramCache"]};
+window.SIDEBAR_ITEMS = {"enum":["ProgramCache"],"struct":["AotProgramCache","JitProgramCache"]};

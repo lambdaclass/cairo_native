@@ -237,8 +237,6 @@
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Struct-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -467,16 +465,14 @@
             <span class="kw-2">&amp;</span>BYTES31_ROUNDTRIP,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Felt::from(<span class="number">2</span>).into()))],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Felt::from(<span class="number">2</span>).into())),
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>BYTES31_ROUNDTRIP,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::MAX.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_panic!</span>(Felt::from_bytes_be_slice(
-                <span class="string">b&quot;Option::unwrap failed.&quot;
-            </span>))],
+            <span class="macro">jit_panic!</span>(Felt::from_bytes_be_slice(<span class="string">b&quot;Option::unwrap failed.&quot;</span>)),
         );
     }
 }

@@ -562,7 +562,7 @@
                 u64::MAX.into(),
                 u128::MAX.into(),
             ],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
+            <span class="macro">jit_struct!</span>(
                 <span class="macro">jit_struct!</span>(
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
@@ -583,7 +583,7 @@
                 ),
                 <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, u64::MAX.into()),),
                 <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">0</span>, u128::MAX.into()),),
-            )],
+            ),
         );
     }
 
@@ -599,7 +599,7 @@
                 u64::MAX.into(),
                 u128::MAX.into(),
             ],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
+            <span class="macro">jit_struct!</span>(
                 <span class="macro">jit_struct!</span>(u8::MAX.into()),
                 <span class="macro">jit_struct!</span>((u8::MAX <span class="kw">as </span>u16).into(), u16::MAX.into()),
                 <span class="macro">jit_struct!</span>(
@@ -620,7 +620,7 @@
                     (u64::MAX <span class="kw">as </span>u128).into(),
                     u128::MAX.into()
                 ),
-            )],
+            ),
         );
     }
 }

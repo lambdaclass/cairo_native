@@ -713,78 +713,15 @@
 <a href="#713" id="713">713</a>
 <a href="#714" id="714">714</a>
 <a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
 
-</span><span class="kw">use </span>std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
-
+</span><span class="kw">use crate</span>::{
+    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    types::{felt252::PRIME, TypeBuilder},
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
+};
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -794,28 +731,22 @@
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>num_bigint::{BigInt, Sign};
 <span class="kw">use </span>starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
+<span class="kw">use </span>std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
-<span class="kw">use crate</span>::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
-    types::{felt252::PRIME, TypeBuilder},
-    utils::{
-        felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
-    },
-};
-
-<span class="doccomment">/// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
+<span class="doccomment">/// A JitValue is a value that can be passed to the JIT engine as an argument or received as a result.
 ///
 /// They map to the cairo/sierra types.
 ///
-/// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+/// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it&#39;s inner value.
-</span><span class="attr">#[derive(Educe, Debug, Clone)]
-#[educe(PartialEq, Eq)]
-</span><span class="kw">pub enum </span>JITValue {
-    Felt252(Felt),
+</span><span class="attr">#[derive(Clone, Educe)]
+#[educe(Debug, Eq, PartialEq)]
+</span><span class="kw">pub enum </span>JitValue {
+    Felt252(<span class="attr">#[educe(Debug(method(std::fmt::Display::fmt)))] </span>Felt),
     <span class="doccomment">/// all elements need to be same type
     </span>Array(Vec&lt;<span class="self">Self</span>&gt;),
     Struct {
@@ -852,91 +783,91 @@
 
 <span class="comment">// Conversions
 
-</span><span class="kw">impl </span>From&lt;Felt&gt; <span class="kw">for </span>JITValue {
+</span><span class="kw">impl </span>From&lt;Felt&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: Felt) -&gt; <span class="self">Self </span>{
-        JITValue::Felt252(value)
+        <span class="self">Self</span>::Felt252(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u8&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;u8&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: u8) -&gt; <span class="self">Self </span>{
-        JITValue::Uint8(value)
+        <span class="self">Self</span>::Uint8(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: u16) -&gt; <span class="self">Self </span>{
-        JITValue::Uint16(value)
+        <span class="self">Self</span>::Uint16(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: u32) -&gt; <span class="self">Self </span>{
-        JITValue::Uint32(value)
+        <span class="self">Self</span>::Uint32(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: u64) -&gt; <span class="self">Self </span>{
-        JITValue::Uint64(value)
+        <span class="self">Self</span>::Uint64(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u128&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;u128&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: u128) -&gt; <span class="self">Self </span>{
-        JITValue::Uint128(value)
+        <span class="self">Self</span>::Uint128(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i8&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;i8&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: i8) -&gt; <span class="self">Self </span>{
-        JITValue::Sint8(value)
+        <span class="self">Self</span>::Sint8(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i16&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;i16&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: i16) -&gt; <span class="self">Self </span>{
-        JITValue::Sint16(value)
+        <span class="self">Self</span>::Sint16(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i32&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;i32&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: i32) -&gt; <span class="self">Self </span>{
-        JITValue::Sint32(value)
+        <span class="self">Self</span>::Sint32(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i64&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;i64&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: i64) -&gt; <span class="self">Self </span>{
-        JITValue::Sint64(value)
+        <span class="self">Self</span>::Sint64(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i128&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl </span>From&lt;i128&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: i128) -&gt; <span class="self">Self </span>{
-        JITValue::Sint128(value)
+        <span class="self">Self</span>::Sint128(value)
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JITValue&gt; + Clone&gt; From&lt;<span class="kw-2">&amp;</span>[T]&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt; + Clone&gt; From&lt;<span class="kw-2">&amp;</span>[T]&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>[T]) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.iter().map(|x| x.clone().into()).collect())
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JITValue&gt;&gt; From&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt;&gt; From&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.into_iter().map(|x| x.into()).collect())
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JITValue&gt;, <span class="kw">const </span>N: usize&gt; From&lt;[T; N]&gt; <span class="kw">for </span>JITValue {
+<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt;, <span class="kw">const </span>N: usize&gt; From&lt;[T; N]&gt; <span class="kw">for </span>JitValue {
     <span class="kw">fn </span>from(value: [T; N]) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.into_iter().map(|x| x.into()).collect())
     }
 }
 
-<span class="kw">impl </span>JITValue {
+<span class="kw">impl </span>JitValue {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resolve_type&lt;<span class="lifetime">&#39;a</span>&gt;(
         ty: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CoreTypeConcrete,
         registry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -958,17 +889,16 @@
 
         <span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{
             <span class="kw">match </span><span class="self">self </span>{
-                JITValue::Felt252(value) =&gt; {
+                <span class="self">Self</span>::Felt252(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(get_integer_layout(<span class="number">252</span>)).cast();
 
                     <span class="kw">let </span>data = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>value));
                     ptr.cast::&lt;[u32; <span class="number">8</span>]&gt;().as_mut().copy_from_slice(<span class="kw-2">&amp;</span>data);
                     ptr
                 }
-                JITValue::Array(data) =&gt; {
+                <span class="self">Self</span>::Array(data) =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Array(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
-                        <span class="comment">// todo: if its snapshot  cargo r --example starknet
-                        </span><span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty
                             .layout(registry)
                             .map_err(make_type_builder_error(type_id))<span class="question-mark">?
@@ -1030,13 +960,14 @@
                         )))<span class="question-mark">?
                     </span>}
                 }
-                JITValue::Struct {
+                <span class="self">Self</span>::Struct {
                     fields: members, ..
                 } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Struct(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
                         <span class="kw">let </span><span class="kw-2">mut </span>layout: <span class="prelude-ty">Option</span>&lt;Layout&gt; = <span class="prelude-val">None</span>;
                         <span class="kw">let </span><span class="kw-2">mut </span>data = Vec::with_capacity(info.members.len());
 
+                        <span class="kw">let </span><span class="kw-2">mut </span>is_memory_allocated = <span class="bool-val">false</span>;
                         <span class="kw">for </span>(member_type_id, member) <span class="kw">in </span>info.members.iter().zip(members) {
                             <span class="kw">let </span>member_ty = registry.get_type(member_type_id)<span class="question-mark">?</span>;
                             <span class="kw">let </span>member_layout = member_ty
@@ -1049,10 +980,19 @@
                             };
                             layout = <span class="prelude-val">Some</span>(new_layout);
 
+                            <span class="kw">let </span>member_ptr = member.to_jit(arena, registry, member_type_id)<span class="question-mark">?</span>;
                             data.push((
                                 member_layout,
                                 offset,
-                                member.to_jit(arena, registry, member_type_id)<span class="question-mark">?</span>,
+                                <span class="kw">if </span>member_ty.is_memory_allocated(registry) {
+                                    is_memory_allocated = <span class="bool-val">true</span>;
+
+                                    <span class="comment">// Undo the wrapper pointer added because the member&#39;s memory
+                                    // allocated flag.
+                                    </span><span class="kw-2">*</span>member_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref()
+                                } <span class="kw">else </span>{
+                                    member_ptr
+                                },
                             ));
                         }
 
@@ -1071,7 +1011,13 @@
                             );
                         }
 
-                        ptr
+                        <span class="kw">if </span>is_memory_allocated {
+                            NonNull::new(arena.alloc(ptr.as_ptr()) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>)
+                                .unwrap()
+                                .cast()
+                        } <span class="kw">else </span>{
+                            ptr
+                        }
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">&quot;expected value of type {:?} but got a struct&quot;</span>,
@@ -1079,24 +1025,24 @@
                         )))<span class="question-mark">?
                     </span>}
                 }
-                JITValue::Enum { tag, value, .. } =&gt; {
+                <span class="self">Self</span>::Enum { tag, value, .. } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Enum(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
-                        <span class="kw">let </span>tag_value = <span class="kw-2">*</span>tag;
-                        <span class="macro">assert!</span>(tag_value &lt;= info.variants.len());
+                        <span class="macro">assert!</span>(<span class="kw-2">*</span>tag &lt;= info.variants.len(), <span class="string">&quot;Variant index out of range.&quot;</span>);
 
-                        <span class="kw">let </span>payload_type_id = <span class="kw-2">&amp;</span>info.variants[tag_value];
+                        <span class="kw">let </span>payload_type_id = <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag];
                         <span class="kw">let </span>payload = value.to_jit(arena, registry, payload_type_id)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>(layout, tag_layout, variant_layouts) =
                             <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants)
                                 .unwrap();
-                        <span class="kw">let </span>ptr = arena.alloc_layout(layout).cast();
+                        <span class="kw">let </span>ptr = arena.alloc_layout(layout).cast::&lt;()&gt;();
 
                         <span class="kw">match </span>tag_layout.size() {
-                            <span class="number">1 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_mut() = tag_value <span class="kw">as </span>u8,
-                            <span class="number">2 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_mut() = tag_value <span class="kw">as </span>u16,
-                            <span class="number">4 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_mut() = tag_value <span class="kw">as </span>u32,
-                            <span class="number">8 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_mut() = tag_value <span class="kw">as </span>u64,
+                            <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;An enum without variants cannot be instantiated.&quot;</span>),
+                            <span class="number">1 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_mut() = <span class="kw-2">*</span>tag <span class="kw">as </span>u8,
+                            <span class="number">2 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_mut() = <span class="kw-2">*</span>tag <span class="kw">as </span>u16,
+                            <span class="number">4 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_mut() = <span class="kw-2">*</span>tag <span class="kw">as </span>u32,
+                            <span class="number">8 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_mut() = <span class="kw-2">*</span>tag <span class="kw">as </span>u64,
                             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                         }
 
@@ -1104,16 +1050,18 @@
                             payload.cast::&lt;u8&gt;().as_ptr(),
                             NonNull::new(
                                 ((ptr.as_ptr() <span class="kw">as </span>usize)
-                                    + tag_layout.extend(variant_layouts[tag_value]).unwrap().<span class="number">1</span>)
+                                    + tag_layout.extend(variant_layouts[<span class="kw-2">*</span>tag]).unwrap().<span class="number">1</span>)
                                     <span class="kw">as </span><span class="kw-2">*mut </span>u8,
                             )
                             .unwrap()
                             .cast()
                             .as_ptr(),
-                            variant_layouts[tag_value].size(),
+                            variant_layouts[<span class="kw-2">*</span>tag].size(),
                         );
 
-                        ptr
+                        NonNull::new(arena.alloc(ptr.as_ptr()) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>)
+                            .unwrap()
+                            .cast()
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">&quot;expected value of type {:?} but got an enum value&quot;</span>,
@@ -1121,7 +1069,7 @@
                         )))<span class="question-mark">?
                     </span>}
                 }
-                JITValue::Felt252Dict { value: map, .. } =&gt; {
+                <span class="self">Self</span>::Felt252Dict { value: map, .. } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Felt252Dict(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap();
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -1146,24 +1094,7 @@
                             value_map.insert(key, value_malloc_ptr);
                         }
 
-                        <span class="kw">let </span>target: NonNull&lt;NonNull&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;&gt; =
-                            arena
-                                .alloc_layout(Layout::new::&lt;
-                                    NonNull&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;,
-                                &gt;())
-                                .cast();
-
-                        <span class="kw">let </span>map_ptr: NonNull&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt; = arena
-                            .alloc_layout(
-                                Layout::new::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;()
-                                    .pad_to_align(),
-                            )
-                            .cast();
-
-                        std::ptr::write(map_ptr.as_ptr(), value_map);
-                        std::ptr::write(target.as_ptr(), map_ptr);
-
-                        target.cast()
+                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">&quot;expected value of type {:?} but got a felt dict&quot;</span>,
@@ -1171,67 +1102,67 @@
                         )))<span class="question-mark">?
                     </span>}
                 }
-                JITValue::Uint8(value) =&gt; {
+                <span class="self">Self</span>::Uint8(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u8&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Uint16(value) =&gt; {
+                <span class="self">Self</span>::Uint16(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u16&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Uint32(value) =&gt; {
+                <span class="self">Self</span>::Uint32(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u32&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Uint64(value) =&gt; {
+                <span class="self">Self</span>::Uint64(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u64&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Uint128(value) =&gt; {
+                <span class="self">Self</span>::Uint128(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u128&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;u128&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Sint8(value) =&gt; {
+                <span class="self">Self</span>::Sint8(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i8&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;i8&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Sint16(value) =&gt; {
+                <span class="self">Self</span>::Sint16(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i16&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;i16&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Sint32(value) =&gt; {
+                <span class="self">Self</span>::Sint32(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i32&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Sint64(value) =&gt; {
+                <span class="self">Self</span>::Sint64(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i64&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::Sint128(value) =&gt; {
+                <span class="self">Self</span>::Sint128(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;i128&gt;()).cast();
                     <span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_mut() = <span class="kw-2">*</span>value;
 
                     ptr
                 }
-                JITValue::EcPoint(a, b) =&gt; {
+                <span class="self">Self</span>::EcPoint(a, b) =&gt; {
                     <span class="kw">let </span>ptr = arena
                         .alloc_layout(layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">2</span>).unwrap().<span class="number">0</span>)
                         .cast();
@@ -1244,7 +1175,7 @@
 
                     ptr
                 }
-                JITValue::EcState(a, b, c, d) =&gt; {
+                <span class="self">Self</span>::EcState(a, b, c, d) =&gt; {
                     <span class="kw">let </span>ptr = arena
                         .alloc_layout(layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">4</span>).unwrap().<span class="number">0</span>)
                         .cast();
@@ -1259,7 +1190,7 @@
 
                     ptr
                 }
-                JITValue::Null =&gt; {
+                <span class="self">Self</span>::Null =&gt; {
                     <span class="macro">unimplemented!</span>(<span class="string">&quot;null is meant as return value for nullable for now&quot;</span>)
                 }
             }
@@ -1271,7 +1202,7 @@
         ptr: NonNull&lt;()&gt;,
         type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    ) -&gt; JITValue {
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>ty = registry.get_type(type_id).unwrap();
 
         <span class="kw">unsafe </span>{
@@ -1311,47 +1242,48 @@
                 }
                 CoreTypeConcrete::Box(info) =&gt; {
                     <span class="kw">let </span>inner = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ptr();
-                    <span class="kw">let </span>value = JITValue::from_jit(inner, <span class="kw-2">&amp;</span>info.ty, registry);
+                    <span class="kw">let </span>value = <span class="self">Self</span>::from_jit(inner, <span class="kw-2">&amp;</span>info.ty, registry);
                     libc::free(inner.as_ptr().cast());
                     value
                 }
                 CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">2</span>]&gt;().as_ref();
+                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">2</span>]&gt;().as_ref();
 
-                    JITValue::EcPoint(u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]), u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]))
+                    <span class="self">Self</span>::EcPoint(Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]), Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]))
                 }
                 CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">4</span>]&gt;().as_ref();
+                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">4</span>]&gt;().as_ref();
 
-                    JITValue::EcState(
-                        u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]),
-                        u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]),
-                        u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">2</span>]),
-                        u32_vec_to_felt(<span class="kw-2">&amp;</span>data[<span class="number">3</span>]),
+                    <span class="self">Self</span>::EcState(
+                        Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]),
+                        Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]),
+                        Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">2</span>]),
+                        Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">3</span>]),
                     )
                 }
                 CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[u32; <span class="number">8</span>]&gt;().as_ref();
-                    <span class="kw">let </span>data = u32_vec_to_felt(data);
-                    JITValue::Felt252(data)
+                    <span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref();
+                    <span class="kw">let </span>data = Felt::from_bytes_le(data);
+                    <span class="self">Self</span>::Felt252(data)
                 }
-                CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; JITValue::Uint8(<span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_ref()),
-                CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; JITValue::Uint16(<span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_ref()),
-                CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; JITValue::Uint32(<span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_ref()),
-                CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; JITValue::Uint64(<span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_ref()),
-                CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; JITValue::Uint128(<span class="kw-2">*</span>ptr.cast::&lt;u128&gt;().as_ref()),
-                CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; JITValue::Sint8(<span class="kw-2">*</span>ptr.cast::&lt;i8&gt;().as_ref()),
-                CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; JITValue::Sint16(<span class="kw-2">*</span>ptr.cast::&lt;i16&gt;().as_ref()),
-                CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; JITValue::Sint32(<span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_ref()),
-                CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; JITValue::Sint64(<span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_ref()),
-                CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; JITValue::Sint128(<span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_ref()),
-                CoreTypeConcrete::NonZero(info) =&gt; JITValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
+                CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint8(<span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_ref()),
+                CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint16(<span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_ref()),
+                CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint32(<span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_ref()),
+                CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint64(<span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_ref()),
+                CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint128(<span class="kw-2">*</span>ptr.cast::&lt;u128&gt;().as_ref()),
+                CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint8(<span class="kw-2">*</span>ptr.cast::&lt;i8&gt;().as_ref()),
+                CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint16(<span class="kw-2">*</span>ptr.cast::&lt;i16&gt;().as_ref()),
+                CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint32(<span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_ref()),
+                CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint64(<span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_ref()),
+                CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint128(<span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_ref()),
+                CoreTypeConcrete::NonZero(info) =&gt; <span class="self">Self</span>::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
                 CoreTypeConcrete::Nullable(info) =&gt; {
                     <span class="kw">let </span>inner_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ptr();
                     <span class="kw">if </span>inner_ptr.is_null() {
-                        JITValue::Null
+                        <span class="self">Self</span>::Null
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>value = JITValue::from_jit(
+                        <span class="kw">let </span>value = <span class="self">Self</span>::from_jit(
                             NonNull::new_unchecked(inner_ptr).cast(),
                             <span class="kw-2">&amp;</span>info.ty,
                             registry,
@@ -1395,9 +1327,10 @@
                             <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>,
                     )
                     .unwrap();
-                    <span class="kw">let </span>payload = <span class="self">Self</span>::from_jit(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry);
+                    <span class="kw">let </span>payload =
+                        JitValue::from_jit(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry);
 
-                    <span class="self">Self</span>::Enum {
+                    JitValue::Enum {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
@@ -1417,38 +1350,33 @@
                         };
                         layout = <span class="prelude-val">Some</span>(new_layout);
 
-                        members.push(JITValue::from_jit(
+                        members.push(<span class="self">Self</span>::from_jit(
                             NonNull::new(((ptr.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>()).unwrap(),
                             member_ty,
                             registry,
                         ));
                     }
 
-                    JITValue::Struct {
+                    JitValue::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; {
-                    <span class="kw">let </span>ptr = ptr.cast::&lt;NonNull&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;&gt;();
-                    <span class="kw">let </span>ptr = <span class="kw-2">*</span>ptr.as_ptr();
-                    <span class="kw">let </span>map = Box::from_raw(ptr.as_ptr());
+                    <span class="kw">let </span>map = Box::from_raw(
+                        ptr.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;()
+                            .as_ptr(),
+                    );
 
                     <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(map.len());
 
                     <span class="kw">for </span>(key, val_ptr) <span class="kw">in </span>map.iter() {
-                        <span class="kw">let </span>key = Felt::from_bytes_le_slice(key.as_slice());
+                        <span class="kw">let </span>key = Felt::from_bytes_le(key);
                         output_map.insert(key, <span class="self">Self</span>::from_jit(val_ptr.cast(), <span class="kw-2">&amp;</span>info.ty, registry));
-                        <span class="comment">// we need to free all the elements, which are allocated by libc realloc.
-                        </span>libc::free(val_ptr.as_ptr());
                     }
 
-                    <span class="comment">// we must leak to avoid a double free
-                    // as it was allocated in the arena and will be freed by it.
-                    </span>Box::leak(map);
-
-                    JITValue::Felt252Dict {
+                    JitValue::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -1463,7 +1391,6 @@
                 | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
                 | CoreTypeConcrete::EcOp(<span class="kw">_</span>)
                 | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
-                | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
                 | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
                     <span class="macro">unimplemented!</span>(<span class="string">&quot;handled before: {:?}&quot;</span>, type_id)
                 }
@@ -1474,11 +1401,13 @@
                     | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>)
                     | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; {
                         <span class="comment">// felt values
-                        </span><span class="kw">let </span>data = ptr.cast::&lt;[u32; <span class="number">8</span>]&gt;().as_ref();
-                        <span class="kw">let </span>data = u32_vec_to_felt(data);
-                        JITValue::Felt252(data)
+                        </span><span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref();
+                        <span class="kw">let </span>data = Felt::from_bytes_le(data);
+                        JitValue::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;should be handled before&quot;</span>),
+                    StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">unimplemented!</span>(<span class="string">&quot;should be handled before&quot;</span>)
+                    }
                     StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 },
                 CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement span from_jit&quot;</span>),
@@ -1497,67 +1426,6 @@
         };
 
         <span class="self">Self</span>::Felt252(biguint_to_felt(<span class="kw-2">&amp;</span>value))
-    }
-}
-
-<span class="doccomment">/// The [`ValueBuilder`] trait is implemented any de/serializable value, which is the `TType`
-/// generic.
-</span><span class="kw">pub trait </span>ValueBuilder {
-    <span class="doccomment">/// Return whether the type is considered complex or simple.
-    ///
-    /// Complex types are always passed by pointer (both as params and return values) and require a
-    /// stack allocation. Examples of complex values include structs and enums, but not felts since
-    /// LLVM considers them integers.
-    </span><span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
-}
-
-<span class="kw">impl </span>ValueBuilder <span class="kw">for </span>CoreTypeConcrete {
-    <span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Box(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::NonZero(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Nullable(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Enum(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::Struct(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::StarkNet(selector) =&gt; <span class="kw">match </span>selector {
-                StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-                StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            },
-            CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-        }
     }
 }
 </code></pre></div></section></main></body></html>

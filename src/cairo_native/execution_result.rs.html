@@ -114,10 +114,16 @@
 <a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
-    values::JITValue,
-    ExecutionResult,
+    values::JitValue,
 };
 <span class="kw">use </span>starknet_types_core::felt::Felt;
+
+<span class="doccomment">/// The result of the JIT execution.
+</span><span class="attr">#[derive(Debug, Clone, Eq, PartialEq)]
+</span><span class="kw">pub struct </span>ExecutionResult {
+    <span class="kw">pub </span>remaining_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+    <span class="kw">pub </span>return_value: JitValue,
+}
 
 <span class="doccomment">/// Starknet contract execution result.
 </span><span class="attr">#[derive(Debug, Default)]
@@ -134,24 +140,18 @@
         <span class="kw">let </span><span class="kw-2">mut </span>error_msg = <span class="prelude-val">None</span>;
         <span class="kw">let </span>failure_flag;
 
-        <span class="macro">assert_eq!</span>(
-            result.return_values.len(),
-            <span class="number">1</span>,
-            <span class="string">&quot;return values length doesnt match 1, which shouldn&#39;t happen with starknet contracts&quot;
-        </span>);
-
-        <span class="kw">let </span>return_values = <span class="kw">match </span><span class="kw-2">&amp;</span>result.return_values[<span class="number">0</span>] {
-            JITValue::Enum { tag, value, .. } =&gt; {
+        <span class="kw">let </span>return_values = <span class="kw">match </span><span class="kw-2">&amp;</span>result.return_value {
+            JitValue::Enum { tag, value, .. } =&gt; {
                 failure_flag = <span class="kw-2">*</span>tag != <span class="number">0</span>;
 
                 <span class="kw">if </span>!failure_flag {
-                    <span class="kw">if let </span>JITValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
-                        <span class="kw">if let </span>JITValue::Struct { fields, .. } = <span class="kw-2">&amp;</span>fields[<span class="number">0</span>] {
-                            <span class="kw">if let </span>JITValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">0</span>] {
+                    <span class="kw">if let </span>JitValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
+                        <span class="kw">if let </span>JitValue::Struct { fields, .. } = <span class="kw-2">&amp;</span>fields[<span class="number">0</span>] {
+                            <span class="kw">if let </span>JitValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">0</span>] {
                                 <span class="kw">let </span>felt_vec: Vec&lt;<span class="kw">_</span>&gt; = data
                                     .iter()
                                     .map(|x| {
-                                        <span class="kw">if let </span>JITValue::Felt252(f) = x {
+                                        <span class="kw">if let </span>JitValue::Felt252(f) = x {
                                             <span class="kw-2">*</span>f
                                         } <span class="kw">else </span>{
                                             <span class="macro">panic!</span>(<span class="string">&quot;should always be a felt&quot;</span>)
@@ -177,12 +177,12 @@
                             value
                         ))))<span class="question-mark">?
                     </span>}
-                } <span class="kw">else if let </span>JITValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
-                    <span class="kw">if let </span>JITValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">1</span>] {
+                } <span class="kw">else if let </span>JitValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
+                    <span class="kw">if let </span>JitValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">1</span>] {
                         <span class="kw">let </span>felt_vec: Vec&lt;<span class="kw">_</span>&gt; = data
                             .iter()
                             .map(|x| {
-                                <span class="kw">if let </span>JITValue::Felt252(f) = x {
+                                <span class="kw">if let </span>JitValue::Felt252(f) = x {
                                     <span class="kw-2">*</span>f
                                 } <span class="kw">else </span>{
                                     <span class="macro">panic!</span>(<span class="string">&quot;should always be a felt&quot;</span>)

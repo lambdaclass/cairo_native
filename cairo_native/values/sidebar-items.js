@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["JITValue"],"trait":["ValueBuilder"]};
+window.SIDEBAR_ITEMS = {"enum":["JitValue"]};

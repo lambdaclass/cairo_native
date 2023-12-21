@@ -4691,23 +4691,6 @@
 <a href="#4691" id="4691">4691</a>
 <a href="#4692" id="4692">4692</a>
 <a href="#4693" id="4693">4693</a>
-<a href="#4694" id="4694">4694</a>
-<a href="#4695" id="4695">4695</a>
-<a href="#4696" id="4696">4696</a>
-<a href="#4697" id="4697">4697</a>
-<a href="#4698" id="4698">4698</a>
-<a href="#4699" id="4699">4699</a>
-<a href="#4700" id="4700">4700</a>
-<a href="#4701" id="4701">4701</a>
-<a href="#4702" id="4702">4702</a>
-<a href="#4703" id="4703">4703</a>
-<a href="#4704" id="4704">4704</a>
-<a href="#4705" id="4705">4705</a>
-<a href="#4706" id="4706">4706</a>
-<a href="#4707" id="4707">4707</a>
-<a href="#4708" id="4708">4708</a>
-<a href="#4709" id="4709">4709</a>
-<a href="#4710" id="4710">4710</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 //!
 //! TODO
@@ -9138,7 +9121,6 @@
     <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
-
     <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="macro">lazy_static! </span>{
@@ -9188,37 +9170,31 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>class_hash_const() {
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>CLASS_HASH_CONST,
-            <span class="string">&quot;run_program&quot;</span>,
-            <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-        )
+        run_program_assert_output(<span class="kw-2">&amp;</span>CLASS_HASH_CONST, <span class="string">&quot;run_program&quot;</span>, <span class="kw-2">&amp;</span>[], Felt::from(<span class="number">0</span>).into())
     }
 
     <span class="attr">#[test]
+    #[cfg_attr(target_arch = <span class="string">&quot;aarch64&quot;</span>, ignore = <span class="string">&quot;LLVM code generation bug&quot;</span>)]
     </span><span class="kw">fn </span>storage_base_address_from_felt252() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            Felt::from(<span class="number">0</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            Felt::from(<span class="number">1</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(-<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                .unwrap()
+                .into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
@@ -9228,7 +9204,7 @@
             )
             .unwrap()
             .into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            Felt::from(<span class="number">0</span>).into(),
         );
     }
 
@@ -9238,13 +9214,13 @@
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            Felt::from(<span class="number">0</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            Felt::from(<span class="number">1</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
@@ -9254,11 +9230,9 @@
                     .unwrap()
                     .into(),
             ],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                .unwrap()
+                .into(),
         );
     }
 
@@ -9268,13 +9242,13 @@
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">0u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            Felt::from(<span class="number">0</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">0u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            Felt::from(<span class="number">1</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
@@ -9285,24 +9259,22 @@
                     .into(),
                 <span class="number">0u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                .unwrap()
+                .into(),
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">1u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            Felt::from(<span class="number">1</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">1u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into()],
+            Felt::from(<span class="number">2</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
@@ -9313,24 +9285,22 @@
                     .into(),
                 <span class="number">1u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719489&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719489&quot;</span>)
+                .unwrap()
+                .into(),
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">255u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">255</span>).into()],
+            Felt::from(<span class="number">255</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">255u8</span>.into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">256</span>).into()],
+            Felt::from(<span class="number">256</span>).into(),
         );
 
         run_program_assert_output(
@@ -9342,11 +9312,9 @@
                     .into(),
                 <span class="number">255u8</span>.into(),
             ],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719743&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719743&quot;</span>)
+                .unwrap()
+                .into(),
         );
     }
 
@@ -9356,13 +9324,13 @@
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            Felt::from(<span class="number">0</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            Felt::from(<span class="number">1</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
@@ -9372,11 +9340,9 @@
                     .unwrap()
                     .into(),
             ],
-            <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
-                    .unwrap()
-                    .into(),
-            ],
+            Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
+                .unwrap()
+                .into(),
         );
     }
 
@@ -9386,13 +9352,13 @@
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">0</span>).into())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">0</span>).into()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">1</span>).into())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">1</span>).into()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
@@ -9402,19 +9368,19 @@
                     .unwrap()
                     .into(),
             ],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(
+            <span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
                 Felt::from_dec_str(<span class="string">&quot;106710729501573572985208420194530329073740042555888586719488&quot;</span>)
                     .unwrap()
                     .into()
-            )],
+            ),
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">&quot;run_program&quot;</span>,
             <span class="kw-2">&amp;</span>[Felt::from(-<span class="number">1</span>).into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
     }
 }

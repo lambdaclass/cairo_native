@@ -880,7 +880,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">1u32</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">1u32</span>.into());
     }
 
     <span class="attr">#[test]
@@ -896,7 +896,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">4u64</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">4u64</span>.into());
     }
 
     <span class="attr">#[test]
@@ -916,9 +916,9 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_dict!</span>(
+            <span class="macro">jit_dict!</span>(
                 <span class="number">2 </span>=&gt; <span class="number">1u32
-            </span>)],
+            </span>),
         );
     }
 
@@ -951,7 +951,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[<span class="number">1345432_u32</span>.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="number">1345432_u32</span>.into());
     }
 }
 </code></pre></div></section></main></body></html>

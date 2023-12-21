@@ -187,7 +187,7 @@
 <a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box libfuncs
 //!
-//! A heap allocated value, its internally a pointer that can&#39;t be null.
+//! A heap allocated value, which is internally a pointer that can&#39;t be null.
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
@@ -337,7 +337,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
 
     <span class="attr">#[test]
@@ -353,7 +353,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[JITValue::Uint32(<span class="number">2</span>)]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], JitValue::Uint32(<span class="number">2</span>));
     }
 
     <span class="attr">#[test]
@@ -369,7 +369,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[JITValue::Uint32(<span class="number">2</span>)]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], JitValue::Uint32(<span class="number">2</span>));
     }
 }
 </code></pre></div></section></main></body></html>

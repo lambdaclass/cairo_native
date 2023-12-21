@@ -876,7 +876,7 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 #[cfg_attr(target_arch = <span class="string">&quot;x86_64&quot;</span>, repr(C, align(<span class="number">8</span>)))]
 #[cfg_attr(not(target_arch = <span class="string">&quot;x86_64&quot;</span>), repr(C, align(<span class="number">16</span>)))]
-</span><span class="kw">struct </span>Felt252Abi(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
+</span><span class="kw">pub struct </span>Felt252Abi(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
 <span class="doccomment">/// Binary representation of a `u256` (in MLIR).
 </span><span class="comment">// TODO: This shouldn&#39;t need to be public.
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -1101,21 +1101,21 @@
     }
 
     <span class="attr">#[repr(C)]
-    </span><span class="kw">union </span>SyscallResultAbi&lt;T&gt; {
-        ok: ManuallyDrop&lt;SyscallResultAbiOk&lt;T&gt;&gt;,
-        err: ManuallyDrop&lt;SyscallResultAbiErr&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">union </span>SyscallResultAbi&lt;T&gt; {
+        <span class="kw">pub </span>ok: ManuallyDrop&lt;SyscallResultAbiOk&lt;T&gt;&gt;,
+        <span class="kw">pub </span>err: ManuallyDrop&lt;SyscallResultAbiErr&gt;,
     }
 
     <span class="attr">#[repr(C)]
-    </span><span class="kw">struct </span>SyscallResultAbiOk&lt;T&gt; {
-        tag: u8,
-        payload: ManuallyDrop&lt;T&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyscallResultAbiOk&lt;T&gt; {
+        <span class="kw">pub </span>tag: u8,
+        <span class="kw">pub </span>payload: ManuallyDrop&lt;T&gt;,
     }
 
     <span class="attr">#[repr(C)]
-    </span><span class="kw">struct </span>SyscallResultAbiErr {
-        tag: u8,
-        payload: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyscallResultAbiErr {
+        <span class="kw">pub </span>tag: u8,
+        <span class="kw">pub </span>payload: (NonNull&lt;Felt252Abi&gt;, u32, u32),
     }
 
     <span class="attr">#[repr(C)]

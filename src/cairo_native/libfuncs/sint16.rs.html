@@ -848,9 +848,6 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i16`-related libfuncs
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 
@@ -1356,7 +1353,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1406,7 +1403,7 @@
             </span>}
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[i16::MIN.into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], i16::MIN.into());
     }
 
     <span class="attr">#[test]
@@ -1417,7 +1414,7 @@
             </span>}
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[(i16::MAX).into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], (i16::MAX).into());
     }
 
     <span class="attr">#[test]
@@ -1430,7 +1427,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into()]);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[], Felt::from(<span class="number">2</span>).into());
     }
 
     <span class="attr">#[test]
@@ -1447,10 +1444,7 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_struct!</span>(
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">32767i16</span>.into()),
-                <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-            )],
+            <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">32767i16</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),),
         );
     }
 
@@ -1469,7 +1463,7 @@
                         program,
                         <span class="string">&quot;run_test&quot;</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into()))],
+                        <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into())),
                     );
                 }
                 <span class="prelude-val">None </span>=&gt; {
@@ -1477,7 +1471,7 @@
                         program,
                         <span class="string">&quot;run_test&quot;</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="kw-2">&amp;</span>[<span class="macro">jit_panic!</span>(JITValue::Felt252(error))],
+                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -1521,7 +1515,7 @@
                         program,
                         <span class="string">&quot;run_test&quot;</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into()))],
+                        <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(result.into())),
                     );
                 }
                 <span class="prelude-val">None </span>=&gt; {
@@ -1529,7 +1523,7 @@
                         program,
                         <span class="string">&quot;run_test&quot;</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="kw-2">&amp;</span>[<span class="macro">jit_panic!</span>(JITValue::Felt252(error))],
+                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -1566,25 +1560,25 @@
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
     }
 
@@ -1596,13 +1590,13 @@
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
     }
 
@@ -1614,57 +1608,57 @@
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), i16::MAX.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), i16::MAX.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
 
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[i16::MAX.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[i16::MAX.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[i16::MAX.into(), i16::MAX.into()],
-            <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()),
         );
     }
 
@@ -1676,31 +1670,31 @@
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i32</span>.into()],
+            <span class="number">0i32</span>.into(),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">0i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i32</span>.into()],
+            <span class="number">0i32</span>.into(),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">0i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">0i32</span>.into()],
+            <span class="number">0i32</span>.into(),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[<span class="number">1i16</span>.into(), <span class="number">1i16</span>.into()],
-            <span class="kw-2">&amp;</span>[<span class="number">1i32</span>.into()],
+            <span class="number">1i32</span>.into(),
         );
         run_program_assert_output(
             program,
             <span class="string">&quot;run_test&quot;</span>,
             <span class="kw-2">&amp;</span>[i16::MAX.into(), i16::MAX.into()],
-            <span class="kw-2">&amp;</span>[(i16::MAX <span class="kw">as </span>i32 * i16::MAX <span class="kw">as </span>i32).into()],
+            (i16::MAX <span class="kw">as </span>i32 * i16::MAX <span class="kw">as </span>i32).into(),
         );
     }
 }

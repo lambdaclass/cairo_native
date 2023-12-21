@@ -463,6 +463,25 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>lazy_static::lazy_static;
@@ -470,6 +489,7 @@
 <span class="kw">use </span>starknet_curve::AffinePoint;
 <span class="kw">use </span>starknet_types_core::felt::{felt_to_bigint, Felt};
 <span class="kw">use </span>std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+
 <span class="macro">lazy_static! </span>{
     <span class="kw">pub static </span><span class="kw-2">ref </span>HALF_PRIME: FieldElement = FieldElement::from_dec_str(
         <span class="string">&quot;1809251394333065606848661391547535052811553607665798349986546028067936010240&quot;
@@ -622,9 +642,26 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>cairo_native__alloc_dict() -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    <span class="kw">let </span>map: Box&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt; = Box::default();
-    Box::into_raw(map) <span class="kw">as _
+    Box::into_raw(Box::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;::default()) <span class="kw">as _
 </span>}
+
+<span class="doccomment">/// Frees the dictionary.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+</span><span class="attr">#[no_mangle]
+</span><span class="kw">pub unsafe extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>cairo_native__dict_free(
+    ptr: <span class="kw-2">*mut </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
+) {
+    <span class="kw">let </span><span class="kw-2">mut </span>map = Box::from_raw(ptr);
+
+    <span class="comment">// Free the entries manually.
+    </span><span class="kw">for </span>(<span class="kw">_</span>, entry) <span class="kw">in </span>map.drain() {
+        libc::free(entry.as_ptr().cast());
+    }
+}
 
 <span class="doccomment">/// Gets the value for a given key, the returned pointer is null if not found.
 ///
@@ -634,12 +671,12 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>cairo_native__dict_get(
-    map: <span class="kw-2">*mut </span>std::ffi::c_void,
+    ptr: <span class="kw-2">*const </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
-) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    <span class="kw">let </span>ptr = map.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;();
+) -&gt; <span class="kw-2">*const </span>std::ffi::c_void {
+    <span class="kw">let </span>map: <span class="kw-2">&amp;</span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt; = <span class="kw-2">&amp;*</span>ptr;
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = (<span class="kw-2">*</span>ptr).get(key) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = map.get(key) {
         v.as_ptr()
     } <span class="kw">else </span>{
         std::ptr::null_mut()
@@ -654,11 +691,11 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>cairo_native__dict_insert(
-    map: <span class="kw-2">*mut </span>std::ffi::c_void,
+    ptr: <span class="kw-2">*mut </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     value: NonNull&lt;std::ffi::c_void&gt;,
 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    <span class="kw">let </span>ptr = map.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;();
+    <span class="kw">let </span>ptr = ptr.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;();
     <span class="kw">let </span>old_ptr = (<span class="kw-2">*</span>ptr).insert(<span class="kw-2">*</span>key, value);
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = old_ptr {
@@ -667,23 +704,6 @@
         std::ptr::null_mut()
     }
 }
-
-<span class="doccomment">/// Frees the dictionary.
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-</span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>cairo_native__dict_free(map: <span class="kw-2">*mut </span>std::ffi::c_void) {
-    <span class="kw">let </span>dict = map.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;();
-    <span class="kw">let </span>dict = Box::from_raw(dict);
-
-    <span class="kw">for </span>(<span class="kw">_</span>, entry) <span class="kw">in </span>dict.into_iter() {
-        libc::free(entry.as_ptr().cast());
-    }
-    <span class="comment">// freed by box drop
-</span>}
 
 <span class="doccomment">/// Compute `ec_point_from_x_nz(x)` and store it.
 ///
@@ -927,5 +947,23 @@
 
         <span class="bool-val">true
     </span>}
+}
+
+<span class="comment">// TODO: Remove from here.
+</span><span class="attr">#[no_mangle]
+</span><span class="kw">pub extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>__debug__breakpoint_marker() {
+    <span class="macro">println!</span>(<span class="string">&quot;[DEBUG] Breakpoint marker.&quot;</span>);
+}
+
+<span class="comment">// TODO: Remove from here.
+</span><span class="attr">#[no_mangle]
+</span><span class="kw">pub extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>__debug__print_i1(value: bool) {
+    <span class="macro">println!</span>(<span class="string">&quot;[DEBUG] {value}&quot;</span>);
+}
+
+<span class="comment">// TODO: Remove from here.
+</span><span class="attr">#[no_mangle]
+</span><span class="kw">pub extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>__debug__print_pointer(value: <span class="kw-2">*const </span>()) {
+    <span class="macro">println!</span>(<span class="string">&quot;[DEBUG] {value:018x?}&quot;</span>);
 }
 </code></pre></div></section></main></body></html>

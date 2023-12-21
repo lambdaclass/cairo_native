@@ -167,7 +167,7 @@
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
-<span class="kw">use </span>cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
+<span class="kw">use </span>cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -212,7 +212,7 @@
 
     <span class="comment">// Compile the sierra program into a MLIR module.
     </span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-    <span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
+    <span class="kw">let </span>native_executor = JitNativeExecutor::new(native_program);
 
     <span class="comment">// Initialize arguments and return values.
     </span><span class="kw">let </span>params_input = <span class="kw">match </span>args.inputs {
@@ -224,12 +224,12 @@
     <span class="kw">let </span>params = params_input
         .split_whitespace()
         .map(|x| {
-            JITValue::Felt252(Felt::from_dec_str(x).expect(<span class="string">&quot;input parameter is not a valid Felt&quot;</span>))
+            JitValue::Felt252(Felt::from_dec_str(x).expect(<span class="string">&quot;input parameter is not a valid Felt&quot;</span>))
         })
         .collect_vec();
 
     <span class="kw">let </span>result = native_executor
-        .execute(<span class="kw-2">&amp;</span>entry_point.id, <span class="kw-2">&amp;</span>params, <span class="prelude-val">Some</span>(u64::MAX.into()))
+        .invoke_dynamic(<span class="kw-2">&amp;</span>entry_point.id, <span class="kw-2">&amp;</span>params, <span class="prelude-val">Some</span>(u64::MAX.into()), <span class="prelude-val">None</span>)
         .unwrap();
 
     <span class="kw">match </span>args.outputs {
