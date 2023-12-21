@@ -10,7 +10,7 @@ use cairo_native::{
 };
 use criterion::{criterion_group, criterion_main, Criterion};
 use starknet_types_core::felt::Felt;
-use std::path::Path;
+use std::{mem::MaybeUninit, path::Path};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let context = NativeContext::new();
@@ -65,49 +65,63 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     unsafe {
-        let aot_factorial_fn = std::mem::transmute::<*const (), extern "C" fn(u128)>(
-            aot_factorial
+        #[allow(dead_code)]
+        struct PanicResult {
+            tag: u8,
+            payload: MaybeUninit<(i32, i32, *mut [u64; 4])>,
+        }
+
+        let aot_factorial_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                aot_factorial
+                    .find_function_ptr(factorial_function_id)
+                    .cast(),
+            );
+        let aot_fibonacci_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+            aot_fibonacci
+                .find_function_ptr(fibonacci_function_id)
+                .cast(),
+        );
+        let aot_logistic_map_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+            aot_logistic_map
+                .find_function_ptr(logistic_map_function_id)
+                .cast(),
+        );
+        let jit_factorial_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+            jit_factorial
                 .find_function_ptr(factorial_function_id)
                 .cast(),
         );
+        let jit_fibonacci_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+            jit_fibonacci
+                .find_function_ptr(fibonacci_function_id)
+                .cast(),
+        );
+        let jit_logistic_map_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+            jit_logistic_map
+                .find_function_ptr(logistic_map_function_id)
+                .cast(),
+        );
+
+        c.bench_function("Cached JIT factorial_2M (direct invoke)", |b| {
+            b.iter(|| jit_factorial_fn(u128::MAX));
+        });
+        c.bench_function("Cached JIT fib_2M (direct invoke)", |b| {
+            b.iter(|| jit_fibonacci_fn(u128::MAX));
+        });
+        c.bench_function("Cached JIT logistic_map (direct invoke)", |b| {
+            b.iter(|| jit_logistic_map_fn(u128::MAX));
+        });
+
         c.bench_function("Cached AOT factorial_2M (direct invoke)", |b| {
             b.iter(|| aot_factorial_fn(u128::MAX));
         });
-
-        // let aot_factorial_fn: &extern "C" fn(u128) =
-        //     std::mem::transmute(&*aot_factorial.find_function_ptr(factorial_function_id));
-        // let aot_fibonacci_fn: extern "C" fn(u128) =
-        //     std::mem::transmute_copy(&*aot_fibonacci.find_function_ptr(fibonacci_function_id));
-        // let aot_logistic_map_fn: extern "C" fn(u128) = std::mem::transmute_copy(
-        //     &*aot_logistic_map.find_function_ptr(logistic_map_function_id),
-        // );
-        // let jit_factorial_fn: extern "C" fn(u128) =
-        //     std::mem::transmute_copy(&*jit_factorial.find_function_ptr(factorial_function_id));
-        // let jit_fibonacci_fn: extern "C" fn(u128) =
-        //     std::mem::transmute_copy(&*jit_fibonacci.find_function_ptr(fibonacci_function_id));
-        // let jit_logistic_map_fn: extern "C" fn(u128) = std::mem::transmute_copy(
-        //     &*jit_logistic_map.find_function_ptr(logistic_map_function_id),
-        // );
-
-        // c.bench_function("Cached JIT factorial_2M (direct invoke)", |b| {
-        //     b.iter(|| jit_factorial_fn(u128::MAX));
-        // });
-        // c.bench_function("Cached JIT fib_2M (direct invoke)", |b| {
-        //     b.iter(|| jit_fibonacci_fn(u128::MAX));
-        // });
-        // c.bench_function("Cached JIT logistic_map (direct invoke)", |b| {
-        //     b.iter(|| jit_logistic_map_fn(u128::MAX));
-        // });
-
-        // c.bench_function("Cached AOT factorial_2M (direct invoke)", |b| {
-        //     b.iter(|| aot_factorial_fn(u128::MAX));
-        // });
-        // c.bench_function("Cached AOT fib_2M (direct invoke)", |b| {
-        //     b.iter(|| aot_fibonacci_fn(u128::MAX));
-        // });
-        // c.bench_function("Cached AOT logistic_map (direct invoke)", |b| {
-        //     b.iter(|| aot_logistic_map_fn(u128::MAX));
-        // });
+        c.bench_function("Cached AOT fib_2M (direct invoke)", |b| {
+            b.iter(|| aot_fibonacci_fn(u128::MAX));
+        });
+        c.bench_function("Cached AOT logistic_map (direct invoke)", |b| {
+            b.iter(|| aot_logistic_map_fn(u128::MAX));
+        });
     }
 }
 
