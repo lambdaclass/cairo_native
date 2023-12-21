@@ -686,13 +686,6 @@ where
 
     let new_elem_ptr = op.result(0)?.into();
 
-    /*
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(block_not_empty, location)?;
-    */
-
     let op = block_not_empty.append_operation(llvm::load(
         context,
         elem_ptr,
@@ -784,13 +777,6 @@ where
             .add_operands(&[array_opaque_ptr, array_ptr_src_opaque, elems_size])
             .build()?,
     );
-
-    /*
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .debug_breakpoint_trap(block_not_empty, location)?;
-    */
 
     let op = block_not_empty.append_operation(llvm::insert_value(
         context,
