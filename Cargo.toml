@@ -47,7 +47,7 @@ thiserror = "1.0"
 tracing = "0.1"
 llvm-sys = "170.0.0"
 tempfile = "3.6"
-starknet-types-core = { git = "https://github.com/starknet-io/types-rs.git", rev = "4bc8a5db3c86f017e8be7dc43531a2cb6db011c0", default-features = false, features = ["serde"] }
+starknet-types-core = { version = "0.0.4", default-features = false, features = ["serde"] }
 
 
 # CLI dependencies
