@@ -2,7 +2,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
-use cairo_native::{context::NativeContext, executor::NativeExecutor, values::JITValue};
+use cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
 use clap::Parser;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {
@@ -59,12 +59,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let params = params_input
         .split_whitespace()
         .map(|x| {
-            JITValue::Felt252(Felt::from_dec_str(x).expect("input parameter is not a valid Felt"))
+            JitValue::Felt252(Felt::from_dec_str(x).expect("input parameter is not a valid Felt"))
         })
         .collect_vec();
 
     let result = native_executor
-        .execute(&entry_point.id, &params, Some(u64::MAX.into()))
+        .invoke_dynamic(&entry_point.id, &params, Some(u64::MAX.into()), None)
         .unwrap();
 
     match args.outputs {

@@ -1,5 +1,5 @@
 use cairo_lang_runner::StarknetState;
-use cairo_native::{context::NativeContext, executor::NativeExecutor};
+use cairo_native::{context::NativeContext, executor::JitNativeExecutor};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use util::{create_vm_runner, prepare_programs};
 
@@ -56,11 +56,11 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     b.iter(|| {
                         let module = native_context.compile(program).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
-                        let native_executor = NativeExecutor::new(module);
+                        let native_executor = JitNativeExecutor::new(module);
 
                         // Execute the program.
                         let result = native_executor
-                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
                             .unwrap();
                         black_box(result)
                     })
@@ -74,19 +74,19 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let native_context = NativeContext::new();
                     let module = native_context.compile(program).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
-                    let native_executor = NativeExecutor::new(module);
+                    let native_executor = JitNativeExecutor::new(module);
 
                     // warmup
                     for _ in 0..5 {
                         native_executor
-                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
                             .unwrap();
                     }
 
                     b.iter(|| {
                         // Execute the program.
                         let result = native_executor
-                            .execute(&entry.id, &[], Some(u64::MAX as u128))
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
                             .unwrap();
                         black_box(result)
                     })

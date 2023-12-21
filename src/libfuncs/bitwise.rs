@@ -84,51 +84,51 @@ mod test {
 
     #[test]
     fn bitwise() {
-        let r = |lhs, rhs| run_program(&BITWISE, "run_test", &[lhs, rhs]).return_values;
+        let r = |lhs, rhs| run_program(&BITWISE, "run_test", &[lhs, rhs]).return_value;
 
         assert_eq!(
             r(
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0x00000000_00000000_00000000_00000000u128.into(),
             ),
-            [jit_struct!(
+            jit_struct!(
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0x00000000_00000000_00000000_00000000u128.into()
-            )]
+            )
         );
         assert_eq!(
             r(
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
             ),
-            [jit_struct!(
+            jit_struct!(
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
-            )]
+            )
         );
         assert_eq!(
             r(
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0x00000000_00000000_00000000_00000000u128.into(),
             ),
-            [jit_struct!(
+            jit_struct!(
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
-            )]
+            )
         );
         assert_eq!(
             r(
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
             ),
-            [jit_struct!(
+            jit_struct!(
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0x00000000_00000000_00000000_00000000u128.into(),
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
-            )]
+            )
         );
     }
 }

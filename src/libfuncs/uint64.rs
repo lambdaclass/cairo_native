@@ -710,7 +710,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -778,7 +778,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[0u64.into()]);
+        run_program_assert_output(&program, "run_test", &[], 0u64.into());
     }
 
     #[test]
@@ -789,7 +789,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[u64::MAX.into()]);
+        run_program_assert_output(&program, "run_test", &[], u64::MAX.into());
     }
 
     #[test]
@@ -802,7 +802,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[Felt::from(2).into()]);
+        run_program_assert_output(&program, "run_test", &[], Felt::from(2).into());
     }
 
     #[test]
@@ -822,10 +822,10 @@ mod test {
             &program,
             "run_test",
             &[],
-            &[jit_struct!(
+            jit_struct!(
                 jit_enum!(0, 18446744073709551615u64.into()),
                 jit_enum!(1, jit_struct!()),
-            )],
+            ),
         );
     }
 
@@ -844,7 +844,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -852,7 +852,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -896,7 +896,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -904,7 +904,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -941,25 +941,25 @@ mod test {
             program,
             "run_test",
             &[0u64.into(), 0u64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 0u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u64.into(), 1u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 1u64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
     }
 
@@ -971,13 +971,13 @@ mod test {
             program,
             "run_test",
             &[0u64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -989,57 +989,57 @@ mod test {
             program,
             "run_test",
             &[0u64.into(), 0u64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u64.into(), 1u64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u64.into(), 0xFFFFFFFFFFFFFFFFu64.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 0u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 1u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 0xFFFFFFFFFFFFFFFFu64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[0xFFFFFFFFFFFFFFFFu64.into(), 0u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0xFFFFFFFFFFFFFFFFu64.into(), 1u64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0xFFFFFFFFFFFFFFFFu64.into(), 0xFFFFFFFFFFFFFFFFu64.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -1047,12 +1047,12 @@ mod test {
     fn u64_sqrt() {
         let program = &U64_SQRT;
 
-        run_program_assert_output(program, "run_test", &[0u64.into()], &[0u32.into()]);
+        run_program_assert_output(program, "run_test", &[0u64.into()], 0u32.into());
         run_program_assert_output(
             program,
             "run_test",
             &[u64::MAX.into()],
-            &[0xFFFFFFFFu32.into()],
+            0xFFFFFFFFu32.into(),
         );
 
         for i in 0..u64::BITS {
@@ -1062,7 +1062,7 @@ mod test {
                 .try_into()
                 .expect("should always fit int oa u64");
 
-            run_program_assert_output(program, "run_test", &[x.into()], &[y.into()]);
+            run_program_assert_output(program, "run_test", &[x.into()], y.into());
         }
     }
 
@@ -1074,31 +1074,31 @@ mod test {
             program,
             "run_test",
             &[0u64.into(), 0u64.into()],
-            &[0u128.into()],
+            0u128.into(),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u64.into(), 1u64.into()],
-            &[0u128.into()],
+            0u128.into(),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 0u64.into()],
-            &[0u128.into()],
+            0u128.into(),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u64.into(), 1u64.into()],
-            &[1u128.into()],
+            1u128.into(),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u64::MAX.into(), u64::MAX.into()],
-            &[(u64::MAX as u128 * u64::MAX as u128).into()],
+            (u64::MAX as u128 * u64::MAX as u128).into(),
         );
     }
 }

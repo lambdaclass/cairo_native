@@ -102,3 +102,18 @@ impl GasMetadata {
             })
     }
 }
+
+impl Clone for GasMetadata {
+    fn clone(&self) -> Self {
+        Self {
+            ap_change_info: ApChangeInfo {
+                variable_values: self.ap_change_info.variable_values.clone(),
+                function_ap_change: self.ap_change_info.function_ap_change.clone(),
+            },
+            gas_info: GasInfo {
+                variable_values: self.gas_info.variable_values.clone(),
+                function_costs: self.gas_info.function_costs.clone(),
+            },
+        }
+    }
+}

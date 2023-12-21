@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
+use std::sync::Arc;
 use walkdir::WalkDir;
 
 pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {

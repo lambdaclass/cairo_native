@@ -2,8 +2,11 @@
 
 //! A Rusty interface to provide parameters to JIT calls.
 
-use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
-
+use crate::{
+    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    types::{felt252::PRIME, TypeBuilder},
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
@@ -13,28 +16,22 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use educe::Educe;
 use num_bigint::{BigInt, Sign};
 use starknet_types_core::felt::Felt;
+use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
-use crate::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
-    types::{felt252::PRIME, TypeBuilder},
-    utils::{
-        felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, u32_vec_to_felt,
-    },
-};
-
-/// A JITValue is a value that can be passed to the JIT engine as an argument or received as a result.
+/// A JitValue is a value that can be passed to the JIT engine as an argument or received as a result.
 ///
 /// They map to the cairo/sierra types.
 ///
-/// The debug_name field on some variants is `Some` when receiving a [`JITValue`] as a result.
+/// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Educe, Debug, Clone)]
-#[educe(PartialEq, Eq)]
-pub enum JITValue {
-    Felt252(Felt),
+#[derive(Clone, Educe)]
+#[educe(Debug, Eq, PartialEq)]
+pub enum JitValue {
+    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -71,91 +68,91 @@ pub enum JITValue {
 
 // Conversions
 
-impl From<Felt> for JITValue {
+impl From<Felt> for JitValue {
     fn from(value: Felt) -> Self {
-        JITValue::Felt252(value)
+        Self::Felt252(value)
     }
 }
 
-impl From<u8> for JITValue {
+impl From<u8> for JitValue {
     fn from(value: u8) -> Self {
-        JITValue::Uint8(value)
+        Self::Uint8(value)
     }
 }
 
-impl From<u16> for JITValue {
+impl From<u16> for JitValue {
     fn from(value: u16) -> Self {
-        JITValue::Uint16(value)
+        Self::Uint16(value)
     }
 }
 
-impl From<u32> for JITValue {
+impl From<u32> for JitValue {
     fn from(value: u32) -> Self {
-        JITValue::Uint32(value)
+        Self::Uint32(value)
     }
 }
 
-impl From<u64> for JITValue {
+impl From<u64> for JitValue {
     fn from(value: u64) -> Self {
-        JITValue::Uint64(value)
+        Self::Uint64(value)
     }
 }
 
-impl From<u128> for JITValue {
+impl From<u128> for JitValue {
     fn from(value: u128) -> Self {
-        JITValue::Uint128(value)
+        Self::Uint128(value)
     }
 }
 
-impl From<i8> for JITValue {
+impl From<i8> for JitValue {
     fn from(value: i8) -> Self {
-        JITValue::Sint8(value)
+        Self::Sint8(value)
     }
 }
 
-impl From<i16> for JITValue {
+impl From<i16> for JitValue {
     fn from(value: i16) -> Self {
-        JITValue::Sint16(value)
+        Self::Sint16(value)
     }
 }
 
-impl From<i32> for JITValue {
+impl From<i32> for JitValue {
     fn from(value: i32) -> Self {
-        JITValue::Sint32(value)
+        Self::Sint32(value)
     }
 }
 
-impl From<i64> for JITValue {
+impl From<i64> for JitValue {
     fn from(value: i64) -> Self {
-        JITValue::Sint64(value)
+        Self::Sint64(value)
     }
 }
 
-impl From<i128> for JITValue {
+impl From<i128> for JitValue {
     fn from(value: i128) -> Self {
-        JITValue::Sint128(value)
+        Self::Sint128(value)
     }
 }
 
-impl<T: Into<JITValue> + Clone> From<&[T]> for JITValue {
+impl<T: Into<JitValue> + Clone> From<&[T]> for JitValue {
     fn from(value: &[T]) -> Self {
         Self::Array(value.iter().map(|x| x.clone().into()).collect())
     }
 }
 
-impl<T: Into<JITValue>> From<Vec<T>> for JITValue {
+impl<T: Into<JitValue>> From<Vec<T>> for JitValue {
     fn from(value: Vec<T>) -> Self {
         Self::Array(value.into_iter().map(|x| x.into()).collect())
     }
 }
 
-impl<T: Into<JITValue>, const N: usize> From<[T; N]> for JITValue {
+impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
     fn from(value: [T; N]) -> Self {
         Self::Array(value.into_iter().map(|x| x.into()).collect())
     }
 }
 
-impl JITValue {
+impl JitValue {
     pub(crate) fn resolve_type<'a>(
         ty: &'a CoreTypeConcrete,
         registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
@@ -177,16 +174,15 @@ impl JITValue {
 
         Ok(unsafe {
             match self {
-                JITValue::Felt252(value) => {
+                Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
                     let data = felt252_bigint(value.to_bigint());
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-                JITValue::Array(data) => {
+                Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
-                        // todo: if its snapshot  cargo r --example starknet
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty
                             .layout(registry)
@@ -249,13 +245,14 @@ impl JITValue {
                         )))?
                     }
                 }
-                JITValue::Struct {
+                Self::Struct {
                     fields: members, ..
                 } => {
                     if let CoreTypeConcrete::Struct(info) = Self::resolve_type(ty, registry) {
                         let mut layout: Option<Layout> = None;
                         let mut data = Vec::with_capacity(info.members.len());
 
+                        let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
                             let member_layout = member_ty
@@ -268,10 +265,19 @@ impl JITValue {
                             };
                             layout = Some(new_layout);
 
+                            let member_ptr = member.to_jit(arena, registry, member_type_id)?;
                             data.push((
                                 member_layout,
                                 offset,
-                                member.to_jit(arena, registry, member_type_id)?,
+                                if member_ty.is_memory_allocated(registry) {
+                                    is_memory_allocated = true;
+
+                                    // Undo the wrapper pointer added because the member's memory
+                                    // allocated flag.
+                                    *member_ptr.cast::<NonNull<()>>().as_ref()
+                                } else {
+                                    member_ptr
+                                },
                             ));
                         }
 
@@ -290,7 +296,13 @@ impl JITValue {
                             );
                         }
 
-                        ptr
+                        if is_memory_allocated {
+                            NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
+                                .unwrap()
+                                .cast()
+                        } else {
+                            ptr
+                        }
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got a struct",
@@ -298,24 +310,24 @@ impl JITValue {
                         )))?
                     }
                 }
-                JITValue::Enum { tag, value, .. } => {
+                Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
-                        let tag_value = *tag;
-                        assert!(tag_value <= info.variants.len());
+                        assert!(*tag <= info.variants.len(), "Variant index out of range.");
 
-                        let payload_type_id = &info.variants[tag_value];
+                        let payload_type_id = &info.variants[*tag];
                         let payload = value.to_jit(arena, registry, payload_type_id)?;
 
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
                                 .unwrap();
-                        let ptr = arena.alloc_layout(layout).cast();
+                        let ptr = arena.alloc_layout(layout).cast::<()>();
 
                         match tag_layout.size() {
-                            1 => *ptr.cast::<u8>().as_mut() = tag_value as u8,
-                            2 => *ptr.cast::<u16>().as_mut() = tag_value as u16,
-                            4 => *ptr.cast::<u32>().as_mut() = tag_value as u32,
-                            8 => *ptr.cast::<u64>().as_mut() = tag_value as u64,
+                            0 => panic!("An enum without variants cannot be instantiated."),
+                            1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
+                            2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
+                            4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
+                            8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
                             _ => unreachable!(),
                         }
 
@@ -323,16 +335,18 @@ impl JITValue {
                             payload.cast::<u8>().as_ptr(),
                             NonNull::new(
                                 ((ptr.as_ptr() as usize)
-                                    + tag_layout.extend(variant_layouts[tag_value]).unwrap().1)
+                                    + tag_layout.extend(variant_layouts[*tag]).unwrap().1)
                                     as *mut u8,
                             )
                             .unwrap()
                             .cast()
                             .as_ptr(),
-                            variant_layouts[tag_value].size(),
+                            variant_layouts[*tag].size(),
                         );
 
-                        ptr
+                        NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
+                            .unwrap()
+                            .cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",
@@ -340,7 +354,7 @@ impl JITValue {
                         )))?
                     }
                 }
-                JITValue::Felt252Dict { value: map, .. } => {
+                Self::Felt252Dict { value: map, .. } => {
                     if let CoreTypeConcrete::Felt252Dict(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
@@ -365,24 +379,7 @@ impl JITValue {
                             value_map.insert(key, value_malloc_ptr);
                         }
 
-                        let target: NonNull<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>> =
-                            arena
-                                .alloc_layout(Layout::new::<
-                                    NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>,
-                                >())
-                                .cast();
-
-                        let map_ptr: NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>> = arena
-                            .alloc_layout(
-                                Layout::new::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
-                                    .pad_to_align(),
-                            )
-                            .cast();
-
-                        std::ptr::write(map_ptr.as_ptr(), value_map);
-                        std::ptr::write(target.as_ptr(), map_ptr);
-
-                        target.cast()
+                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -390,67 +387,67 @@ impl JITValue {
                         )))?
                     }
                 }
-                JITValue::Uint8(value) => {
+                Self::Uint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
                     *ptr.cast::<u8>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Uint16(value) => {
+                Self::Uint16(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u16>()).cast();
                     *ptr.cast::<u16>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Uint32(value) => {
+                Self::Uint32(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u32>()).cast();
                     *ptr.cast::<u32>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Uint64(value) => {
+                Self::Uint64(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
                     *ptr.cast::<u64>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Uint128(value) => {
+                Self::Uint128(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
                     *ptr.cast::<u128>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Sint8(value) => {
+                Self::Sint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<i8>()).cast();
                     *ptr.cast::<i8>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Sint16(value) => {
+                Self::Sint16(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<i16>()).cast();
                     *ptr.cast::<i16>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Sint32(value) => {
+                Self::Sint32(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<i32>()).cast();
                     *ptr.cast::<i32>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Sint64(value) => {
+                Self::Sint64(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<i64>()).cast();
                     *ptr.cast::<i64>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::Sint128(value) => {
+                Self::Sint128(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<i128>()).cast();
                     *ptr.cast::<i128>().as_mut() = *value;
 
                     ptr
                 }
-                JITValue::EcPoint(a, b) => {
+                Self::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
                         .cast();
@@ -463,7 +460,7 @@ impl JITValue {
 
                     ptr
                 }
-                JITValue::EcState(a, b, c, d) => {
+                Self::EcState(a, b, c, d) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
                         .cast();
@@ -478,7 +475,7 @@ impl JITValue {
 
                     ptr
                 }
-                JITValue::Null => {
+                Self::Null => {
                     unimplemented!("null is meant as return value for nullable for now")
                 }
             }
@@ -490,7 +487,7 @@ impl JITValue {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> JITValue {
+    ) -> Self {
         let ty = registry.get_type(type_id).unwrap();
 
         unsafe {
@@ -530,47 +527,48 @@ impl JITValue {
                 }
                 CoreTypeConcrete::Box(info) => {
                     let inner = *ptr.cast::<NonNull<()>>().as_ptr();
-                    let value = JITValue::from_jit(inner, &info.ty, registry);
+                    let value = Self::from_jit(inner, &info.ty, registry);
                     libc::free(inner.as_ptr().cast());
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
-                    let data = ptr.cast::<[[u32; 8]; 2]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 2]>().as_ref();
 
-                    JITValue::EcPoint(u32_vec_to_felt(&data[0]), u32_vec_to_felt(&data[1]))
+                    Self::EcPoint(Felt::from_bytes_le(&data[0]), Felt::from_bytes_le(&data[1]))
                 }
                 CoreTypeConcrete::EcState(_) => {
-                    let data = ptr.cast::<[[u32; 8]; 4]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 4]>().as_ref();
 
-                    JITValue::EcState(
-                        u32_vec_to_felt(&data[0]),
-                        u32_vec_to_felt(&data[1]),
-                        u32_vec_to_felt(&data[2]),
-                        u32_vec_to_felt(&data[3]),
+                    Self::EcState(
+                        Felt::from_bytes_le(&data[0]),
+                        Felt::from_bytes_le(&data[1]),
+                        Felt::from_bytes_le(&data[2]),
+                        Felt::from_bytes_le(&data[3]),
                     )
                 }
                 CoreTypeConcrete::Felt252(_) => {
-                    let data = ptr.cast::<[u32; 8]>().as_ref();
-                    let data = u32_vec_to_felt(data);
-                    JITValue::Felt252(data)
+                    let data = ptr.cast::<[u8; 32]>().as_ref();
+                    let data = Felt::from_bytes_le(data);
+                    Self::Felt252(data)
                 }
-                CoreTypeConcrete::Uint8(_) => JITValue::Uint8(*ptr.cast::<u8>().as_ref()),
-                CoreTypeConcrete::Uint16(_) => JITValue::Uint16(*ptr.cast::<u16>().as_ref()),
-                CoreTypeConcrete::Uint32(_) => JITValue::Uint32(*ptr.cast::<u32>().as_ref()),
-                CoreTypeConcrete::Uint64(_) => JITValue::Uint64(*ptr.cast::<u64>().as_ref()),
-                CoreTypeConcrete::Uint128(_) => JITValue::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Sint8(_) => JITValue::Sint8(*ptr.cast::<i8>().as_ref()),
-                CoreTypeConcrete::Sint16(_) => JITValue::Sint16(*ptr.cast::<i16>().as_ref()),
-                CoreTypeConcrete::Sint32(_) => JITValue::Sint32(*ptr.cast::<i32>().as_ref()),
-                CoreTypeConcrete::Sint64(_) => JITValue::Sint64(*ptr.cast::<i64>().as_ref()),
-                CoreTypeConcrete::Sint128(_) => JITValue::Sint128(*ptr.cast::<i128>().as_ref()),
-                CoreTypeConcrete::NonZero(info) => JITValue::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
+                CoreTypeConcrete::Uint16(_) => Self::Uint16(*ptr.cast::<u16>().as_ref()),
+                CoreTypeConcrete::Uint32(_) => Self::Uint32(*ptr.cast::<u32>().as_ref()),
+                CoreTypeConcrete::Uint64(_) => Self::Uint64(*ptr.cast::<u64>().as_ref()),
+                CoreTypeConcrete::Uint128(_) => Self::Uint128(*ptr.cast::<u128>().as_ref()),
+                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+                CoreTypeConcrete::Sint8(_) => Self::Sint8(*ptr.cast::<i8>().as_ref()),
+                CoreTypeConcrete::Sint16(_) => Self::Sint16(*ptr.cast::<i16>().as_ref()),
+                CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
+                CoreTypeConcrete::Sint64(_) => Self::Sint64(*ptr.cast::<i64>().as_ref()),
+                CoreTypeConcrete::Sint128(_) => Self::Sint128(*ptr.cast::<i128>().as_ref()),
+                CoreTypeConcrete::NonZero(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Nullable(info) => {
                     let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
                     if inner_ptr.is_null() {
-                        JITValue::Null
+                        Self::Null
                     } else {
-                        let value = JITValue::from_jit(
+                        let value = Self::from_jit(
                             NonNull::new_unchecked(inner_ptr).cast(),
                             &info.ty,
                             registry,
@@ -614,9 +612,10 @@ impl JITValue {
                             as *mut _,
                     )
                     .unwrap();
-                    let payload = Self::from_jit(payload_ptr, &info.variants[tag_value], registry);
+                    let payload =
+                        JitValue::from_jit(payload_ptr, &info.variants[tag_value], registry);
 
-                    Self::Enum {
+                    JitValue::Enum {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
@@ -636,38 +635,33 @@ impl JITValue {
                         };
                         layout = Some(new_layout);
 
-                        members.push(JITValue::from_jit(
+                        members.push(Self::from_jit(
                             NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
                             member_ty,
                             registry,
                         ));
                     }
 
-                    JITValue::Struct {
+                    JitValue::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let ptr = ptr.cast::<NonNull<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>>();
-                    let ptr = *ptr.as_ptr();
-                    let map = Box::from_raw(ptr.as_ptr());
+                    let map = Box::from_raw(
+                        ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
+                            .as_ptr(),
+                    );
 
                     let mut output_map = HashMap::with_capacity(map.len());
 
                     for (key, val_ptr) in map.iter() {
-                        let key = Felt::from_bytes_le_slice(key.as_slice());
+                        let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
-                        // we need to free all the elements, which are allocated by libc realloc.
-                        libc::free(val_ptr.as_ptr());
                     }
 
-                    // we must leak to avoid a double free
-                    // as it was allocated in the arena and will be freed by it.
-                    Box::leak(map);
-
-                    JITValue::Felt252Dict {
+                    JitValue::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -682,7 +676,6 @@ impl JITValue {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
-                | CoreTypeConcrete::Uint128MulGuarantee(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
                     unimplemented!("handled before: {:?}", type_id)
                 }
@@ -693,11 +686,13 @@ impl JITValue {
                     | StarkNetTypeConcrete::StorageBaseAddress(_)
                     | StarkNetTypeConcrete::StorageAddress(_) => {
                         // felt values
-                        let data = ptr.cast::<[u32; 8]>().as_ref();
-                        let data = u32_vec_to_felt(data);
-                        JITValue::Felt252(data)
+                        let data = ptr.cast::<[u8; 32]>().as_ref();
+                        let data = Felt::from_bytes_le(data);
+                        JitValue::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(_) => unimplemented!("should be handled before"),
+                    StarkNetTypeConcrete::System(_) => {
+                        unimplemented!("should be handled before")
+                    }
                     StarkNetTypeConcrete::Secp256Point(_) => todo!(),
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
@@ -716,66 +711,5 @@ impl JITValue {
         };
 
         Self::Felt252(Felt::from(&value))
-    }
-}
-
-/// The [`ValueBuilder`] trait is implemented any de/serializable value, which is the `TType`
-/// generic.
-pub trait ValueBuilder {
-    /// Return whether the type is considered complex or simple.
-    ///
-    /// Complex types are always passed by pointer (both as params and return values) and require a
-    /// stack allocation. Examples of complex values include structs and enums, but not felts since
-    /// LLVM considers them integers.
-    fn is_complex(&self) -> bool;
-}
-
-impl ValueBuilder for CoreTypeConcrete {
-    fn is_complex(&self) -> bool {
-        match self {
-            CoreTypeConcrete::Array(_) => true,
-            CoreTypeConcrete::Bitwise(_) => false,
-            CoreTypeConcrete::Box(_) => false,
-            CoreTypeConcrete::EcOp(_) => false,
-            CoreTypeConcrete::EcPoint(_) => true,
-            CoreTypeConcrete::EcState(_) => true,
-            CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => false,
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => false,
-            CoreTypeConcrete::Uint16(_) => false,
-            CoreTypeConcrete::Uint32(_) => false,
-            CoreTypeConcrete::Uint64(_) => false,
-            CoreTypeConcrete::Uint128(_) => false,
-            CoreTypeConcrete::Uint128MulGuarantee(_) => false,
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => false,
-            CoreTypeConcrete::RangeCheck(_) => false,
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => true,
-            CoreTypeConcrete::Struct(_) => true,
-            CoreTypeConcrete::Felt252Dict(_) => false,
-            CoreTypeConcrete::Felt252DictEntry(_) => true,
-            CoreTypeConcrete::SquashedFelt252Dict(_) => false,
-            CoreTypeConcrete::Pedersen(_) => false,
-            CoreTypeConcrete::Poseidon(_) => false,
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::ClassHash(_) => false,
-                StarkNetTypeConcrete::ContractAddress(_) => false,
-                StarkNetTypeConcrete::StorageBaseAddress(_) => false,
-                StarkNetTypeConcrete::StorageAddress(_) => false,
-                StarkNetTypeConcrete::System(_) => false,
-                StarkNetTypeConcrete::Secp256Point(_) => todo!(),
-            },
-            CoreTypeConcrete::SegmentArena(_) => false,
-            CoreTypeConcrete::Snapshot(_) => false,
-            CoreTypeConcrete::Sint8(_) => false,
-            CoreTypeConcrete::Sint16(_) => false,
-            CoreTypeConcrete::Sint32(_) => false,
-            CoreTypeConcrete::Sint64(_) => false,
-            CoreTypeConcrete::Sint128(_) => false,
-            CoreTypeConcrete::Bytes31(_) => false,
-        }
     }
 }

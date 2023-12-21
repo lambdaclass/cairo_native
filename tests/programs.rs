@@ -2,16 +2,14 @@ use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
-use common::compare_outputs;
+use cairo_native::values::JitValue;
+use common::{compare_outputs, DEFAULT_GAS};
 use lazy_static::lazy_static;
 use num_traits::Num;
 use proptest::prelude::*;
 
 mod common;
 mod starknet;
-
-const GAS: usize = usize::MAX;
 
 lazy_static! {
     pub static ref FACTORIAL: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -87,11 +85,15 @@ fn fib() {
         &FIB,
         "run_test",
         &[Arg::Value(DeprecatedFelt::from(10))],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-
-    let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(10.into())]);
+    let result_native = run_native_program(
+        &FIB,
+        "run_test",
+        &[JitValue::Felt252(10.into())],
+        Some(DEFAULT_GAS as u128),
+    );
 
     compare_outputs(
         &FIB.1,
@@ -108,12 +110,15 @@ fn logistic_map() {
         &LOGISTIC_MAP,
         "run_test",
         &[Arg::Value(DeprecatedFelt::from(1000))],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-
-    let result_native =
-        run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(1000.into())]);
+    let result_native = run_native_program(
+        &LOGISTIC_MAP,
+        "run_test",
+        &[JitValue::Felt252(1000.into())],
+        Some(DEFAULT_GAS as u128),
+    );
 
     compare_outputs(
         &LOGISTIC_MAP.1,
@@ -145,21 +150,21 @@ fn pedersen() {
                 .unwrap(),
             ),
         ],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-
     let result_native = run_native_program(
         &PEDERSEN,
         "run_test",
         &[
-            JITValue::felt_str(
+            JitValue::felt_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
             ),
-            JITValue::felt_str(
+            JitValue::felt_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             ),
         ],
+        Some(DEFAULT_GAS as u128),
     );
 
     compare_outputs(
@@ -177,10 +182,15 @@ fn factorial() {
         &FACTORIAL,
         "run_test",
         &[Arg::Value(DeprecatedFelt::from(13))],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
-    let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(13.into())]);
+    let result_native = run_native_program(
+        &FACTORIAL,
+        "run_test",
+        &[JitValue::Felt252(13.into())],
+        Some(DEFAULT_GAS as u128),
+    );
 
     compare_outputs(
         &FACTORIAL.1,
@@ -198,10 +208,15 @@ proptest! {
             &FIB,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from(n))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(&FIB, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(
+            &FIB,
+            "run_test",
+            &[JitValue::Felt252(n.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &FIB.1,
@@ -217,10 +232,15 @@ proptest! {
             &LOGISTIC_MAP,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from(n))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(&LOGISTIC_MAP, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(
+            &LOGISTIC_MAP,
+            "run_test",
+            &[JitValue::Felt252(n.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &LOGISTIC_MAP.1,
@@ -236,10 +256,15 @@ proptest! {
             &FACTORIAL,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from(n))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
-        let result_native = run_native_program(&FACTORIAL, "run_test", &[JITValue::Felt252(n.into())]);
+        let result_native = run_native_program(
+            &FACTORIAL,
+            "run_test",
+            &[JitValue::Felt252(n.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &FACTORIAL.1,
@@ -255,11 +280,16 @@ proptest! {
             &PEDERSEN,
             "run_test",
             &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
 
-        let result_native = run_native_program(&PEDERSEN, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b)]);
+        let result_native = run_native_program(
+            &PEDERSEN,
+            "run_test",
+            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &PEDERSEN.1,
@@ -277,11 +307,16 @@ proptest! {
             &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())),
              Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be())),
             Arg::Value(DeprecatedFelt::from_bytes_be(&c.clone().to_bytes_be()))],
-            Some(GAS),
+            Some(DEFAULT_GAS as usize),
         )
         .unwrap();
 
-        let result_native = run_native_program(&POSEIDON, "run_test", &[JITValue::Felt252(a), JITValue::Felt252(b), JITValue::Felt252(c)]);
+        let result_native = run_native_program(
+            &POSEIDON,
+            "run_test",
+            &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &POSEIDON.1,

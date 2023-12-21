@@ -7,6 +7,7 @@ mod Echo {
 
     #[constructor]
     fn constructor(ref self: ContractState, initial_balance: felt252) {
+        //panic_with_felt252('panic');
         self.balance.write(initial_balance);
     }
 

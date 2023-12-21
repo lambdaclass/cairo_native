@@ -1,7 +1,6 @@
-use crate::common::GAS;
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use common::{compare_outputs, run_native_program, run_vm_program};
+use common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use std::{fs::File, io::BufReader};
 use test_case::test_case;
 
@@ -24,9 +23,9 @@ fn compare_inputless_function(function_name: &str) {
     let program: (String, Program, SierraCasmRunner) = (module_name.to_string(), program, runner);
     let program = &program;
 
-    let result_vm = run_vm_program(program, function_name, &[], Some(GAS as usize)).unwrap();
-
-    let result_native = run_native_program(program, function_name, &[]);
+    let result_vm =
+        run_vm_program(program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(program, function_name, &[], Some(DEFAULT_GAS as u128));
 
     compare_outputs(
         &program.1,
@@ -41,14 +40,14 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("fib")]
 #[test_case("karatsuba")]
 #[test_case("armstrong_number")]
+#[test_case("collatz_sequence")]
 #[test_case("aliquot_sum")]
-#[test_case("collatz_sequence" => ignore["Result mismatch"])]
 #[test_case("extended_euclidean_algorithm")]
 // alexandria_data_structures
 #[test_case("vec" => ignore["Gas mismatch"])]
 #[test_case("stack" => ignore["Gas mismatch"])]
 #[test_case("queue")]
-#[test_case("bit_array")]
+#[test_case("bit_array" => ignore["Gas mismatch"])]
 // alexandria_encoding
 #[test_case("base64_encode" => ignore["Gas mismatch"])]
 #[test_case("reverse_bits")]

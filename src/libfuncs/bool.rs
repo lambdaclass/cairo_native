@@ -3,7 +3,7 @@
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
     error::{
-        libfuncs::{Error, ErrorImpl, Result},
+        libfuncs::{Error, Result},
         CoreTypeBuilderError,
     },
     metadata::MetadataStorage,
@@ -19,7 +19,11 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{attribute::DenseI64ArrayAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        r#type::IntegerType,
+        Block, Location,
+    },
     Context,
 };
 
@@ -94,7 +98,7 @@ fn build_bool_binary<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
     bin_op: BoolOp,
 ) -> Result<()>
@@ -116,22 +120,26 @@ where
     let lhs = entry.argument(0)?.into();
     let rhs = entry.argument(1)?.into();
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let lhs_tag = op.result(0)?.into();
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        rhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let rhs_tag = op.result(0)?.into();
+    let lhs_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            lhs,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            tag_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let rhs_tag = entry
+        .append_operation(llvm::extract_value(
+            context,
+            rhs,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            tag_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let op = match bin_op {
         BoolOp::And => entry.append_operation(arith::andi(lhs_tag, rhs_tag, location)),
@@ -140,16 +148,31 @@ where
     };
     let new_tag_value = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::insert_value(
-        context,
-        lhs,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        new_tag_value,
-        location,
-    ));
-    let value = op.result(0)?.into();
+    let res = entry
+        .append_operation(llvm::undef(
+            enum_ty.build(
+                context,
+                helper,
+                registry,
+                metadata,
+                &info.param_signatures()[0].ty,
+            )?,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let res = entry
+        .append_operation(llvm::insert_value(
+            context,
+            res,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            new_tag_value,
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    entry.append_operation(helper.br(0, &[value], location));
+    entry.append_operation(helper.br(0, &[res], location));
     Ok(())
 }
 
@@ -160,7 +183,7 @@ pub fn build_bool_not<'ctx, 'this, TType, TLibfunc>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
@@ -179,20 +202,20 @@ where
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let tag_value = op.result(0)?.into();
+    let tag_value = entry
+        .append_operation(llvm::extract_value(
+            context,
+            value,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            tag_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("1 : {tag_ty}"))
-            .ok_or(ErrorImpl::ParseAttributeError)?,
+        IntegerAttribute::new(1, tag_ty).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();
@@ -200,16 +223,31 @@ where
     let op = entry.append_operation(arith::xori(tag_value, const_1, location));
     let new_tag_value = op.result(0)?.into();
 
-    let op = entry.append_operation(llvm::insert_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        new_tag_value,
-        location,
-    ));
-    let value = op.result(0)?.into();
+    let res = entry
+        .append_operation(llvm::undef(
+            enum_ty.build(
+                context,
+                helper,
+                registry,
+                metadata,
+                &info.param_signatures()[0].ty,
+            )?,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let res = entry
+        .append_operation(llvm::insert_value(
+            context,
+            res,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            new_tag_value,
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    entry.append_operation(helper.br(0, &[value], location));
+    entry.append_operation(helper.br(0, &[res], location));
     Ok(())
 }
 
@@ -247,22 +285,22 @@ where
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        tag_ty,
-        location,
-    ));
-    let tag_value = op.result(0)?.into();
+    let tag_value = entry
+        .append_operation(llvm::extract_value(
+            context,
+            value,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            tag_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::extui(tag_value, felt252_ty, location));
 
     let result = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[result], location));
-
     Ok(())
 }
 
@@ -270,7 +308,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JITValue,
+        values::JitValue,
     };
 
     #[test]
@@ -283,13 +321,11 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -307,32 +343,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -350,32 +386,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -393,32 +429,32 @@ mod test {
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(1, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_program(
             &program,
             "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
-        .return_values;
-        assert_eq!(result, [jit_enum!(0, jit_struct!())]);
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -429,12 +465,10 @@ mod test {
             }
         );
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_values;
-        assert_eq!(result, [JITValue::Felt252(1.into())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+        assert_eq!(result, JitValue::Felt252(1.into()));
 
-        let result =
-            run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_values;
-        assert_eq!(result, [JITValue::Felt252(0.into())]);
+        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+        assert_eq!(result, JitValue::Felt252(0.into()));
     }
 }

@@ -249,7 +249,7 @@ mod test {
                 u64::MAX.into(),
                 u128::MAX.into(),
             ],
-            &[jit_struct!(
+            jit_struct!(
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
@@ -270,7 +270,7 @@ mod test {
                 ),
                 jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into()),),
                 jit_struct!(jit_enum!(0, u128::MAX.into()),),
-            )],
+            ),
         );
     }
 
@@ -286,7 +286,7 @@ mod test {
                 u64::MAX.into(),
                 u128::MAX.into(),
             ],
-            &[jit_struct!(
+            jit_struct!(
                 jit_struct!(u8::MAX.into()),
                 jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
                 jit_struct!(
@@ -307,7 +307,7 @@ mod test {
                     (u64::MAX as u128).into(),
                     u128::MAX.into()
                 ),
-            )],
+            ),
         );
     }
 }

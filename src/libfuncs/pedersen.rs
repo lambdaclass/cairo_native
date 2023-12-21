@@ -255,11 +255,11 @@ mod test {
             &program,
             "run_test",
             &[Felt::from(2).into(), Felt::from(4).into()],
-            &[Felt::from_dec_str(
+            Felt::from_dec_str(
                 "2178161520066714737684323463974044933282313051386084149915030950231093462467",
             )
             .unwrap()
-            .into()],
+            .into(),
         );
     }
 }

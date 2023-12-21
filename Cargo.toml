@@ -39,37 +39,36 @@ id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.147"
-melior = { version = "0.14.0", features = ["ods-dialects"] }
+llvm-sys = "170.0.0"
+melior = { version = "0.14.1", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
+starknet-types-core = { version = "0.0.4", default-features = false, features = ["serde"] }
+tempfile = "3.6"
 thiserror = "1.0"
 tracing = "0.1"
-llvm-sys = "170.0.0"
-tempfile = "3.6"
-starknet-types-core = { version = "0.0.4", default-features = false, features = ["serde"] }
 
 
 # CLI dependencies
+cairo-lang-sierra-ap-change = "2.3.1"
+cairo-lang-sierra-gas = "2.3.1"
+cairo-lang-starknet = "2.3.1"
+cairo-lang-utils = "2.3.1"
 cairo-native-runtime = { path = "runtime", optional = true }
 clap = { version = "4.3", features = ["derive"], optional = true }
+libloading = "0.8.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
 ], optional = true }
-cairo-lang-sierra-gas = "2.3.1"
-cairo-lang-sierra-ap-change = "2.3.1"
-cairo-lang-utils = "2.3.1"
-cairo-lang-starknet = "2.3.1"
 
 [dev-dependencies]
-cairo-lang-runner = "2.3.1"
 cairo-felt = "0.8.5"
+cairo-lang-runner = "2.3.1"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
-num-traits = "0.2"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.2"
-tempfile = "3.6"
 test-case = "3.2.1"
 walkdir = "2"
 serde_json = { version = "1.0"}

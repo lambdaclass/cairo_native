@@ -21,13 +21,13 @@
 //! | ------------------ | ----------------- | ------------------- |
 //! | 0 or 1             | `i0`              | `()`                |
 //! | 2                  | `i1`              | `u8`                |
-//! | 2 or 3             | `i2`              | `u8`                |
-//! | 4, 5, 6 or 7       | `i3`              | `u8`                |
-//! | 8 to 15            | `i4`              | `u8`                |
-//! | 128 to 255         | `i8`              | `u8`                |
-//! | 256 to 511         | `i9`              | `u16`               |
-//! | 32768 to 65535     | `i16`             | `u16`               |
-//! | 65536 to 131071    | `i17`             | `u32`               |
+//! | 3 or 4             | `i2`              | `u8`                |
+//! | 5, 6, 7 or 8       | `i3`              | `u8`                |
+//! | 9 to 16            | `i4`              | `u8`                |
+//! | 129 to 256         | `i8`              | `u8`                |
+//! | 257 to 512         | `i9`              | `u16`               |
+//! | 32769 to 65536     | `i16`             | `u16`               |
+//! | 65537 to 131072    | `i17`             | `u32`               |
 //!
 //! In Rust, the number of bits and bytes required can be obtained using the following formula:
 //!
@@ -437,37 +437,60 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    let (_, (tag_ty, tag_layout), variant_tys) =
-        get_type_for_variants(context, module, registry, metadata, &info.variants)?;
+    let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 
-    let (variant_ty, variant_layout) = variant_tys
-        .iter()
-        .copied()
-        .max_by_key(|(_, layout)| layout.align())
-        .unwrap_or((
-            llvm::r#type::r#struct(context, &[], false),
-            Layout::new::<()>(),
-        ));
+    let tag_layout = get_integer_layout(tag_bits);
+    let layout = info.variants.iter().fold(tag_layout, |acc, id| {
+        let layout = tag_layout
+            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .unwrap()
+            .0;
 
-    let filling_ty = llvm::r#type::array(
-        IntegerType::new(context, 8).into(),
-        (tag_layout.extend(variant_layout)?.1 - tag_layout.size()).try_into()?,
-    );
+        Layout::from_size_align(
+            acc.size().max(layout.size()),
+            acc.align().max(layout.align()),
+        )
+        .unwrap()
+    });
 
-    let total_len = variant_tys
-        .iter()
-        .map(|(_, layout)| tag_layout.extend(*layout).map(|(x, _)| x.size()))
-        .try_fold(0, |acc, x| x.map(|x| acc.max(x)))?;
-    let padding_ty = llvm::r#type::array(
-        IntegerType::new(context, 8).into(),
-        (total_len - tag_layout.extend(variant_layout)?.0.size()).try_into()?,
-    );
-
-    Ok(llvm::r#type::r#struct(
-        context,
-        &[tag_ty, filling_ty, variant_ty, padding_ty],
-        false,
-    ))
+    let i8_ty = IntegerType::new(context, 8).into();
+    Ok(if layout.size() == 0 {
+        llvm::r#type::array(i8_ty, 0)
+    } else {
+        match info.variants.len() {
+            0 => unreachable!(),
+            1 => llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, tag_bits).into(),
+                    registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+                ],
+                false,
+            ),
+            _ if info
+                .variants
+                .iter()
+                .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+            {
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, tag_bits).into(),
+                        llvm::r#type::array(i8_ty, 0),
+                    ],
+                    false,
+                )
+            }
+            _ => llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, (8 * layout.align()) as u32).into(),
+                    llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
+                ],
+                false,
+            ),
+        }
+    })
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.

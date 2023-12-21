@@ -2,14 +2,12 @@ use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JITValue;
-use common::compare_outputs;
+use cairo_native::values::JitValue;
+use common::{compare_outputs, DEFAULT_GAS};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
 mod common;
-
-const GAS: usize = usize::MAX;
 
 lazy_static! {
     static ref ARRAY_GET: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -62,13 +60,14 @@ fn array_get_test() {
             Arg::Value(DeprecatedFelt::from(10)),
             Arg::Value(DeprecatedFelt::from(5)),
         ],
-        Some(GAS),
+        Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
         program,
         "run_test",
-        &[JITValue::Felt252(10.into()), JITValue::Felt252(5.into())],
+        &[JitValue::Felt252(10.into()), JitValue::Felt252(5.into())],
+        Some(DEFAULT_GAS as u128),
     );
 
     compare_outputs(
@@ -87,8 +86,13 @@ proptest! {
         let result_vm = run_vm_program(program, "run_test", &[
             Arg::Value(DeprecatedFelt::from_bytes_be(&value.to_bytes_be())),
             Arg::Value(DeprecatedFelt::from(idx))
-        ], Some(GAS)).unwrap();
-        let result_native = run_native_program(program, "run_test", &[JITValue::Felt252(value), JITValue::Felt252(idx.into())]);
+        ], Some(DEFAULT_GAS as usize)).unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[JitValue::Felt252(value), JitValue::Felt252(idx.into())],
+            Some(DEFAULT_GAS as u128),
+        );
 
         compare_outputs(
             &program.1,

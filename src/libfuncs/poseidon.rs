@@ -311,7 +311,7 @@ mod test {
                 Felt::from(4).into(),
                 Felt::from(4).into(),
             ],
-            &[jit_struct!(
+            jit_struct!(
                 Felt::from_dec_str(
                     "1627044480024625333712068603977073585655327747658231320998869768849911913066"
                 )
@@ -327,7 +327,7 @@ mod test {
                 )
                 .unwrap()
                 .into(),
-            )],
+            ),
         );
     }
 }

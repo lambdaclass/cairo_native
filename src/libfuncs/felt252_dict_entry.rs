@@ -402,7 +402,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[1u32.into()]);
+        run_program_assert_output(&program, "run_test", &[], 1u32.into());
     }
 
     #[test]
@@ -418,7 +418,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[4u64.into()]);
+        run_program_assert_output(&program, "run_test", &[], 4u64.into());
     }
 
     #[test]
@@ -438,9 +438,9 @@ mod test {
             &program,
             "run_test",
             &[],
-            &[jit_dict!(
+            jit_dict!(
                 2 => 1u32
-            )],
+            ),
         );
     }
 
@@ -473,6 +473,6 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[1345432_u32.into()]);
+        run_program_assert_output(&program, "run_test", &[], 1345432_u32.into());
     }
 }
