@@ -28,7 +28,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None, None);
 

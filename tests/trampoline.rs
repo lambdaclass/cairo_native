@@ -13,7 +13,7 @@ fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> Execu
 
     let context = NativeContext::new();
     let module = context.compile(program).unwrap();
-    let executor = JitNativeExecutor::new(module);
+    let executor = JitNativeExecutor::from_native_module(module, Default::default());
 
     executor
         .invoke_dynamic(entry_point_id, args, None, None)

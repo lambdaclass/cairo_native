@@ -66,7 +66,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
     pass_manager.run(&mut module)?;
 
-    let object = cairo_native::module_to_object(&module)?;
+    let object = cairo_native::module_to_object(&module, Default::default())?;
 
     let file = NamedTempFile::new()?.into_temp_path();
     cairo_native::object_to_shared_lib(&object, &file)?;

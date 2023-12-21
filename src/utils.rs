@@ -3,6 +3,7 @@
 use crate::{
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
+    OptLevel,
 };
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
@@ -129,6 +130,7 @@ pub fn find_entry_point_by_idx(
 }
 
 /// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+#[track_caller]
 pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
     &program
         .funcs
@@ -180,9 +182,23 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
+pub fn create_engine(
+    module: &Module,
+    _metadata: &MetadataStorage,
+    opt_level: OptLevel,
+) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(module, 0, &[], false);
+    let engine = ExecutionEngine::new(
+        module,
+        match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        },
+        &[],
+        false,
+    );
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -803,7 +819,7 @@ pub mod test {
         let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
 
         let native_module = NativeModule::new(module, registry, metadata);
-        let executor = JitNativeExecutor::new(native_module);
+        let executor = JitNativeExecutor::from_native_module(native_module, Default::default());
         executor
             .invoke_dynamic(
                 entry_point_id,

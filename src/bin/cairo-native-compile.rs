@@ -16,6 +16,7 @@ use cairo_native::{
     debug_info::{DebugInfo, DebugLocations},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::run_pass_manager,
+    OptLevel,
 };
 use clap::Parser;
 use melior::{
@@ -32,23 +33,9 @@ use std::{
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Input .sierra or .cairo program.
-    input: PathBuf,
-
-    /// Output file, .so on linux, .dylib on macOS
-    output: PathBuf,
-
-    /// Whether the program is a contract.
-    #[arg(short, long)]
-    starknet: bool,
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments.
-    let args = Args::parse();
+    let args = CmdLine::parse();
 
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
@@ -90,8 +77,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_pass_manager(&context, &mut module)?;
 
-    let object = cairo_native::module_to_object(&module)?;
-    cairo_native::object_to_shared_lib(&object, &args.output)?;
+    let opt_level = match args.opt_level {
+        0 => OptLevel::None,
+        1 => OptLevel::Less,
+        2 => OptLevel::Default,
+        _ => OptLevel::Aggressive,
+    };
+
+    let object = cairo_native::module_to_object(&module, opt_level)?;
+    cairo_native::object_to_shared_lib(
+        &object,
+        match &args.output {
+            CompilerOutput::Stdout => Path::new("/dev/stdout"),
+            CompilerOutput::Path(x) => x,
+        },
+    )?;
 
     Ok(())
 }
@@ -183,6 +183,9 @@ fn load_program<'c>(
 struct CmdLine {
     #[clap(value_parser = parse_input)]
     input: PathBuf,
+
+    #[clap(short = 'O', long, default_value = "2")]
+    opt_level: usize,
 
     #[clap(short = 'o', long = "output", value_parser = parse_output, default_value = "-")]
     output: CompilerOutput,

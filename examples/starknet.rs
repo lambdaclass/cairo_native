@@ -313,7 +313,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
         .invoke_contract_dynamic(

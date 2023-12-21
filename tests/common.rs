@@ -242,7 +242,7 @@ pub fn run_native_program(
         .expect("Could not apply passes to the compiled test program.");
 
     let native_module = NativeModule::new(module, registry, metadata);
-    let executor = JitNativeExecutor::new(native_module);
+    let executor = JitNativeExecutor::from_native_module(native_module, Default::default());
     executor
         .invoke_dynamic(entry_point_id, args, gas, None)
         .unwrap()
@@ -298,7 +298,7 @@ where
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     native_executor
         .invoke_contract_dynamic(

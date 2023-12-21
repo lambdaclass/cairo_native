@@ -5,6 +5,7 @@ use crate::{
     module::NativeModule,
     utils::{create_engine, generate_function_name},
     values::JitValue,
+    OptLevel,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -27,7 +28,7 @@ pub struct JitNativeExecutor<'m> {
 }
 
 impl<'m> JitNativeExecutor<'m> {
-    pub fn new(native_module: NativeModule<'m>) -> Self {
+    pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
         let NativeModule {
             module,
             registry,
@@ -35,7 +36,7 @@ impl<'m> JitNativeExecutor<'m> {
         } = native_module;
 
         Self {
-            engine: create_engine(&module, &metadata),
+            engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.get::<GasMetadata>().cloned(),
@@ -98,7 +99,7 @@ impl<'m> JitNativeExecutor<'m> {
         ))
     }
 
-    fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
+    pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
 
