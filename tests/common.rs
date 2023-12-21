@@ -416,7 +416,7 @@ pub fn compare_outputs(
                 );
                 let vm_value = vm_rets.next().unwrap();
 
-                if let JITValue::Felt252(felt) = native_rets.next().unwrap() {
+                if let JitValue::Felt252(felt) = native_rets.next().unwrap() {
                     let native_value = felt.to_biguint();
                     let vm_value = BigUint::from_str(vm_value).unwrap();
                     prop_assert_eq!(vm_value, native_value, "felt value mismatch");
