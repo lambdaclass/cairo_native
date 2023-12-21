@@ -279,6 +279,9 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709535875u128));
+        assert_eq!(
+            result.remaining_gas,
+            Some(340282366920938463463374607431768195715),
+        );
     }
 }

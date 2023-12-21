@@ -503,7 +503,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -553,7 +553,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[i8::MIN.into()]);
+        run_program_assert_output(&program, "run_test", &[], i8::MIN.into());
     }
 
     #[test]
@@ -564,7 +564,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[(i8::MAX).into()]);
+        run_program_assert_output(&program, "run_test", &[], (i8::MAX).into());
     }
 
     #[test]
@@ -577,7 +577,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[Felt::from(2).into()]);
+        run_program_assert_output(&program, "run_test", &[], Felt::from(2).into());
     }
 
     #[test]
@@ -594,10 +594,7 @@ mod test {
             &program,
             "run_test",
             &[],
-            &[jit_struct!(
-                jit_enum!(0, 127i8.into()),
-                jit_enum!(1, jit_struct!()),
-            )],
+            jit_struct!(jit_enum!(0, 127i8.into()), jit_enum!(1, jit_struct!()),),
         );
     }
 
@@ -616,7 +613,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -624,7 +621,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -668,7 +665,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_enum!(0, jit_struct!(result.into()))],
+                        jit_enum!(0, jit_struct!(result.into())),
                     );
                 }
                 None => {
@@ -676,7 +673,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        &[jit_panic!(JITValue::Felt252(error))],
+                        jit_panic!(JitValue::Felt252(error)),
                     );
                 }
             }
@@ -713,25 +710,25 @@ mod test {
             program,
             "run_test",
             &[0i8.into(), 0i8.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into(), 0i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0i8.into(), 1i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into(), 1i8.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
     }
 
@@ -743,13 +740,13 @@ mod test {
             program,
             "run_test",
             &[0i8.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -761,57 +758,57 @@ mod test {
             program,
             "run_test",
             &[0i8.into(), 0i8.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0i8.into(), 1i8.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0i8.into(), i8::MAX.into()],
-            &[jit_enum!(1, jit_struct!())],
+            jit_enum!(1, jit_struct!()),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into(), 0i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into(), 1i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1i8.into(), i8::MAX.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
 
         run_program_assert_output(
             program,
             "run_test",
             &[i8::MAX.into(), 0i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[i8::MAX.into(), 1i8.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[i8::MAX.into(), i8::MAX.into()],
-            &[jit_enum!(0, jit_struct!())],
+            jit_enum!(0, jit_struct!()),
         );
     }
 
@@ -819,35 +816,15 @@ mod test {
     fn i8_widemul() {
         let program = &I8_WIDEMUL;
 
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i8.into(), 0i8.into()],
-            &[0i16.into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[0i8.into(), 1i8.into()],
-            &[0i16.into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i8.into(), 0i8.into()],
-            &[0i16.into()],
-        );
-        run_program_assert_output(
-            program,
-            "run_test",
-            &[1i8.into(), 1i8.into()],
-            &[1i16.into()],
-        );
+        run_program_assert_output(program, "run_test", &[0i8.into(), 0i8.into()], 0i16.into());
+        run_program_assert_output(program, "run_test", &[0i8.into(), 1i8.into()], 0i16.into());
+        run_program_assert_output(program, "run_test", &[1i8.into(), 0i8.into()], 0i16.into());
+        run_program_assert_output(program, "run_test", &[1i8.into(), 1i8.into()], 1i16.into());
         run_program_assert_output(
             program,
             "run_test",
             &[i8::MAX.into(), i8::MAX.into()],
-            &[(i8::MAX as i16 * i8::MAX as i16).into()],
+            (i8::MAX as i16 * i8::MAX as i16).into(),
         );
     }
 }

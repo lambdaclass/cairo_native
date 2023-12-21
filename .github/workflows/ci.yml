@@ -76,6 +76,7 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
@@ -116,12 +117,15 @@ jobs:
         run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
       - name: Install deps
         run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
       - name: test
         run: make test
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
     env:
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -134,18 +138,21 @@ jobs:
         uses: dtolnay/rust-toolchain@1.72.1
         with:
           components: clippy
-      - name: Install scarb 
+      - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
           scarb-version: "2.4.0"
       - name: Install deps
         run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
       - name: Run tests
         run: make test
   coverage:
     name: coverage
     runs-on: [self-hosted, macOS]
     env:
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -160,12 +167,14 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Install scarb 
+      - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
           scarb-version: "2.4.0"
       - name: Install deps
         run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
       - name: test and generate coverage
         run: make coverage
       - name: Upload coverage to Codecov

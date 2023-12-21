@@ -1,6 +1,6 @@
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JITValue;
+use cairo_native::executor::JitNativeExecutor;
+use cairo_native::values::JitValue;
 use starknet_types_core::felt::Felt;
 use std::path::Path;
 
@@ -17,18 +17,18 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JITValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     // Execute the program.
     let result = native_executor
-        .execute(entry_point_id, params, None)
+        .invoke_dynamic(entry_point_id, params, None, None)
         .unwrap();
 
     println!("Cairo program was compiled and executed successfully.");

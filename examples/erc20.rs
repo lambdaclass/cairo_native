@@ -1,9 +1,8 @@
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JITValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
@@ -308,29 +307,27 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     let result = native_executor
-        .execute_contract(
+        .invoke_contract_dynamic(
             fn_id,
             &[
-                JITValue::Felt252(Felt::from_bytes_be_slice(b"name")),
-                JITValue::Felt252(Felt::from_bytes_be_slice(b"symbol")),
-                JITValue::Felt252(Felt::from(0)),
-                JITValue::Felt252(Felt::from(i64::MAX)),
-                JITValue::Felt252(Felt::from(4)),
-                JITValue::Felt252(Felt::from(6)),
+                Felt::from_bytes_be_slice(b"name"),
+                Felt::from_bytes_be_slice(b"symbol"),
+                Felt::from(0),
+                Felt::from(i64::MAX),
+                Felt::from(4),
+                Felt::from(6),
             ],
-            u64::MAX.into(),
+            Some(u128::MAX),
+            Some(&SyscallHandlerMeta::new(&mut SyscallHandler)),
         )
         .expect("failed to execute the given contract");
 

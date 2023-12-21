@@ -17,7 +17,6 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -28,6 +27,11 @@ use std::{
     sync::Arc,
 };
 use thiserror::Error;
+
+#[cfg(target_os = "macos")]
+pub const SHARED_LIBRARY_EXT: &str = "dylib";
+#[cfg(target_os = "linux")]
+pub const SHARED_LIBRARY_EXT: &str = "so";
 
 /// Generate a function name.
 ///
@@ -175,22 +179,10 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
     digits.try_into().unwrap()
 }
 
-/// Converts a u32 slice into a Felt
-pub fn u32_vec_to_felt(u32_limbs: &[u32]) -> Felt {
-    let mut ret = vec![];
-
-    for limb in u32_limbs {
-        let bytes = limb.to_le_bytes();
-        ret.extend_from_slice(&bytes);
-    }
-
-    Felt::from_bytes_le_slice(&ret)
-}
-
 /// Creates the execution engine, with all symbols registered.
 pub fn create_engine(module: &Module, _metadata: &MetadataStorage) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(module, 3, &[], false);
+    let engine = ExecutionEngine::new(module, 0, &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -627,17 +619,19 @@ pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
     use crate::{
-        jit_runner::ExecutionResult,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
             syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
+        module::NativeModule,
         starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
-        values::JITValue,
+        utils::*,
+        values::JitValue,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -653,9 +647,10 @@ pub mod test {
         dialect::DialectRegistry,
         ir::{Location, Module},
         utility::{register_all_dialects, register_all_passes},
-        Context, ExecutionEngine,
+        Context,
     };
     use pretty_assertions_sorted::assert_eq;
+    use starknet_types_core::felt::Felt;
     use std::{env::var, fs, path::Path};
 
     macro_rules! load_cairo {
@@ -668,7 +663,7 @@ pub mod test {
     // Helper macros for faster testing.
     macro_rules! jit_struct {
         ( $($x:expr),* $(,)? ) => {
-            crate::values::JITValue::Struct {
+            crate::values::JitValue::Struct {
                 fields: vec![$($x), *],
                 debug_name: None
             }
@@ -676,7 +671,7 @@ pub mod test {
     }
     macro_rules! jit_enum {
         ( $tag:expr, $value:expr ) => {
-            crate::values::JITValue::Enum {
+            crate::values::JitValue::Enum {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
@@ -685,7 +680,7 @@ pub mod test {
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::JITValue::Felt252Dict {
+            crate::values::JitValue::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -719,7 +714,10 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| {
+                "/Users/esteve/Documents/LambdaClass/cairo_native".to_string()
+            }))
+            .join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(
@@ -741,7 +739,7 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JITValue],
+        args: &[JitValue],
     ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -766,26 +764,22 @@ pub mod test {
         register_all_passes();
 
         let mut module = Module::new(Location::unknown(&context));
-
         let mut metadata = MetadataStorage::new();
 
-        // Make the runtime library available.
+        // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
+        metadata
+            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
+            .unwrap();
 
-        // Gas
-        let required_initial_gas = if program
+        if program
             .type_declarations
             .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
+            .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
         {
             let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-
-            let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-            metadata.insert(gas_metadata).unwrap();
-            required_initial_gas
-        } else {
-            None
-        };
+            metadata.insert(gas_metadata);
+        }
 
         crate::compile::<CoreType, CoreLibfunc>(
             &context,
@@ -806,49 +800,29 @@ pub mod test {
         run_pass_manager(&context, &mut module)
             .expect("Could not apply passes to the compiled test program.");
 
-        let engine = ExecutionEngine::new(&module, 0, &[], false);
+        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
 
-        #[cfg(feature = "with-runtime")]
-        register_runtime_symbols(&engine);
-
-        #[cfg(feature = "with-debug-utils")]
-        metadata
-            .get::<crate::metadata::debug_utils::DebugUtils>()
+        let native_module = NativeModule::new(module, registry, metadata);
+        let executor = JitNativeExecutor::new(native_module);
+        executor
+            .invoke_dynamic(
+                entry_point_id,
+                args,
+                Some(u128::MAX),
+                syscall_handler.as_ref(),
+            )
             .unwrap()
-            .register_impls(&engine);
-
-        let mut handler = TestSyscallHandler;
-        let handler = SyscallHandlerMeta::new(&mut handler);
-
-        metadata.insert(handler).unwrap();
-        let handler = metadata.get::<SyscallHandlerMeta>().unwrap();
-
-        crate::execute(
-            &engine,
-            &registry,
-            &program
-                .funcs
-                .iter()
-                .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-                .expect("Test program entry point not found.")
-                .id,
-            args,
-            required_initial_gas,
-            Some(u64::MAX.into()),
-            Some(handler),
-        )
-        .expect("Test program execution failed.")
     }
 
     #[track_caller]
     pub fn run_program_assert_output(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JITValue],
-        outputs: &[JITValue],
+        args: &[JitValue],
+        output: JitValue,
     ) {
         let result = run_program(program, entry_point, args);
-        assert_eq!(result.return_values.as_slice(), outputs);
+        assert_eq!(result.return_value, output);
     }
 
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.

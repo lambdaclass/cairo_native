@@ -5,8 +5,8 @@ use llvm_sys::{
     },
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
-        LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
-        LLVM_InitializeAllTargets,
+        LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
+        LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
     },
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
@@ -18,6 +18,7 @@ use llvm_sys::{
 use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::MlirOperation;
 use std::{
+    borrow::Cow,
     error::Error,
     ffi::{c_void, CStr},
     fmt::Display,
@@ -69,6 +70,7 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
         LLVM_InitializeAllTargetInfos();
         LLVM_InitializeAllTargetMCs();
         LLVM_InitializeAllAsmPrinters();
+        LLVM_InitializeAllAsmParsers();
     });
 
     unsafe {
@@ -104,7 +106,8 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            // TODO: Convert this into a flag instead of hardcoding it to `-O0`.
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
@@ -151,35 +154,60 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     file.write_all(object)?;
     let file = file.into_temp_path();
 
-    let args: &[&str] = {
+    let file_path = file.display().to_string();
+    let output_path = output_filename.display().to_string();
+
+    let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
-            &[
-                "-demangle",
-                "-no_deduplicate",
-                "-dynamic",
-                "-dylib",
-                "-L/usr/local/lib",
-                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib",
-                &file.display().to_string(),
-                "-o",
-                &output_filename.display().to_string(),
-                "-lSystem",
-            ]
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "-demangle".into(),
+                "-no_deduplicate".into(),
+                "-dynamic".into(),
+                "-dylib".into(),
+                "-L/usr/local/lib".into(),
+                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib".into(),
+            ];
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
+                args.extend([Cow::from(format!("-L{extra_dir}"))]);
+            }
+
+            args.extend([
+                Cow::from(file_path),
+                "-o".into(),
+                Cow::from(output_path),
+                "-lSystem".into(),
+                "-lcairo_native_runtime".into(),
+            ]);
+            args
         }
         #[cfg(target_os = "linux")]
         {
-            &[
-                "--hash-style=gnu",
-                "--eh-frame-hdr",
-                "-shared",
-                "-o",
-                &output_filename.display().to_string(),
-                "-L/lib/../lib64",
-                "-L/usr/lib/../lib64",
-                "-lc",
-                &file.display().to_string(),
-            ]
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "--hash-style=gnu".into(),
+                "--eh-frame-hdr".into(),
+                "-shared".into(),
+                "-L/lib/../lib64".into(),
+                "-L/usr/lib/../lib64".into(),
+            ];
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
+                args.extend([
+                    Cow::from(format!("-L{extra_dir}")),
+                    format!("-rpath={extra_dir}").into(),
+                    format!("-rpath-link={extra_dir}").into(),
+                ]);
+            }
+
+            args.extend([
+                "-o".into(),
+                Cow::from(output_path),
+                "-lc".into(),
+                "-lcairo_native_runtime".into(),
+                Cow::from(file_path),
+            ]);
+            args
         }
         #[cfg(target_os = "windows")]
         {
@@ -188,7 +216,11 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     };
 
     let mut linker = std::process::Command::new("ld");
-    let proc = linker.args(args.iter()).spawn()?;
-    proc.wait_with_output()?;
-    Ok(())
+    let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
+    if proc.status.success() {
+        Ok(())
+    } else {
+        let msg = String::from_utf8_lossy(&proc.stderr);
+        panic!("error linking:\n{}", msg);
+    }
 }

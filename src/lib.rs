@@ -1,4 +1,4 @@
-// # Cairo Sierra to MLIR compiler and JIT engine
+//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
@@ -18,7 +18,7 @@
 //! use cairo_felt::Felt252;
 //! use cairo_native::context::NativeContext;
 //! use cairo_native::executor::NativeExecutor;
-//! use cairo_native::values::JITValue;
+//! use cairo_native::values::JitValue;
 //! use std::path::Path;
 //!
 //! let program_path = Path::new("programs/examples/hello.cairo");
@@ -33,7 +33,7 @@
 //! let native_program = native_context.compile(&sierra_program).unwrap();
 //!
 //! // The parameters of the entry point.
-//! let params = &[JITValue::Felt252(Felt252::from_bytes_be(b"user"))];
+//! let params = &[JitValue::Felt252(Felt252::from_bytes_be(b"user"))];
 //!
 //! // Find the entry point id by its name.
 //! let entry_point = "hello::hello::greet";
@@ -67,15 +67,10 @@
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
 
-#[macro_use]
-extern crate educe;
-
 pub use self::{
     compiler::compile,
-    jit_runner::{execute, execute_contract},
+    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError},
 };
-
-pub use self::jit_runner::ExecutionResult;
 
 pub mod cache;
 mod compiler;
@@ -85,7 +80,7 @@ pub mod error;
 pub mod execution_result;
 pub mod executor;
 mod ffi;
-mod jit_runner;
+// mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;
@@ -93,4 +88,3 @@ pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
-pub use ffi::{module_to_object, object_to_shared_lib, LLVMCompileError};

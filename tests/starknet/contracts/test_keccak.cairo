@@ -37,7 +37,6 @@ mod Keccak {
 
             let res = keccak::cairo_keccak(ref input, 0x11000010, 4);
 
-
             1
         }
     }

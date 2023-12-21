@@ -411,7 +411,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -431,21 +431,21 @@ mod test {
 
     #[test]
     fn u512_safe_divmod_by_u256() {
-        fn u512(value: BigUint) -> JITValue {
+        fn u512(value: BigUint) -> JitValue {
             assert!(value.bits() <= 512);
             jit_struct!(
-                JITValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
-                JITValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
-                JITValue::Uint128(((&value >> 256u32) & &u128::MAX.into()).try_into().unwrap()),
-                JITValue::Uint128(((&value >> 384u32) & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128(((&value >> 256u32) & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128(((&value >> 384u32) & &u128::MAX.into()).try_into().unwrap()),
             )
         }
 
-        fn u256(value: BigUint) -> JITValue {
+        fn u256(value: BigUint) -> JitValue {
             assert!(value.bits() <= 256);
             jit_struct!(
-                JITValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
-                JITValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+                JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
             )
         }
 
@@ -459,7 +459,7 @@ mod test {
                 &UINT512_DIVMOD_U256,
                 "run_test",
                 &[lhs, rhs],
-                &[jit_struct!(output_u512, output_u256)],
+                jit_struct!(output_u512, output_u256),
             );
         }
 

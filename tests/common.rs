@@ -21,19 +21,19 @@ use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
-    execution_result::ContractExecutionResult,
-    executor::NativeExecutor,
+    execution_result::{ContractExecutionResult, ExecutionResult},
+    executor::JitNativeExecutor,
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
         syscall_handler::SyscallHandlerMeta,
         MetadataStorage,
     },
+    module::NativeModule,
     starknet::StarkNetSyscallHandler,
     types::felt252::{HALF_PRIME, PRIME},
-    utils::{find_entry_point_by_idx, register_runtime_symbols, run_pass_manager},
-    values::JITValue,
-    ExecutionResult,
+    utils::{find_entry_point_by_idx, run_pass_manager},
+    values::JitValue,
 };
 use lambdaworks_math::{
     field::{
@@ -45,14 +45,20 @@ use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
     utility::{register_all_dialects, register_all_passes},
-    Context, ExecutionEngine,
+    Context,
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::{felt_to_biguint, Felt};
 use std::{
-    env::var, fs, iter::Peekable, ops::Neg, path::Path, slice::Iter, str::FromStr, sync::Arc,
+    env::var,
+    fs,
+    iter::{once, Peekable},
+    ops::Neg,
+    path::Path,
+    str::FromStr,
+    sync::Arc,
 };
 
 #[allow(unused_macros)]
@@ -65,7 +71,7 @@ macro_rules! load_cairo {
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
 
-pub(crate) const GAS: u64 = u64::MAX;
+pub const DEFAULT_GAS: u64 = u64::MAX;
 
 // Parse numeric string into felt, wrapping negatives around the prime modulo.
 pub fn felt(value: &str) -> [u32; 8] {
@@ -182,7 +188,8 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[JITValue],
+    args: &[JitValue],
+    gas: Option<u128>,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -207,24 +214,15 @@ pub fn run_native_program(
     register_all_passes();
 
     let mut module = Module::new(Location::unknown(&context));
-
     let mut metadata = MetadataStorage::new();
+
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-    // Gas
-    let required_initial_gas = if program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin")
-    {
-        let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+    metadata.insert(GasMetadata::new(
+        program,
+        MetadataComputationConfig::default(),
+    ));
 
-        let required_initial_gas = { gas_metadata.get_initial_required_gas(entry_point_id) };
-        metadata.insert(gas_metadata).unwrap();
-        required_initial_gas
-    } else {
-        None
-    };
     cairo_native::compile::<CoreType, CoreLibfunc>(
         &context,
         &module,
@@ -244,21 +242,11 @@ pub fn run_native_program(
     run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
-    let engine = ExecutionEngine::new(&module, 0, &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-
-    cairo_native::execute(
-        &engine,
-        &registry,
-        entry_point_id,
-        args,
-        required_initial_gas,
-        Some(u64::MAX.into()),
-        None,
-    )
-    .expect("Test program execution failed.")
+    let native_module = NativeModule::new(module, registry, metadata);
+    let executor = JitNativeExecutor::new(native_module);
+    executor
+        .invoke_dynamic(entry_point_id, args, gas, None)
+        .unwrap()
 }
 
 /// Runs the program on the cairo-vm
@@ -282,9 +270,8 @@ pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let result_vm = run_vm_program(program, "main", &[], Some(GAS as usize)).unwrap();
-
-    let result_native = run_native_program(program, "main", &[]);
+    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128));
 
     compare_outputs(
         &program.1,
@@ -299,7 +286,7 @@ pub fn compare_inputless_program(program_path: &str) {
 pub fn run_native_starknet_contract<T>(
     sierra_program: &Program,
     entry_point_function_idx: usize,
-    args: &[JITValue],
+    args: &[Felt],
     handler: &mut T,
 ) -> ContractExecutionResult
 where
@@ -307,18 +294,20 @@ where
 {
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(handler))
-        .unwrap();
+    let native_program = native_context.compile(sierra_program).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::new(native_program);
 
     native_executor
-        .execute_contract(entry_point_id, args, u64::MAX as u128)
+        .invoke_contract_dynamic(
+            entry_point_id,
+            args,
+            u128::MAX.into(),
+            Some(&SyscallHandlerMeta::new(handler)),
+        )
         .expect("failed to execute the given contract")
 }
 
@@ -345,7 +334,7 @@ pub fn compare_outputs(
         .expect("entry point should exist");
 
     let ret_types = &func.signature.ret_types;
-    let mut native_rets = native_result.return_values.iter().peekable();
+    let mut native_rets = once(&native_result.return_value).peekable();
     let vm_return_vals = get_run_result(&vm_result.value);
     let mut vm_rets = vm_return_vals.iter().peekable();
     let vm_gas: u128 = vm_result
@@ -357,17 +346,20 @@ pub fn compare_outputs(
     prop_assert_eq!(vm_gas, native_gas, "gas mismatch");
 
     #[track_caller]
-    fn check_next_type<'a>(
+    fn check_next_type<'a, I>(
         ty: &CoreTypeConcrete,
-        native_rets: &mut impl Iterator<Item = &'a JITValue>,
-        vm_rets: &mut Peekable<Iter<'_, String>>,
+        native_rets: &mut impl Iterator<Item = &'a JitValue>,
+        vm_rets: &mut Peekable<I>,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
         vm_memory: &Vec<Option<Felt252>>,
-    ) -> Result<(), TestCaseError> {
+    ) -> Result<(), TestCaseError>
+    where
+        I: Iterator<Item = &'a String>,
+    {
         let mut native_rets = native_rets.into_iter().peekable();
         match ty {
             CoreTypeConcrete::Array(info) => {
-                if let JITValue::Array(data) = native_rets.next().unwrap() {
+                if let JitValue::Array(data) = native_rets.next().unwrap() {
                     // When it comes to arrays, the vm result contains the starting and ending addresses of the array in memory,
                     // so we need to fetch each value from the relocated vm memory
                     // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
@@ -403,7 +395,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcPoint(_) => {
                 let native_data = native_rets.next().unwrap();
 
-                if let JITValue::EcPoint(a, b) = native_data {
+                if let JitValue::EcPoint(a, b) = native_data {
                     let vm_a = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
                     let vm_b = BigUint::from_str(vm_rets.next().unwrap()).unwrap();
 
@@ -424,7 +416,7 @@ pub fn compare_outputs(
                 );
                 let vm_value = vm_rets.next().unwrap();
 
-                if let JITValue::Felt252(felt) = native_rets.next().unwrap() {
+                if let JitValue::Felt252(felt) = native_rets.next().unwrap() {
                     let native_value = felt_to_biguint(*felt);
                     let vm_value = BigUint::from_str(vm_value).unwrap();
                     prop_assert_eq!(vm_value, native_value, "felt value mismatch");
@@ -443,7 +435,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u8 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u8 = if let JITValue::Uint8(v) = native_rets.next().unwrap() {
+                let native_value: u8 = if let JitValue::Uint8(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -457,7 +449,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u16 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u16 = if let JITValue::Uint16(v) = native_rets.next().unwrap() {
+                let native_value: u16 = if let JitValue::Uint16(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -471,7 +463,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u32 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u32 = if let JITValue::Uint32(v) = native_rets.next().unwrap() {
+                let native_value: u32 = if let JitValue::Uint32(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -485,7 +477,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u64 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u64 = if let JITValue::Uint64(v) = native_rets.next().unwrap() {
+                let native_value: u64 = if let JitValue::Uint64(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -499,7 +491,7 @@ pub fn compare_outputs(
                     "cairo-native missing next value"
                 );
                 let vm_value: u128 = vm_rets.next().unwrap().parse().unwrap();
-                let native_value: u128 = if let JITValue::Uint128(v) = native_rets.next().unwrap() {
+                let native_value: u128 = if let JitValue::Uint128(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -525,7 +517,7 @@ pub fn compare_outputs(
                     vm_rets.next();
                     prop_assert_eq!(
                         native_rets.next().expect("cairo-native missing next value"),
-                        &JITValue::Null,
+                        &JitValue::Null,
                         "native should return null"
                     );
                 } else {
@@ -555,7 +547,7 @@ pub fn compare_outputs(
                    0 is a filler.
                 */
                 prop_assert!(native_rets.peek().is_some());
-                if let JITValue::Enum {
+                if let JitValue::Enum {
                     tag: native_tag,
                     value,
                     ..
@@ -645,9 +637,9 @@ pub fn compare_outputs(
                 };
             }
             CoreTypeConcrete::Struct(info) => {
-                if let JITValue::Struct { fields, .. } = native_rets.next().unwrap() {
+                if let JitValue::Struct { fields, .. } = native_rets.next().unwrap() {
                     // Check if it is a Panic result
-                    if let Some(JITValue::Struct {
+                    if let Some(JitValue::Struct {
                         fields: _,
                         debug_name,
                     }) = fields.get(0)
@@ -661,7 +653,7 @@ pub fn compare_outputs(
                                 fields.len() == 2,
                                 "Panic result has incorrect number of fields"
                             );
-                            if let JITValue::Array(panic_data) = &fields[1] {
+                            if let JitValue::Array(panic_data) = &fields[1] {
                                 // This is easier than crafting a ConcreteType::Felt252 variant
                                 let felt_concrete_type =
                                     match reg.get_type(&info.members[1]).unwrap() {
@@ -724,7 +716,7 @@ pub fn compare_outputs(
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
-                let native_value: i8 = if let JITValue::Sint8(v) = native_rets.next().unwrap() {
+                let native_value: i8 = if let JitValue::Sint8(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -742,7 +734,7 @@ pub fn compare_outputs(
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
-                let native_value: i16 = if let JITValue::Sint16(v) = native_rets.next().unwrap() {
+                let native_value: i16 = if let JitValue::Sint16(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -760,7 +752,7 @@ pub fn compare_outputs(
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
-                let native_value: i32 = if let JITValue::Sint32(v) = native_rets.next().unwrap() {
+                let native_value: i32 = if let JitValue::Sint32(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -778,7 +770,7 @@ pub fn compare_outputs(
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
-                let native_value: i64 = if let JITValue::Sint64(v) = native_rets.next().unwrap() {
+                let native_value: i64 = if let JitValue::Sint64(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")
@@ -796,7 +788,7 @@ pub fn compare_outputs(
                 if vm_value > *HALF_PRIME {
                     vm_value -= BigInt::from_biguint(Sign::Plus, PRIME.clone());
                 }
-                let native_value: i128 = if let JITValue::Sint128(v) = native_rets.next().unwrap() {
+                let native_value: i128 = if let JitValue::Sint128(v) = native_rets.next().unwrap() {
                     *v
                 } else {
                     panic!("invalid type")

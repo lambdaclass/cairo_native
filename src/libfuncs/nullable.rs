@@ -174,7 +174,7 @@ where
 mod test {
     use crate::{
         utils::test::{jit_struct, load_cairo, run_program_assert_output},
-        values::JITValue,
+        values::JitValue,
     };
 
     #[test]
@@ -191,7 +191,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[jit_struct!()]);
+        run_program_assert_output(&program, "run_test", &[], jit_struct!());
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], &[JITValue::Null]);
+        run_program_assert_output(&program, "run_test", &[], JitValue::Null);
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[4u8.into()], &[4u8.into()]);
-        run_program_assert_output(&program, "run_test", &[0u8.into()], &[99u8.into()]);
+        run_program_assert_output(&program, "run_test", &[4u8.into()], 4u8.into());
+        run_program_assert_output(&program, "run_test", &[0u8.into()], 99u8.into());
     }
 }

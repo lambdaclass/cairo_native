@@ -1,9 +1,15 @@
 use crate::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
-    values::JITValue,
-    ExecutionResult,
+    values::JitValue,
 };
 use starknet_types_core::felt::Felt;
+
+/// The result of the JIT execution.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ExecutionResult {
+    pub remaining_gas: Option<u128>,
+    pub return_value: JitValue,
+}
 
 /// Starknet contract execution result.
 #[derive(Debug, Default)]
@@ -20,24 +26,18 @@ impl ContractExecutionResult {
         let mut error_msg = None;
         let failure_flag;
 
-        assert_eq!(
-            result.return_values.len(),
-            1,
-            "return values length doesnt match 1, which shouldn't happen with starknet contracts"
-        );
-
-        let return_values = match &result.return_values[0] {
-            JITValue::Enum { tag, value, .. } => {
+        let return_values = match &result.return_value {
+            JitValue::Enum { tag, value, .. } => {
                 failure_flag = *tag != 0;
 
                 if !failure_flag {
-                    if let JITValue::Struct { fields, .. } = &**value {
-                        if let JITValue::Struct { fields, .. } = &fields[0] {
-                            if let JITValue::Array(data) = &fields[0] {
+                    if let JitValue::Struct { fields, .. } = &**value {
+                        if let JitValue::Struct { fields, .. } = &fields[0] {
+                            if let JitValue::Array(data) = &fields[0] {
                                 let felt_vec: Vec<_> = data
                                     .iter()
                                     .map(|x| {
-                                        if let JITValue::Felt252(f) = x {
+                                        if let JitValue::Felt252(f) = x {
                                             *f
                                         } else {
                                             panic!("should always be a felt")
@@ -63,12 +63,12 @@ impl ContractExecutionResult {
                             value
                         ))))?
                     }
-                } else if let JITValue::Struct { fields, .. } = &**value {
-                    if let JITValue::Array(data) = &fields[1] {
+                } else if let JitValue::Struct { fields, .. } = &**value {
+                    if let JitValue::Array(data) = &fields[1] {
                         let felt_vec: Vec<_> = data
                             .iter()
                             .map(|x| {
-                                if let JITValue::Felt252(f) = x {
+                                if let JitValue::Felt252(f) = x {
                                     *f
                                 } else {
                                     panic!("should always be a felt")

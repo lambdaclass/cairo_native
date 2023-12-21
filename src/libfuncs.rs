@@ -280,7 +280,7 @@ where
     /// The init block is used for `llvm.alloca` instructions. It is guaranteed to not be executed
     /// multiple times on tail-recursive functions. This property allows generating tail-recursive
     /// functions that do not grow the stack.
-    pub fn init_block(&self) -> &Block<'ctx> {
+    pub fn init_block(&self) -> &'this Block<'ctx> {
         self.init_block
     }
 
@@ -479,7 +479,7 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
@@ -489,7 +489,7 @@ pub(crate) enum BranchArg<'ctx, 'this> {
 ///
 /// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
 /// statement's branches using [BranchTarget::Return] with the branch index.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum BranchTarget<'ctx, 'a> {
     /// A block within the current libfunc.
     Jump(&'a Block<'ctx>),
