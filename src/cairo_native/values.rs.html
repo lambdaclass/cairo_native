@@ -733,7 +733,7 @@
 };
 <span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>num_bigint::{BigInt, Sign};
-<span class="kw">use </span>starknet_types_core::felt::{biguint_to_felt, felt_to_bigint, Felt};
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
 <span class="doccomment">/// A JitValue is a value that can be passed to the JIT engine as an argument or received as a result.
@@ -892,7 +892,7 @@
                 <span class="self">Self</span>::Felt252(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(get_integer_layout(<span class="number">252</span>)).cast();
 
-                    <span class="kw">let </span>data = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>value));
+                    <span class="kw">let </span>data = felt252_bigint(value.to_bigint());
                     ptr.cast::&lt;[u32; <span class="number">8</span>]&gt;().as_mut().copy_from_slice(<span class="kw-2">&amp;</span>data);
                     ptr
                 }
@@ -1167,8 +1167,8 @@
                         .alloc_layout(layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">2</span>).unwrap().<span class="number">0</span>)
                         .cast();
 
-                    <span class="kw">let </span>a = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>a));
-                    <span class="kw">let </span>b = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>b));
+                    <span class="kw">let </span>a = felt252_bigint(a.to_bigint());
+                    <span class="kw">let </span>b = felt252_bigint(b.to_bigint());
                     <span class="kw">let </span>data = [a, b];
 
                     ptr.cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">2</span>]&gt;().as_mut().copy_from_slice(<span class="kw-2">&amp;</span>data);
@@ -1180,10 +1180,10 @@
                         .alloc_layout(layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">4</span>).unwrap().<span class="number">0</span>)
                         .cast();
 
-                    <span class="kw">let </span>a = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>a));
-                    <span class="kw">let </span>b = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>b));
-                    <span class="kw">let </span>c = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>c));
-                    <span class="kw">let </span>d = felt252_bigint(felt_to_bigint(<span class="kw-2">*</span>d));
+                    <span class="kw">let </span>a = felt252_bigint(a.to_bigint());
+                    <span class="kw">let </span>b = felt252_bigint(b.to_bigint());
+                    <span class="kw">let </span>c = felt252_bigint(c.to_bigint());
+                    <span class="kw">let </span>d = felt252_bigint(d.to_bigint());
                     <span class="kw">let </span>data = [a, b, c, d];
 
                     ptr.cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">4</span>]&gt;().as_mut().copy_from_slice(<span class="kw-2">&amp;</span>data);
@@ -1425,7 +1425,7 @@
             <span class="kw">_ </span>=&gt; value.to_biguint().unwrap(),
         };
 
-        <span class="self">Self</span>::Felt252(biguint_to_felt(<span class="kw-2">&amp;</span>value))
+        <span class="self">Self</span>::Felt252(Felt::from(<span class="kw-2">&amp;</span>value))
     }
 }
 </code></pre></div></section></main></body></html>
