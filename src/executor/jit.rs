@@ -50,6 +50,10 @@ impl<'m> JitNativeExecutor<'m> {
         &self.module
     }
 
+    pub fn module_mut(&mut self) -> &mut Module<'m> {
+        &mut self.module
+    }
+
     /// Execute a program with the given params.
     ///
     /// See [`cairo_native::jit_runner::execute`]
