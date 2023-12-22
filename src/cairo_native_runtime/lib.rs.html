@@ -475,19 +475,12 @@
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>lazy_static::lazy_static;
 <span class="kw">use </span>starknet_crypto::FieldElement;
 <span class="kw">use </span>starknet_curve::AffinePoint;
-<span class="kw">use </span>starknet_types_core::felt::{felt_to_bigint, Felt};
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 <span class="macro">lazy_static! </span>{
@@ -536,20 +529,13 @@
             <span class="kw">if </span><span class="macro">writeln!</span>(
                 target,
                 <span class="string">&quot;[DEBUG]\t{shortstring: &lt;31}\t(raw: {})&quot;</span>,
-                felt_to_bigint(value)
+                value.to_bigint()
             )
             .is_err()
             {
                 <span class="kw">return </span><span class="number">1</span>;
             };
-        } <span class="kw">else if </span><span class="macro">writeln!</span>(
-            target,
-            <span class="string">&quot;[DEBUG]\t{:&lt;31}\t(raw: {})&quot;</span>,
-            <span class="string">&#39; &#39;</span>,
-            felt_to_bigint(value)
-        )
-        .is_err()
-        {
+        } <span class="kw">else if </span><span class="macro">writeln!</span>(target, <span class="string">&quot;[DEBUG]\t{:&lt;31}\t(raw: {})&quot;</span>, <span class="string">&#39; &#39;</span>, value.to_bigint()).is_err() {
             <span class="kw">return </span><span class="number">1</span>;
         }
     }
