@@ -184,7 +184,8 @@ struct CmdLine {
     #[clap(value_parser = parse_input)]
     input: PathBuf,
 
-    #[clap(short = 'O', long, default_value = "2")]
+    /// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    #[clap(short = 'O', long, default_value = "0")]
     opt_level: usize,
 
     #[clap(short = 'o', long = "output", value_parser = parse_output, default_value = "-")]
