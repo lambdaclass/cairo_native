@@ -34,11 +34,6 @@ pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
 
-#[cfg(target_os = "macos")]
-pub const SHARED_LIBRARY_EXT: &str = "dylib";
-#[cfg(target_os = "linux")]
-pub const SHARED_LIBRARY_EXT: &str = "so";
-
 /// Generate a function name.
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
