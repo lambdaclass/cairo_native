@@ -882,7 +882,7 @@ dependencies = [
  "pretty_assertions_sorted",
  "proptest",
  "serde_json",
- "starknet-types-core 0.0.4",
+ "starknet-types-core",
  "tempfile",
  "test-case",
  "thiserror",
@@ -900,7 +900,7 @@ dependencies = [
  "libc",
  "starknet-crypto 0.6.1",
  "starknet-curve 0.4.0",
- "starknet-types-core 0.0.3",
+ "starknet-types-core",
 ]
 
 [[package]]
@@ -3098,23 +3098,9 @@ dependencies = [
 
 [[package]]
 name = "starknet-types-core"
-version = "0.0.3"
-source = "git+https://github.com/starknet-io/types-rs.git?rev=4bc8a5db3c86f017e8be7dc43531a2cb6db011c0#4bc8a5db3c86f017e8be7dc43531a2cb6db011c0"
-dependencies = [
- "bitvec",
- "lambdaworks-math 0.3.0",
- "lazy_static",
- "num-bigint",
- "num-integer",
- "num-traits 0.2.17",
- "serde",
-]
-
-[[package]]
-name = "starknet-types-core"
-version = "0.0.4"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78b4af540664e3dec02f36a47b79ba4df825a7752bf0941954f69753a98a397e"
+checksum = "b2441eb61d91a6bae832fda48e50b6ff09faa6cf63bfadd22dc16798d2cc024d"
 dependencies = [
  "bitvec",
  "lambdaworks-math 0.3.0",
