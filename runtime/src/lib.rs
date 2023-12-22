@@ -3,7 +3,7 @@
 use lazy_static::lazy_static;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
-use starknet_types_core::felt::{felt_to_bigint, Felt};
+use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 lazy_static! {
@@ -52,20 +52,13 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
             if writeln!(
                 target,
                 "[DEBUG]\t{shortstring: <31}\t(raw: {})",
-                felt_to_bigint(value)
+                value.to_bigint()
             )
             .is_err()
             {
                 return 1;
             };
-        } else if writeln!(
-            target,
-            "[DEBUG]\t{:<31}\t(raw: {})",
-            ' ',
-            felt_to_bigint(value)
-        )
-        .is_err()
-        {
+        } else if writeln!(target, "[DEBUG]\t{:<31}\t(raw: {})", ' ', value.to_bigint()).is_err() {
             return 1;
         }
     }
