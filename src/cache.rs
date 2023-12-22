@@ -1,8 +1,8 @@
 pub use self::{aot::AotProgramCache, jit::JitProgramCache};
 use std::hash::Hash;
 
-mod aot;
-mod jit;
+pub mod aot;
+pub mod jit;
 
 #[derive(Debug)]
 pub enum ProgramCache<'a, K>
