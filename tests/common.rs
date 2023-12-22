@@ -351,6 +351,7 @@ pub fn compare_outputs(
         native_rets: &mut impl Iterator<Item = &'a JitValue>,
         vm_rets: &mut Peekable<I>,
         reg: &ProgramRegistry<CoreType, CoreLibfunc>,
+        vm_memory: &Vec<Option<Felt252>>,
     ) -> Result<(), TestCaseError>
     where
         I: Iterator<Item = &'a String>,
