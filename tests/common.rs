@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+use cairo_felt::Felt252;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -358,12 +359,27 @@ pub fn compare_outputs(
         match ty {
             CoreTypeConcrete::Array(info) => {
                 if let JitValue::Array(data) = native_rets.next().unwrap() {
-                    for value in data {
+                    // When it comes to arrays, the vm result contains the starting and ending addresses of the array in memory,
+                    // so we need to fetch each value from the relocated vm memory
+                    // NOTE: This will only work for basic types (those represented by a single felt) and will fail for arrays containing other arrays
+                    let start_address: usize = vm_rets.next().unwrap().parse().unwrap();
+                    let end_address: usize = vm_rets.next().unwrap().parse().unwrap();
+                    assert!(
+                        end_address - start_address == data.len(),
+                        "Comparison between arrays containing non-simple types is not implemented"
+                    );
+                    for (i, value) in data.iter().enumerate() {
+                        // We can't mutate the peekable, so we will create a new one for this value
+                        let memory_value =
+                            format!("{}", vm_memory[start_address + i].clone().unwrap());
+                        let vm_rets = vec![memory_value];
+                        let mut vm_rets = vm_rets.iter().peekable();
                         check_next_type(
                             reg.get_type(&info.ty).expect("type should exist"),
                             &mut [value].into_iter(),
-                            vm_rets,
+                            &mut vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -489,6 +505,7 @@ pub fn compare_outputs(
                     &mut [native_rets.next().unwrap()].into_iter(),
                     vm_rets,
                     reg,
+                    vm_memory,
                 )?;
             }
             CoreTypeConcrete::Nullable(info) => {
@@ -508,6 +525,7 @@ pub fn compare_outputs(
                         &mut [native_rets.next().unwrap()].into_iter(),
                         vm_rets,
                         reg,
+                        vm_memory,
                     )?;
                 }
             }
@@ -561,6 +579,7 @@ pub fn compare_outputs(
                             &mut [&**value].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     } else {
                         let vm_tag = {
@@ -609,6 +628,7 @@ pub fn compare_outputs(
                             &mut [&**value].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -617,12 +637,52 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Struct(info) => {
                 if let JitValue::Struct { fields, .. } = native_rets.next().unwrap() {
+                    // Check if it is a Panic result
+                    if let Some(JitValue::Struct {
+                        fields: _,
+                        debug_name,
+                    }) = fields.get(0)
+                    {
+                        if debug_name == &Some("core::panics::Panic".to_owned()) {
+                            // The next field of the original struct will be an Array
+                            // But contrary to the standard Array return values, this one will contain the
+                            // actual felt values in the array instead of it's start and end addresses
+                            // So we need to handle it separately
+                            assert!(
+                                fields.len() == 2,
+                                "Panic result has incorrect number of fields"
+                            );
+                            if let JitValue::Array(panic_data) = &fields[1] {
+                                // This is easier than crafting a ConcreteType::Felt252 variant
+                                let felt_concrete_type =
+                                    match reg.get_type(&info.members[1]).unwrap() {
+                                        CoreTypeConcrete::Array(info) => {
+                                            reg.get_type(&info.ty).expect("type should exist")
+                                        }
+                                        _ => unreachable!(),
+                                    };
+                                for value in panic_data {
+                                    check_next_type(
+                                        felt_concrete_type,
+                                        &mut [value].into_iter(),
+                                        vm_rets,
+                                        reg,
+                                        vm_memory,
+                                    )?;
+                                }
+                                return Ok(());
+                            } else {
+                                panic!("Panic result should have an Array as it's second field")
+                            }
+                        }
+                    }
                     for (field, container) in info.members.iter().zip(fields.iter()) {
                         check_next_type(
                             reg.get_type(field).unwrap(),
                             &mut [container].into_iter(),
                             vm_rets,
                             reg,
+                            vm_memory,
                         )?;
                     }
                 } else {
@@ -742,7 +802,7 @@ pub fn compare_outputs(
 
     for ty in ret_types {
         let ty = reg.get_type(ty).unwrap();
-        check_next_type(ty, &mut native_rets, &mut vm_rets, &reg)?;
+        check_next_type(ty, &mut native_rets, &mut vm_rets, &reg, &vm_result.memory)?;
     }
 
     Ok(())

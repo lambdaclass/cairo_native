@@ -80,7 +80,6 @@ pub mod error;
 pub mod execution_result;
 pub mod executor;
 mod ffi;
-// mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;
