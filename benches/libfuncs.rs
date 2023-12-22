@@ -12,10 +12,6 @@ pub fn bench_libfuncs(c: &mut Criterion) {
         let mut c = c.benchmark_group("Libfunc Execution Time");
 
         for (program, filename) in &programs {
-            if filename == "tests/cases/felt_ops/div.cairo" {
-                continue; // todo: enable when libfuncs felt252_div and felt252_div_const are implemented
-            }
-
             let entry = program
                 .funcs
                 .iter()
