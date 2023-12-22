@@ -34,6 +34,7 @@ use cairo_native::{
     types::felt252::{HALF_PRIME, PRIME},
     utils::{find_entry_point_by_idx, run_pass_manager},
     values::JitValue,
+    OptLevel,
 };
 use lambdaworks_math::{
     field::{
@@ -243,7 +244,7 @@ pub fn run_native_program(
         .expect("Could not apply passes to the compiled test program.");
 
     let native_module = NativeModule::new(module, registry, metadata);
-    let executor = JitNativeExecutor::from_native_module(native_module, Default::default());
+    let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
     executor
         .invoke_dynamic(entry_point_id, args, gas, None)
         .unwrap()

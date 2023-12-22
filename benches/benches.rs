@@ -77,31 +77,36 @@ fn criterion_benchmark(c: &mut Criterion) {
                     .find_function_ptr(factorial_function_id)
                     .cast(),
             );
-        let aot_fibonacci_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-            aot_fibonacci
-                .find_function_ptr(fibonacci_function_id)
-                .cast(),
-        );
-        let aot_logistic_map_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-            aot_logistic_map
-                .find_function_ptr(logistic_map_function_id)
-                .cast(),
-        );
-        let jit_factorial_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-            jit_factorial
-                .find_function_ptr(factorial_function_id)
-                .cast(),
-        );
-        let jit_fibonacci_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-            jit_fibonacci
-                .find_function_ptr(fibonacci_function_id)
-                .cast(),
-        );
-        let jit_logistic_map_fn = std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-            jit_logistic_map
-                .find_function_ptr(logistic_map_function_id)
-                .cast(),
-        );
+        let aot_fibonacci_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                aot_fibonacci
+                    .find_function_ptr(fibonacci_function_id)
+                    .cast(),
+            );
+        let aot_logistic_map_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                aot_logistic_map
+                    .find_function_ptr(logistic_map_function_id)
+                    .cast(),
+            );
+        let jit_factorial_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                jit_factorial
+                    .find_function_ptr(factorial_function_id)
+                    .cast(),
+            );
+        let jit_fibonacci_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                jit_fibonacci
+                    .find_function_ptr(fibonacci_function_id)
+                    .cast(),
+            );
+        let jit_logistic_map_fn =
+            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
+                jit_logistic_map
+                    .find_function_ptr(logistic_map_function_id)
+                    .cast(),
+            );
 
         c.bench_function("Cached JIT factorial_2M (direct invoke)", |b| {
             b.iter(|| jit_factorial_fn(u128::MAX));
