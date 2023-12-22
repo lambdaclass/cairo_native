@@ -244,6 +244,7 @@ pub fn run_native_program(
         .expect("Could not apply passes to the compiled test program.");
 
     let native_module = NativeModule::new(module, registry, metadata);
+    // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
     executor
         .invoke_dynamic(entry_point_id, args, gas, None)

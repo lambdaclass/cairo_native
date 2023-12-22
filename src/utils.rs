@@ -819,7 +819,7 @@ pub mod test {
         let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
 
         let native_module = NativeModule::new(module, registry, metadata);
-        // FIXME: There are some bugs with optimization levels.
+        // FIXME: There are some bugs with non-zero LLVM optimization levels.
         let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
             .invoke_dynamic(

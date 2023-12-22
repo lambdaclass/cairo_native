@@ -2,7 +2,7 @@ use crate::common::load_cairo;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-    utils::find_function_id, values::JitValue,
+    utils::find_function_id, values::JitValue, OptLevel,
 };
 use starknet_types_core::felt::Felt;
 
@@ -13,7 +13,8 @@ fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> Execu
 
     let context = NativeContext::new();
     let module = context.compile(program).unwrap();
-    let executor = JitNativeExecutor::from_native_module(module, Default::default());
+    // FIXME: There are some bugs with non-zero LLVM optimization levels.
+    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
 
     executor
         .invoke_dynamic(entry_point_id, args, None, None)
