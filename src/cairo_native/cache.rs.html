@@ -33,8 +33,8 @@
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotProgramCache, jit::JitProgramCache};
 <span class="kw">use </span>std::hash::Hash;
 
-<span class="kw">mod </span>aot;
-<span class="kw">mod </span>jit;
+<span class="kw">pub mod </span>aot;
+<span class="kw">pub mod </span>jit;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>ProgramCache&lt;<span class="lifetime">&#39;a</span>, K&gt;
