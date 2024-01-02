@@ -70,9 +70,9 @@ where
 {
     let src_ty = registry.build_type(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
-    assert!(info.from_nbits >= info.to_nbits);
+    assert!(info.from_info.nbits >= info.to_info.nbits);
 
-    if info.from_nbits == info.to_nbits {
+    if info.from_info.nbits == info.to_info.nbits {
         let k0 = entry
             .append_operation(arith::constant(
                 context,
@@ -105,7 +105,7 @@ where
         let n_bits = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(info.to_nbits.try_into()?, src_ty).into(),
+                IntegerAttribute::new(info.to_info.nbits.try_into()?, src_ty).into(),
                 location,
             ))
             .result(0)?

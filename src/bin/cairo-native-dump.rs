@@ -2,6 +2,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
+use cairo_lang_defs::plugin::{NamedPlugin, PluginSuite};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,
@@ -93,15 +94,14 @@ fn load_program<'c>(
         Some("cairo") if !is_contract => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            let program = (*compile_prepared_db(
+            let program = compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
-            )?)
-            .clone();
+            )?;
 
             let debug_locations = if let Some(context) = context {
                 let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
@@ -119,10 +119,13 @@ fn load_program<'c>(
         }
         Some("cairo") if is_contract => {
             // mimics cairo_lang_starknet::contract_class::compile_path
+            let mut plugins = PluginSuite::default();
+            plugins
+                .add_plugin::<StarkNetPlugin>()
+                .add_inline_macro_plugin_ex(SelectorMacro::NAME, Arc::new(SelectorMacro));
             let mut db = RootDatabase::builder()
                 .detect_corelib()
-                .with_macro_plugin(Arc::new(StarkNetPlugin::default()))
-                .with_inline_macro_plugin(SelectorMacro::NAME, Arc::new(SelectorMacro))
+                .with_plugin_suite(plugins)
                 .build()?;
 
             let main_crate_ids = setup_project(&mut db, Path::new(&path))?;
