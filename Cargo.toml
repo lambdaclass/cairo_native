@@ -27,13 +27,13 @@ with-runtime = ["cairo-native-runtime"]
 
 [dependencies]
 bumpalo = "3.14"
-cairo-lang-compiler = "2.3.1"
-cairo-lang-defs = "2.3.1"
-cairo-lang-diagnostics = "2.3.1"
-cairo-lang-filesystem = "2.3.1"
-cairo-lang-lowering = "2.3.1"
-cairo-lang-sierra = "2.3.1"
-cairo-lang-sierra-generator = "2.3.1"
+cairo-lang-compiler = "2.4.0"
+cairo-lang-defs = "2.4.0"
+cairo-lang-diagnostics = "2.4.0"
+cairo-lang-filesystem = "2.4.0"
+cairo-lang-lowering = "2.4.0"
+cairo-lang-sierra = "2.4.0"
+cairo-lang-sierra-generator = "2.4.0"
 educe = "0.5.5"
 id-arena = "2.2"
 itertools = "0.12"
@@ -44,34 +44,36 @@ melior = { version = "0.15.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
-starknet-types-core = { version = "0.0.5", default-features = false, features = ["serde"] }
+starknet-types-core = { version = "0.0.5", default-features = false, features = [
+  "serde",
+] }
 tempfile = "3.6"
 thiserror = "1.0"
 tracing = "0.1"
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.3.1"
-cairo-lang-sierra-gas = "2.3.1"
-cairo-lang-starknet = "2.3.1"
-cairo-lang-utils = "2.3.1"
+cairo-lang-sierra-ap-change = "2.4.1"
+cairo-lang-sierra-gas = "2.4.1"
+cairo-lang-starknet = "2.4.1"
+cairo-lang-utils = "2.4.1"
 cairo-native-runtime = { path = "runtime", optional = true }
 clap = { version = "4.3", features = ["derive"], optional = true }
 libloading = "0.8.1"
 tracing-subscriber = { version = "0.3", features = [
-    "env-filter",
+  "env-filter",
 ], optional = true }
 
 [dev-dependencies]
 cairo-felt = "0.8.5"
-cairo-lang-runner = "2.3.1"
+cairo-lang-runner = "2.4.1"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.2"
 test-case = "3.2.1"
 walkdir = "2"
-serde_json = { version = "1.0"}
+serde_json = { version = "1.0" }
 
 [build-dependencies]
 cc = "1.0"
