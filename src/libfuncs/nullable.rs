@@ -58,6 +58,9 @@ where
         NullableConcreteLibfunc::MatchNullable(info) => {
             build_match_nullable(context, registry, entry, location, helper, metadata, info)
         }
+        NullableConcreteLibfunc::MatchNullableSnapshot(_) => {
+            todo!()
+        }
     }
 }
 
