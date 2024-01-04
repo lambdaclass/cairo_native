@@ -173,7 +173,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
         values::JitValue,
     };
 
@@ -238,5 +238,49 @@ mod test {
 
         run_program_assert_output(&program, "run_test", &[4u8.into()], 4u8.into());
         run_program_assert_output(&program, "run_test", &[0u8.into()], 99u8.into());
+    }
+
+    #[test]
+    fn match_snapshot_nullable_clone_bug() {
+        let program = load_cairo! {
+            use core::{NullableTrait, match_nullable, null, nullable::FromNullableResult};
+
+            fn run_test(x: Option<u8>) -> Option<u8> {
+                let a = match x {
+                    Option::Some(x) => @NullableTrait::new(x),
+                    Option::None(_) => @null::<u8>(),
+                };
+                let b = *a;
+                match match_nullable(b) {
+                    FromNullableResult::Null(_) => Option::None(()),
+                    FromNullableResult::NotNull(x) => Option::Some(x.unbox()),
+                }
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[jit_enum!(0, 42u8.into())],
+            jit_enum!(0, 42u8.into()),
+        );
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[jit_enum!(
+                1,
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None
+                }
+            )],
+            jit_enum!(
+                1,
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None
+                }
+            ),
+        );
     }
 }
