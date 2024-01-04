@@ -24,3 +24,5 @@ corelib
 
 cairo-*.tar
 /cairo2
+*.dylib
+*.so
