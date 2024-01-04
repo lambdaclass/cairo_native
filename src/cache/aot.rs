@@ -1,6 +1,6 @@
 use crate::{
     context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT,
+    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
@@ -34,7 +34,12 @@ where
         self.cache.get(key).cloned()
     }
 
-    pub fn compile_and_insert(&mut self, key: K, program: &Program) -> Rc<AotNativeExecutor> {
+    pub fn compile_and_insert(
+        &mut self,
+        key: K,
+        program: &Program,
+        opt_level: OptLevel,
+    ) -> Rc<AotNativeExecutor> {
         let NativeModule {
             module,
             registry,
@@ -42,7 +47,7 @@ where
         } = self.context.compile(program).expect("should compile");
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module).unwrap();
+        let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()

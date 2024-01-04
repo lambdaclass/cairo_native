@@ -1,4 +1,4 @@
-use cairo_native::{context::NativeContext, module_to_object};
+use cairo_native::{context::NativeContext, module_to_object, OptLevel};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use util::prepare_programs;
 
@@ -44,7 +44,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
                 b.iter(|| {
                     let native_context = NativeContext::new();
                     let module = native_context.compile(black_box(program)).unwrap();
-                    let object = module_to_object(module.module())
+                    let object = module_to_object(module.module(), OptLevel::None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
                 })
@@ -61,7 +61,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let module = native_context.compile(black_box(program)).unwrap();
-                    let object = module_to_object(module.module())
+                    let object = module_to_object(module.module(), OptLevel::None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
                 })

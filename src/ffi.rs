@@ -61,8 +61,20 @@ impl Display for LLVMCompileError {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum OptLevel {
+    None,
+    Less,
+    #[default]
+    Default,
+    Aggressive,
+}
+
 /// Make sure to call
-pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError> {
+pub fn module_to_object(
+    module: &Module<'_>,
+    opt_level: OptLevel,
+) -> Result<Vec<u8>, LLVMCompileError> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -106,8 +118,12 @@ pub fn module_to_object(module: &Module<'_>) -> Result<Vec<u8>, LLVMCompileError
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            // TODO: Convert this into a flag instead of hardcoding it to `-O0`.
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+            match opt_level {
+                OptLevel::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+                OptLevel::Less => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
+                OptLevel::Default => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+                OptLevel::Aggressive => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            },
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );

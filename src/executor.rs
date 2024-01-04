@@ -1,6 +1,10 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
-    execution_result::ExecutionResult, types::TypeBuilder, utils::get_integer_layout,
+    error::jit_engine::RunnerError,
+    execution_result::{ContractExecutionResult, ExecutionResult},
+    metadata::syscall_handler::SyscallHandlerMeta,
+    types::TypeBuilder,
+    utils::get_integer_layout,
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -9,11 +13,12 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
     },
-    ids::ConcreteTypeId,
+    ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
@@ -45,6 +50,42 @@ extern "C" {
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
     Jit(Rc<JitNativeExecutor<'m>>),
+}
+
+impl<'a> NativeExecutor<'a> {
+    pub fn invoke_dynamic(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
+    ) -> Result<ExecutionResult, RunnerError> {
+        match self {
+            NativeExecutor::Aot(executor) => {
+                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
+            }
+            NativeExecutor::Jit(executor) => {
+                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
+            }
+        }
+    }
+
+    pub fn invoke_contract_dynamic(
+        &self,
+        function_id: &FunctionId,
+        args: &[Felt],
+        gas: Option<u128>,
+        syscall_handler: Option<&SyscallHandlerMeta>,
+    ) -> Result<ContractExecutionResult, RunnerError> {
+        match self {
+            NativeExecutor::Aot(executor) => {
+                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
+            }
+            NativeExecutor::Jit(executor) => {
+                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
+            }
+        }
+    }
 }
 
 impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {

@@ -69,7 +69,7 @@
 
 pub use self::{
     compiler::compile,
-    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError},
+    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
 pub mod cache;
@@ -80,7 +80,6 @@ pub mod error;
 pub mod execution_result;
 pub mod executor;
 mod ffi;
-// mod jit_runner;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;

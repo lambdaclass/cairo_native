@@ -2,8 +2,13 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
-use cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
-use clap::Parser;
+use cairo_native::{
+    context::NativeContext,
+    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    values::JitValue,
+    OptLevel,
+};
+use clap::{Parser, ValueEnum};
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
 use std::{
@@ -46,8 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
-    let native_executor = JitNativeExecutor::new(native_program);
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     // Initialize arguments and return values.
     let params_input = match args.inputs {
@@ -63,6 +67,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect_vec();
 
+    let opt_level = match args.opt_level {
+        0 => OptLevel::None,
+        1 => OptLevel::Less,
+        2 => OptLevel::Default,
+        _ => OptLevel::Aggressive,
+    };
+
+    let native_executor: NativeExecutor = match args.mode {
+        RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+    };
     let result = native_executor
         .invoke_dynamic(&entry_point.id, &params, Some(u64::MAX.into()), None)
         .unwrap();
@@ -116,9 +131,14 @@ fn load_program(path: &Path) -> Result<Program, Box<dyn std::error::Error>> {
 struct CmdLine {
     #[clap(value_parser = parse_input)]
     input: PathBuf,
-
     #[clap(value_parser = parse_entry_point)]
     entry_point: FunctionId,
+
+    #[clap(short, long, default_value = "jit")]
+    mode: RunMode,
+    /// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    #[clap(short = 'O', long, default_value = "0")]
+    opt_level: usize,
 
     #[clap(short = 'i', long = "inputs", value_parser = parse_io)]
     inputs: Option<StdioOrPath>,
@@ -126,6 +146,12 @@ struct CmdLine {
     outputs: Option<StdioOrPath>,
     #[clap(short = 'p', long = "print-outputs")]
     print_outputs: bool,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum RunMode {
+    Aot,
+    Jit,
 }
 
 #[derive(Clone, Debug)]
