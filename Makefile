@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria runtime
 
 #
 # Environment detection.
@@ -127,3 +127,12 @@ install-scarb-macos:
 
 build-alexandria:
 	cd tests/alexandria; scarb build
+
+runtime:
+	cargo b --release -p cairo-native-runtime
+ifeq ($(UNAME), Linux)
+	cp target/release/libcairo_native_runtime.so .
+endif
+ifeq ($(UNAME), Darwin)
+	cp target/release/libcairo_native_runtime.dylib .
+endif
