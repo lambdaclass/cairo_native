@@ -10,7 +10,7 @@ use cairo_native::{
 };
 use criterion::{criterion_group, criterion_main, Criterion};
 use starknet_types_core::felt::Felt;
-use std::{mem::MaybeUninit, path::Path};
+use std::path::Path;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let context = NativeContext::new();
@@ -60,7 +60,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         });
     });
 
+    #[cfg(target_arch = "x86_64")]
     {
+        use std::mem::MaybeUninit;
+
         #[allow(dead_code)]
         struct PanicResult {
             tag: u8,
