@@ -210,7 +210,7 @@ where
         &[],
         location,
     ));
-    // Check wether the result is positive to distinguish between undeflowing & overflowing results
+    // Check wether the result is positive to distinguish between underflowing & overflowing results
     block_overflow.append_operation(helper.cond_br(
         context,
         is_positive,
@@ -218,7 +218,7 @@ where
         [&[range_check, op_result], &[range_check, op_result]],
         location,
     ));
-    // No Oveflow/Underflow -> In range result
+    // No Overflow/Underflow -> In range result
     block_not_overflow.append_operation(helper.br(0, &[range_check, op_result], location));
     Ok(())
 }
