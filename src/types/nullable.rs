@@ -7,16 +7,30 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{types::{Error, Result}, libfuncs},
-    metadata::MetadataStorage, libfuncs::{LibfuncHelper, LibfuncBuilder},
+    error::{
+        libfuncs,
+        types::{Error, Result},
+    },
+    libfuncs::{LibfuncBuilder, LibfuncHelper},
+    metadata::{
+        realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{Module, Type, Block, Location, Value},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm, scf,
+    },
+    ir::{
+        attribute::{IntegerAttribute, StringAttribute},
+        operation::OperationBuilder,
+        r#type::IntegerType,
+        Block, Location, Module, Region, Type, Value,
+    },
     Context,
 };
 
@@ -27,14 +41,27 @@ pub fn build<'ctx, TType, TLibfunc>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<TType, TLibfunc>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoAndTypeConcreteType>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+    <TLibfunc as GenericLibfunc>::Concrete:
+        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
 {
+    metadata
+        .get_or_insert_with::<SnapshotClonesMeta<TType, TLibfunc>>(SnapshotClonesMeta::default)
+        .register(
+            info.self_ty().clone(),
+            snapshot_take,
+            InfoAndTypeConcreteType {
+                info: info.info.clone(),
+                ty: info.ty.clone(),
+            },
+        );
+
     // nullable is represented as a pointer, like a box, used to check if its null (when it can be null).
     Ok(llvm::r#type::opaque_pointer(context))
 }
@@ -57,5 +84,108 @@ where
     <TLibfunc as GenericLibfunc>::Concrete:
         LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
 {
-    todo!()
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    // let elem_snapshot_take = metadata
+    //     .get::<SnapshotClonesMeta<TType, TLibfunc>>()
+    //     .and_then(|meta| meta.wrap_invoke(&info.ty));
+
+    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
+
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let null_ptr = entry
+        .append_operation(llvm::nullptr(
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let ptr_value = entry
+        .append_operation(
+            OperationBuilder::new("llvm.ptrtoint", location)
+                .add_operands(&[src_value])
+                .add_results(&[IntegerType::new(context, 64).into()])
+                .build()?,
+        )
+        .result(0)?
+        .into();
+
+    let is_null = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            ptr_value,
+            k0,
+            location,
+        ))
+        .result(0)?
+        .into();
+    Ok(entry
+        .append_operation(scf::r#if(
+            is_null,
+            &[llvm::r#type::opaque_pointer(context)],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                block.append_operation(scf::r#yield(&[null_ptr], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let alloc_len = block
+                    .append_operation(arith::constant(
+                        context,
+                        IntegerAttribute::new(
+                            elem_layout.size() as i64,
+                            IntegerType::new(context, 64).into(),
+                        )
+                        .into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+
+                let cloned_ptr = block
+                    .append_operation(ReallocBindingsMeta::realloc(
+                        context, null_ptr, alloc_len, location,
+                    ))
+                    .result(0)?
+                    .into();
+
+                let is_volatile = block
+                    .append_operation(arith::constant(
+                        context,
+                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+                block.append_operation(llvm::call_intrinsic(
+                    context,
+                    StringAttribute::new(context, "llvm.memcpy.inline"),
+                    &[cloned_ptr, src_value, alloc_len, is_volatile],
+                    &[],
+                    location,
+                ));
+
+                block.append_operation(scf::r#yield(&[cloned_ptr], location));
+                region
+            },
+            location,
+        ))
+        .result(0)?
+        .into())
 }
