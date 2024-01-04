@@ -1134,11 +1134,29 @@
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
+    OptLevel,
 };
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1265,6 +1283,7 @@
 }
 
 <span class="doccomment">/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+</span><span class="attr">#[track_caller]
 </span><span class="kw">pub fn </span>find_function_id&lt;<span class="lifetime">&#39;a</span>&gt;(program: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Program, function_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>FunctionId {
     <span class="kw-2">&amp;</span>program
         .funcs
@@ -1316,9 +1335,23 @@
 }
 
 <span class="doccomment">/// Creates the execution engine, with all symbols registered.
-</span><span class="kw">pub fn </span>create_engine(module: <span class="kw-2">&amp;</span>Module, _metadata: <span class="kw-2">&amp;</span>MetadataStorage) -&gt; ExecutionEngine {
+</span><span class="kw">pub fn </span>create_engine(
+    module: <span class="kw-2">&amp;</span>Module,
+    _metadata: <span class="kw-2">&amp;</span>MetadataStorage,
+    opt_level: OptLevel,
+) -&gt; ExecutionEngine {
     <span class="comment">// Create the JIT engine.
-    </span><span class="kw">let </span>engine = ExecutionEngine::new(module, <span class="number">0</span>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
+    </span><span class="kw">let </span>engine = ExecutionEngine::new(
+        module,
+        <span class="kw">match </span>opt_level {
+            OptLevel::None =&gt; <span class="number">0</span>,
+            OptLevel::Less =&gt; <span class="number">1</span>,
+            OptLevel::Default =&gt; <span class="number">2</span>,
+            OptLevel::Aggressive =&gt; <span class="number">3</span>,
+        },
+        <span class="kw-2">&amp;</span>[],
+        <span class="bool-val">false</span>,
+    );
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;with-runtime&quot;</span>)]
     </span>register_runtime_symbols(<span class="kw-2">&amp;</span>engine);
@@ -1939,7 +1972,8 @@
         <span class="kw">let </span>syscall_handler = metadata.remove::&lt;SyscallHandlerMeta&gt;();
 
         <span class="kw">let </span>native_module = NativeModule::new(module, registry, metadata);
-        <span class="kw">let </span>executor = JitNativeExecutor::new(native_module);
+        <span class="comment">// FIXME: There are some bugs with non-zero LLVM optimization levels.
+        </span><span class="kw">let </span>executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
             .invoke_dynamic(
                 entry_point_id,

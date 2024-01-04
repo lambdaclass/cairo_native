@@ -87,7 +87,6 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
@@ -159,7 +158,7 @@
 
 </span><span class="kw">pub use </span><span class="self">self</span>::{
     compiler::compile,
-    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError},
+    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
 <span class="kw">pub mod </span>cache;
@@ -170,8 +169,7 @@
 <span class="kw">pub mod </span>execution_result;
 <span class="kw">pub mod </span>executor;
 <span class="kw">mod </span>ffi;
-<span class="comment">// mod jit_runner;
-</span><span class="kw">pub mod </span>libfuncs;
+<span class="kw">pub mod </span>libfuncs;
 <span class="kw">pub mod </span>metadata;
 <span class="kw">pub mod </span>module;
 <span class="kw">pub mod </span>starknet;

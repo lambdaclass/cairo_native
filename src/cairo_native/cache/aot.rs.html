@@ -75,9 +75,14 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT,
+    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
 <span class="kw">use </span>libloading::Library;
@@ -111,7 +116,12 @@
         <span class="self">self</span>.cache.get(key).cloned()
     }
 
-    <span class="kw">pub fn </span>compile_and_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: K, program: <span class="kw-2">&amp;</span>Program) -&gt; Rc&lt;AotNativeExecutor&gt; {
+    <span class="kw">pub fn </span>compile_and_insert(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        key: K,
+        program: <span class="kw-2">&amp;</span>Program,
+        opt_level: OptLevel,
+    ) -&gt; Rc&lt;AotNativeExecutor&gt; {
         <span class="kw">let </span>NativeModule {
             module,
             registry,
@@ -119,7 +129,7 @@
         } = <span class="self">self</span>.context.compile(program).expect(<span class="string">&quot;should compile&quot;</span>);
 
         <span class="comment">// Compile module into an object.
-        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module).unwrap();
+        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();
 
         <span class="comment">// Compile object into a shared library.
         </span><span class="kw">let </span>shared_library_path = tempfile::Builder::new()

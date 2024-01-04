@@ -103,7 +103,12 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{context::NativeContext, executor::JitNativeExecutor};
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{context::NativeContext, executor::JitNativeExecutor, OptLevel};
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
 <span class="kw">use </span>std::{
     collections::HashMap,
@@ -144,9 +149,14 @@
         <span class="self">self</span>.cache.get(key).cloned()
     }
 
-    <span class="kw">pub fn </span>compile_and_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: K, program: <span class="kw-2">&amp;</span>Program) -&gt; Rc&lt;JitNativeExecutor&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
+    <span class="kw">pub fn </span>compile_and_insert(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        key: K,
+        program: <span class="kw-2">&amp;</span>Program,
+        opt_level: OptLevel,
+    ) -&gt; Rc&lt;JitNativeExecutor&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program).expect(<span class="string">&quot;should compile&quot;</span>);
-        <span class="kw">let </span>executor = JitNativeExecutor::new(module);
+        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level);
 
         <span class="kw">let </span>executor = Rc::new(executor);
         <span class="self">self</span>.cache.insert(key, executor.clone());
@@ -188,7 +198,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>cache: JitProgramCache&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; = JitProgramCache::new(<span class="kw-2">&amp;</span>context);
 
         <span class="kw">let </span>start = Instant::now();
-        cache.compile_and_insert(<span class="string">&quot;program1&quot;</span>, <span class="kw-2">&amp;</span>program1);
+        cache.compile_and_insert(<span class="string">&quot;program1&quot;</span>, <span class="kw-2">&amp;</span>program1, Default::default());
         <span class="kw">let </span>diff_1 = Instant::now().duration_since(start);
 
         <span class="kw">let </span>start = Instant::now();
@@ -198,7 +208,7 @@
         <span class="macro">assert!</span>(diff_2 &lt; diff_1);
 
         <span class="kw">let </span>start = Instant::now();
-        cache.compile_and_insert(<span class="string">&quot;program2&quot;</span>, <span class="kw-2">&amp;</span>program2);
+        cache.compile_and_insert(<span class="string">&quot;program2&quot;</span>, <span class="kw-2">&amp;</span>program2, Default::default());
         <span class="kw">let </span>diff_1 = Instant::now().duration_since(start);
 
         <span class="kw">let </span>start = Instant::now();

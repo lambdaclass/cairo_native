@@ -115,12 +115,35 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
+    module::NativeModule,
     utils::generate_function_name,
     values::JitValue,
+    OptLevel,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -131,6 +154,7 @@
 <span class="kw">use </span>libc::c_void;
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>tempfile::NamedTempFile;
 
 <span class="kw">pub struct </span>AotNativeExecutor {
     library: Library,
@@ -151,26 +175,44 @@
             gas_metadata,
         }
     }
-}
 
-<span class="kw">impl </span>AotNativeExecutor {
+    <span class="doccomment">/// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
+    </span><span class="kw">pub fn </span>from_native_module(module: NativeModule, opt_level: OptLevel) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>NativeModule {
+            module,
+            registry,
+            <span class="kw-2">mut </span>metadata,
+        } = module;
+
+        <span class="kw">let </span>library_path = NamedTempFile::new().unwrap().into_temp_path();
+
+        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();
+        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path).unwrap();
+
+        <span class="self">Self </span>{
+            library: <span class="kw">unsafe </span>{ Library::new(library_path).unwrap() },
+            registry,
+            gas_metadata: metadata.remove(),
+        }
+    }
+
     <span class="kw">pub fn </span>invoke_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
         <span class="kw-2">mut </span>gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
-    ) -&gt; ExecutionResult {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
         <span class="self">self</span>.process_required_initial_gas(function_id, gas.as_mut());
 
-        <span class="kw">super</span>::invoke_dynamic(
+        <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             <span class="self">self</span>.extract_signature(function_id),
             args,
             gas,
             syscall_handler.map(SyscallHandlerMeta::as_ptr),
-        )
+        ))
     }
 
     <span class="kw">pub fn </span>invoke_contract_dynamic(
@@ -199,7 +241,7 @@
         ))
     }
 
-    <span class="kw">fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
+    <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
         <span class="kw">let </span>function_name = generate_function_name(function_id);
         <span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">&quot;_mlir_ciface_{function_name}&quot;</span>);
 

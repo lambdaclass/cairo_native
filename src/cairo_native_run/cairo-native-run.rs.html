@@ -163,12 +163,43 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
-<span class="kw">use </span>cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
-<span class="kw">use </span>clap::Parser;
+<span class="kw">use </span>cairo_native::{
+    context::NativeContext,
+    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    values::JitValue,
+    OptLevel,
+};
+<span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{
@@ -211,8 +242,7 @@
     <span class="kw">let </span>native_context = NativeContext::new();
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-    <span class="kw">let </span>native_executor = JitNativeExecutor::new(native_program);
+    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
 
     <span class="comment">// Initialize arguments and return values.
     </span><span class="kw">let </span>params_input = <span class="kw">match </span>args.inputs {
@@ -228,6 +258,17 @@
         })
         .collect_vec();
 
+    <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
+        <span class="number">0 </span>=&gt; OptLevel::None,
+        <span class="number">1 </span>=&gt; OptLevel::Less,
+        <span class="number">2 </span>=&gt; OptLevel::Default,
+        <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
+    };
+
+    <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.mode {
+        RunMode::Aot =&gt; AotNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Jit =&gt; JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+    };
     <span class="kw">let </span>result = native_executor
         .invoke_dynamic(<span class="kw-2">&amp;</span>entry_point.id, <span class="kw-2">&amp;</span>params, <span class="prelude-val">Some</span>(u64::MAX.into()), <span class="prelude-val">None</span>)
         .unwrap();
@@ -281,9 +322,14 @@
 </span><span class="kw">struct </span>CmdLine {
     <span class="attr">#[clap(value_parser = parse_input)]
     </span>input: PathBuf,
-
     <span class="attr">#[clap(value_parser = parse_entry_point)]
     </span>entry_point: FunctionId,
+
+    <span class="attr">#[clap(short, long, default_value = <span class="string">&quot;jit&quot;</span>)]
+    </span>mode: RunMode,
+    <span class="doccomment">/// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    </span><span class="attr">#[clap(short = <span class="string">&#39;O&#39;</span>, long, default_value = <span class="string">&quot;0&quot;</span>)]
+    </span>opt_level: usize,
 
     <span class="attr">#[clap(short = <span class="string">&#39;i&#39;</span>, long = <span class="string">&quot;inputs&quot;</span>, value_parser = parse_io)]
     </span>inputs: <span class="prelude-ty">Option</span>&lt;StdioOrPath&gt;,
@@ -291,6 +337,12 @@
     </span>outputs: <span class="prelude-ty">Option</span>&lt;StdioOrPath&gt;,
     <span class="attr">#[clap(short = <span class="string">&#39;p&#39;</span>, long = <span class="string">&quot;print-outputs&quot;</span>)]
     </span>print_outputs: bool,
+}
+
+<span class="attr">#[derive(Clone, Debug, ValueEnum)]
+</span><span class="kw">enum </span>RunMode {
+    Aot,
+    Jit,
 }
 
 <span class="attr">#[derive(Clone, Debug)]

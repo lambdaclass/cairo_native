@@ -129,6 +129,7 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -136,6 +137,7 @@
     module::NativeModule,
     utils::{create_engine, generate_function_name},
     values::JitValue,
+    OptLevel,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -158,7 +160,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
-    <span class="kw">pub fn </span>new(native_module: NativeModule&lt;<span class="lifetime">&#39;m</span>&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>from_native_module(native_module: NativeModule&lt;<span class="lifetime">&#39;m</span>&gt;, opt_level: OptLevel) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>NativeModule {
             module,
             registry,
@@ -166,7 +168,7 @@
         } = native_module;
 
         <span class="self">Self </span>{
-            engine: create_engine(<span class="kw-2">&amp;</span>module, <span class="kw-2">&amp;</span>metadata),
+            engine: create_engine(<span class="kw-2">&amp;</span>module, <span class="kw-2">&amp;</span>metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.get::&lt;GasMetadata&gt;().cloned(),
@@ -229,7 +231,7 @@
         ))
     }
 
-    <span class="kw">fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
+    <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
         <span class="kw">let </span>function_name = generate_function_name(function_id);
         <span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">&quot;_mlir_ciface_{function_name}&quot;</span>);
 

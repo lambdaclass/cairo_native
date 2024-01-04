@@ -217,6 +217,10 @@
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
@@ -235,6 +239,7 @@
     debug_info::{DebugInfo, DebugLocations},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::run_pass_manager,
+    OptLevel,
 };
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>melior::{
@@ -251,23 +256,9 @@
 };
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-<span class="attr">#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = <span class="prelude-val">None</span>)]
-</span><span class="kw">struct </span>Args {
-    <span class="doccomment">/// Input .sierra or .cairo program.
-    </span>input: PathBuf,
-
-    <span class="doccomment">/// Output file, .so on linux, .dylib on macOS
-    </span>output: PathBuf,
-
-    <span class="doccomment">/// Whether the program is a contract.
-    </span><span class="attr">#[arg(short, long)]
-    </span>starknet: bool,
-}
-
 <span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
     <span class="comment">// Parse command-line arguments.
-    </span><span class="kw">let </span>args = Args::parse();
+    </span><span class="kw">let </span>args = CmdLine::parse();
 
     <span class="comment">// Configure logging and error handling.
     </span>tracing::subscriber::set_global_default(
@@ -309,8 +300,21 @@
 
     run_pass_manager(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>object = cairo_native::module_to_object(<span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>;
-    cairo_native::object_to_shared_lib(<span class="kw-2">&amp;</span>object, <span class="kw-2">&amp;</span>args.output)<span class="question-mark">?</span>;
+    <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
+        <span class="number">0 </span>=&gt; OptLevel::None,
+        <span class="number">1 </span>=&gt; OptLevel::Less,
+        <span class="number">2 </span>=&gt; OptLevel::Default,
+        <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
+    };
+
+    <span class="kw">let </span>object = cairo_native::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
+    cairo_native::object_to_shared_lib(
+        <span class="kw-2">&amp;</span>object,
+        <span class="kw">match </span><span class="kw-2">&amp;</span>args.output {
+            CompilerOutput::Stdout =&gt; Path::new(<span class="string">&quot;/dev/stdout&quot;</span>),
+            CompilerOutput::Path(x) =&gt; x,
+        },
+    )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -402,6 +406,10 @@
 </span><span class="kw">struct </span>CmdLine {
     <span class="attr">#[clap(value_parser = parse_input)]
     </span>input: PathBuf,
+
+    <span class="doccomment">/// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    </span><span class="attr">#[clap(short = <span class="string">&#39;O&#39;</span>, long, default_value = <span class="string">&quot;0&quot;</span>)]
+    </span>opt_level: usize,
 
     <span class="attr">#[clap(short = <span class="string">&#39;o&#39;</span>, long = <span class="string">&quot;output&quot;</span>, value_parser = parse_output, default_value = <span class="string">&quot;-&quot;</span>)]
     </span>output: CompilerOutput,
