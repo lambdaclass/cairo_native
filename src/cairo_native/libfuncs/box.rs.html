@@ -185,6 +185,15 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box libfuncs
 //!
 //! A heap allocated value, which is internally a pointer that can&#39;t be null.
@@ -318,18 +327,27 @@
     <span class="kw">let </span>(inner_ty, inner_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op = entry.append_operation(llvm::load(
+    <span class="kw">let </span>value = entry
+        .append_operation(llvm::load(
+            context,
+            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            inner_ty,
+            location,
+            LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                inner_layout.align() <span class="kw">as </span>i64,
+                IntegerType::new(context, <span class="number">64</span>).into(),
+            ))),
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    entry.append_operation(ReallocBindingsMeta::free(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        inner_ty,
         location,
-        LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            inner_layout.align() <span class="kw">as </span>i64,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-        ))),
     ));
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
 
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
     <span class="prelude-val">Ok</span>(())
 }
 
