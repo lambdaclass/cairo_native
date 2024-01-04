@@ -131,18 +131,27 @@ where
     let (inner_ty, inner_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
-    let op = entry.append_operation(llvm::load(
+    let value = entry
+        .append_operation(llvm::load(
+            context,
+            entry.argument(0)?.into(),
+            inner_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                inner_layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(ReallocBindingsMeta::free(
         context,
         entry.argument(0)?.into(),
-        inner_ty,
         location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
     ));
-    entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
 
+    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 
