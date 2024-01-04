@@ -7,8 +7,8 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
+    error::{types::{Error, Result}, libfuncs},
+    metadata::MetadataStorage, libfuncs::{LibfuncHelper, LibfuncBuilder},
 };
 use cairo_lang_sierra::{
     extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
@@ -16,7 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{Module, Type, Block, Location, Value},
     Context,
 };
 
@@ -37,4 +37,25 @@ where
 {
     // nullable is represented as a pointer, like a box, used to check if its null (when it can be null).
     Ok(llvm::r#type::opaque_pointer(context))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn snapshot_take<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoAndTypeConcreteType>,
+    src_value: Value<'ctx, 'this>,
+) -> libfuncs::Result<Value<'ctx, 'this>>
+where
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+    <TLibfunc as GenericLibfunc>::Concrete:
+        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
+{
+    todo!()
 }
