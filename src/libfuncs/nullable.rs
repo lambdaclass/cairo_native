@@ -58,9 +58,9 @@ where
         NullableConcreteLibfunc::MatchNullable(info) => {
             build_match_nullable(context, registry, entry, location, helper, metadata, info)
         }
-        NullableConcreteLibfunc::MatchNullableSnapshot(_) => {
-            todo!()
-        }
+        NullableConcreteLibfunc::MatchNullableSnapshot(info) => build_match_nullable_snapshot(
+            context, registry, entry, location, helper, metadata, info,
+        ),
     }
 }
 
@@ -171,6 +171,26 @@ where
     block_is_not_null.append_operation(helper.br(1, &[arg], location));
 
     Ok(())
+}
+
+/// Generate MLIR operations for the `match_nullable_snapshot` libfunc.
+#[allow(clippy::too_many_arguments)]
+fn build_match_nullable_snapshot<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    build_match_nullable(context, registry, entry, location, helper, metadata, info)
 }
 
 #[cfg(test)]
@@ -284,6 +304,58 @@ mod test {
                     debug_name: None
                 }
             ),
+        );
+    }
+
+    #[test]
+    fn run_match_nullable_snapshot() {
+        let program = load_cairo!(
+            use nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
+
+            fn run_test(x: u8) -> u8 {
+                let a = if x == 0 {
+                    @null()
+                } else {
+                    @NullableTrait::new(x)
+                };
+                let b = match match_nullable_snapshot(a) {
+                    FromNullableResult::Null => 99_u8,
+                    FromNullableResult::NotNull(value) => *(value.unbox()),
+                };
+                b
+            }
+        );
+
+        run_program_assert_output(&program, "run_test", &[4u8.into()], 4u8.into());
+        run_program_assert_output(&program, "run_test", &[0u8.into()], 99u8.into());
+    }
+
+    #[test]
+    fn run_match_nullable_snapshot_array() {
+        let program = load_cairo!(
+            use nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
+            use array::ArrayTrait;
+
+            fn run_test() -> u8 {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u8);
+                numbers.append(3_u8);
+                numbers.append(2_u8);
+                numbers.append(1_u8);
+                let a = @NullableTrait::new(numbers);
+                let b = match match_nullable_snapshot(a) {
+                    FromNullableResult::Null => 99_u8,
+                    FromNullableResult::NotNull(value) => *(value.unbox())[0],
+                };
+                b
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[4u8.into()],
+            jit_enum!(0, jit_struct!(4u8.into())),
         );
     }
 }
