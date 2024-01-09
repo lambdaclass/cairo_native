@@ -1,6 +1,4 @@
 //! # Casting libfuncs
-//!
-//! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{

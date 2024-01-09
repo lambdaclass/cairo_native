@@ -1097,57 +1097,5 @@ pub mod test {
         ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
             todo!()
         }
-
-        fn pop_log(&mut self) {
-            todo!()
-        }
-
-        fn set_account_contract_address(&mut self, _contract_address: Felt) {
-            todo!()
-        }
-
-        fn set_block_number(&mut self, _block_number: u64) {
-            todo!()
-        }
-
-        fn set_block_timestamp(&mut self, _block_timestamp: u64) {
-            todo!()
-        }
-
-        fn set_caller_address(&mut self, _address: Felt) {
-            todo!()
-        }
-
-        fn set_chain_id(&mut self, _chain_id: Felt) {
-            todo!()
-        }
-
-        fn set_contract_address(&mut self, _address: Felt) {
-            todo!()
-        }
-
-        fn set_max_fee(&mut self, _max_fee: u128) {
-            todo!()
-        }
-
-        fn set_nonce(&mut self, _nonce: Felt) {
-            todo!()
-        }
-
-        fn set_sequencer_address(&mut self, _address: Felt) {
-            todo!()
-        }
-
-        fn set_signature(&mut self, _signature: &[Felt]) {
-            todo!()
-        }
-
-        fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
-            todo!()
-        }
-
-        fn set_version(&mut self, _version: Felt) {
-            todo!()
-        }
     }
 }

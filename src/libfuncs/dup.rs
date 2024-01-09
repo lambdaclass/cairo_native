@@ -39,7 +39,11 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
+    // Note: All non-trivially-copyable are automatically handled by the cairo compiler (to Sierra).
+    //   In other words, this function will only be called for copyable types.
+    //
+    //   Proof: The following code will fail in Cairo with an unsupported generic argument:
+    //   `dup(ArrayTrait::<u8>::new())`.
 
     entry.append_operation(helper.br(
         0,

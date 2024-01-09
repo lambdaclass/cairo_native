@@ -1,11 +1,11 @@
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
+    context::NativeContext,
+    executor::JitNativeExecutor,
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_entry_point_by_idx,
 };
 use starknet_types_core::felt::Felt;
 use std::path::Path;

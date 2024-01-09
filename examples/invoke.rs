@@ -1,6 +1,6 @@
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::utils::find_entry_point;
-use cairo_native::{context::NativeContext, values::JitValue};
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, values::JitValue,
+};
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 

@@ -19,6 +19,7 @@ use melior::{
     Context,
 };
 use num_bigint::{BigInt, BigUint};
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
     /// The `felt252` prime modulo.
@@ -31,12 +32,6 @@ lazy_static! {
             .parse()
             .unwrap();
 }
-
-/// Marker type for the [PrimeModuloMeta] metadata.
-// TODO: Maybe we should use the JIT value (in `crate::values::Felt`) instead of defining a dummy
-//   type?
-#[derive(Debug)]
-pub struct Felt252;
 
 /// Build the MLIR type.
 ///
@@ -53,7 +48,7 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    match metadata.get::<PrimeModuloMeta<Felt252>>() {
+    match metadata.get::<PrimeModuloMeta<Felt>>() {
         Some(x) => assert_eq!(x.prime(), &*PRIME),
         None => {
             register_prime_modulo_meta(metadata);
@@ -63,8 +58,8 @@ where
     Ok(IntegerType::new(context, 252).into())
 }
 
-pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &mut PrimeModuloMeta<Felt252> {
+pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &mut PrimeModuloMeta<Felt> {
     metadata
-        .insert(PrimeModuloMeta::<Felt252>::new(PRIME.clone()))
+        .insert(PrimeModuloMeta::<Felt>::new(PRIME.clone()))
         .unwrap()
 }

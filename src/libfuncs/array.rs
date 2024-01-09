@@ -808,7 +808,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // same signature at sierra level
+    // Equivalent to `array_pop_front_consume` for our purposes.
     build_pop_front(context, registry, entry, location, helper, metadata, info)
 }
 
@@ -828,8 +828,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // same signature at sierra level
-    // TODO: is this really equal?
+    // Equivalent to `array_pop_front` for our purposes.
     build_pop_front(context, registry, entry, location, helper, metadata, info)
 }
 

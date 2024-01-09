@@ -1,6 +1,4 @@
 //! # Uninitialized type
-//!
-//! TODO
 
 use super::{TypeBuilder, WithSelf};
 use crate::{

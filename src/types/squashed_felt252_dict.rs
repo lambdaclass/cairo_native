@@ -1,6 +1,4 @@
 //! # Squashed `Felt` dictionary type
-//!
-//! TODO
 
 use super::{TypeBuilder, WithSelf};
 use crate::{

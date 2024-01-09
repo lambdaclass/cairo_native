@@ -858,8 +858,6 @@ mod test {
             }
         };
 
-        // TODO: Add test program for `u128_guarantee_mul`.
-
         static ref U128_IS_ZERO: (String, Program) = load_cairo! {
             use zeroable::IsZeroResult;
 
@@ -872,8 +870,6 @@ mod test {
                 }
             }
         };
-
-        // TODO: Add test program for `u128_mul_guarantee_verify`.
 
         static ref U128_ADD: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> u128 {

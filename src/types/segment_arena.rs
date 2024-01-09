@@ -1,6 +1,4 @@
 //! # Segment arena type
-//!
-//! TODO
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
