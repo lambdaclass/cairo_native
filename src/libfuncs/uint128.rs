@@ -823,13 +823,11 @@ mod test {
                 u128_byte_reverse(value)
             }
         };
-
         static ref U128_CONST: (String, Program) = load_cairo! {
             fn run_test() -> u128 {
                 1234567890
             }
         };
-
         static ref U128_SAFE_DIVMOD: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
                 let q = lhs / rhs;
@@ -838,13 +836,11 @@ mod test {
                 (q, r)
             }
         };
-
         static ref U128_EQUAL: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> bool {
                 lhs == rhs
             }
         };
-
         static ref U128_FROM_FELT252: (String, Program) = load_cairo! {
             enum U128sFromFelt252Result {
                 Narrow: u128,
@@ -857,7 +853,6 @@ mod test {
                 u128s_from_felt252(value)
             }
         };
-
         static ref U128_IS_ZERO: (String, Program) = load_cairo! {
             use zeroable::IsZeroResult;
 
@@ -870,26 +865,22 @@ mod test {
                 }
             }
         };
-
         static ref U128_ADD: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> u128 {
                 lhs + rhs
             }
         };
-
         static ref U128_SUB: (String, Program) = load_cairo! {
             fn run_test(lhs: u128, rhs: u128) -> u128 {
                 lhs - rhs
             }
         };
-
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
             use integer::u128_wide_mul;
             fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
                 u128_wide_mul(lhs, rhs)
             }
         };
-
         static ref U128_TO_FELT252: (String, Program) = load_cairo! {
             extern fn u128_to_felt252(a: u128) -> felt252 nopanic;
 
@@ -897,7 +888,6 @@ mod test {
                 u128_to_felt252(value)
             }
         };
-
         static ref U128_SQRT: (String, Program) = load_cairo! {
             use core::integer::u128_sqrt;
 
