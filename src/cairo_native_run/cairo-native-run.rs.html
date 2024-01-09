@@ -188,7 +188,6 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -296,16 +295,15 @@
         <span class="prelude-val">Some</span>(<span class="string">&quot;cairo&quot;</span>) =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
             <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, path)<span class="question-mark">?</span>;
-            (<span class="kw-2">*</span>compile_prepared_db(
+            compile_prepared_db(
                 <span class="kw-2">&amp;mut </span>db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: <span class="bool-val">true</span>,
                     ..Default::default()
                 },
-            )<span class="question-mark">?</span>)
-            .clone()
-        }
+            )<span class="question-mark">?
+        </span>}
         <span class="prelude-val">Some</span>(<span class="string">&quot;sierra&quot;</span>) =&gt; {
             <span class="kw">let </span>program_src = fs::read_to_string(path)<span class="question-mark">?</span>;
 

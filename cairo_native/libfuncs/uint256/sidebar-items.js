@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_divmod","build_is_zero","build_square_root"]};
+window.SIDEBAR_ITEMS = {"fn":["build","build_divmod","build_is_zero","build_square_root","build_u256_guarantee_inv_mod_n"]};

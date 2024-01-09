@@ -383,9 +383,9 @@
 {
     <span class="kw">let </span>src_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
-    <span class="macro">assert!</span>(info.from_nbits &gt;= info.to_nbits);
+    <span class="macro">assert!</span>(info.from_info.nbits &gt;= info.to_info.nbits);
 
-    <span class="kw">if </span>info.from_nbits == info.to_nbits {
+    <span class="kw">if </span>info.from_info.nbits == info.to_info.nbits {
         <span class="kw">let </span>k0 = entry
             .append_operation(arith::constant(
                 context,
@@ -418,7 +418,7 @@
         <span class="kw">let </span>n_bits = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(info.to_nbits.try_into()<span class="question-mark">?</span>, src_ty).into(),
+                IntegerAttribute::new(info.to_info.nbits.try_into()<span class="question-mark">?</span>, src_ty).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?

@@ -1060,7 +1060,7 @@
         <span class="kw-2">&amp;</span>[],
         location,
     ));
-    <span class="comment">// Check wether the result is positive to distinguish between undeflowing &amp; overflowing results
+    <span class="comment">// Check wether the result is positive to distinguish between underflowing &amp; overflowing results
     </span>block_overflow.append_operation(helper.cond_br(
         context,
         is_positive,
@@ -1068,7 +1068,7 @@
         [<span class="kw-2">&amp;</span>[range_check, op_result], <span class="kw-2">&amp;</span>[range_check, op_result]],
         location,
     ));
-    <span class="comment">// No Oveflow/Underflow -&gt; In range result
+    <span class="comment">// No Overflow/Underflow -&gt; In range result
     </span>block_not_overflow.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, op_result], location));
     <span class="prelude-val">Ok</span>(())
 }

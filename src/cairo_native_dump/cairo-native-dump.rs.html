@@ -213,10 +213,14 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
+<span class="kw">use </span>cairo_lang_defs::plugin::{NamedPlugin, PluginSuite};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,
@@ -308,15 +312,14 @@
         <span class="prelude-val">Some</span>(<span class="string">&quot;cairo&quot;</span>) <span class="kw">if </span>!is_contract =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
             <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, path)<span class="question-mark">?</span>;
-            <span class="kw">let </span>program = (<span class="kw-2">*</span>compile_prepared_db(
+            <span class="kw">let </span>program = compile_prepared_db(
                 <span class="kw-2">&amp;mut </span>db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: <span class="bool-val">true</span>,
                     ..Default::default()
                 },
-            )<span class="question-mark">?</span>)
-            .clone();
+            )<span class="question-mark">?</span>;
 
             <span class="kw">let </span>debug_locations = <span class="kw">if let </span><span class="prelude-val">Some</span>(context) = context {
                 <span class="kw">let </span>debug_info = DebugInfo::extract(<span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>program).map_err(|<span class="kw">_</span>| {
@@ -334,10 +337,13 @@
         }
         <span class="prelude-val">Some</span>(<span class="string">&quot;cairo&quot;</span>) <span class="kw">if </span>is_contract =&gt; {
             <span class="comment">// mimics cairo_lang_starknet::contract_class::compile_path
-            </span><span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder()
+            </span><span class="kw">let </span><span class="kw-2">mut </span>plugins = PluginSuite::default();
+            plugins
+                .add_plugin::&lt;StarkNetPlugin&gt;()
+                .add_inline_macro_plugin_ex(SelectorMacro::NAME, Arc::new(SelectorMacro));
+            <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder()
                 .detect_corelib()
-                .with_macro_plugin(Arc::new(StarkNetPlugin::default()))
-                .with_inline_macro_plugin(SelectorMacro::NAME, Arc::new(SelectorMacro))
+                .with_plugin_suite(plugins)
                 .build()<span class="question-mark">?</span>;
 
             <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, Path::new(<span class="kw-2">&amp;</span>path))<span class="question-mark">?</span>;

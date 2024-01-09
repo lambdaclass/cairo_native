@@ -1151,6 +1151,7 @@
 <a href="#1151" id="1151">1151</a>
 <a href="#1152" id="1152">1152</a>
 <a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1250,6 +1251,7 @@
             },
         )
         .unwrap()
+        .into()
     } <span class="kw">else </span>{
         <span class="kw">let </span>source = std::fs::read_to_string(program).unwrap();
         Arc::new(
@@ -1902,7 +1904,7 @@
 
         <span class="kw">let </span>module_name = program_file.path().with_extension(<span class="string">&quot;&quot;</span>);
         <span class="kw">let </span>module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), (<span class="kw-2">*</span>program).clone())
+        (module_name.to_string(), program)
     }
 
     <span class="kw">pub fn </span>run_program(
