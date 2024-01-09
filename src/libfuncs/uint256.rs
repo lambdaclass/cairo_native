@@ -59,6 +59,9 @@ where
         Uint256Concrete::SquareRoot(info) => {
             build_square_root(context, registry, entry, location, helper, metadata, info)
         }
+        Uint256Concrete::InvModN(info) => build_u256_guarantee_inv_mod_n(
+            context, registry, entry, location, helper, metadata, info,
+        ),
     }
 }
 
@@ -676,6 +679,309 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `u256_guarantee_inv_mod_n` libfunc.
+pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i256_ty = IntegerType::new(context, 256).into();
+
+    let lhs_struct = entry.argument(1)?.into();
+    let lhs_lo = entry
+        .append_operation(llvm::extract_value(
+            context,
+            lhs_struct,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            i128_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let lhs_hi = entry
+        .append_operation(llvm::extract_value(
+            context,
+            lhs_struct,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            i128_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let rhs_struct = entry.argument(2)?.into();
+    let rhs_lo = entry
+        .append_operation(llvm::extract_value(
+            context,
+            rhs_struct,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            i128_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let rhs_hi = entry
+        .append_operation(llvm::extract_value(
+            context,
+            rhs_struct,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            i128_ty,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let lhs_lo = entry
+        .append_operation(arith::extui(lhs_lo, i256_ty, location))
+        .result(0)?
+        .into();
+    let lhs_hi = entry
+        .append_operation(arith::extui(lhs_hi, i256_ty, location))
+        .result(0)?
+        .into();
+
+    let rhs_lo = entry
+        .append_operation(arith::extui(rhs_lo, i256_ty, location))
+        .result(0)?
+        .into();
+    let rhs_hi = entry
+        .append_operation(arith::extui(rhs_hi, i256_ty, location))
+        .result(0)?
+        .into();
+
+    let k128 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(128, i256_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let lhs_hi = entry
+        .append_operation(arith::shli(lhs_hi, k128, location))
+        .result(0)?
+        .into();
+    let rhs_hi = entry
+        .append_operation(arith::shli(rhs_hi, k128, location))
+        .result(0)?
+        .into();
+
+    let lhs = entry
+        .append_operation(arith::ori(lhs_hi, lhs_lo, location))
+        .result(0)?
+        .into();
+    let rhs = entry
+        .append_operation(arith::ori(rhs_hi, rhs_lo, location))
+        .result(0)?
+        .into();
+
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, i256_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let k1 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, i256_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let result = entry.append_operation(scf::r#while(
+        &[lhs, rhs, k1, k0],
+        &[i256_ty, i256_ty, i256_ty, i256_ty],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[
+                (i256_ty, location),
+                (i256_ty, location),
+                (i256_ty, location),
+                (i256_ty, location),
+            ]));
+
+            let q = block
+                .append_operation(arith::divui(
+                    block.argument(1)?.into(),
+                    block.argument(0)?.into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            let q_c = block
+                .append_operation(arith::muli(q, block.argument(0)?.into(), location))
+                .result(0)?
+                .into();
+            let c = block
+                .append_operation(arith::subi(block.argument(1)?.into(), q_c, location))
+                .result(0)?
+                .into();
+
+            let q_uc = block
+                .append_operation(arith::muli(q, block.argument(2)?.into(), location))
+                .result(0)?
+                .into();
+            let u_c = block
+                .append_operation(arith::subi(block.argument(3)?.into(), q_uc, location))
+                .result(0)?
+                .into();
+
+            let should_continue = block
+                .append_operation(arith::cmpi(context, CmpiPredicate::Ne, c, k0, location))
+                .result(0)?
+                .into();
+            block.append_operation(scf::condition(
+                should_continue,
+                &[c, block.argument(0)?.into(), u_c, block.argument(2)?.into()],
+                location,
+            ));
+
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[
+                (i256_ty, location),
+                (i256_ty, location),
+                (i256_ty, location),
+                (i256_ty, location),
+            ]));
+
+            block.append_operation(scf::r#yield(
+                &[
+                    block.argument(0)?.into(),
+                    block.argument(1)?.into(),
+                    block.argument(2)?.into(),
+                    block.argument(3)?.into(),
+                ],
+                location,
+            ));
+
+            region
+        },
+        location,
+    ));
+
+    let inv = entry
+        .append_operation(arith::remui(result.result(3)?.into(), rhs, location))
+        .result(0)?
+        .into();
+
+    let inv_lo = entry
+        .append_operation(arith::trunci(inv, i128_ty, location))
+        .result(0)?
+        .into();
+    let inv_hi = entry
+        .append_operation(arith::shrui(inv, k128, location))
+        .result(0)?
+        .into();
+    let inv_hi = entry
+        .append_operation(arith::trunci(inv_hi, i128_ty, location))
+        .result(0)?
+        .into();
+
+    let return_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.output_types()[0][1],
+    )?;
+    let result_inv = entry
+        .append_operation(llvm::undef(return_ty, location))
+        .result(0)?
+        .into();
+    let result_inv = entry
+        .append_operation(llvm::insert_value(
+            context,
+            result_inv,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            inv_lo,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let result_inv = entry
+        .append_operation(llvm::insert_value(
+            context,
+            result_inv,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            inv_hi,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let lhs_is_invertible = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            result.result(1)?.into(),
+            k1,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let inv_not_zero = entry
+        .append_operation(arith::cmpi(context, CmpiPredicate::Ne, inv, k0, location))
+        .result(0)?
+        .into();
+    let condition = entry
+        .append_operation(arith::andi(lhs_is_invertible, inv_not_zero, location))
+        .result(0)?
+        .into();
+
+    let guarantee_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.output_types()[0][2],
+    )?;
+    let op = entry.append_operation(llvm::undef(guarantee_type, location));
+    let guarantee = op.result(0)?.into();
+
+    entry.append_operation(helper.cond_br(
+        context,
+        condition,
+        [0, 1],
+        [
+            &[
+                entry.argument(0)?.into(),
+                result_inv,
+                guarantee,
+                guarantee,
+                guarantee,
+                guarantee,
+                guarantee,
+                guarantee,
+                guarantee,
+                guarantee,
+            ],
+            &[entry.argument(0)?.into(), guarantee, guarantee],
+        ],
+        location,
+    ));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::{
@@ -715,6 +1021,13 @@ mod test {
 
             fn run_test(value: u256) -> u128 {
                 u256_sqrt(value)
+            }
+        };
+        static ref U256_INV_MOD_N: (String, Program) = load_cairo! {
+            use core::math::u256_inv_mod;
+
+            fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
+                u256_inv_mod(a, n)
             }
         };
     }
@@ -882,5 +1195,77 @@ mod test {
 
             run((x, 0), y.into());
         }
+    }
+
+    #[test]
+    fn u256_inv_mod_n() {
+        #[track_caller]
+        fn run(a: (u128, u128), n: (u128, u128), result: JitValue) {
+            run_program_assert_output(
+                &U256_INV_MOD_N,
+                "run_test",
+                &[
+                    jit_struct!(a.0.into(), a.1.into()),
+                    jit_struct!(n.0.into(), n.1.into()),
+                ],
+                result,
+            )
+        }
+
+        let none = jit_enum!(1, jit_struct!());
+
+        // Not invertible.
+        run((0, 0), (0, 0), none.clone());
+        run((1, 0), (1, 0), none.clone());
+        run((0, 0), (1, 0), none.clone());
+        run((0, 0), (7, 0), none.clone());
+        run((3, 0), (6, 0), none.clone());
+        run((4, 0), (6, 0), none.clone());
+        run((8, 0), (4, 0), none.clone());
+        run((8, 0), (24, 0), none.clone());
+        run(
+            (
+                112713230461650448610759614893138283713,
+                311795268193434200766998031144865279193,
+            ),
+            (
+                214442144331145623175443765631916854552,
+                85683151001472364977354294776284843870,
+            ),
+            none.clone(),
+        );
+        run(
+            (
+                138560372230216185616572678448146427468,
+                178030013799389090502578959553486954963,
+            ),
+            (
+                299456334380503763038201670272353657683,
+                285941620966047830312853638602560712796,
+            ),
+            none,
+        );
+
+        // Invertible.
+        run(
+            (5, 0),
+            (24, 0),
+            jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
+        );
+        run(
+            (29, 0),
+            (24, 0),
+            jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
+        );
+        run(
+            (1, 0),
+            (24, 0),
+            jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
+        );
+        run(
+            (1, 0),
+            (5, 0),
+            jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
+        );
     }
 }

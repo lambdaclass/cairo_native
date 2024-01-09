@@ -105,15 +105,14 @@ fn load_program(path: &Path) -> Result<Program, Box<dyn std::error::Error>> {
         Some("cairo") => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            (*compile_prepared_db(
+            compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
-            )?)
-            .clone()
+            )?
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;

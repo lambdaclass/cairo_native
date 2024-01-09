@@ -59,7 +59,6 @@ use std::{
     ops::Neg,
     path::Path,
     str::FromStr,
-    sync::Arc,
 };
 
 #[allow(unused_macros)]
@@ -126,16 +125,13 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-    let program = Arc::try_unwrap(
-        compile_prepared_db(
-            &mut db,
-            main_crate_ids.clone(),
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap(),
+    let program = compile_prepared_db(
+        &mut db,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
     )
     .unwrap();
 
@@ -160,16 +156,13 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
-    let program = Arc::try_unwrap(
-        compile_prepared_db(
-            &mut db,
-            main_crate_ids.clone(),
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap(),
+    let program = compile_prepared_db(
+        &mut db,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
     )
     .unwrap();
 

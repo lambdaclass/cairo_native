@@ -5,7 +5,7 @@
 #
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION=2.3.1
+CAIRO_2_VERSION=2.4.2
 
 check-llvm:
 ifndef MLIR_SYS_170_PREFIX

@@ -97,6 +97,7 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
             },
         )
         .unwrap()
+        .into()
     } else {
         let source = std::fs::read_to_string(program).unwrap();
         Arc::new(
@@ -749,7 +750,7 @@ pub mod test {
 
         let module_name = program_file.path().with_extension("");
         let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), (*program).clone())
+        (module_name.to_string(), program)
     }
 
     pub fn run_program(
