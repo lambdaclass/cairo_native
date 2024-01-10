@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
 //! # Debug libfuncs
-//!
-//! TODO
 
 // Printable: 9-13, 27, 32, 33-126
 //     is_ascii_graphic() -> 33-126

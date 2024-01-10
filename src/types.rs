@@ -22,10 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, r#type::opaque_pointer},
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
-};
-use melior::{
-    ir::{Module, Type},
+    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Module, Type, Value},
     Context,
 };
 use std::{alloc::Layout, error::Error, ops::Deref};
@@ -539,13 +536,13 @@ where
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
-            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
+            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
             CoreTypeConcrete::Uint32(_) => get_integer_layout(32),
             CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(), // TODO: Figure out builtins layout.
+            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(),
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),

@@ -7,7 +7,7 @@ use crate::{
         CoreTypeBuilderError,
     },
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::{felt252::Felt252, TypeBuilder},
+    types::TypeBuilder,
     utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -33,6 +33,7 @@ use melior::{
     Context,
 };
 use num_bigint::{Sign, ToBigInt};
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -99,7 +100,7 @@ where
         &format!(
             "{} : {i256}",
             metadata
-                .get::<PrimeModuloMeta<Felt252>>()
+                .get::<PrimeModuloMeta<Felt>>()
                 .ok_or(ErrorImpl::MissingMetadata)?
                 .prime()
         ),
@@ -110,7 +111,7 @@ where
         &format!(
             "{} : {i512}",
             metadata
-                .get::<PrimeModuloMeta<Felt252>>()
+                .get::<PrimeModuloMeta<Felt>>()
                 .ok_or(ErrorImpl::MissingMetadata)?
                 .prime()
         ),
@@ -138,7 +139,7 @@ where
             let value = match operation.c.sign() {
                 Sign::Minus => {
                     let prime = metadata
-                        .get::<PrimeModuloMeta<Felt252>>()
+                        .get::<PrimeModuloMeta<Felt>>()
                         .ok_or(ErrorImpl::MissingMetadata)?
                         .prime();
                     (&operation.c + prime.to_bigint().expect("always is Some"))
@@ -151,7 +152,7 @@ where
             let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
                 .ok_or(ErrorImpl::MissingMetadata)?;
 
-            // TODO: Ensure that the constant is on the right side of the operation.
+            // TODO: Ensure that the constant is on the correct side of the operation.
             mlir_asm! { context, entry, location =>
                 ; rhs = "arith.constant"() { "value" = attr_c } : () -> felt252_ty
             }
@@ -420,7 +421,7 @@ where
     let value = match info.c.sign() {
         Sign::Minus => {
             let prime = metadata
-                .get::<PrimeModuloMeta<Felt252>>()
+                .get::<PrimeModuloMeta<Felt>>()
                 .ok_or(ErrorImpl::MissingMetadata)?
                 .prime();
             (&info.c + prime.to_bigint().expect("always is Some"))

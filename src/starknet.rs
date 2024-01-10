@@ -187,32 +187,57 @@ pub trait StarkNetSyscallHandler {
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
     // Testing syscalls.
-    // TODO: Make them optional. Crash if called but not implemented.
-    fn pop_log(&mut self);
+    fn pop_log(&mut self) {
+        unimplemented!()
+    }
 
-    fn set_account_contract_address(&mut self, contract_address: Felt);
+    fn set_account_contract_address(&mut self, _contract_address: Felt) {
+        unimplemented!()
+    }
 
-    fn set_block_number(&mut self, block_number: u64);
+    fn set_block_number(&mut self, _block_number: u64) {
+        unimplemented!()
+    }
 
-    fn set_block_timestamp(&mut self, block_timestamp: u64);
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
+        unimplemented!()
+    }
 
-    fn set_caller_address(&mut self, address: Felt);
+    fn set_caller_address(&mut self, _address: Felt) {
+        unimplemented!()
+    }
 
-    fn set_chain_id(&mut self, chain_id: Felt);
+    fn set_chain_id(&mut self, _chain_id: Felt) {
+        unimplemented!()
+    }
 
-    fn set_contract_address(&mut self, address: Felt);
+    fn set_contract_address(&mut self, _address: Felt) {
+        unimplemented!()
+    }
 
-    fn set_max_fee(&mut self, max_fee: u128);
+    fn set_max_fee(&mut self, _max_fee: u128) {
+        unimplemented!()
+    }
 
-    fn set_nonce(&mut self, nonce: Felt);
+    fn set_nonce(&mut self, _nonce: Felt) {
+        unimplemented!()
+    }
 
-    fn set_sequencer_address(&mut self, address: Felt);
+    fn set_sequencer_address(&mut self, _address: Felt) {
+        unimplemented!()
+    }
 
-    fn set_signature(&mut self, signature: &[Felt]);
+    fn set_signature(&mut self, _signature: &[Felt]) {
+        unimplemented!()
+    }
 
-    fn set_transaction_hash(&mut self, transaction_hash: Felt);
+    fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
+        unimplemented!()
+    }
 
-    fn set_version(&mut self, version: Felt);
+    fn set_version(&mut self, _version: Felt) {
+        unimplemented!()
+    }
 }
 
 // TODO: Move to the correct place or remove if unused.

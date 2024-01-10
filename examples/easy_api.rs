@@ -1,6 +1,4 @@
-use cairo_native::context::NativeContext;
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
 use starknet_types_core::felt::Felt;
 use std::path::Path;
 

@@ -1,6 +1,4 @@
 //! # Elliptic curve libfuncs
-//!
-//! TODO
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -11,10 +9,7 @@ use crate::{
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    types::{
-        felt252::{register_prime_modulo_meta, Felt252},
-        TypeBuilder,
-    },
+    types::{felt252::register_prime_modulo_meta, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -37,6 +32,7 @@ use melior::{
     },
     Context,
 };
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -192,7 +188,7 @@ where
                 context,
                 &format!(
                     "{} : i252",
-                    match metadata.get::<PrimeModuloMeta<Felt252>>() {
+                    match metadata.get::<PrimeModuloMeta<Felt>>() {
                         Some(x) => x.prime(),
                         None => {
                             // Since the `EcPoint` type is external, there is no guarantee that

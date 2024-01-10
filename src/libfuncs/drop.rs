@@ -39,7 +39,7 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Implement drop for arrays.
+    // Note: Complex types implement drop within the type itself (in `build_drop`).
 
     let ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     ty.build_drop(

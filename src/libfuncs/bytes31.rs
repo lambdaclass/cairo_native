@@ -1,4 +1,4 @@
-//! # Struct-related libfuncs
+//! # Bytes31-related libfuncs
 
 use super::{LibfuncBuilder, LibfuncHelper};
 use crate::{
@@ -209,7 +209,7 @@ mod test {
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
-        // todo: bytes31_const is not yet possible in current cairo version.
+        // TODO: Test `bytes31_const` once the compiler supports it.
         static ref BYTES31_ROUNDTRIP: (String, Program) = load_cairo! {
             use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
 

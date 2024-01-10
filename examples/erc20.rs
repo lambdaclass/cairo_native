@@ -1,11 +1,11 @@
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
+    context::NativeContext,
+    executor::JitNativeExecutor,
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_entry_point_by_idx,
 };
 use starknet_types_core::felt::Felt;
 use std::path::Path;
@@ -222,58 +222,6 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _y: cairo_native::starknet::U256,
         _gas: &mut u128,
     ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
-        todo!()
-    }
-
-    fn pop_log(&mut self) {
-        todo!()
-    }
-
-    fn set_account_contract_address(&mut self, _contract_address: Felt) {
-        todo!()
-    }
-
-    fn set_block_number(&mut self, _block_number: u64) {
-        todo!()
-    }
-
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
-        todo!()
-    }
-
-    fn set_caller_address(&mut self, _address: Felt) {
-        todo!()
-    }
-
-    fn set_chain_id(&mut self, _chain_id: Felt) {
-        todo!()
-    }
-
-    fn set_contract_address(&mut self, _address: Felt) {
-        todo!()
-    }
-
-    fn set_max_fee(&mut self, _max_fee: u128) {
-        todo!()
-    }
-
-    fn set_nonce(&mut self, _nonce: Felt) {
-        todo!()
-    }
-
-    fn set_sequencer_address(&mut self, _address: Felt) {
-        todo!()
-    }
-
-    fn set_signature(&mut self, _signature: &[Felt]) {
-        todo!()
-    }
-
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
-        todo!()
-    }
-
-    fn set_version(&mut self, _version: Felt) {
         todo!()
     }
 }

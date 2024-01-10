@@ -40,8 +40,6 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    // TODO: Is `revoke_ap_tracking` also a no-op? If it turns out it is NOT a no-op, update the
-    //   docs.
     match selector {
         ApTrackingConcreteLibfunc::Revoke(info) => {
             build_revoke(context, registry, entry, location, helper, metadata, info)

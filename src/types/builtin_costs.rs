@@ -1,6 +1,4 @@
 //! # Builtin costs type
-//!
-//! TODO
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
