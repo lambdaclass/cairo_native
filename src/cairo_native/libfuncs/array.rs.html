@@ -1442,7 +1442,6 @@
 <a href="#1442" id="1442">1442</a>
 <a href="#1443" id="1443">1443</a>
 <a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2253,7 +2252,7 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="comment">// same signature at sierra level
+    <span class="comment">// Equivalent to `array_pop_front_consume` for our purposes.
     </span>build_pop_front(context, registry, entry, location, helper, metadata, info)
 }
 
@@ -2273,8 +2272,7 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="comment">// same signature at sierra level
-    // TODO: is this really equal?
+    <span class="comment">// Equivalent to `array_pop_front` for our purposes.
     </span>build_pop_front(context, registry, entry, location, helper, metadata, info)
 }
 

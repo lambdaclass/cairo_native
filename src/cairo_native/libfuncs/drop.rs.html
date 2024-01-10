@@ -97,7 +97,7 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="comment">// TODO: Implement drop for arrays.
+    <span class="comment">// Note: Complex types implement drop within the type itself (in `build_drop`).
 
     </span><span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     ty.build_drop(

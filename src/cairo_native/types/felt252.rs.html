@@ -63,11 +63,6 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `felt252` type
 //!
 //! A `felt252` is a 252-bit number within a
@@ -89,6 +84,7 @@
     Context,
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint};
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="macro">lazy_static! </span>{
     <span class="doccomment">/// The `felt252` prime modulo.
@@ -101,12 +97,6 @@
             </span>.parse()
             .unwrap();
 }
-
-<span class="doccomment">/// Marker type for the [PrimeModuloMeta] metadata.
-</span><span class="comment">// TODO: Maybe we should use the JIT value (in `crate::values::Felt`) instead of defining a dummy
-//   type?
-</span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>Felt252;
 
 <span class="doccomment">/// Build the MLIR type.
 ///
@@ -123,7 +113,7 @@
     TLibfunc: GenericLibfunc,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;() {
+    <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;() {
         <span class="prelude-val">Some</span>(x) =&gt; <span class="macro">assert_eq!</span>(x.prime(), <span class="kw-2">&amp;*</span>PRIME),
         <span class="prelude-val">None </span>=&gt; {
             register_prime_modulo_meta(metadata);
@@ -133,9 +123,9 @@
     <span class="prelude-val">Ok</span>(IntegerType::new(context, <span class="number">252</span>).into())
 }
 
-<span class="kw">pub fn </span>register_prime_modulo_meta(metadata: <span class="kw-2">&amp;mut </span>MetadataStorage) -&gt; <span class="kw-2">&amp;mut </span>PrimeModuloMeta&lt;Felt252&gt; {
+<span class="kw">pub fn </span>register_prime_modulo_meta(metadata: <span class="kw-2">&amp;mut </span>MetadataStorage) -&gt; <span class="kw-2">&amp;mut </span>PrimeModuloMeta&lt;Felt&gt; {
     metadata
-        .insert(PrimeModuloMeta::&lt;Felt252&gt;::new(PRIME.clone()))
+        .insert(PrimeModuloMeta::&lt;Felt&gt;::new(PRIME.clone()))
         .unwrap()
 }
 </code></pre></div></section></main></body></html>

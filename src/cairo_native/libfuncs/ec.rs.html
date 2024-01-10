@@ -1353,13 +1353,7 @@
 <a href="#1353" id="1353">1353</a>
 <a href="#1354" id="1354">1354</a>
 <a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
-//!
-//! TODO
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 <span class="kw">use crate</span>::{
@@ -1370,10 +1364,7 @@
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    types::{
-        felt252::{register_prime_modulo_meta, Felt252},
-        TypeBuilder,
-    },
+    types::{felt252::register_prime_modulo_meta, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1396,6 +1387,7 @@
     },
     Context,
 };
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
@@ -1551,7 +1543,7 @@
                 context,
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;{} : i252&quot;</span>,
-                    <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt252&gt;&gt;() {
+                    <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;() {
                         <span class="prelude-val">Some</span>(x) =&gt; x.prime(),
                         <span class="prelude-val">None </span>=&gt; {
                             <span class="comment">// Since the `EcPoint` type is external, there is no guarantee that

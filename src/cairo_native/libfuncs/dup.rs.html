@@ -49,6 +49,10 @@
 <a href="#49" id="49">49</a>
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # State value duplication libfunc
 //!
 //! Most types are trivial and don&#39;t need any clone (or rather, they will be cloned automatically by
@@ -90,7 +94,11 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="comment">// TODO: Handle non-trivially-copyable types (ex. arrays) and maybe update docs.
+    <span class="comment">// Note: All non-trivially-copyable are automatically handled by the cairo compiler (to Sierra).
+    //   In other words, this function will only be called for copyable types.
+    //
+    //   Proof: The following code will fail in Cairo with an unsupported generic argument:
+    //   `dup(ArrayTrait::&lt;u8&gt;::new())`.
 
     </span>entry.append_operation(helper.br(
         <span class="number">0</span>,
