@@ -106,6 +106,8 @@ impl IsolatedExecutor {
         for x in &mut self.read_buffer[0..n] {
             if *x != b'\0' {
                 msg.push(x);
+            } else {
+
             }
         }
 
