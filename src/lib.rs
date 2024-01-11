@@ -83,6 +83,7 @@ mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;
+pub mod sandbox;
 pub mod starknet;
 pub mod types;
 pub mod utils;

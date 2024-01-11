@@ -2,10 +2,11 @@ use crate::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
     values::JitValue,
 };
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
 /// The result of the JIT execution.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
     pub return_value: JitValue,

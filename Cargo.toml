@@ -19,6 +19,9 @@ required-features = ["build-cli"]
 name = "cairo-native-run"
 required-features = ["build-cli"]
 
+[[bin]]
+name = "cairo-executor"
+
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = ["clap", "tracing-subscriber"]
@@ -63,6 +66,8 @@ libloading = "0.8.1"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
+bincode = "1.3.3"
+serde = { version = "1.0.195", features = ["derive"] }
 
 [dev-dependencies]
 cairo-felt = "0.8.5"

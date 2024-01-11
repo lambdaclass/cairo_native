@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
 };
 use educe::Educe;
 use num_bigint::{BigInt, Sign};
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
@@ -28,7 +29,7 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe)]
+#[derive(Clone, Educe, Serialize, Deserialize)]
 #[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
