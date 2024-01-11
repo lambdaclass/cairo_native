@@ -17,8 +17,11 @@ pub enum Message {
         inputs: Vec<JitValue>,
     },
     ExecutionResult(ExecutionResult),
+    Ping,
+    Ack,
 }
 
+#[derive(Debug)]
 pub struct IsolatedExecutor {
     proc: Child,
     stdin: ChildStdin,
