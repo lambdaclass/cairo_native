@@ -10,7 +10,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
     ir::{r#type::IntegerType, Module, Type},
     Context,
 };
@@ -30,5 +29,5 @@ where
     TLibfunc: GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
-    Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
+    Ok(IntegerType::new(context, 64).into())
 }
