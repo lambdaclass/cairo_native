@@ -14,8 +14,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::cf,
-    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
+    dialect::{arith, cf},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockRef, Location, Module,
+        Operation, Region, Value, ValueLike,
+    },
     Context,
 };
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
@@ -495,4 +498,32 @@ pub enum BranchTarget<'ctx, 'a> {
     Jump(&'a Block<'ctx>),
     /// A statement's branch target by its index.
     Return(usize),
+}
+
+pub fn increment_builtin_counter<'ctx, 'a, TType, TLibfunc>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    value: Value<'ctx, '_>,
+) -> crate::error::libfuncs::Result<Value<'ctx, 'a>>
+where
+    'ctx: 'a,
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
+{
+    let k1 = block
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    Ok(block
+        .append_operation(arith::addi(value, k1, location))
+        .result(0)?
+        .into())
 }

@@ -73,6 +73,13 @@ where
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
+    let poseidon_builtin = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let felt252_ty = registry.build_type(
         context,
         helper,
@@ -84,7 +91,6 @@ where
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
-    let poseidon_builtin = entry.argument(0)?.into();
     let op0 = entry.argument(1)?.into();
     let op1 = entry.argument(2)?.into();
     let op2 = entry.argument(3)?.into();

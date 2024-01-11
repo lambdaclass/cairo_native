@@ -599,6 +599,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let value = entry.argument(1)?.into();
 
     let limit = entry
@@ -628,10 +635,7 @@ where
         context,
         is_in_range,
         [0, 1],
-        [
-            &[entry.argument(0)?.into(), value],
-            &[entry.argument(0)?.into()],
-        ],
+        [&[range_check, value], &[range_check]],
         location,
     ));
     Ok(())
@@ -685,6 +689,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let value = entry.argument(1)?.into();
 
     let limit = entry
@@ -714,10 +725,7 @@ where
         context,
         is_in_range,
         [0, 1],
-        [
-            &[entry.argument(0)?.into(), value],
-            &[entry.argument(0)?.into()],
-        ],
+        [&[range_check, value], &[range_check]],
         location,
     ));
     Ok(())
@@ -1462,6 +1470,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let k_limit = entry
         .append_operation(arith::constant(
             context,
@@ -1500,7 +1515,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), value], location));
+    entry.append_operation(helper.br(0, &[range_check, value], location));
     Ok(())
 }
 
@@ -1587,6 +1602,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let value = entry.argument(1)?.into();
 
     let limit = entry
@@ -1616,10 +1638,7 @@ where
         context,
         is_in_range,
         [0, 1],
-        [
-            &[entry.argument(0)?.into(), value],
-            &[entry.argument(0)?.into()],
-        ],
+        [&[range_check, value], &[range_check]],
         location,
     ));
     Ok(())

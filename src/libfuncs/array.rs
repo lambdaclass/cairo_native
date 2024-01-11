@@ -430,13 +430,19 @@ where
         &info.param_signatures()[1].ty,
     )?;
 
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let (elem_ty, elem_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let range_check = entry.argument(0)?.into();
     let array_val = entry.argument(1)?.into();
     let index_val = entry.argument(2)?.into();
 
@@ -1007,13 +1013,19 @@ where
         &info.param_signatures()[1].ty,
     )?;
 
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let (elem_ty, elem_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let range_check = entry.argument(0)?.into();
     let array_val = entry.argument(1)?.into();
     let index_val = entry.argument(2)?.into();
     let length_val = entry.argument(3)?.into();

@@ -21,7 +21,7 @@ use melior::{
 
 /// Generate MLIR operations for the `bitwise` libfunc.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -35,6 +35,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let bitwise = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();
 
@@ -53,12 +60,7 @@ where
 
     entry.append_operation(helper.br(
         0,
-        &[
-            entry.argument(0)?.into(),
-            logical_and,
-            logical_xor,
-            logical_or,
-        ],
+        &[bitwise, logical_and, logical_xor, logical_or],
         location,
     ));
     Ok(())

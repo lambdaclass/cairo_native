@@ -107,6 +107,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let bitwise = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let u128_ty = registry.build_type(
         context,
         helper,
@@ -122,7 +129,7 @@ where
         ; res = "llvm.call_intrinsic"(arg1) { "intrin" = bswap_intrin_attr } : (u128_ty) -> u128_ty
     };
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), res], location));
+    entry.append_operation(helper.br(0, &[bitwise, res], location));
     Ok(())
 }
 
@@ -165,7 +172,7 @@ where
 
 /// Generate MLIR operations for the `u128_safe_divmod` libfunc.
 pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -179,6 +186,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -188,11 +202,7 @@ where
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
     let result_rem = op.result(0)?.into();
 
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), result_div, result_rem],
-        location,
-    ));
+    entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
     Ok(())
 }
 
@@ -234,7 +244,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `u128_from_felt252` libfunc.
+/// Generate MLIR operations for the `u128s_from_felt252` libfunc.
 pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
@@ -250,6 +260,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let arg1 = entry.argument(1)?.into();
 
     let k1 = entry
@@ -310,10 +327,7 @@ where
         context,
         is_wide,
         [1, 0],
-        [
-            &[entry.argument(0)?.into(), msb_bits, lsb_bits],
-            &[entry.argument(0)?.into(), lsb_bits],
-        ],
+        [&[range_check, msb_bits, lsb_bits], &[range_check, lsb_bits]],
         location,
     ));
     Ok(())
@@ -373,7 +387,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -447,6 +467,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let i64_ty = IntegerType::new(context, 64).into();
     let i128_ty = IntegerType::new(context, 128).into();
 
@@ -692,7 +719,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), result], location));
+    entry.append_operation(helper.br(0, &[range_check, result], location));
     Ok(())
 }
 
@@ -785,7 +812,7 @@ where
 
 /// Generate MLIR operations for the `u128_guarantee_verify` libfunc.
 pub fn build_guarantee_verify<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -799,7 +826,14 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
+    entry.append_operation(helper.br(0, &[range_check], location));
     Ok(())
 }
 
