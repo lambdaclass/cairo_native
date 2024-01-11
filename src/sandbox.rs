@@ -1,4 +1,9 @@
-use std::os::unix::process::CommandExt;
+use std::{
+    io::Stdout,
+    os::unix::process::CommandExt,
+    path::Path,
+    process::{Child, ChildStdin, ChildStdout, Stdio},
+};
 
 use cairo_lang_sierra::program::Program;
 use serde::{Deserialize, Serialize};
@@ -14,14 +19,25 @@ pub enum Message {
     ExecutionResult(ExecutionResult),
 }
 
-pub struct IsolatedExecutor {}
+pub struct IsolatedExecutor {
+    proc: Child,
+    stdin: ChildStdin,
+    stdout: ChildStdout,
+}
 
 impl IsolatedExecutor {
-    pub fn start(&self) -> Result<(), std::io::Error> {
-        let path = "target/debug/cairo-executor";
-        let mut cmd = std::process::Command::new(path);
-        let proc = cmd.spawn()?;
+    // "target/debug/cairo-executor"
+    pub fn new(executor_path: &Path) -> Result<Self, std::io::Error> {
+        let mut cmd = std::process::Command::new(executor_path);
+        cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
+        let mut proc = cmd.spawn()?;
+        let stdin = proc.stdin.take().unwrap();
+        let stdout = proc.stdout.take().unwrap();
 
-        Ok(())
+        Ok(Self {
+            proc,
+            stdin,
+            stdout,
+        })
     }
 }
