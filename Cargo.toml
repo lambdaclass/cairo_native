@@ -69,6 +69,7 @@ tracing-subscriber = { version = "0.3", features = [
 serde = { version = "1.0.195", features = ["derive"] }
 uuid = { version = "1.6.1", features = ["serde", "v4"] }
 serde_json = "1.0"
+ipc-channel = { version = "0.18.0", features = ["memfd"] }
 
 [dev-dependencies]
 cairo-felt = "0.8.5"

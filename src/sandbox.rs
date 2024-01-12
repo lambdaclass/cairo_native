@@ -1,16 +1,17 @@
 use std::{
-    io::{Read, Write},
+    io::{BufRead, BufReader},
     path::Path,
-    process::{Child, ChildStdin, ChildStdout, Stdio},
+    process::{Child, Stdio},
 };
 
 use cairo_lang_sierra::program::{Program, VersionedProgram};
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{execution_result::ExecutionResult, values::JitValue};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Message {
     ExecuteJIT {
         id: Uuid,
@@ -23,37 +24,76 @@ pub enum Message {
         result: ExecutionResult,
     },
     Ack(Uuid),
+    Ping,
+    Kill,
+}
+
+impl Message {
+    pub fn serialize(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
+    }
+
+    pub fn deserialize(value: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(value)
+    }
+
+    pub fn wrap(&self) -> Result<WrappedMessage, serde_json::Error> {
+        Ok(WrappedMessage::Message(self.serialize()?))
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum WrappedMessage {
+    Message(String), // ipc-channel uses bincode and doesnt support serializing Vecs
+}
+
+impl WrappedMessage {
+    pub fn to_msg(self) -> Result<Message, serde_json::Error> {
+        match self {
+            WrappedMessage::Message(msg) => Message::deserialize(&msg),
+        }
+    }
 }
 
 pub type OnResult = Box<dyn Fn(ExecutionResult, Uuid)>;
 
 pub struct IsolatedExecutor {
     proc: Child,
-    stdin: ChildStdin,
-    stdout: ChildStdout,
-    read_buffer: [u8; 512],
+    sender: IpcSender<WrappedMessage>,
+    receiver: IpcReceiver<WrappedMessage>,
 }
 
 impl IsolatedExecutor {
     // "target/debug/cairo-executor"
     pub fn new(executor_path: &Path) -> Result<Self, std::io::Error> {
+        let (server, server_name) = IpcOneShotServer::new().unwrap();
         println!("creating executor with: {:?}", executor_path);
+
         let mut cmd = std::process::Command::new(executor_path);
-        cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
-        let mut proc = cmd.spawn()?;
-        let stdin = proc.stdin.take().unwrap();
+        cmd.stdout(Stdio::piped());
+        let mut proc = cmd.arg(server_name).spawn()?;
         let stdout = proc.stdout.take().unwrap();
+        let mut stdout = BufReader::new(stdout);
+        let mut client_name = String::new();
+        stdout.read_line(&mut client_name)?;
+
+        // first we accept the connection
+        let (receiver, msg) = server.accept().expect("failed to accept receiver");
+        println!("accepted receiver {receiver:?} wit msg {msg:?}");
+        // then we connect
+        println!("connecting to {client_name}");
+        let sender = IpcSender::connect(client_name.trim().to_string()).expect("failed to connect");
+        sender.send(Message::Ping.wrap()?).unwrap();
 
         Ok(Self {
             proc,
-            stdin,
-            stdout,
-            read_buffer: [0; 512]
+            sender,
+            receiver,
         })
     }
 
     pub fn run_program(
-        &mut self,
+        &self,
         program: Program,
         inputs: Vec<JitValue>,
         entry_point: String,
@@ -65,11 +105,11 @@ impl IsolatedExecutor {
             id,
             program: program.into_artifact(),
             inputs,
-            entry_point
+            entry_point,
         };
-        self.send_msg(msg)?;
+        self.sender.send(msg.wrap()?)?;
 
-        let ack = self.read_msg()?;
+        let ack = self.receiver.recv()?.to_msg()?;
 
         if let Message::Ack(recv_id) = ack {
             assert_eq!(recv_id, id, "id mismatch");
@@ -78,7 +118,7 @@ impl IsolatedExecutor {
             panic!("id mismatch");
         }
 
-        let result = self.read_msg()?;
+        let result = self.receiver.recv()?.to_msg()?;
 
         if let Message::ExecutionResult {
             id: recv_id,
@@ -91,41 +131,11 @@ impl IsolatedExecutor {
             panic!("wrong msg");
         }
     }
-
-    fn read_msg(&mut self) -> Result<Message, Box<dyn std::error::Error>> {
-        let mut msg = Vec::new();
-        // check if we have a partial msg before
-        for x in self.read_buffer.iter_mut() {
-            if *x != b'\0' {
-                msg.push(x);
-            }
-            *x = b'\0';
-        }
-        let n = self.stdout.read(&mut self.read_buffer)?;
-
-        for x in &mut self.read_buffer[0..n] {
-            if *x != b'\0' {
-                msg.push(x);
-            } else {
-
-            }
-        }
-
-        let msg = serde_json::from_slice(&buf)?;
-        Ok(msg)
-    }
-
-    fn send_msg(&mut self, msg: Message) -> Result<(), Box<dyn std::error::Error>> {
-        let msg = serde_json::to_vec(&msg).unwrap();
-        self.stdin.write_all(&msg)?;
-        self.stdin.write_all(&[b'\0'])?;
-        self.stdin.flush()?;
-        Ok(())
-    }
 }
 
 impl Drop for IsolatedExecutor {
     fn drop(&mut self) {
+        let _ = self.sender.send(Message::Kill.wrap().unwrap());
         let _ = self.proc.kill();
     }
 }

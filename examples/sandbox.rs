@@ -16,7 +16,10 @@ fn main() {
     // Compile the cairo program to sierra.
     let sierra_program = (*cairo_native::utils::cairo_to_sierra(program_path)).clone();
 
-    let mut sandbox = IsolatedExecutor::new(Path::new("/Users/edgar/Documents/cairo_sierra_to_mlir/target/debug/cairo-executor")).unwrap();
+    let sandbox = IsolatedExecutor::new(Path::new(
+        "/data2/edgar/work/native/target/debug/cairo-executor",
+    ))
+    .unwrap();
 
     let result = sandbox
         .run_program(

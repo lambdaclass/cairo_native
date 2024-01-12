@@ -1,35 +1,42 @@
-use std::io::{Read, Write};
+use std::io::Write;
 
 use cairo_native::{
-    context::NativeContext, executor::JitNativeExecutor, sandbox::Message, utils::find_entry_point,
+    context::NativeContext,
+    executor::JitNativeExecutor,
+    sandbox::{Message, WrappedMessage},
+    utils::find_entry_point,
 };
+use ipc_channel::ipc::{IpcOneShotServer, IpcSender};
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pid = std::process::id();
+    let mut args = std::env::args();
 
+    if args.len() < 2 {
+        panic!("missing server ipc name");
+    }
+
+    let pid = std::process::id();
     let mut log_file = std::fs::File::create(format!("cairo-executor.{pid}.log"))?;
 
-    let mut stdin = std::io::stdin().lock();
-    let mut stdout = std::io::stdout().lock();
-
-    let mut send_msg = |msg: Message| {
-        let bytes = serde_json::to_vec(&msg).unwrap();
-        stdout.write_all(&bytes).unwrap();
-    };
+    let server = args.nth(1).unwrap();
+    let (sv, name) = IpcOneShotServer::<WrappedMessage>::new()?;
+    println!("{name}"); // print to let know
+    let sender = IpcSender::connect(server.clone())?;
+    sender.send(Message::Ping.wrap()?)?;
+    writeln!(log_file, "connected to {server:?}")?;
+    let (receiver, msg) = sv.accept()?;
+    writeln!(log_file, "accepted {receiver:?}")?;
+    assert_eq!(msg, Message::Ping.wrap()?);
 
     let native_context = NativeContext::new();
     writeln!(log_file, "initialized native context")?;
     log_file.flush()?;
 
-    let mut buffer = Vec::new();
     loop {
-        writeln!(log_file, "waiting fo message")?;
-        log_file.flush()?;
-        stdin.read_to_end(&mut buffer)?;
+        writeln!(log_file, "waiting for message")?;
 
-        let message: Message = serde_json::from_slice(&buffer)?;
+        let message: Message = receiver.recv()?.to_msg()?;
         writeln!(log_file, "got message: {:?}", message)?;
-        log_file.flush()?;
 
         match message {
             Message::ExecuteJIT {
@@ -38,7 +45,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 inputs,
                 entry_point,
             } => {
-                send_msg(Message::Ack(id));
+                sender.send(Message::Ack(id).wrap()?)?;
                 writeln!(log_file, "sent ack: {:?}", id)?;
                 log_file.flush()?;
                 let program = program.into_v1()?.program;
@@ -58,14 +65,21 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 writeln!(log_file, "invoked with result: {:?}", result)?;
                 log_file.flush()?;
 
-                send_msg(Message::ExecutionResult { id, result });
+                sender.send(Message::ExecutionResult { id, result }.wrap()?)?;
 
                 writeln!(log_file, "sent result msg")?;
                 log_file.flush()?;
             }
             Message::ExecutionResult { .. } => {}
             Message::Ack(_) => {}
+            Message::Ping => {
+                sender.send(Message::Ping.wrap()?)?;
+            }
+            Message::Kill => {
+                break;
+            }
         }
-        buffer.clear();
     }
+
+    Ok(())
 }
