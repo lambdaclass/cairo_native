@@ -464,15 +464,17 @@ where
 
     fn is_zst(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
         match self {
+            // Builtin counters:
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::SegmentArena(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
+            | CoreTypeConcrete::SegmentArena(_) => false,
+            // Other builtins:
+            CoreTypeConcrete::BuiltinCosts(_) | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
 
+            // Normal types:
             CoreTypeConcrete::Array(_)
             | CoreTypeConcrete::Box(_)
             | CoreTypeConcrete::Bytes31(_)
@@ -496,6 +498,7 @@ where
             | CoreTypeConcrete::StarkNet(_)
             | CoreTypeConcrete::Nullable(_) => false,
 
+            // Containers:
             CoreTypeConcrete::NonZero(info)
             | CoreTypeConcrete::Uninitialized(info)
             | CoreTypeConcrete::Snapshot(info) => {
@@ -503,6 +506,7 @@ where
                 type_info.is_zst(registry)
             }
 
+            // Enums and structs:
             CoreTypeConcrete::Enum(info) => {
                 info.variants.is_empty()
                     || (info.variants.len() == 1
@@ -529,9 +533,9 @@ where
                     .extend(get_integer_layout(32))?
                     .0
             }
-            CoreTypeConcrete::Bitwise(_) => Layout::new::<()>(),
+            CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::EcOp(_) => Layout::new::<()>(),
+            CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
             CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
@@ -545,7 +549,7 @@ where
             CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(),
             CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::RangeCheck(_) => Layout::new::<()>(),
+            CoreTypeConcrete::RangeCheck(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Uninitialized(info) => {
                 registry.get_type(&info.ty)?.layout(registry)?
             }
@@ -585,8 +589,8 @@ where
                     .0
             }
             CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
-            CoreTypeConcrete::Pedersen(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Poseidon(_) => Layout::new::<()>(),
+            CoreTypeConcrete::Pedersen(_) => Layout::new::<u64>(),
+            CoreTypeConcrete::Poseidon(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(info) => match info {
                 StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
@@ -596,7 +600,7 @@ where
                 StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
                 StarkNetTypeConcrete::Secp256Point(_) => todo!("implement Secp256Point type"),
             },
-            CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
+            CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
             CoreTypeConcrete::Sint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Sint16(_) => get_integer_layout(16),

@@ -1,7 +1,7 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
-    execution_result::{ContractExecutionResult, ExecutionResult},
+    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::get_integer_layout,
@@ -110,6 +110,9 @@ fn invoke_dynamic(
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
+    let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
+    let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
+
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -184,6 +187,9 @@ fn invoke_dynamic(
                 ),
                 None => panic!("Syscall handler is required"),
             },
+            _ if is_builtin(type_info) => invoke_data
+                .push(type_id, type_info, &JitValue::Uint64(0))
+                .unwrap(),
             _ => invoke_data
                 .push(type_id, type_info, iter.next().unwrap())
                 .unwrap(),
@@ -207,6 +213,7 @@ fn invoke_dynamic(
 
     // Parse final gas.
     let mut remaining_gas = None;
+    let mut builtin_stats = BuiltinStats::default();
     for type_id in &function_signature.ret_types {
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
@@ -231,9 +238,28 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin(
-                type_info,
-            ) => {}
+            _ if is_builtin(type_info) => {
+                if !is_zst(type_info, registry) {
+                    let value = match &mut return_ptr {
+                        Some(return_ptr) => unsafe {
+                            let ptr = return_ptr.cast::<u64>();
+                            *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
+                            *ptr.as_ref()
+                        },
+                        None => ret_registers[0],
+                    } as usize;
+
+                    match type_info {
+                        CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
+                        CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                        CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
+                        CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
+                        CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                        CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        _ => unreachable!(),
+                    }
+                }
+            }
             _ => break,
         }
     }
@@ -252,6 +278,7 @@ fn invoke_dynamic(
     ExecutionResult {
         remaining_gas,
         return_value,
+        builtin_stats,
     }
 }
 
@@ -477,13 +504,15 @@ impl<'a> ArgumentMapper<'a> {
                 let type_info = self.registry.get_type(&info.ty)?;
                 self.push(&info.ty, type_info, value)?;
             }
-            (CoreTypeConcrete::Bitwise(_), _)
-            | (CoreTypeConcrete::BuiltinCosts(_), _)
-            | (CoreTypeConcrete::EcOp(_), _)
-            | (CoreTypeConcrete::Pedersen(_), _)
-            | (CoreTypeConcrete::Poseidon(_), _)
-            | (CoreTypeConcrete::RangeCheck(_), _)
-            | (CoreTypeConcrete::SegmentArena(_), _) => {}
+            (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::EcOp(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::Pedersen(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
+                self.push_aligned(get_integer_layout(64).align(), &[*value])
+            }
             (_, _) => todo!(),
         }
 
