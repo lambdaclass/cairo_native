@@ -30,6 +30,15 @@ pub struct ExecutionInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExecutionInfoV2 {
+    pub block_info: BlockInfo,
+    pub tx_info: TxV2Info,
+    pub caller_address: Felt,
+    pub contract_address: Felt,
+    pub entry_point_selector: Felt,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TxV2Info {
     pub version: Felt,
     pub account_contract_address: Felt,
     pub max_fee: u128,
@@ -37,11 +46,12 @@ pub struct ExecutionInfoV2 {
     pub transaction_hash: Felt,
     pub chain_id: Felt,
     pub nonce: Felt,
+    pub resource_bounds: Vec<ResourceBounds>,
     pub tip: u128,
     pub paymaster_data: Vec<Felt>,
     pub nonce_data_availability_mode: u32,
     pub fee_data_availability_mode: u32,
-    pub account_deployment_data: u32,
+    pub account_deployment_data: Vec<Felt>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -86,7 +96,8 @@ pub trait StarkNetSyscallHandler {
 
     fn get_execution_info(&mut self, remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo>;
 
-    fn get_execution_info_v2(&mut self, remaining_gas: &mut u128) -> SyscallResult<ExecutionInfoV2>;
+    fn get_execution_info_v2(&mut self, remaining_gas: &mut u128)
+        -> SyscallResult<ExecutionInfoV2>;
 
     fn deploy(
         &mut self,
@@ -318,6 +329,15 @@ pub(crate) mod handler {
 
     #[repr(C)]
     struct ExecutionInfoV2Abi {
+        block_info: NonNull<BlockInfoAbi>,
+        tx_info: NonNull<TxInfoV2Abi>,
+        caller_address: Felt252Abi,
+        contract_address: Felt252Abi,
+        entry_point_selector: Felt252Abi,
+    }
+
+    #[repr(C)]
+    struct TxInfoV2Abi {
         version: Felt252Abi,
         account_contract_address: Felt252Abi,
         max_fee: u128,
@@ -334,9 +354,10 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
+    #[derive(Debug, Clone)]
     struct ResourceBoundsAbi {
         resource: Felt252Abi,
-        max_type: u64,
+        max_amount: u64,
         max_price_per_unit: u128,
     }
 
@@ -608,6 +629,11 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: unsafe {
+                            let mut execution_info_ptr =
+                                NonNull::new(libc::malloc(size_of::<ExecutionInfoV2Abi>())
+                                    as *mut ExecutionInfoV2Abi)
+                                .unwrap();
+
                             let mut block_info_ptr =
                                 NonNull::new(
                                     libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
@@ -619,14 +645,11 @@ pub(crate) mod handler {
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             let mut tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi,
+                                libc::malloc(size_of::<TxInfoV2Abi>()) as *mut TxInfoV2Abi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
                                 Felt252Abi(x.tx_info.version.to_bytes_le());
-                            tx_info_ptr.as_mut().account_contract_address =
-                                Felt252Abi(x.tx_info.account_contract_address.to_bytes_le());
-                            tx_info_ptr.as_mut().max_fee = x.tx_info.max_fee;
                             tx_info_ptr.as_mut().signature = Self::alloc_mlir_array(
                                 &x.tx_info
                                     .signature
@@ -634,16 +657,43 @@ pub(crate) mod handler {
                                     .map(|x| Felt252Abi(x.to_bytes_le()))
                                     .collect::<Vec<_>>(),
                             );
+                            tx_info_ptr.as_mut().max_fee = x.tx_info.max_fee;
                             tx_info_ptr.as_mut().transaction_hash =
                                 Felt252Abi(x.tx_info.transaction_hash.to_bytes_le());
                             tx_info_ptr.as_mut().chain_id =
                                 Felt252Abi(x.tx_info.chain_id.to_bytes_le());
                             tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
+                            tx_info_ptr.as_mut().resource_bounds = Self::alloc_mlir_array(
+                                &x.tx_info
+                                    .resource_bounds
+                                    .into_iter()
+                                    .map(|x| ResourceBoundsAbi {
+                                        resource: Felt252Abi(x.resource.to_bytes_le()),
+                                        max_amount: x.max_amount,
+                                        max_price_per_unit: x.max_price_per_unit,
+                                    })
+                                    .collect::<Vec<_>>(),
+                            );
+                            tx_info_ptr.as_mut().tip = x.tx_info.tip;
+                            tx_info_ptr.as_mut().paymaster_data = Self::alloc_mlir_array(
+                                &x.tx_info
+                                    .paymaster_data
+                                    .into_iter()
+                                    .map(|x| Felt252Abi(x.to_bytes_le()))
+                                    .collect::<Vec<_>>(),
+                            );
+                            tx_info_ptr.as_mut().nonce_data_availability_mode =
+                                x.tx_info.nonce_data_availability_mode;
+                            tx_info_ptr.as_mut().fee_data_availability_mode =
+                                x.tx_info.fee_data_availability_mode;
+                            tx_info_ptr.as_mut().account_deployment_data = Self::alloc_mlir_array(
+                                &x.tx_info
+                                    .account_deployment_data
+                                    .into_iter()
+                                    .map(|x| Felt252Abi(x.to_bytes_le()))
+                                    .collect::<Vec<_>>(),
+                            );
 
-                            let mut execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::<ExecutionInfoAbi>())
-                                    as *mut ExecutionInfoAbi)
-                                .unwrap();
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
                             execution_info_ptr.as_mut().tx_info = tx_info_ptr;
                             execution_info_ptr.as_mut().caller_address =
@@ -660,7 +710,6 @@ pub(crate) mod handler {
                 Err(e) => Self::wrap_error(&e),
             };
         }
-
 
         // TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
