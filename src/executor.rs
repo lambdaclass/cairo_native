@@ -212,6 +212,17 @@ fn invoke_dynamic(
     }
 
     // Parse final gas.
+    unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
+        let align_offset = ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(std::mem::align_of::<T>());
+        let value_ptr = ptr.cast::<u8>().as_ptr().add(align_offset).cast::<T>();
+
+        *ptr = NonNull::new_unchecked(value_ptr.add(1)).cast();
+        &*value_ptr
+    }
+
     let mut remaining_gas = None;
     let mut builtin_stats = BuiltinStats::default();
     for type_id in &function_signature.ret_types {
@@ -219,11 +230,7 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe {
-                        let ptr = return_ptr.cast::<u128>();
-                        *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
-                        *ptr.as_ref()
-                    },
+                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
@@ -241,11 +248,7 @@ fn invoke_dynamic(
             _ if is_builtin(type_info) => {
                 if !is_zst(type_info, registry) {
                     let value = match &mut return_ptr {
-                        Some(return_ptr) => unsafe {
-                            let ptr = return_ptr.cast::<u64>();
-                            *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
-                            *ptr.as_ref()
-                        },
+                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],
                     } as usize;
 
@@ -256,7 +259,7 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
-                        _ => unreachable!(),
+                        _ => unreachable!("{type_id:?}"),
                     }
                 }
             }
@@ -323,7 +326,11 @@ impl<'a> ArgumentMapper<'a> {
                 self.invoke_data.push(0);
             } else if self.invoke_data.len() + values.len() >= 8 {
                 let chunk;
-                (chunk, values) = values.split_at(4);
+                (chunk, values) = if values.len() >= 4 {
+                    values.split_at(4)
+                } else {
+                    (values, [].as_slice())
+                };
                 self.invoke_data.extend(chunk);
                 self.invoke_data.push(0);
             }
@@ -523,11 +530,25 @@ impl<'a> ArgumentMapper<'a> {
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    return_ptr: Option<NonNull<()>>,
+    mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
+
+    // Align the pointer to the actual return value.
+    if let Some(return_ptr) = &mut return_ptr {
+        dbg!(type_id);
+        let layout = type_info.layout(registry).unwrap();
+        let align_offset = return_ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(layout.align());
+
+        *return_ptr = unsafe {
+            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+        };
+    }
 
     match type_info {
         CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
@@ -545,17 +566,21 @@ fn parse_result(
             | StarkNetTypeConcrete::ContractAddress(_)
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
-        ) => {
-            #[cfg(target_arch = "x86_64")]
-            let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+        ) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 
-            #[cfg(target_arch = "aarch64")]
-            let value = JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-            }));
+                #[cfg(target_arch = "aarch64")]
+                let value =
+                    JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
+                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+                    }));
 
-            value
-        }
+                value
+            }
+        },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
             Some(return_ptr) => JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() }),
             None => JitValue::Uint8(ret_registers[0] as u8),

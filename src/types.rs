@@ -394,7 +394,7 @@ where
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
-                | CoreTypeConcrete::StarkNet(_)
+                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
         )
     }
