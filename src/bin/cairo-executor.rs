@@ -60,8 +60,6 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let program = program.into_v1()?.program;
                 let native_program = native_context.compile(&program)?;
 
-                // Call the echo function from the contract using the generated wrapper.
-
                 let entry_point_fn = find_entry_point(&program, &entry_point).unwrap();
 
                 let fn_id = &entry_point_fn.id;
