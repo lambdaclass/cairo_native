@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::path::PathBuf;
 
 use cairo_native::{
     context::NativeContext,
@@ -11,32 +11,42 @@ use ipc_channel::ipc::{IpcOneShotServer, IpcSender};
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args();
 
-    if args.len() < 2 {
-        panic!("missing server ipc name");
-    }
-
     let pid = std::process::id();
-    let mut log_file = std::fs::File::create(format!("cairo-executor.{pid}.log"))?;
+
+    let log_dir = PathBuf::from(
+        std::env::var("CAIRO_EXECUTOR_LOGDIR").unwrap_or("executor_logs/".to_string()),
+    );
+    let file_appender =
+        tracing_appender::rolling::daily(log_dir, format!("cairo-executor.{pid}.log"));
+
+    tracing_subscriber::fmt()
+        .with_writer(file_appender)
+        .with_ansi(false)
+        .init();
+
+    if args.len() < 2 {
+        tracing::error!("missing server ipc name");
+        std::process::exit(1);
+    }
 
     let server = args.nth(1).unwrap();
     let (sv, name) = IpcOneShotServer::<WrappedMessage>::new()?;
     println!("{name}"); // print to let know
     let sender = IpcSender::connect(server.clone())?;
     sender.send(Message::Ping.wrap()?)?;
-    writeln!(log_file, "connected to {server:?}")?;
+    tracing::info!("connected to {server:?}");
     let (receiver, msg) = sv.accept()?;
-    writeln!(log_file, "accepted {receiver:?}")?;
+    tracing::info!("accepted {receiver:?}");
     assert_eq!(msg, Message::Ping.wrap()?);
 
     let native_context = NativeContext::new();
-    writeln!(log_file, "initialized native context")?;
-    log_file.flush()?;
+    tracing::info!("initialized native context");
 
     loop {
-        writeln!(log_file, "waiting for message")?;
+        tracing::info!("waiting for message");
 
         let message: Message = receiver.recv()?.to_msg()?;
-        writeln!(log_file, "got message: {:?}", message)?;
+        tracing::info!("got message: {:?}", message);
 
         match message {
             Message::ExecuteJIT {
@@ -46,8 +56,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 entry_point,
             } => {
                 sender.send(Message::Ack(id).wrap()?)?;
-                writeln!(log_file, "sent ack: {:?}", id)?;
-                log_file.flush()?;
+                tracing::info!("sent ack: {:?}", id);
                 let program = program.into_v1()?.program;
                 let native_program = native_context.compile(&program)?;
 
@@ -62,13 +71,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let result = native_executor.invoke_dynamic(fn_id, &inputs, None, None)?;
 
-                writeln!(log_file, "invoked with result: {:?}", result)?;
-                log_file.flush()?;
+                tracing::info!("invoked with result: {:?}", result);
 
                 sender.send(Message::ExecutionResult { id, result }.wrap()?)?;
 
-                writeln!(log_file, "sent result msg")?;
-                log_file.flush()?;
+                tracing::info!("sent result msg");
             }
             Message::ExecutionResult { .. } => {}
             Message::Ack(_) => {}

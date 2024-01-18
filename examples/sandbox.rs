@@ -23,10 +23,19 @@ fn main() {
 
     let result = sandbox
         .run_program(
-            sierra_program,
+            sierra_program.clone(),
             vec![JitValue::Felt252(1.into())],
             "echo::echo::main".to_string(),
         )
         .unwrap();
-    dbg!(result);
+    println!("{:#?}", result);
+
+    let result = sandbox
+        .run_program(
+            sierra_program,
+            vec![JitValue::Felt252(2.into())],
+            "echo::echo::main".to_string(),
+        )
+        .unwrap();
+    println!("{:#?}", result);
 }

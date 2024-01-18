@@ -26,3 +26,4 @@ cairo-*.tar
 /cairo2
 *.dylib
 *.so
+executor_logs/

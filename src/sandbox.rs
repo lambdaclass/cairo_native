@@ -67,7 +67,7 @@ impl IsolatedExecutor {
     // "target/debug/cairo-executor"
     pub fn new(executor_path: &Path) -> Result<Self, std::io::Error> {
         let (server, server_name) = IpcOneShotServer::new().unwrap();
-        println!("creating executor with: {:?}", executor_path);
+        tracing::debug!("creating executor with: {:?}", executor_path);
 
         let mut cmd = std::process::Command::new(executor_path);
         cmd.stdout(Stdio::piped());
@@ -79,9 +79,9 @@ impl IsolatedExecutor {
 
         // first we accept the connection
         let (receiver, msg) = server.accept().expect("failed to accept receiver");
-        println!("accepted receiver {receiver:?} wit msg {msg:?}");
+        tracing::debug!("accepted receiver {receiver:?} wit msg {msg:?}");
         // then we connect
-        println!("connecting to {client_name}");
+        tracing::debug!("connecting to {client_name}");
         let sender = IpcSender::connect(client_name.trim().to_string()).expect("failed to connect");
         sender.send(Message::Ping.wrap()?).unwrap();
 
@@ -98,7 +98,7 @@ impl IsolatedExecutor {
         inputs: Vec<JitValue>,
         entry_point: String,
     ) -> Result<ExecutionResult, Box<dyn std::error::Error>> {
-        println!("running program");
+        tracing::debug!("running program");
         let id = Uuid::new_v4();
 
         let msg = Message::ExecuteJIT {
