@@ -16,10 +16,10 @@ fn main() {
     // Compile the cairo program to sierra.
     let sierra_program = (*cairo_native::utils::cairo_to_sierra(program_path)).clone();
 
-    let sandbox = IsolatedExecutor::new(Path::new(
-        "/data2/edgar/work/native/target/debug/cairo-executor",
-    ))
-    .unwrap();
+    let path = std::env::current_dir()
+        .unwrap()
+        .join("target/debug/cairo-executor");
+    let sandbox = IsolatedExecutor::new(&path).unwrap();
 
     let result = sandbox
         .run_program(
