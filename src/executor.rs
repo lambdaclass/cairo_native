@@ -538,7 +538,6 @@ fn parse_result(
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        dbg!(type_id);
         let layout = type_info.layout(registry).unwrap();
         let align_offset = return_ptr
             .cast::<u8>()
@@ -705,7 +704,11 @@ fn parse_result(
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            ),
             None => JitValue::from_jit(
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
