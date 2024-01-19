@@ -6,13 +6,13 @@ fn iterate_map(r: felt252, x: felt252) -> felt252 {
     r * x * -x
 }
 
-fn main() -> felt252 {
+fn main() {
     // Initial value.
     let mut x = 1234567890123456789012345678901234567890;
 
     // Iterate the map.
     let mut i = 15000;
-    loop {
+    let result = loop {
         x = iterate_map(4, x);
 
         if i == 0 {
@@ -20,5 +20,10 @@ fn main() -> felt252 {
         }
 
         i = i - 1;
-    }
+    };
+
+    assert(
+        result == 0x12d35a3ae9fe7c56f194b12b34d567a844432acd2b7da993a158c15447a424d,
+        'invalid result'
+    );
 }
