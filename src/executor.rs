@@ -312,7 +312,7 @@ impl<'a> ArgumentMapper<'a> {
 
         // x86_64's max alignment is 8 bytes.
         #[cfg(target_arch = "x86_64")]
-        assert!(align < 16);
+        assert!(align <= 8);
 
         #[cfg(target_arch = "aarch64")]
         if align == 16 {
@@ -324,15 +324,18 @@ impl<'a> ArgumentMapper<'a> {
                 }
             } else if self.invoke_data.len() + 1 >= 8 {
                 self.invoke_data.push(0);
-            } else if self.invoke_data.len() + values.len() >= 8 {
-                let chunk;
-                (chunk, values) = if values.len() >= 4 {
-                    values.split_at(4)
-                } else {
-                    (values, [].as_slice())
-                };
-                self.invoke_data.extend(chunk);
-                self.invoke_data.push(0);
+            } else {
+                let new_len = self.invoke_data.len() + values.len();
+                if new_len >= 8 && new_len % 2 != 0 {
+                    let chunk;
+                    (chunk, values) = if values.len() >= 4 {
+                        values.split_at(4)
+                    } else {
+                        (values, [].as_slice())
+                    };
+                    self.invoke_data.extend(chunk);
+                    self.invoke_data.push(0);
+                }
             }
         }
 
