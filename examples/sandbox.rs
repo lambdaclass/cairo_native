@@ -11,6 +11,7 @@ fn main() {
     )
     .unwrap();
 
+    /*
     let program_path = Path::new("programs/echo.cairo");
 
     // Compile the cairo program to sierra.
@@ -38,4 +39,5 @@ fn main() {
         )
         .unwrap();
     println!("{:#?}", result);
+    */
 }

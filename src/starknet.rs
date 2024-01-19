@@ -3,22 +3,24 @@
 #![allow(clippy::type_complexity)]
 #![allow(dead_code)]
 
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
 /// Binary representation of a `Felt` (in MLIR).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 pub struct U256(pub [u8; 32]);
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ExecutionInfo {
     pub block_info: BlockInfo,
     pub tx_info: TxInfo,
@@ -26,13 +28,14 @@ pub struct ExecutionInfo {
     pub contract_address: Felt,
     pub entry_point_selector: Felt,
 }
-
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct BlockInfo {
     pub block_number: u64,
     pub block_timestamp: u64,
     pub sequencer_address: Felt,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TxInfo {
     pub version: Felt,
     pub account_contract_address: Felt,

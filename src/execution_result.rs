@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
 /// The result of the JIT execution.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
     pub return_value: JitValue,
 }
 
 /// Starknet contract execution result.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ContractExecutionResult {
     pub remaining_gas: u128,
     pub failure_flag: bool,

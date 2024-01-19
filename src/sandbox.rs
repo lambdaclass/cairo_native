@@ -7,25 +7,52 @@ use std::{
 use cairo_lang_sierra::program::{Program, VersionedProgram};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use serde::{Deserialize, Serialize};
+use starknet_types_core::felt::Felt;
 use uuid::Uuid;
 
-use crate::{execution_result::ExecutionResult, values::JitValue};
+use crate::{
+    execution_result::{ContractExecutionResult, ExecutionResult},
+    starknet::ExecutionInfo,
+};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Message {
     ExecuteJIT {
         id: Uuid,
         program: VersionedProgram,
-        inputs: Vec<JitValue>,
-        entry_point: String,
+        inputs: Vec<Felt>,
+        function_idx: usize,
+        gas: Option<u128>,
     },
     ExecutionResult {
         id: Uuid,
-        result: ExecutionResult,
+        result: ContractExecutionResult,
     },
     Ack(Uuid),
     Ping,
     Kill,
+    SyscallRequest(SyscallRequest),
+    SyscallAnswer(SyscallAnswer),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SyscallRequest {
+    GetBlockHash { block_number: u64, gas: u128 },
+    GetExecutionInfo { gas: u128 },
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SyscallAnswer {
+    GetBlockHash {
+        result: Felt,
+        remaining_gas: u128,
+    },
+    GetExecutionInfo {
+        info: ExecutionInfo,
+        remaining_gas: u128,
+    },
 }
 
 impl Message {
@@ -95,9 +122,10 @@ impl IsolatedExecutor {
     pub fn run_program(
         &self,
         program: Program,
-        inputs: Vec<JitValue>,
-        entry_point: String,
-    ) -> Result<ExecutionResult, Box<dyn std::error::Error>> {
+        inputs: Vec<Felt>,
+        gas: Option<u128>,
+        function_idx: usize,
+    ) -> Result<ContractExecutionResult, Box<dyn std::error::Error>> {
         tracing::debug!("running program");
         let id = Uuid::new_v4();
 
@@ -105,7 +133,8 @@ impl IsolatedExecutor {
             id,
             program: program.into_artifact(),
             inputs,
-            entry_point,
+            gas,
+            function_idx,
         };
         self.sender.send(msg.wrap()?)?;
 

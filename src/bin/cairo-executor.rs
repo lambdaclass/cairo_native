@@ -1,12 +1,324 @@
-use std::path::PathBuf;
+use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
+use cairo_lang_utils::ResultHelper;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
-    sandbox::{Message, WrappedMessage},
-    utils::find_entry_point,
+    metadata::syscall_handler::SyscallHandlerMeta,
+    sandbox::{Message, SyscallAnswer, SyscallRequest, WrappedMessage},
+    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult, U256},
+    utils::{find_entry_point, find_entry_point_by_idx},
 };
-use ipc_channel::ipc::{IpcOneShotServer, IpcSender};
+use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use starknet_types_core::felt::Felt;
+use tracing::{instrument, Instrument};
+
+#[derive(Debug)]
+struct SyscallHandler {
+    sender: IpcSender<WrappedMessage>,
+    receiver: Rc<RefCell<IpcReceiver<WrappedMessage>>>,
+}
+
+impl StarkNetSyscallHandler for SyscallHandler {
+    #[instrument(skip(self))]
+    fn get_block_hash(&mut self, block_number: u64, gas: &mut u128) -> SyscallResult<Felt> {
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::GetBlockHash {
+                    block_number,
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::GetBlockHash {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            Ok(result)
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
+    }
+
+    #[instrument(skip(self))]
+    fn get_execution_info(
+        &mut self,
+        gas: &mut u128,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::GetExecutionInfo { gas: *gas })
+                    .wrap()
+                    .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::GetExecutionInfo {
+            info,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            Ok(info)
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
+    }
+
+    fn deploy(
+        &mut self,
+        class_hash: Felt,
+        contract_address_salt: Felt,
+        calldata: &[Felt],
+        deploy_from_zero: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<(Felt, Vec<Felt>)> {
+        println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
+        Ok((
+            class_hash + contract_address_salt,
+            calldata.iter().map(|x| x + Felt::from(1)).collect(),
+        ))
+    }
+
+    fn replace_class(&mut self, class_hash: Felt, _gas: &mut u128) -> SyscallResult<()> {
+        println!("Called `replace_class({class_hash})` from MLIR.");
+        Ok(())
+    }
+
+    fn library_call(
+        &mut self,
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: &[Felt],
+        _gas: &mut u128,
+    ) -> SyscallResult<Vec<Felt>> {
+        println!(
+            "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
+    }
+
+    fn call_contract(
+        &mut self,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: &[Felt],
+        _gas: &mut u128,
+    ) -> SyscallResult<Vec<Felt>> {
+        println!(
+            "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
+        );
+        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
+    }
+
+    fn storage_read(
+        &mut self,
+        address_domain: u32,
+        address: Felt,
+        _gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        println!("Called `storage_read({address_domain}, {address})` from MLIR.");
+        Ok(address * Felt::from(3))
+    }
+
+    fn storage_write(
+        &mut self,
+        address_domain: u32,
+        address: Felt,
+        value: Felt,
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
+        Ok(())
+    }
+
+    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u128) -> SyscallResult<()> {
+        println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
+        Ok(())
+    }
+
+    fn send_message_to_l1(
+        &mut self,
+        to_address: Felt,
+        payload: &[Felt],
+        _gas: &mut u128,
+    ) -> SyscallResult<()> {
+        println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
+        Ok(())
+    }
+
+    fn keccak(
+        &mut self,
+        input: &[u64],
+        _gas: &mut u128,
+    ) -> SyscallResult<cairo_native::starknet::U256> {
+        println!("Called `keccak({input:?})` from MLIR.");
+        Ok(U256(Felt::from(1234567890).to_bytes_le()))
+    }
+
+    fn secp256k1_add(
+        &mut self,
+        _p0: cairo_native::starknet::Secp256k1Point,
+        _p1: cairo_native::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_get_point_from_x(
+        &self,
+        _x: cairo_native::starknet::U256,
+        _y_parity: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_get_xy(
+        &self,
+        _p: cairo_native::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<(cairo_native::starknet::U256, cairo_native::starknet::U256)> {
+        todo!()
+    }
+
+    fn secp256k1_mul(
+        &self,
+        _p: cairo_native::starknet::Secp256k1Point,
+        _m: cairo_native::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256k1_new(
+        &self,
+        _x: cairo_native::starknet::U256,
+        _y: cairo_native::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_add(
+        &self,
+        _p0: cairo_native::starknet::Secp256k1Point,
+        _p1: cairo_native::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_get_point_from_x(
+        &self,
+        _x: cairo_native::starknet::U256,
+        _y_parity: bool,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_get_xy(
+        &self,
+        _p: cairo_native::starknet::Secp256k1Point,
+        _gas: &mut u128,
+    ) -> SyscallResult<(cairo_native::starknet::U256, cairo_native::starknet::U256)> {
+        todo!()
+    }
+
+    fn secp256r1_mul(
+        &self,
+        _p: cairo_native::starknet::Secp256k1Point,
+        _m: cairo_native::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_new(
+        &mut self,
+        _x: cairo_native::starknet::U256,
+        _y: cairo_native::starknet::U256,
+        _gas: &mut u128,
+    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        todo!()
+    }
+
+    fn pop_log(&mut self) {
+        todo!()
+    }
+
+    fn set_account_contract_address(&mut self, _contract_address: Felt) {
+        todo!()
+    }
+
+    fn set_block_number(&mut self, _block_number: u64) {
+        todo!()
+    }
+
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
+        todo!()
+    }
+
+    fn set_caller_address(&mut self, _address: Felt) {
+        todo!()
+    }
+
+    fn set_chain_id(&mut self, _chain_id: Felt) {
+        todo!()
+    }
+
+    fn set_contract_address(&mut self, _address: Felt) {
+        todo!()
+    }
+
+    fn set_max_fee(&mut self, _max_fee: u128) {
+        todo!()
+    }
+
+    fn set_nonce(&mut self, _nonce: Felt) {
+        todo!()
+    }
+
+    fn set_sequencer_address(&mut self, _address: Felt) {
+        todo!()
+    }
+
+    fn set_signature(&mut self, _signature: &[Felt]) {
+        todo!()
+    }
+
+    fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
+        todo!()
+    }
+
+    fn set_version(&mut self, _version: Felt) {
+        todo!()
+    }
+}
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args();
@@ -36,16 +348,22 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     sender.send(Message::Ping.wrap()?)?;
     tracing::info!("connected to {server:?}");
     let (receiver, msg) = sv.accept()?;
+    let receiver = Rc::new(RefCell::new(receiver));
     tracing::info!("accepted {receiver:?}");
     assert_eq!(msg, Message::Ping.wrap()?);
 
     let native_context = NativeContext::new();
     tracing::info!("initialized native context");
 
+    let mut syscall_handler = SyscallHandler {
+        sender: sender.clone(),
+        receiver: receiver.clone(),
+    };
+
     loop {
         tracing::info!("waiting for message");
 
-        let message: Message = receiver.recv()?.to_msg()?;
+        let message: Message = receiver.borrow().recv()?.to_msg()?;
         tracing::info!("got message: {:?}", message);
 
         match message {
@@ -53,21 +371,27 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 id,
                 program,
                 inputs,
-                entry_point,
+                function_idx,
+                gas,
             } => {
                 sender.send(Message::Ack(id).wrap()?)?;
                 tracing::info!("sent ack: {:?}", id);
                 let program = program.into_v1()?.program;
                 let native_program = native_context.compile(&program)?;
 
-                let entry_point_fn = find_entry_point(&program, &entry_point).unwrap();
+                let entry_point_fn = find_entry_point_by_idx(&program, function_idx).unwrap();
 
                 let fn_id = &entry_point_fn.id;
 
                 let native_executor =
                     JitNativeExecutor::from_native_module(native_program, Default::default());
 
-                let result = native_executor.invoke_dynamic(fn_id, &inputs, None, None)?;
+                let result = native_executor.invoke_contract_dynamic(
+                    fn_id,
+                    &inputs,
+                    gas,
+                    Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+                )?;
 
                 tracing::info!("invoked with result: {:?}", result);
 
@@ -83,6 +407,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             Message::Kill => {
                 break;
             }
+            Message::SyscallRequest(_) => todo!(),
+            Message::SyscallAnswer(_) => todo!(),
         }
     }
 
