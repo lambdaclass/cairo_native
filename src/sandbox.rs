@@ -11,8 +11,8 @@ use starknet_types_core::felt::Felt;
 use uuid::Uuid;
 
 use crate::{
-    execution_result::{ContractExecutionResult, ExecutionResult},
-    starknet::ExecutionInfo,
+    execution_result::ContractExecutionResult,
+    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult},
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -46,11 +46,11 @@ pub enum SyscallRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyscallAnswer {
     GetBlockHash {
-        result: Felt,
+        result: SyscallResult<Felt>,
         remaining_gas: u128,
     },
     GetExecutionInfo {
-        info: ExecutionInfo,
+        result: SyscallResult<ExecutionInfo>,
         remaining_gas: u128,
     },
 }
@@ -81,8 +81,6 @@ impl WrappedMessage {
         }
     }
 }
-
-pub type OnResult = Box<dyn Fn(ExecutionResult, Uuid)>;
 
 pub struct IsolatedExecutor {
     proc: Child,
@@ -125,6 +123,7 @@ impl IsolatedExecutor {
         inputs: Vec<Felt>,
         gas: Option<u128>,
         function_idx: usize,
+        handler: &mut impl StarkNetSyscallHandler,
     ) -> Result<ContractExecutionResult, Box<dyn std::error::Error>> {
         tracing::debug!("running program");
         let id = Uuid::new_v4();
@@ -138,26 +137,49 @@ impl IsolatedExecutor {
         };
         self.sender.send(msg.wrap()?)?;
 
-        let ack = self.receiver.recv()?.to_msg()?;
-
-        if let Message::Ack(recv_id) = ack {
-            assert_eq!(recv_id, id, "id mismatch");
-        } else {
-            // should match
-            panic!("id mismatch");
-        }
-
-        let result = self.receiver.recv()?.to_msg()?;
-
-        if let Message::ExecutionResult {
-            id: recv_id,
-            result,
-        } = result
-        {
-            assert_eq!(recv_id, id, "id mismatch");
-            Ok(result)
-        } else {
-            panic!("wrong msg");
+        loop {
+            let msg = self.receiver.recv()?.to_msg()?;
+            match msg {
+                Message::ExecuteJIT { .. } => unreachable!(),
+                Message::ExecutionResult {
+                    id: recv_id,
+                    result,
+                } => {
+                    assert_eq!(recv_id, id, "id mismatch");
+                    return Ok(result);
+                }
+                Message::Ack(recv_id) => {
+                    assert_eq!(recv_id, id, "id mismatch");
+                }
+                Message::Ping => unreachable!(),
+                Message::Kill => todo!(),
+                Message::SyscallRequest(request) => match request {
+                    SyscallRequest::GetBlockHash {
+                        block_number,
+                        mut gas,
+                    } => {
+                        let result = handler.get_block_hash(block_number, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::GetBlockHash {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::GetExecutionInfo { mut gas } => {
+                        let result = handler.get_execution_info(&mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::GetExecutionInfo {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                },
+                Message::SyscallAnswer(_) => unreachable!(),
+            }
         }
     }
 }

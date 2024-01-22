@@ -6,12 +6,12 @@ use cairo_native::{
     executor::JitNativeExecutor,
     metadata::syscall_handler::SyscallHandlerMeta,
     sandbox::{Message, SyscallAnswer, SyscallRequest, WrappedMessage},
-    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult, U256},
-    utils::{find_entry_point, find_entry_point_by_idx},
+    starknet::{StarkNetSyscallHandler, SyscallResult, U256},
+    utils::find_entry_point_by_idx,
 };
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
 use starknet_types_core::felt::Felt;
-use tracing::{instrument, Instrument};
+use tracing::instrument;
 
 #[derive(Debug)]
 struct SyscallHandler {
@@ -47,7 +47,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         }) = result
         {
             *gas = remaining_gas;
-            Ok(result)
+            result
         } else {
             tracing::error!("wrong message received: {:#?}", result);
             panic!();
@@ -76,12 +76,12 @@ impl StarkNetSyscallHandler for SyscallHandler {
             .unwrap();
 
         if let Message::SyscallAnswer(SyscallAnswer::GetExecutionInfo {
-            info,
+            result,
             remaining_gas,
         }) = result
         {
             *gas = remaining_gas;
-            Ok(info)
+            result
         } else {
             tracing::error!("wrong message received: {:#?}", result);
             panic!();
