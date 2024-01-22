@@ -6,7 +6,7 @@ use cairo_native::{
     executor::JitNativeExecutor,
     metadata::syscall_handler::SyscallHandlerMeta,
     sandbox::{Message, SyscallAnswer, SyscallRequest, WrappedMessage},
-    starknet::{StarkNetSyscallHandler, SyscallResult, U256},
+    starknet::{StarkNetSyscallHandler, SyscallResult},
     utils::find_entry_point_by_idx,
 };
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
@@ -94,18 +94,74 @@ impl StarkNetSyscallHandler for SyscallHandler {
         contract_address_salt: Felt,
         calldata: &[Felt],
         deploy_from_zero: bool,
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<(Felt, Vec<Felt>)> {
-        println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
-        Ok((
-            class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + Felt::from(1)).collect(),
-        ))
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::Deploy {
+                    class_hash,
+                    contract_address_salt,
+                    calldata: calldata.to_vec(),
+                    deploy_from_zero,
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::Deploy {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
-    fn replace_class(&mut self, class_hash: Felt, _gas: &mut u128) -> SyscallResult<()> {
-        println!("Called `replace_class({class_hash})` from MLIR.");
-        Ok(())
+    fn replace_class(&mut self, class_hash: Felt, gas: &mut u128) -> SyscallResult<()> {
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::ReplaceClass {
+                    class_hash,
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::ReplaceClass {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn library_call(
@@ -113,12 +169,40 @@ impl StarkNetSyscallHandler for SyscallHandler {
         class_hash: Felt,
         function_selector: Felt,
         calldata: &[Felt],
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>> {
-        println!(
-            "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
-        );
-        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::LibraryCall {
+                    class_hash,
+                    function_selector,
+                    calldata: calldata.to_vec(),
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::LibraryCall {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn call_contract(
@@ -126,12 +210,40 @@ impl StarkNetSyscallHandler for SyscallHandler {
         address: Felt,
         entry_point_selector: Felt,
         calldata: &[Felt],
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>> {
-        println!(
-            "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
-        );
-        Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::CallContract {
+                    address,
+                    entry_point_selector,
+                    calldata: calldata.to_vec(),
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::CallContract {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn storage_read(
@@ -214,28 +326,114 @@ impl StarkNetSyscallHandler for SyscallHandler {
         }
     }
 
-    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u128) -> SyscallResult<()> {
-        println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
-        Ok(())
+    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], gas: &mut u128) -> SyscallResult<()> {
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::EmitEvent {
+                    keys: keys.to_vec(),
+                    data: data.to_vec(),
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::EmitEvent {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn send_message_to_l1(
         &mut self,
         to_address: Felt,
         payload: &[Felt],
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<()> {
-        println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
-        Ok(())
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::SendMessageToL1 {
+                    to_address,
+                    payload: payload.to_vec(),
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::SendMessageToL1 {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn keccak(
         &mut self,
         input: &[u64],
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::U256> {
-        println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt::from(1234567890).to_bytes_le()))
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::Keccak {
+                    input: input.to_vec(),
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::Keccak {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn secp256k1_add(
