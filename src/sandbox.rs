@@ -6,13 +6,14 @@ use std::{
 
 use cairo_lang_sierra::program::{Program, VersionedProgram};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
+use lambdaworks_math::unsigned_integer::element::U256;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use uuid::Uuid;
 
 use crate::{
     execution_result::ContractExecutionResult,
-    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult},
+    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult, U256},
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -45,6 +46,43 @@ pub enum SyscallRequest {
     GetExecutionInfo {
         gas: u128,
     },
+    Deploy {
+        class_hash: Felt,
+        contract_address_salt: Felt,
+        calldata: Vec<Felt>,
+        deploy_from_zero: bool,
+        gas: u128,
+    },
+    ReplaceClass {
+        class_hash: Felt,
+        gas: u128,
+    },
+    LibraryCall {
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: Vec<Felt>,
+        gas: u128,
+    },
+    CallContract {
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: Vec<Felt>,
+        gas: u128,
+    },
+    EmitEvent {
+        keys: Vec<Felt>,
+        data: Vec<Felt>,
+        gas: u128,
+    },
+    SendMessageToL1 {
+        to_address: Felt,
+        payload: Vec<Felt>,
+        gas: u128,
+    },
+    Keccak {
+        input: Vec<u64>,
+        gas: u128,
+    },
     StorageRead {
         address_domain: u32,
         address: Felt,
@@ -69,12 +107,40 @@ pub enum SyscallAnswer {
         result: SyscallResult<ExecutionInfo>,
         remaining_gas: u128,
     },
+    Deploy {
+        result: SyscallResult<(Felt, Vec<Felt>)>,
+        remaining_gas: u128,
+    },
+    ReplaceClass {
+        result: SyscallResult<()>,
+        remaining_gas: u128,
+    },
+    LibraryCall {
+        result: SyscallResult<Vec<Felt>>,
+        remaining_gas: u128,
+    },
+    CallContract {
+        result: SyscallResult<Vec<Felt>>,
+        remaining_gas: u128,
+    },
     StorageRead {
         result: SyscallResult<Felt>,
         remaining_gas: u128,
     },
     StorageWrite {
         result: SyscallResult<()>,
+        remaining_gas: u128,
+    },
+    EmitEvent {
+        result: SyscallResult<()>,
+        remaining_gas: u128,
+    },
+    SendMessageToL1 {
+        result: SyscallResult<()>,
+        remaining_gas: u128,
+    },
+    Keccak {
+        result: SyscallResult<crate::starknet::U256>,
         remaining_gas: u128,
     },
 }
@@ -231,6 +297,48 @@ impl IsolatedExecutor {
                             .wrap()?,
                         )?;
                     }
+                    SyscallRequest::Deploy {
+                        class_hash,
+                        contract_address_salt,
+                        calldata,
+                        deploy_from_zero,
+                        mut gas,
+                    } => {
+                        let result = handler.deploy(
+                            class_hash,
+                            contract_address_salt,
+                            &calldata,
+                            deploy_from_zero,
+                            &mut gas,
+                        );
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::Deploy {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::ReplaceClass { class_hash, gas } => todo!(),
+                    SyscallRequest::LibraryCall {
+                        class_hash,
+                        function_selector,
+                        calldata,
+                        gas,
+                    } => todo!(),
+                    SyscallRequest::CallContract {
+                        address,
+                        entry_point_selector,
+                        calldata,
+                        gas,
+                    } => todo!(),
+                    SyscallRequest::EmitEvent { keys, data, gas } => todo!(),
+                    SyscallRequest::SendMessageToL1 {
+                        to_address,
+                        payload,
+                        gas,
+                    } => todo!(),
+                    SyscallRequest::Keccak { input, gas } => todo!(),
                 },
                 Message::SyscallAnswer(_) => unreachable!(),
             }
