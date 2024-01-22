@@ -6,14 +6,13 @@ use std::{
 
 use cairo_lang_sierra::program::{Program, VersionedProgram};
 use ipc_channel::ipc::{IpcOneShotServer, IpcReceiver, IpcSender};
-use lambdaworks_math::unsigned_integer::element::U256;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use uuid::Uuid;
 
 use crate::{
     execution_result::ContractExecutionResult,
-    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult, U256},
+    starknet::{ExecutionInfo, StarkNetSyscallHandler, SyscallResult},
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -319,26 +318,97 @@ impl IsolatedExecutor {
                             .wrap()?,
                         )?;
                     }
-                    SyscallRequest::ReplaceClass { class_hash, gas } => todo!(),
+                    SyscallRequest::ReplaceClass {
+                        class_hash,
+                        mut gas,
+                    } => {
+                        let result = handler.replace_class(class_hash, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::ReplaceClass {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
                     SyscallRequest::LibraryCall {
                         class_hash,
                         function_selector,
                         calldata,
-                        gas,
-                    } => todo!(),
+                        mut gas,
+                    } => {
+                        let result = handler.library_call(
+                            class_hash,
+                            function_selector,
+                            &calldata,
+                            &mut gas,
+                        );
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::LibraryCall {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
                     SyscallRequest::CallContract {
                         address,
                         entry_point_selector,
                         calldata,
-                        gas,
-                    } => todo!(),
-                    SyscallRequest::EmitEvent { keys, data, gas } => todo!(),
+                        mut gas,
+                    } => {
+                        let result = handler.call_contract(
+                            address,
+                            entry_point_selector,
+                            &calldata,
+                            &mut gas,
+                        );
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::CallContract {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::EmitEvent {
+                        keys,
+                        data,
+                        mut gas,
+                    } => {
+                        let result = handler.emit_event(&keys, &data, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::EmitEvent {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
                     SyscallRequest::SendMessageToL1 {
                         to_address,
                         payload,
-                        gas,
-                    } => todo!(),
-                    SyscallRequest::Keccak { input, gas } => todo!(),
+                        mut gas,
+                    } => {
+                        let result = handler.send_message_to_l1(to_address, &payload, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::SendMessageToL1 {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::Keccak { input, mut gas } => {
+                        let result = handler.keccak(&input, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::Keccak {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
                 },
                 Message::SyscallAnswer(_) => unreachable!(),
             }
