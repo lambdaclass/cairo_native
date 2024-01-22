@@ -38,8 +38,24 @@ pub enum Message {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyscallRequest {
-    GetBlockHash { block_number: u64, gas: u128 },
-    GetExecutionInfo { gas: u128 },
+    GetBlockHash {
+        block_number: u64,
+        gas: u128,
+    },
+    GetExecutionInfo {
+        gas: u128,
+    },
+    StorageRead {
+        address_domain: u32,
+        address: Felt,
+        gas: u128,
+    },
+    StorageWrite {
+        address_domain: u32,
+        address: Felt,
+        value: Felt,
+        gas: u128,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -51,6 +67,14 @@ pub enum SyscallAnswer {
     },
     GetExecutionInfo {
         result: SyscallResult<ExecutionInfo>,
+        remaining_gas: u128,
+    },
+    StorageRead {
+        result: SyscallResult<Felt>,
+        remaining_gas: u128,
+    },
+    StorageWrite {
+        result: SyscallResult<()>,
         remaining_gas: u128,
     },
 }
@@ -104,7 +128,7 @@ impl IsolatedExecutor {
 
         // first we accept the connection
         let (receiver, msg) = server.accept().expect("failed to accept receiver");
-        tracing::debug!("accepted receiver {receiver:?} wit msg {msg:?}");
+        tracing::debug!("accepted receiver {receiver:?} with msg {msg:?}");
         // then we connect
         tracing::debug!("connecting to {client_name}");
         let sender = IpcSender::connect(client_name.trim().to_string()).expect("failed to connect");
@@ -171,6 +195,36 @@ impl IsolatedExecutor {
                         let result = handler.get_execution_info(&mut gas);
                         self.sender.send(
                             Message::SyscallAnswer(SyscallAnswer::GetExecutionInfo {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::StorageRead {
+                        address_domain,
+                        address,
+                        mut gas,
+                    } => {
+                        let result = handler.storage_read(address_domain, address, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::StorageRead {
+                                result,
+                                remaining_gas: gas,
+                            })
+                            .wrap()?,
+                        )?;
+                    }
+                    SyscallRequest::StorageWrite {
+                        address_domain,
+                        address,
+                        value,
+                        mut gas,
+                    } => {
+                        let result =
+                            handler.storage_write(address_domain, address, value, &mut gas);
+                        self.sender.send(
+                            Message::SyscallAnswer(SyscallAnswer::StorageWrite {
                                 result,
                                 remaining_gas: gas,
                             })

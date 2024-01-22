@@ -1,4 +1,4 @@
-use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use cairo_lang_utils::ResultHelper;
 use cairo_native::{
@@ -138,10 +138,39 @@ impl StarkNetSyscallHandler for SyscallHandler {
         &mut self,
         address_domain: u32,
         address: Felt,
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<Felt> {
-        println!("Called `storage_read({address_domain}, {address})` from MLIR.");
-        Ok(address * Felt::from(3))
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::StorageRead {
+                    address_domain,
+                    address,
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::StorageRead {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn storage_write(
@@ -149,10 +178,40 @@ impl StarkNetSyscallHandler for SyscallHandler {
         address_domain: u32,
         address: Felt,
         value: Felt,
-        _gas: &mut u128,
+        gas: &mut u128,
     ) -> SyscallResult<()> {
-        println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
-        Ok(())
+        self.sender
+            .send(
+                Message::SyscallRequest(SyscallRequest::StorageWrite {
+                    address_domain,
+                    address,
+                    value,
+                    gas: *gas,
+                })
+                .wrap()
+                .unwrap(),
+            )
+            .expect("failed to send");
+        let result = self
+            .receiver
+            .borrow()
+            .recv()
+            .on_err(|e| tracing::error!("error receiving: {:?}", e))
+            .unwrap()
+            .to_msg()
+            .unwrap();
+
+        if let Message::SyscallAnswer(SyscallAnswer::StorageWrite {
+            result,
+            remaining_gas,
+        }) = result
+        {
+            *gas = remaining_gas;
+            result
+        } else {
+            tracing::error!("wrong message received: {:#?}", result);
+            panic!();
+        }
     }
 
     fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u128) -> SyscallResult<()> {
@@ -364,7 +423,6 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("waiting for message");
 
         let message: Message = receiver.borrow().recv()?.to_msg()?;
-        tracing::info!("got message: {:?}", message);
 
         match message {
             Message::ExecuteJIT {
@@ -374,6 +432,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 function_idx,
                 gas,
             } => {
+                tracing::info!("Message: ExecuteJIT");
                 sender.send(Message::Ack(id).wrap()?)?;
                 tracing::info!("sent ack: {:?}", id);
                 let program = program.into_v1()?.program;
@@ -402,9 +461,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             Message::ExecutionResult { .. } => {}
             Message::Ack(_) => {}
             Message::Ping => {
+                tracing::info!("Message: Ping");
                 sender.send(Message::Ping.wrap()?)?;
             }
             Message::Kill => {
+                tracing::info!("Message: KILL");
                 break;
             }
             Message::SyscallRequest(_) => todo!(),
