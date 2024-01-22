@@ -37,6 +37,8 @@ use melior::{
 use num_bigint::{Sign, ToBigUint};
 use std::alloc::Layout;
 
+mod secp256;
+
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
@@ -120,6 +122,9 @@ where
         StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
             build_get_execution_info(context, registry, entry, location, helper, metadata, info)
         }
+        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => {
+            todo!("implement starknet GetExecutionInfoV2 libfunc")
+        }
         StarkNetConcreteLibfunc::Deploy(info) => {
             build_deploy(context, registry, entry, location, helper, metadata, info)
         }
@@ -137,9 +142,6 @@ where
         }
         StarkNetConcreteLibfunc::Testing(_) => todo!("implement starknet testing libfunc"),
         StarkNetConcreteLibfunc::Secp256(_) => todo!("implement starknet Secp256 libfunc"),
-        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => {
-            todo!("implement starknet GetExecutionInfoV2 libfunc")
-        }
     }
 }
 
