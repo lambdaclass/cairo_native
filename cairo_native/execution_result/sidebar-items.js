@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ContractExecutionResult","ExecutionResult"]};
+window.SIDEBAR_ITEMS = {"struct":["BuiltinStats","ContractExecutionResult","ExecutionResult"]};

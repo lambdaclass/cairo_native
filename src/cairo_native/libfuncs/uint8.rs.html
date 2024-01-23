@@ -1058,6 +1058,28 @@
 <a href="#1058" id="1058">1058</a>
 <a href="#1059" id="1059">1059</a>
 <a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u8`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1194,7 +1216,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1324,7 +1352,7 @@
 
 <span class="doccomment">/// Generate MLIR operations for the `u8_safe_divmod` libfunc.
 </span><span class="kw">pub fn </span>build_divmod&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -1337,6 +1365,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1346,11 +1381,7 @@
     <span class="kw">let </span>op = entry.append_operation(arith::remui(lhs, rhs, location));
     <span class="kw">let </span>result_rem = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    entry.append_operation(helper.br(
-        <span class="number">0</span>,
-        <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), result_div, result_rem],
-        location,
-    ));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, result_div, result_rem], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1443,6 +1474,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>i8_ty = IntegerType::new(context, <span class="number">8</span>).into();
 
     <span class="kw">let </span>k1 = entry
@@ -1678,7 +1716,7 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), result], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, result], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1698,7 +1736,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>felt252_ty = registry.build_type(

@@ -283,6 +283,16 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -384,7 +394,12 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>current_gas = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>cost = metadata.get::&lt;GasCost&gt;().and_then(|x| x.<span class="number">0</span>);
@@ -449,7 +464,12 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
     <span class="kw">let </span>current_gas = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>cost = metadata.get::&lt;GasCost&gt;().and_then(|x| x.<span class="number">0</span>);

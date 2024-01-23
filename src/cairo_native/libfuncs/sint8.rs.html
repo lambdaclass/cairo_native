@@ -828,6 +828,24 @@
 <a href="#828" id="828">828</a>
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i8`-related libfuncs
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
 
@@ -956,7 +974,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1050,6 +1074,7 @@
     ));
     <span class="comment">// No Oveflow/Underflow -&gt; In range result
     </span>block_not_overflow.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, op_result], location));
+
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1225,7 +1250,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
@@ -1303,7 +1334,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1325,7 +1362,6 @@
         [<span class="kw-2">&amp;</span>[range_check, result], <span class="kw-2">&amp;</span>[range_check, result]],
         location,
     ));
-
     <span class="prelude-val">Ok</span>(())
 }
 

@@ -534,6 +534,13 @@
 <a href="#534" id="534">534</a>
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u512`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -602,6 +609,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i512_ty = IntegerType::new(context, <span class="number">512</span>).into();
 
@@ -927,7 +941,7 @@
     entry.append_operation(helper.br(
         <span class="number">0</span>,
         <span class="kw-2">&amp;</span>[
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            range_check,
             result_div_val,
             result_rem_val,
             guarantee,

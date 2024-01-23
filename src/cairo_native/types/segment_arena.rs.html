@@ -31,7 +31,6 @@
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Segment arena type
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
@@ -44,7 +43,6 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::llvm,
     ir::{r#type::IntegerType, Module, Type},
     Context,
 };
@@ -64,6 +62,6 @@
     TLibfunc: GenericLibfunc,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="prelude-val">Ok</span>(llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>))
+    <span class="prelude-val">Ok</span>(IntegerType::new(context, <span class="number">64</span>).into())
 }
 </code></pre></div></section></main></body></html>

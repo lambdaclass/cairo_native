@@ -1102,6 +1102,27 @@
 <a href="#1102" id="1102">1102</a>
 <a href="#1103" id="1103">1103</a>
 <a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u64`-related libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -1238,7 +1259,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1368,7 +1395,7 @@
 
 <span class="doccomment">/// Generate MLIR operations for the `u64_safe_divmod` libfunc.
 </span><span class="kw">pub fn </span>build_divmod&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -1381,6 +1408,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -1390,12 +1424,7 @@
     <span class="kw">let </span>op = entry.append_operation(arith::remui(lhs, rhs, location));
     <span class="kw">let </span>result_rem = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    entry.append_operation(helper.br(
-        <span class="number">0</span>,
-        <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), result_div, result_rem],
-        location,
-    ));
-
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, result_div, result_rem], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1488,6 +1517,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>i32_ty = IntegerType::new(context, <span class="number">32</span>).into();
     <span class="kw">let </span>i64_ty = IntegerType::new(context, <span class="number">64</span>).into();
 
@@ -1733,7 +1769,7 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), result], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, result], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1753,7 +1789,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>range_check: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check: Value = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
@@ -1803,8 +1845,8 @@
 
     <span class="kw">let </span>op = block_success.append_operation(arith::trunci(value, result_ty, location));
     <span class="kw">let </span>value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
 
+    block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));
 
     <span class="prelude-val">Ok</span>(())

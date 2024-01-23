@@ -112,17 +112,39 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
     values::JitValue,
 };
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
+<span class="attr">#[derive(Clone, Debug, Default, Eq, PartialEq)]
+</span><span class="kw">pub struct </span>BuiltinStats {
+    <span class="kw">pub </span>bitwise: usize,
+    <span class="kw">pub </span>ec_op: usize,
+    <span class="kw">pub </span>range_check: usize,
+    <span class="kw">pub </span>pedersen: usize,
+    <span class="kw">pub </span>poseidon: usize,
+    <span class="kw">pub </span>segment_arena: usize,
+}
+
 <span class="doccomment">/// The result of the JIT execution.
-</span><span class="attr">#[derive(Debug, Clone, Eq, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>ExecutionResult {
     <span class="kw">pub </span>remaining_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
     <span class="kw">pub </span>return_value: JitValue,
+    <span class="kw">pub </span>builtin_stats: BuiltinStats,
 }
 
 <span class="doccomment">/// Starknet contract execution result.

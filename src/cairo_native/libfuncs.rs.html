@@ -496,6 +496,37 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -512,8 +543,11 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::cf,
-    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
+    dialect::{arith, cf},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockRef, Location, Module,
+        Operation, Region, Value, ValueLike,
+    },
     Context,
 };
 <span class="kw">use </span>std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
@@ -993,5 +1027,33 @@
     </span>Jump(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;),
     <span class="doccomment">/// A statement&#39;s branch target by its index.
     </span>Return(usize),
+}
+
+<span class="kw">pub fn </span>increment_builtin_counter&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;a</span>, TType, TLibfunc&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
+    value: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;,
+) -&gt; <span class="kw">crate</span>::error::libfuncs::Result&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;a</span>&gt;&gt;
+<span class="kw">where
+    </span><span class="lifetime">&#39;ctx</span>: <span class="lifetime">&#39;a</span>,
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
+    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
+{
+    <span class="kw">let </span>k1 = block
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="prelude-val">Ok</span>(block
+        .append_operation(arith::addi(value, k1, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into())
 }
 </code></pre></div></section></main></body></html>

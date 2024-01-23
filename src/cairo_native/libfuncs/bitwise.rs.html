@@ -130,6 +130,8 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bitwise libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -153,7 +155,7 @@
 
 <span class="doccomment">/// Generate MLIR operations for the `bitwise` libfunc.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -167,6 +169,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>bitwise = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>lhs = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
@@ -185,12 +194,7 @@
 
     entry.append_operation(helper.br(
         <span class="number">0</span>,
-        <span class="kw-2">&amp;</span>[
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            logical_and,
-            logical_xor,
-            logical_or,
-        ],
+        <span class="kw-2">&amp;</span>[bitwise, logical_and, logical_xor, logical_or],
         location,
     ));
     <span class="prelude-val">Ok</span>(())

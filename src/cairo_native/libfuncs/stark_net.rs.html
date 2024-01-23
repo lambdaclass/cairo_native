@@ -4971,6 +4971,25 @@
 <a href="#4971" id="4971">4971</a>
 <a href="#4972" id="4972">4972</a>
 <a href="#4973" id="4973">4973</a>
+<a href="#4974" id="4974">4974</a>
+<a href="#4975" id="4975">4975</a>
+<a href="#4976" id="4976">4976</a>
+<a href="#4977" id="4977">4977</a>
+<a href="#4978" id="4978">4978</a>
+<a href="#4979" id="4979">4979</a>
+<a href="#4980" id="4980">4980</a>
+<a href="#4981" id="4981">4981</a>
+<a href="#4982" id="4982">4982</a>
+<a href="#4983" id="4983">4983</a>
+<a href="#4984" id="4984">4984</a>
+<a href="#4985" id="4985">4985</a>
+<a href="#4986" id="4986">4986</a>
+<a href="#4987" id="4987">4987</a>
+<a href="#4988" id="4988">4988</a>
+<a href="#4989" id="4989">4989</a>
+<a href="#4990" id="4990">4990</a>
+<a href="#4991" id="4991">4991</a>
+<a href="#4992" id="4992">4992</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -5572,6 +5591,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>limit = entry
@@ -5601,10 +5627,7 @@
         context,
         is_in_range,
         [<span class="number">0</span>, <span class="number">1</span>],
-        [
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value],
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()],
-        ],
+        [<span class="kw-2">&amp;</span>[range_check, value], <span class="kw-2">&amp;</span>[range_check]],
         location,
     ));
     <span class="prelude-val">Ok</span>(())
@@ -5658,6 +5681,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>limit = entry
@@ -5687,10 +5717,7 @@
         context,
         is_in_range,
         [<span class="number">0</span>, <span class="number">1</span>],
-        [
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value],
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()],
-        ],
+        [<span class="kw-2">&amp;</span>[range_check, value], <span class="kw-2">&amp;</span>[range_check]],
         location,
     ));
     <span class="prelude-val">Ok</span>(())
@@ -6435,6 +6462,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>k_limit = entry
         .append_operation(arith::constant(
             context,
@@ -6473,7 +6507,7 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -6560,6 +6594,13 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     <span class="kw">let </span>value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>limit = entry
@@ -6589,10 +6630,7 @@
         context,
         is_in_range,
         [<span class="number">0</span>, <span class="number">1</span>],
-        [
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value],
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()],
-        ],
+        [<span class="kw-2">&amp;</span>[range_check, value], <span class="kw-2">&amp;</span>[range_check]],
         location,
     ));
     <span class="prelude-val">Ok</span>(())

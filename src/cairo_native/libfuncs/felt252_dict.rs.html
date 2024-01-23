@@ -210,6 +210,13 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -220,12 +227,11 @@
     },
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         felt252_dict::Felt252DictConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -262,12 +268,12 @@
 
 <span class="kw">pub fn </span>build_new&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
     </span>TType: GenericType,
@@ -275,31 +281,26 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    <span class="kw">let </span>_dict_ptr_type = registry.build_type(
+    <span class="kw">let </span>segment_arena = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
         context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
     )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>segment_arena = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .expect(<span class="string">&quot;Runtime library not available.&quot;</span>);
 
     <span class="kw">let </span>op = runtime_bindings.dict_alloc_new(context, helper, entry, location)<span class="question-mark">?</span>;
-
     <span class="kw">let </span>dict_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[segment_arena, dict_ptr], location));
-
     <span class="prelude-val">Ok</span>(())
 }
 
 <span class="kw">pub fn </span>build_squash&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -313,12 +314,25 @@
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>segment_arena = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
+        context,
+        entry,
+        location,
+        entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
+    )<span class="question-mark">?</span>;
+
     entry.append_operation(helper.br(
         <span class="number">0</span>,
         <span class="kw-2">&amp;</span>[
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            range_check,
             entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-            entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
+            segment_arena,
             entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         ],
         location,
