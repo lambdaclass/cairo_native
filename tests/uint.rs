@@ -454,6 +454,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -479,6 +480,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -504,6 +506,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -529,6 +532,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -554,6 +558,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -581,6 +586,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -606,6 +612,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -631,6 +638,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -656,6 +664,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -681,6 +690,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -708,6 +718,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -733,6 +744,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -758,6 +770,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -783,6 +796,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -808,6 +822,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -835,6 +850,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -860,6 +876,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -885,6 +902,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -910,6 +928,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -935,6 +954,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -962,6 +982,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -987,6 +1008,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -1012,6 +1034,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -1037,6 +1060,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -1062,6 +1086,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(

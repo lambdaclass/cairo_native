@@ -68,6 +68,7 @@ fn array_get_test() {
         "run_test",
         &[JitValue::Felt252(10.into()), JitValue::Felt252(5.into())],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -92,6 +93,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(value), JitValue::Felt252(idx.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(

@@ -42,7 +42,8 @@ lazy_static! {
 fn ec_point_zero() {
     let program = &EC_POINT_ZERO;
     let result_vm = run_vm_program(program, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(program, "run_test", &[], Some(DEFAULT_GAS as u128));
+    let result_native =
+        run_native_program(program, "run_test", &[], Some(DEFAULT_GAS as u128), None);
 
     compare_outputs(
         &program.1,
@@ -74,6 +75,7 @@ fn ec_point_from_x_big() {
         "run_test",
         &[JitValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -101,6 +103,7 @@ fn ec_point_from_x_small() {
         "run_test",
         &[JitValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -128,6 +131,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -153,6 +157,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(

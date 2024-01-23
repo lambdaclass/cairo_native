@@ -93,6 +93,7 @@ fn fib() {
         "run_test",
         &[JitValue::Felt252(10.into())],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -118,6 +119,7 @@ fn logistic_map() {
         "run_test",
         &[JitValue::Felt252(1000.into())],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -165,6 +167,7 @@ fn pedersen() {
             ),
         ],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -190,6 +193,7 @@ fn factorial() {
         "run_test",
         &[JitValue::Felt252(13.into())],
         Some(DEFAULT_GAS as u128),
+        None,
     );
 
     compare_outputs(
@@ -216,6 +220,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -240,6 +245,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -264,6 +270,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -289,6 +296,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -316,6 +324,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(

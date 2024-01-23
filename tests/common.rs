@@ -184,6 +184,7 @@ pub fn run_native_program(
     entry_point: &str,
     args: &[JitValue],
     gas: Option<u128>,
+    syscall_handler: Option<&SyscallHandlerMeta>,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -240,7 +241,7 @@ pub fn run_native_program(
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
     executor
-        .invoke_dynamic(entry_point_id, args, gas, None)
+        .invoke_dynamic(entry_point_id, args, gas, syscall_handler)
         .unwrap()
 }
 
@@ -266,7 +267,7 @@ pub fn compare_inputless_program(program_path: &str) {
     let program = &program;
 
     let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128));
+    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128), None);
 
     compare_outputs(
         &program.1,

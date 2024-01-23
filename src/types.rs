@@ -594,7 +594,12 @@ where
                 StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
-                StarkNetTypeConcrete::Secp256Point(_) => todo!("implement Secp256Point type"),
+                StarkNetTypeConcrete::Secp256Point(_) => {
+                    get_integer_layout(256)
+                        .extend(get_integer_layout(256))
+                        .unwrap()
+                        .0
+                }
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<()>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,

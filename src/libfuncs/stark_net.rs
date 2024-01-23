@@ -140,8 +140,10 @@ where
         StarkNetConcreteLibfunc::SendMessageToL1(info) => {
             build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
         }
+        StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
+            context, registry, entry, location, helper, metadata, selector,
+        ),
         StarkNetConcreteLibfunc::Testing(_) => todo!("implement starknet testing libfunc"),
-        StarkNetConcreteLibfunc::Secp256(_) => todo!("implement starknet Secp256 libfunc"),
     }
 }
 
