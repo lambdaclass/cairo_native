@@ -79,6 +79,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
@@ -273,7 +280,7 @@ where
 
     entry.append_operation(helper.br(
         0,
-        &[entry.argument(0)?.into(), result_div, result_rem, guarantee],
+        &[range_check, result_div, result_rem, guarantee],
         location,
     ));
     Ok(())
@@ -379,6 +386,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
@@ -673,7 +687,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), result], location));
+    entry.append_operation(helper.br(0, &[range_check, result], location));
     Ok(())
 }
 

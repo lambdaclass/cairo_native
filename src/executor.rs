@@ -1,7 +1,7 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
-    execution_result::{ContractExecutionResult, ExecutionResult},
+    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     metadata::syscall_handler::SyscallHandlerMeta,
     types::TypeBuilder,
     utils::get_integer_layout,
@@ -110,6 +110,9 @@ fn invoke_dynamic(
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
+    let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
+    let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
+
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -184,6 +187,9 @@ fn invoke_dynamic(
                 ),
                 None => panic!("Syscall handler is required"),
             },
+            _ if is_builtin(type_info) => invoke_data
+                .push(type_id, type_info, &JitValue::Uint64(0))
+                .unwrap(),
             _ => invoke_data
                 .push(type_id, type_info, iter.next().unwrap())
                 .unwrap(),
@@ -206,17 +212,25 @@ fn invoke_dynamic(
     }
 
     // Parse final gas.
+    unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
+        let align_offset = ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(std::mem::align_of::<T>());
+        let value_ptr = ptr.cast::<u8>().as_ptr().add(align_offset).cast::<T>();
+
+        *ptr = NonNull::new_unchecked(value_ptr.add(1)).cast();
+        &*value_ptr
+    }
+
     let mut remaining_gas = None;
+    let mut builtin_stats = BuiltinStats::default();
     for type_id in &function_signature.ret_types {
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe {
-                        let ptr = return_ptr.cast::<u128>();
-                        *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
-                        *ptr.as_ref()
-                    },
+                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
@@ -231,9 +245,24 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin(
-                type_info,
-            ) => {}
+            _ if is_builtin(type_info) => {
+                if !is_zst(type_info, registry) {
+                    let value = match &mut return_ptr {
+                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
+                        None => ret_registers[0],
+                    } as usize;
+
+                    match type_info {
+                        CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
+                        CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                        CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
+                        CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
+                        CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                        CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        _ => unreachable!("{type_id:?}"),
+                    }
+                }
+            }
             _ => break,
         }
     }
@@ -252,6 +281,7 @@ fn invoke_dynamic(
     ExecutionResult {
         remaining_gas,
         return_value,
+        builtin_stats,
     }
 }
 
@@ -282,7 +312,7 @@ impl<'a> ArgumentMapper<'a> {
 
         // x86_64's max alignment is 8 bytes.
         #[cfg(target_arch = "x86_64")]
-        assert!(align < 16);
+        assert!(align <= 8);
 
         #[cfg(target_arch = "aarch64")]
         if align == 16 {
@@ -294,11 +324,18 @@ impl<'a> ArgumentMapper<'a> {
                 }
             } else if self.invoke_data.len() + 1 >= 8 {
                 self.invoke_data.push(0);
-            } else if self.invoke_data.len() + values.len() >= 8 {
-                let chunk;
-                (chunk, values) = values.split_at(4);
-                self.invoke_data.extend(chunk);
-                self.invoke_data.push(0);
+            } else {
+                let new_len = self.invoke_data.len() + values.len();
+                if new_len >= 8 && new_len % 2 != 0 {
+                    let chunk;
+                    (chunk, values) = if values.len() >= 4 {
+                        values.split_at(4)
+                    } else {
+                        (values, [].as_slice())
+                    };
+                    self.invoke_data.extend(chunk);
+                    self.invoke_data.push(0);
+                }
             }
         }
 
@@ -477,13 +514,15 @@ impl<'a> ArgumentMapper<'a> {
                 let type_info = self.registry.get_type(&info.ty)?;
                 self.push(&info.ty, type_info, value)?;
             }
-            (CoreTypeConcrete::Bitwise(_), _)
-            | (CoreTypeConcrete::BuiltinCosts(_), _)
-            | (CoreTypeConcrete::EcOp(_), _)
-            | (CoreTypeConcrete::Pedersen(_), _)
-            | (CoreTypeConcrete::Poseidon(_), _)
-            | (CoreTypeConcrete::RangeCheck(_), _)
-            | (CoreTypeConcrete::SegmentArena(_), _) => {}
+            (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::EcOp(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::Pedersen(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
+            | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
+                self.push_aligned(get_integer_layout(64).align(), &[*value])
+            }
             (_, _) => todo!(),
         }
 
@@ -494,11 +533,24 @@ impl<'a> ArgumentMapper<'a> {
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    return_ptr: Option<NonNull<()>>,
+    mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
+
+    // Align the pointer to the actual return value.
+    if let Some(return_ptr) = &mut return_ptr {
+        let layout = type_info.layout(registry).unwrap();
+        let align_offset = return_ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(layout.align());
+
+        *return_ptr = unsafe {
+            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+        };
+    }
 
     match type_info {
         CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
@@ -516,17 +568,21 @@ fn parse_result(
             | StarkNetTypeConcrete::ContractAddress(_)
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
-        ) => {
-            #[cfg(target_arch = "x86_64")]
-            let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+        ) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 
-            #[cfg(target_arch = "aarch64")]
-            let value = JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-            }));
+                #[cfg(target_arch = "aarch64")]
+                let value =
+                    JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
+                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+                    }));
 
-            value
-        }
+                value
+            }
+        },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
             Some(return_ptr) => JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() }),
             None => JitValue::Uint8(ret_registers[0] as u8),
@@ -651,7 +707,11 @@ fn parse_result(
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            ),
             None => JitValue::from_jit(
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,

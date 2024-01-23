@@ -99,7 +99,12 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check = entry.argument(0)?.into();
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
     let current_gas = entry.argument(1)?.into();
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
@@ -164,7 +169,12 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check = entry.argument(0)?.into();
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
     let current_gas = entry.argument(1)?.into();
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);

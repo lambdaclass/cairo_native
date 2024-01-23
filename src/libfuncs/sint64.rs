@@ -126,7 +126,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -220,6 +226,7 @@ where
     ));
     // No Oveflow/Underflow -> In range result
     block_not_overflow.append_operation(helper.br(0, &[range_check, op_result], location));
+
     Ok(())
 }
 
@@ -395,7 +402,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let value: Value = entry.argument(1)?.into();
 
     let felt252_ty = registry.build_type(
@@ -451,8 +464,8 @@ where
         .append_operation(arith::trunci(value, result_ty, location))
         .result(0)?
         .into();
-    block_success.append_operation(helper.br(0, &[range_check, value], location));
 
+    block_success.append_operation(helper.br(0, &[range_check, value], location));
     block_failure.append_operation(helper.br(1, &[range_check], location));
 
     Ok(())
@@ -473,7 +486,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -495,7 +514,6 @@ where
         [&[range_check, result], &[range_check, result]],
         location,
     ));
-
     Ok(())
 }
 

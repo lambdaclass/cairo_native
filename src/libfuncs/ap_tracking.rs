@@ -53,7 +53,7 @@ where
     }
 }
 
-/// Generate MLIR operations for the `enable_ap_tracking.` libfunc.
+/// Generate MLIR operations for the `enable_ap_tracking` libfunc.
 pub fn build_enable<'ctx, 'this, TType, TLibfunc>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,

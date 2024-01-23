@@ -66,6 +66,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
 
@@ -391,7 +398,7 @@ where
     entry.append_operation(helper.br(
         0,
         &[
-            entry.argument(0)?.into(),
+            range_check,
             result_div_val,
             result_rem_val,
             guarantee,

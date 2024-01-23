@@ -1,8 +1,12 @@
 use crate::common::load_cairo;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
-    context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-    utils::find_function_id, values::JitValue, OptLevel,
+    context::NativeContext,
+    execution_result::{BuiltinStats, ExecutionResult},
+    executor::JitNativeExecutor,
+    utils::find_function_id,
+    values::JitValue,
+    OptLevel,
 };
 use starknet_types_core::felt::Felt;
 
@@ -35,6 +39,7 @@ fn invoke0() {
                 fields: Vec::new(),
                 debug_name: None,
             },
+            builtin_stats: BuiltinStats::default(),
         },
     );
 }
@@ -58,6 +63,7 @@ fn invoke1_felt252() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -87,6 +93,7 @@ fn invoke1_u8() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -116,6 +123,7 @@ fn invoke1_u16() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -145,6 +153,7 @@ fn invoke1_u32() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -174,6 +183,7 @@ fn invoke1_u64() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -203,6 +213,7 @@ fn invoke1_u128() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -235,6 +246,7 @@ fn invoke1_tuple1_felt252() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -267,6 +279,7 @@ fn invoke1_tuple1_u64() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -305,6 +318,7 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -334,6 +348,7 @@ fn invoke1_array_felt252() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -374,6 +389,7 @@ fn invoke1_enum1_unit() {
         ExecutionResult {
             remaining_gas: None,
             return_value: x,
+            builtin_stats: BuiltinStats::default(),
         },
     );
 }
@@ -405,6 +421,7 @@ fn invoke1_enum1_u64() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -442,6 +459,7 @@ fn invoke1_enum1_felt252() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
@@ -492,6 +510,7 @@ fn invoke1_enum2_u8_u16() {
             ExecutionResult {
                 remaining_gas: None,
                 return_value: x,
+                builtin_stats: BuiltinStats::default(),
             },
         );
     };
