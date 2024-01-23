@@ -294,11 +294,18 @@ impl<'a> ArgumentMapper<'a> {
                 }
             } else if self.invoke_data.len() + 1 >= 8 {
                 self.invoke_data.push(0);
-            } else if self.invoke_data.len() + values.len() >= 8 {
-                let chunk;
-                (chunk, values) = values.split_at(4);
-                self.invoke_data.extend(chunk);
-                self.invoke_data.push(0);
+            } else {
+                let new_len = self.invoke_data.len() + values.len();
+                if new_len >= 8 && new_len % 2 != 0 {
+                    let chunk;
+                    (chunk, values) = if values.len() >= 4 {
+                        values.split_at(4)
+                    } else {
+                        (values, [].as_slice())
+                    };
+                    self.invoke_data.extend(chunk);
+                    self.invoke_data.push(0);
+                }
             }
         }
 
@@ -494,11 +501,24 @@ impl<'a> ArgumentMapper<'a> {
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    return_ptr: Option<NonNull<()>>,
+    mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
+
+    // Align the pointer to the actual return value.
+    if let Some(return_ptr) = &mut return_ptr {
+        let layout = type_info.layout(registry).unwrap();
+        let align_offset = return_ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(layout.align());
+
+        *return_ptr = unsafe {
+            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+        };
+    }
 
     match type_info {
         CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),

@@ -17,7 +17,10 @@ pub struct Felt252Abi(pub [u8; 32]);
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
-pub struct U256(pub [u8; 32]);
+pub struct U256 {
+    pub hi: u128,
+    pub lo: u128,
+}
 
 pub struct ExecutionInfo {
     pub block_info: BlockInfo,
@@ -248,7 +251,7 @@ pub(crate) mod handler {
     use std::{
         alloc::Layout,
         fmt::Debug,
-        mem::{size_of, ManuallyDrop},
+        mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::NonNull,
     };
 
@@ -269,12 +272,14 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
+    #[derive(Debug)]
     pub(crate) struct SyscallResultAbiOk<T> {
         pub tag: u8,
         pub payload: ManuallyDrop<T>,
     }
 
     #[repr(C)]
+    #[derive(Debug)]
     pub(crate) struct SyscallResultAbiErr {
         pub tag: u8,
         pub payload: (NonNull<Felt252Abi>, u32, u32),
@@ -391,7 +396,7 @@ pub(crate) mod handler {
         ),
 
         secp256k1_new: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256k1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
@@ -492,6 +497,7 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
     }
 
+    #[allow(unused_variables)]
     impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
     where
         T: StarkNetSyscallHandler + 'a,
@@ -974,7 +980,7 @@ pub(crate) mod handler {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new(U256(x.0)),
+                        payload: ManuallyDrop::new(x),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
@@ -982,13 +988,26 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_secp256k1_new(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256k1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
             y: &U256,
         ) {
-            todo!()
+            let result = ptr.secp256k1_new(*x, *y, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(match x {
+                            Some(x) => (0, MaybeUninit::new(x)),
+                            None => (1, MaybeUninit::uninit()),
+                        }),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256k1_add(
