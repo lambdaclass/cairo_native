@@ -1100,6 +1100,44 @@
 <a href="#1100" id="1100">1100</a>
 <a href="#1101" id="1101">1101</a>
 <a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1748,7 +1786,10 @@
             MetadataStorage,
         },
         module::NativeModule,
-        starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+        starknet::{
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            SyscallResult, TxInfo, TxV2Info, U256,
+        },
         utils::<span class="kw-2">*</span>,
         values::JitValue,
     };
@@ -2022,6 +2063,41 @@
                     transaction_hash: <span class="number">9876</span>.into(),
                     chain_id: <span class="number">8765</span>.into(),
                     nonce: <span class="number">7654</span>.into(),
+                },
+                caller_address: <span class="number">6543</span>.into(),
+                contract_address: <span class="number">5432</span>.into(),
+                entry_point_selector: <span class="number">4321</span>.into(),
+            })
+        }
+
+        <span class="kw">fn </span>get_execution_info_v2(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::ExecutionInfoV2&gt; {
+            <span class="prelude-val">Ok</span>(ExecutionInfoV2 {
+                block_info: BlockInfo {
+                    block_number: <span class="number">1234</span>,
+                    block_timestamp: <span class="number">2345</span>,
+                    sequencer_address: <span class="number">3456</span>.into(),
+                },
+                tx_info: TxV2Info {
+                    version: <span class="number">1</span>.into(),
+                    account_contract_address: <span class="number">1</span>.into(),
+                    max_fee: <span class="number">0</span>,
+                    signature: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                    transaction_hash: <span class="number">1</span>.into(),
+                    chain_id: <span class="number">1</span>.into(),
+                    nonce: <span class="number">1</span>.into(),
+                    tip: <span class="number">1</span>,
+                    paymaster_data: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                    nonce_data_availability_mode: <span class="number">0</span>,
+                    fee_data_availability_mode: <span class="number">0</span>,
+                    account_deployment_data: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                    resource_bounds: <span class="macro">vec!</span>[ResourceBounds {
+                        resource: <span class="number">2</span>.into(),
+                        max_amount: <span class="number">10</span>,
+                        max_price_per_unit: <span class="number">20</span>,
+                    }],
                 },
                 caller_address: <span class="number">6543</span>.into(),
                 contract_address: <span class="number">5432</span>.into(),
