@@ -2,7 +2,8 @@ use crate::common::run_native_starknet_contract;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::{compile_path, ContractClass};
 use cairo_native::starknet::{
-    BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256,
+    BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+    SyscallResult, TxInfo, TxV2Info, U256,
 };
 use lazy_static::lazy_static;
 use starknet_types_core::felt::Felt;
@@ -36,6 +37,42 @@ impl StarkNetSyscallHandler for SyscallHandler {
                 transaction_hash: 9876.into(),
                 chain_id: 8765.into(),
                 nonce: 7654.into(),
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
+    }
+
+    fn get_execution_info_v2(
+        &mut self,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
+        println!("Called `get_execution_info_v2()` from MLIR.");
+        Ok(ExecutionInfoV2 {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxV2Info {
+                version: 1.into(),
+                account_contract_address: 1.into(),
+                max_fee: 0,
+                signature: vec![1.into()],
+                transaction_hash: 1.into(),
+                chain_id: 1.into(),
+                nonce: 1.into(),
+                tip: 1,
+                paymaster_data: vec![1.into()],
+                nonce_data_availability_mode: 0,
+                fee_data_availability_mode: 0,
+                account_deployment_data: vec![1.into()],
+                resource_bounds: vec![ResourceBounds {
+                    resource: 2.into(),
+                    max_amount: 10,
+                    max_price_per_unit: 20,
+                }],
             },
             caller_address: 6543.into(),
             contract_address: 5432.into(),
