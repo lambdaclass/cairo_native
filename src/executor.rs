@@ -450,8 +450,8 @@ impl<'a> ArgumentMapper<'a> {
                 self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
             }
             (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
-                #[cfg(not(feature = "cairo-native-runtime"))]
-                unimplemented!("enable the `cairo-native-runtime` feature to use felt252 dicts");
+                #[cfg(not(feature = "with-runtime"))]
+                unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
 
                 // TODO: Assert that `info.ty` matches all the values' types.
 

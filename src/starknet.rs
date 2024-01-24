@@ -15,11 +15,13 @@ pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 pub struct U256(pub [u8; 32]);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionInfo {
     pub block_info: BlockInfo,
     pub tx_info: TxInfo,
@@ -29,6 +31,7 @@ pub struct ExecutionInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionInfoV2 {
     pub block_info: BlockInfo,
     pub tx_info: TxV2Info,
@@ -38,6 +41,7 @@ pub struct ExecutionInfoV2 {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TxV2Info {
     pub version: Felt,
     pub account_contract_address: Felt,
@@ -55,6 +59,7 @@ pub struct TxV2Info {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ResourceBounds {
     pub resource: Felt,
     pub max_amount: u64,
@@ -62,6 +67,7 @@ pub struct ResourceBounds {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlockInfo {
     pub block_number: u64,
     pub block_timestamp: u64,
@@ -69,6 +75,7 @@ pub struct BlockInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TxInfo {
     pub version: Felt,
     pub account_contract_address: Felt,

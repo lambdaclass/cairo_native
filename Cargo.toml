@@ -23,7 +23,8 @@ required-features = ["build-cli"]
 default = ["build-cli", "with-runtime"]
 build-cli = ["clap", "tracing-subscriber"]
 with-debug-utils = []
-with-runtime = ["cairo-native-runtime"]
+with-runtime = ["dep:cairo-native-runtime"]
+with-serde = ["dep:serde"]
 
 [dependencies]
 bumpalo = "3.14"
@@ -63,6 +64,7 @@ libloading = "0.8.1"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
+serde = { version = "1.0.195", features = ["derive"], optional = true }
 
 [dev-dependencies]
 cairo-felt = "0.8.5"
