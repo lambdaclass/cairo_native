@@ -134,7 +134,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -264,7 +270,7 @@ where
 
 /// Generate MLIR operations for the `u32_safe_divmod` libfunc.
 pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -277,6 +283,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
@@ -286,11 +299,7 @@ where
     let op = entry.append_operation(arith::remui(lhs, rhs, location));
     let result_rem = op.result(0)?.into();
 
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), result_div, result_rem],
-        location,
-    ));
+    entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
     Ok(())
 }
 
@@ -383,6 +392,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let i16_ty = IntegerType::new(context, 16).into();
     let i32_ty = IntegerType::new(context, 32).into();
 
@@ -628,7 +644,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), result], location));
+    entry.append_operation(helper.br(0, &[range_check, result], location));
     Ok(())
 }
 
@@ -648,7 +664,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let range_check: Value = entry.argument(0)?.into();
+    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let value: Value = entry.argument(1)?.into();
 
     let felt252_ty = registry.build_type(
@@ -698,8 +720,8 @@ where
 
     let op = block_success.append_operation(arith::trunci(value, result_ty, location));
     let value = op.result(0)?.into();
-    block_success.append_operation(helper.br(0, &[range_check, value], location));
 
+    block_success.append_operation(helper.br(0, &[range_check, value], location));
     block_failure.append_operation(helper.br(1, &[range_check], location));
 
     Ok(())

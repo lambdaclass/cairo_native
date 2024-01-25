@@ -8,12 +8,11 @@ use crate::{
     },
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
         felt252_dict::Felt252DictConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -50,12 +49,12 @@ where
 
 pub fn build_new<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()>
 where
     TType: GenericType,
@@ -63,31 +62,26 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    let _dict_ptr_type = registry.build_type(
+    let segment_arena = super::increment_builtin_counter::<TType, TLibfunc>(
         context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
+        entry,
+        location,
+        entry.argument(0)?.into(),
     )?;
-
-    let segment_arena = entry.argument(0)?.into();
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
     let op = runtime_bindings.dict_alloc_new(context, helper, entry, location)?;
-
     let dict_ptr = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
-
     Ok(())
 }
 
 pub fn build_squash<'ctx, 'this, TType, TLibfunc>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -101,12 +95,25 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+    let segment_arena = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(2)?.into(),
+    )?;
+
     entry.append_operation(helper.br(
         0,
         &[
-            entry.argument(0)?.into(),
+            range_check,
             entry.argument(1)?.into(),
-            entry.argument(2)?.into(),
+            segment_arena,
             entry.argument(3)?.into(),
         ],
         location,

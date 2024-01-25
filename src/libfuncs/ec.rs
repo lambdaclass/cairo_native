@@ -262,6 +262,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let ec_point_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -342,10 +349,7 @@ where
         context,
         result,
         [0, 1],
-        [
-            &[entry.argument(0)?.into(), point],
-            &[entry.argument(0)?.into()],
-        ],
+        [&[range_check, point], &[range_check]],
         location,
     ));
     Ok(())
@@ -481,6 +485,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let ec_op = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
         context,
@@ -590,7 +601,7 @@ where
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), state], location));
+    entry.append_operation(helper.br(0, &[ec_op, state], location));
     Ok(())
 }
 

@@ -4,11 +4,22 @@ use crate::{
 };
 use starknet_types_core::felt::Felt;
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BuiltinStats {
+    pub bitwise: usize,
+    pub ec_op: usize,
+    pub range_check: usize,
+    pub pedersen: usize,
+    pub poseidon: usize,
+    pub segment_arena: usize,
+}
+
 /// The result of the JIT execution.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
     pub return_value: JitValue,
+    pub builtin_stats: BuiltinStats,
 }
 
 /// Starknet contract execution result.

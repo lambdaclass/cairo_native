@@ -66,6 +66,13 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
+    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+    )?;
+
     let src_ty = registry.build_type(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
     assert!(info.from_info.nbits >= info.to_info.nbits);
@@ -133,10 +140,7 @@ where
             context,
             is_in_range,
             [0, 1],
-            [
-                &[entry.argument(0)?.into(), result],
-                &[entry.argument(0)?.into()],
-            ],
+            [&[range_check, result], &[range_check]],
             location,
         ));
     };

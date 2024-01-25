@@ -29,6 +29,7 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
 #[derive(Clone, Educe)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
