@@ -706,9 +706,10 @@ impl JitValue {
                     StarkNetTypeConcrete::Secp256Point(info) => {
                         let data = ptr.cast::<[[u128; 2]; 2]>().as_ref();
 
-                        let x = (data[0][1], data[0][0]);
-                        let y = (data[1][1], data[1][0]);
+                        let x = (data[0][0], data[0][1]);
+                        let y = (data[1][0], data[1][1]);
 
+                        dbg!(x, y);
                         match info {
                             Secp256PointTypeConcrete::K1(_) => JitValue::Secp256K1Point { x, y },
                             Secp256PointTypeConcrete::R1(_) => JitValue::Secp256R1Point { x, y },

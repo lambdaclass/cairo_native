@@ -559,27 +559,30 @@ where
     ));
 
     // Allocate `p0` argument and write the value.
-    let p0_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-        ],
-        false,
+    let p0_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+            ],
+            false,
+        ),
+        0,
     );
     let p0_arg_ptr = helper
         .init_block()
@@ -608,27 +611,30 @@ where
     ));
 
     // Allocate `p1` argument and write the value.
-    let p1_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-        ],
-        false,
+    let p1_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+            ],
+            false,
+        ),
+        0,
     );
     let p1_arg_ptr = helper
         .init_block()
@@ -948,27 +954,30 @@ where
     ));
 
     // Allocate `p` argument and write the value.
-    let p_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-        ],
-        false,
+    let p_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+            ],
+            false,
+        ),
+        0,
     );
     let p_arg_ptr = helper
         .init_block()
@@ -997,13 +1006,16 @@ where
     ));
 
     // Allocate `scalar` argument and write the value.
-    let scalar_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 128).into(),
-            IntegerType::new(context, 128).into(),
-        ],
-        false,
+    let scalar_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, 128).into(),
+                IntegerType::new(context, 128).into(),
+            ],
+            false,
+        ),
+        0,
     );
     let scalar_arg_ptr = helper
         .init_block()
@@ -1323,13 +1335,16 @@ where
     ));
 
     // Allocate `x` argument and write the value.
-    let x_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 128).into(),
-            IntegerType::new(context, 128).into(),
-        ],
-        false,
+    let x_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, 128).into(),
+                IntegerType::new(context, 128).into(),
+            ],
+            false,
+        ),
+        0,
     );
     let x_arg_ptr = helper
         .init_block()
@@ -1358,7 +1373,7 @@ where
     ));
 
     // Allocate `y_parity` argument and write the value.
-    let y_parity_arg_ptr_ty = IntegerType::new(context, 1).into();
+    let y_parity_arg_ptr_ty = llvm::r#type::pointer(IntegerType::new(context, 1).into(), 0);
     let y_parity_arg_ptr = helper
         .init_block()
         .append_operation(
@@ -1669,27 +1684,30 @@ where
     ));
 
     // Allocate `p` argument and write the value.
-    let p_arg_ptr_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 128).into(),
-                    IntegerType::new(context, 128).into(),
-                ],
-                false,
-            ),
-        ],
-        false,
+    let p_arg_ptr_ty = llvm::r#type::pointer(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+                llvm::r#type::r#struct(
+                    context,
+                    &[
+                        IntegerType::new(context, 128).into(),
+                        IntegerType::new(context, 128).into(),
+                    ],
+                    false,
+                ),
+            ],
+            false,
+        ),
+        0,
     );
     let p_arg_ptr = helper
         .init_block()

@@ -398,3 +398,184 @@ fn secp256k1_new() {
     );
     assert!(syscall_handler.secp256k1_new.1.is_empty());
 }
+
+#[test]
+fn secp256k1_add() {
+    let mut syscall_handler = SyscallHandler {
+        secp256k1_add: (
+            VecDeque::from([]),
+            VecDeque::from([
+                Secp256k1Point {
+                    x: U256 { hi: 0, lo: 0 },
+                    y: U256 { hi: 0, lo: 0 },
+                },
+                Secp256k1Point {
+                    x: U256 {
+                        hi: u128::MAX,
+                        lo: 0,
+                    },
+                    y: U256 {
+                        hi: 0,
+                        lo: u128::MAX,
+                    },
+                },
+                Secp256k1Point {
+                    x: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX,
+                    },
+                    y: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX,
+                    },
+                },
+            ]),
+        ),
+        ..Default::default()
+    };
+
+    let result = run_native_program(
+        &SECP256_PROGRAM,
+        "secp256k1_add",
+        &[
+            JitValue::Secp256K1Point {
+                x: (0, 0),
+                y: (0, 0),
+            },
+            JitValue::Secp256K1Point {
+                x: (0, 0),
+                y: (0, 0),
+            },
+        ],
+        Some(u128::MAX),
+        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+    );
+    assert_eq!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Secp256K1Point {
+                x: (0, 0),
+                y: (0, 0),
+            }),
+            debug_name: None,
+        },
+    );
+
+    let result = run_native_program(
+        &SECP256_PROGRAM,
+        "secp256k1_add",
+        &[
+            JitValue::Secp256K1Point {
+                x: (u128::MAX, 0),
+                y: (0, u128::MAX),
+            },
+            JitValue::Secp256K1Point {
+                x: (0, u128::MAX),
+                y: (u128::MAX, 0),
+            },
+        ],
+        Some(u128::MAX),
+        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+    );
+    assert_eq!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Secp256K1Point {
+                x: (u128::MAX, 0),
+                y: (0, u128::MAX),
+            }),
+            debug_name: None,
+        },
+    );
+
+    let result = run_native_program(
+        &SECP256_PROGRAM,
+        "secp256k1_add",
+        &[
+            JitValue::Secp256K1Point {
+                x: (u128::MAX, 0),
+                y: (0, u128::MAX),
+            },
+            JitValue::Secp256K1Point {
+                x: (0, u128::MAX),
+                y: (u128::MAX, 0),
+            },
+        ],
+        Some(u128::MAX),
+        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+    );
+    assert_eq!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Secp256K1Point {
+                x: (u128::MAX, u128::MAX),
+                y: (u128::MAX, u128::MAX),
+            }),
+            debug_name: None,
+        },
+    );
+
+    assert_eq!(
+        syscall_handler.secp256k1_add.0,
+        [
+            (
+                Secp256k1Point {
+                    x: U256 { hi: 0, lo: 0 },
+                    y: U256 { hi: 0, lo: 0 },
+                },
+                Secp256k1Point {
+                    x: U256 { hi: 0, lo: 0 },
+                    y: U256 { hi: 0, lo: 0 },
+                },
+            ),
+            (
+                Secp256k1Point {
+                    x: U256 {
+                        hi: u128::MAX,
+                        lo: 0
+                    },
+                    y: U256 {
+                        hi: 0,
+                        lo: u128::MAX
+                    },
+                },
+                Secp256k1Point {
+                    x: U256 {
+                        hi: 0,
+                        lo: u128::MAX
+                    },
+                    y: U256 {
+                        hi: u128::MAX,
+                        lo: 0
+                    },
+                },
+            ),
+            (
+                Secp256k1Point {
+                    x: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX
+                    },
+                    y: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX
+                    },
+                },
+                Secp256k1Point {
+                    x: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX
+                    },
+                    y: U256 {
+                        hi: u128::MAX,
+                        lo: u128::MAX
+                    },
+                },
+            ),
+        ],
+    );
+    assert!(syscall_handler.secp256k1_add.1.is_empty());
+}
