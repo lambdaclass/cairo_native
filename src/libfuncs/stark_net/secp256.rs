@@ -1497,16 +1497,17 @@ where
             )
             .result(0)?
             .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[0].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        // entry
+        //     .append_operation(llvm::load(
+        //         context,
+        //         ptr,
+        //         variant_tys[0].0,
+        //         location,
+        //         LoadStoreOptions::default(),
+        //     ))
+        //     .result(0)?
+        //     .into()
+        ptr
     };
     let payload_err = {
         let ptr = entry
