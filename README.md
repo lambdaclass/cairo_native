@@ -116,7 +116,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `print`
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
-1. `revoke_ap_tracking` (1)
+1. `revoke_ap_tracking`
 1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (6)
 1. `storage_address_from_base_and_offset` (StarkNet)
@@ -191,16 +191,19 @@ This is a list of the current progress implementing each **libfunc**.
 1. `upcast`
 1. `withdraw_gas_all` (5)
 1. `withdraw_gas` (5)
+1. `class_hash_to_felt252` (StarkNet)
+1. `i128_diff`
+1. `i16_diff`
+1. `i32_diff`
+1. `i64_diff`
+1. `i8_diff`
+1. `enum_snapshot_match`
+1. `struct_snapshot_deconstruct`
+1. `get_available_gas`
 </details>
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-
-1. `class_hash_to_felt252` (StarkNet)
-1. `enum_snapshot_match`
-1. `get_available_gas`
-1. `pop_log` (StarkNet, testing)
-1. `redeposit_gas`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
 1. `secp256k1_get_xy_syscall` (StarkNet)
@@ -211,6 +214,11 @@ This is a list of the current progress implementing each **libfunc**.
 1. `secp256r1_get_xy_syscall` (StarkNet)
 1. `secp256r1_mul_syscall` (StarkNet)
 1. `secp256r1_new_syscall` (StarkNet)
+</details>
+
+<details>
+<summary>Not yet implemented libfuncs (click to open)</summary>
+Testing libfuncs: 
 1. `set_account_contract_address` (StarkNet, testing)
 1. `set_block_number` (StarkNet, testing)
 1. `set_block_timestamp` (StarkNet, testing)
@@ -223,18 +231,11 @@ This is a list of the current progress implementing each **libfunc**.
 1. `set_signature` (StarkNet, testing)
 1. `set_transaction_hash` (StarkNet, testing)
 1. `set_version` (StarkNet, testing)
-1. `struct_snapshot_deconstruct`
-1. `i128_diff`
-1. `i16_diff`
-1. `i32_diff`
-1. `i64_diff`
-1. `i8_diff`
-
+1. `pop_log` (StarkNet, testing)
+1. `redeposit_gas`
 </details>
 
 Footnotes on the libfuncs list:
-
-1. It is implemented but we're not sure if it has some stuff we don't know of.
 2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
 3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
 4. Not supported by the Cairo to Sierra compiler.
