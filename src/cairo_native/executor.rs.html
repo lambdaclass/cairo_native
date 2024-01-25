@@ -1178,8 +1178,8 @@
                 <span class="self">self</span>.push_aligned(get_integer_layout(<span class="number">252</span>).align(), <span class="kw-2">&amp;</span>value.to_le_digits());
             }
             (CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>), JitValue::Felt252Dict { .. }) =&gt; {
-                <span class="attr">#[cfg(not(feature = <span class="string">&quot;cairo-native-runtime&quot;</span>))]
-                </span><span class="macro">unimplemented!</span>(<span class="string">&quot;enable the `cairo-native-runtime` feature to use felt252 dicts&quot;</span>);
+                <span class="attr">#[cfg(not(feature = <span class="string">&quot;with-runtime&quot;</span>))]
+                </span><span class="macro">unimplemented!</span>(<span class="string">&quot;enable the `with-runtime` feature to use felt252 dicts&quot;</span>);
 
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values&#39; types.
 
