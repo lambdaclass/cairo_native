@@ -21,6 +21,6 @@ fn secp256k1_get_point_from_x(
     secp256k1_get_point_from_x_syscall(p, y_parity)
 }
 
-// fn secp256k1_get_xy(p: Secp256k1Point) -> Result<(u256, u256), Array<felt252>> {
-//     secp256k1_get_xy_syscall(p)
-// }
+fn secp256k1_get_xy(p: Secp256k1Point) -> Result<(u256, u256), Array<felt252>> {
+    secp256k1_get_xy_syscall(p)
+}

@@ -7,7 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -32,6 +32,7 @@ use melior::{
     },
     Context,
 };
+use std::alloc::Layout;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
@@ -1597,17 +1598,46 @@ where
         .into();
 
     // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) = {
+        // Note: This libfunc has multiple return values when successful, therefore the method used
+        //   for the other libfuncs cannot be reused here.
+
+        let u128_layout = get_integer_layout(128);
+        let u256_layout = u128_layout.extend(u128_layout)?.0;
+        let u256_ty = llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, 128).into(),
+                IntegerType::new(context, 128).into(),
+            ],
+            false,
+        );
+
+        let (ok_ty, ok_layout) = (
+            llvm::r#type::r#struct(context, &[u256_ty, u256_ty], false),
+            u256_layout.extend(u256_layout)?.0,
+        );
+        let (err_ty, err_layout) = registry.build_type_with_layout(
             context,
             helper,
             registry,
             metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
+            &info.branch_signatures()[1].vars[2].ty,
         )?;
+
+        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), get_integer_layout(1));
+
+        (
+            tag_layout
+                .extend(Layout::from_size_align(
+                    ok_layout.size().max(err_layout.size()),
+                    ok_layout.align().max(err_layout.align()),
+                )?)?
+                .0,
+            (tag_ty, tag_layout),
+            [(ok_ty, ok_layout), (err_ty, err_layout)],
+        )
+    };
 
     let k1 = helper
         .init_block()
@@ -1753,7 +1783,7 @@ where
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X.try_into()?],
+                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_XY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1865,7 +1895,7 @@ where
             .append_operation(llvm::extract_value(
                 context,
                 value,
-                DenseI64ArrayAttribute::new(context, &[0]),
+                DenseI64ArrayAttribute::new(context, &[1]),
                 llvm::r#type::r#struct(
                     context,
                     &[

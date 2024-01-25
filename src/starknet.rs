@@ -424,7 +424,7 @@ pub(crate) mod handler {
             y_parity: &bool,
         ),
         secp256k1_get_xy: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(U256, U256)>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256k1Point,
@@ -1074,12 +1074,22 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_secp256k1_get_xy(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(U256, U256)>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256k1Point,
         ) {
-            todo!()
+            let result = ptr.secp256k1_get_xy(*p, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(x),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256r1_new(
