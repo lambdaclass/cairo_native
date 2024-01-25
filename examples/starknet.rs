@@ -137,7 +137,10 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256 { hi: 0, lo: 1234567890 })
+        Ok(U256 {
+            hi: 0,
+            lo: 1234567890,
+        })
     }
 
     fn secp256k1_new(
