@@ -431,35 +431,35 @@ pub(crate) mod handler {
         ),
 
         secp256r1_new: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256r1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
             y: &U256,
         ),
         secp256r1_add: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<Secp256r1Point>,
             ptr: &mut T,
             gas: &mut u128,
             p0: &Secp256r1Point,
             p1: &Secp256r1Point,
         ),
         secp256r1_mul: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<Secp256r1Point>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256r1Point,
             scalar: &U256,
         ),
         secp256r1_get_point_from_x: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256r1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
-            y_parity: bool,
+            y_parity: &bool,
         ),
         secp256r1_get_xy: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(U256, U256)>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256r1Point,
@@ -1093,52 +1093,108 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_secp256r1_new(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256r1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
             y: &U256,
         ) {
-            todo!()
+            let result = ptr.secp256r1_new(*x, *y, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(match x {
+                            Some(x) => (0, MaybeUninit::new(x)),
+                            None => (1, MaybeUninit::uninit()),
+                        }),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256r1_add(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<Secp256r1Point>,
             ptr: &mut T,
             gas: &mut u128,
             p0: &Secp256r1Point,
             p1: &Secp256r1Point,
         ) {
-            todo!()
+            let result = ptr.secp256r1_add(*p0, *p1, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(x),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256r1_mul(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<Secp256r1Point>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256r1Point,
             scalar: &U256,
         ) {
-            todo!()
+            let result = ptr.secp256r1_mul(*p, *scalar, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(x),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256r1_get_point_from_x(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(u8, MaybeUninit<Secp256r1Point>)>,
             ptr: &mut T,
             gas: &mut u128,
             x: &U256,
-            y_parity: bool,
+            y_parity: &bool,
         ) {
-            todo!()
+            let result = ptr.secp256r1_get_point_from_x(*x, *y_parity, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(match x {
+                            Some(x) => (0, MaybeUninit::new(x)),
+                            None => (1, MaybeUninit::uninit()),
+                        }),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_secp256r1_get_xy(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<(U256, U256)>,
             ptr: &mut T,
             gas: &mut u128,
             p: &Secp256r1Point,
         ) {
-            todo!()
+            let result = ptr.secp256r1_get_xy(*p, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(x),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
     }
 }
