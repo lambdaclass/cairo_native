@@ -122,7 +122,7 @@ where
         StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
             build_get_execution_info(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => {
+        StarkNetConcreteLibfunc::GetExecutionInfoV2(info) => {
             build_get_execution_info_v2(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::Deploy(info) => {
