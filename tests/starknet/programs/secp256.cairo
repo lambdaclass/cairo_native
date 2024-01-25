@@ -11,9 +11,9 @@ fn secp256k1_add(p0: Secp256k1Point, p1: Secp256k1Point) -> Result<Secp256k1Poin
     secp256k1_add_syscall(p0, p1)
 }
 
-// fn secp256k1_mul(p: Secp256k1Point, scalar: u256) -> Result<Secp256k1Point, Array<felt252>> {
-//     secp256k1_mul_syscall(p, scalar)
-// }
+fn secp256k1_mul(p: Secp256k1Point, scalar: u256) -> Result<Secp256k1Point, Array<felt252>> {
+    secp256k1_mul_syscall(p, scalar)
+}
 
 // fn secp256k1_get_point_from_x(
 //     p: u256, y_parity: bool
