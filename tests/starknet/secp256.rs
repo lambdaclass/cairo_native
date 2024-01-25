@@ -495,12 +495,12 @@ fn secp256k1_add() {
         "secp256k1_add",
         &[
             JitValue::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
+                x: (u128::MAX, u128::MAX),
+                y: (u128::MAX, u128::MAX),
             },
             JitValue::Secp256K1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
+                x: (u128::MAX, u128::MAX),
+                y: (u128::MAX, u128::MAX),
             },
         ],
         Some(u128::MAX),

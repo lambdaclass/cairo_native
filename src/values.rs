@@ -709,7 +709,6 @@ impl JitValue {
                         let x = (data[0][0], data[0][1]);
                         let y = (data[1][0], data[1][1]);
 
-                        dbg!(x, y);
                         match info {
                             Secp256PointTypeConcrete::K1(_) => JitValue::Secp256K1Point { x, y },
                             Secp256PointTypeConcrete::R1(_) => JitValue::Secp256R1Point { x, y },
