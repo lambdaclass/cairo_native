@@ -4,7 +4,7 @@ use crate::{
 };
 use starknet_types_core::felt::Felt;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BuiltinStats {
     pub bitwise: usize,
@@ -16,7 +16,7 @@ pub struct BuiltinStats {
 }
 
 /// The result of the JIT execution.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u128>,
@@ -25,7 +25,7 @@ pub struct ExecutionResult {
 }
 
 /// Starknet contract execution result.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ContractExecutionResult {
     pub remaining_gas: u128,
