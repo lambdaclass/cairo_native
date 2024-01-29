@@ -57,11 +57,13 @@ This is a list of the current progress implementing each **libfunc**.
 1. `bool_or_impl`
 1. `bool_to_felt252`
 1. `bool_xor_impl`
+1. `box_forward_snapshot`
 1. `branch_align`
 1. `bytes31_const`
 1. `bytes31_to_felt252`
 1. `bytes31_try_from_felt252`
 1. `call_contract_syscall` (StarkNet)
+1. `class_hash_to_felt252` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
@@ -83,8 +85,10 @@ This is a list of the current progress implementing each **libfunc**.
 1. `ec_state_try_finalize_nz`
 1. `emit_event_syscall` (StarkNet)
 1. `enable_ap_tracking`
+1. `enum_from_bounded_int`
 1. `enum_init`
 1. `enum_match`
+1. `enum_snapshot_match`
 1. `felt252_add_const` (4)
 1. `felt252_add`
 1. `felt252_const`
@@ -101,16 +105,23 @@ This is a list of the current progress implementing each **libfunc**.
 1. `felt252_sub`
 1. `finalize_locals`
 1. `function_call`
+1. `get_available_gas`
 1. `get_block_hash_syscall` (StarkNet)
 1. `get_builtin_costs` (5)
 1. `get_execution_info_syscall` (StarkNet)
 1. `hades_permutation`
+1. `i128_diff`
+1. `i16_diff`
+1. `i32_diff`
+1. `i64_diff`
+1. `i8_diff`
 1. `into_box` (2)
 1. `jump`
 1. `keccak_syscall` (StarkNet)
 1. `library_call_syscall` (StarkNet)
 1. `match_nullable`
 1. `null`
+1. `nullable_forward_snapshot`
 1. `nullable_from_box`
 1. `pedersen`
 1. `print`
@@ -131,6 +142,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `store_temp`
 1. `struct_construct`
 1. `struct_deconstruct`
+1. `struct_snapshot_deconstruct`
 1. `u128_byte_reverse`
 1. `u128_const`
 1. `u128_eq`
@@ -191,19 +203,12 @@ This is a list of the current progress implementing each **libfunc**.
 1. `upcast`
 1. `withdraw_gas_all` (5)
 1. `withdraw_gas` (5)
-1. `class_hash_to_felt252` (StarkNet)
-1. `i128_diff`
-1. `i16_diff`
-1. `i32_diff`
-1. `i64_diff`
-1. `i8_diff`
-1. `enum_snapshot_match`
-1. `struct_snapshot_deconstruct`
-1. `get_available_gas`
 </details>
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
+1. `const_as_box`
+1. `constrain_range`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
 1. `secp256k1_get_xy_syscall` (StarkNet)
@@ -217,8 +222,10 @@ This is a list of the current progress implementing each **libfunc**.
 </details>
 
 <details>
-<summary>Not yet implemented libfuncs (click to open)</summary>
-Testing libfuncs: 
+<summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
+Testing libfuncs:
+1. `pop_log` (StarkNet, testing)
+1. `redeposit_gas`
 1. `set_account_contract_address` (StarkNet, testing)
 1. `set_block_number` (StarkNet, testing)
 1. `set_block_timestamp` (StarkNet, testing)
@@ -231,8 +238,6 @@ Testing libfuncs:
 1. `set_signature` (StarkNet, testing)
 1. `set_transaction_hash` (StarkNet, testing)
 1. `set_version` (StarkNet, testing)
-1. `pop_log` (StarkNet, testing)
-1. `redeposit_gas`
 </details>
 
 Footnotes on the libfuncs list:
