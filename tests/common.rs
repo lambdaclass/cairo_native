@@ -141,8 +141,13 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     let replacer = DebugReplacer { db: &db };
     let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
 
-    let runner =
-        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        contracts_info,
+        false,
+    )
+    .unwrap();
 
     (module_name.to_string(), program, runner)
 }
@@ -172,8 +177,13 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     let replacer = DebugReplacer { db: &db };
     let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
 
-    let runner =
-        SierraCasmRunner::new(program.clone(), Some(Default::default()), contracts_info).unwrap();
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        contracts_info,
+        false,
+    )
+    .unwrap();
 
     (module_name.to_string(), program, runner)
 }
@@ -791,6 +801,8 @@ pub fn compare_outputs(
                 prop_assert_eq!(vm_value, native_value.into())
             }
             CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
         }
 
         Ok(())

@@ -290,7 +290,7 @@ fn keccak_test() {
     assert!(!result.failure_flag);
     assert_eq!(
         result.remaining_gas,
-        340282366920938463463374607431768081275
+        340282366920938463463374607431768101215
     );
     assert_eq!(result.return_values, vec![1.into()]);
 }

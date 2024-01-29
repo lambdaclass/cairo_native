@@ -2,7 +2,8 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
-use cairo_lang_defs::plugin::{NamedPlugin, PluginSuite};
+use cairo_lang_defs::plugin::NamedPlugin;
+use cairo_lang_semantic::plugin::PluginSuite;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,

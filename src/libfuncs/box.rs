@@ -14,8 +14,12 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        boxing::BoxConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc, GenericLibfunc,
-        GenericType,
+        boxing::BoxConcreteLibfunc,
+        lib_func::{
+            BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
+            SignatureOnlyConcreteLibfunc,
+        },
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -39,8 +43,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     selector: &BoxConcreteLibfunc,
 ) -> Result<()>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
@@ -50,6 +54,9 @@ where
         }
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
+        }
+        BoxConcreteLibfunc::ForwardSnapshot(info) => {
+            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -153,6 +160,46 @@ where
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
+}
+
+fn build_forward_snapshot<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    super::snapshot_take::build(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &SignatureOnlyConcreteLibfunc {
+            signature: LibfuncSignature {
+                param_signatures: info.signature.param_signatures.clone(),
+                branch_signatures: info
+                    .signature
+                    .branch_signatures
+                    .iter()
+                    .map(|x| BranchSignature {
+                        vars: x.vars.clone(),
+                        ap_change: x.ap_change.clone(),
+                    })
+                    .collect(),
+                fallthrough: info.signature.fallthrough,
+            },
+        },
+    )
 }
 
 #[cfg(test)]

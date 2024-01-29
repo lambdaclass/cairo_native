@@ -13,7 +13,7 @@ mod Keccak {
     #[storage]
     struct Storage {}
 
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl Keccak of super::IKeccak<ContractState> {
         fn cairo_keccak_test(self: @ContractState) -> felt252 {
             let mut input = array![
@@ -33,9 +33,9 @@ mod Keccak {
             ];
 
             // We must clone the array to be used in the second part, as it's modified by `cairo_keccak`.
-            let mut orig_array = input.clone();
+            let mut _orig_array = input.clone();
 
-            let res = keccak::cairo_keccak(ref input, 0x11000010, 4);
+            let _res = keccak::cairo_keccak(ref input, 0x11000010, 4);
 
             1
         }

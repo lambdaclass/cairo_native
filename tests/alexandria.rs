@@ -17,6 +17,7 @@ fn compare_inputless_function(function_name: &str) {
         program.clone(),
         Some(Default::default()),
         Default::default(),
+        false,
     )
     .unwrap();
 

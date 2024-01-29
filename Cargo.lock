@@ -408,19 +408,6 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cairo-felt"
-version = "0.8.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5972097b8800ca5dffb458040e74c724a2ac4fa4b5b480b50f5b96c7e67d6427"
-dependencies = [
- "lazy_static",
- "num-bigint",
- "num-integer",
- "num-traits 0.2.17",
- "serde",
-]
-
-[[package]]
-name = "cairo-felt"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae932292b9ba497a4e892b56aa4e0c6f329a455180fdbdc132700dfe68d9b153"
@@ -630,7 +617,7 @@ dependencies = [
  "ark-secp256k1",
  "ark-secp256r1",
  "ark-std",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
@@ -681,7 +668,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ba35ff92b43872a8f89a8745e6fa911d964b47c145011d96b2d8ebf1aad8fa3"
 dependencies = [
  "anyhow",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "cairo-lang-utils",
  "const-fnv1a-hash",
  "convert_case",
@@ -760,7 +747,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fa4bdbacf02bf4b13c2b891e2396567ad733f20d7e59526255e07c897a14405"
 dependencies = [
  "assert_matches",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
@@ -791,7 +778,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09fe48d254ffdce63c5f6eb001d663d4d9b77c3f30a4bcb0124be6ac8177830f"
 dependencies = [
  "anyhow",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-compiler",
  "cairo-lang-defs",
@@ -867,13 +854,14 @@ name = "cairo-native"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
- "cairo-felt 0.8.7",
+ "cairo-felt",
  "cairo-lang-compiler",
  "cairo-lang-defs",
  "cairo-lang-diagnostics",
  "cairo-lang-filesystem",
  "cairo-lang-lowering",
  "cairo-lang-runner",
+ "cairo-lang-semantic",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
  "cairo-lang-sierra-gas",
@@ -930,7 +918,7 @@ dependencies = [
  "anyhow",
  "bincode 2.0.0-rc.3",
  "bitvec",
- "cairo-felt 0.9.1",
+ "cairo-felt",
  "generic-array",
  "hashbrown 0.14.3",
  "hex",

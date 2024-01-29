@@ -33,6 +33,7 @@ cairo-lang-defs = "2.5.0"
 cairo-lang-diagnostics = "2.5.0"
 cairo-lang-filesystem = "2.5.0"
 cairo-lang-lowering = "2.5.0"
+cairo-lang-semantic = "2.5.0"
 cairo-lang-sierra = "2.5.0"
 cairo-lang-sierra-generator = "2.5.0"
 educe = "0.5.5"
@@ -67,7 +68,7 @@ tracing-subscriber = { version = "0.3", features = [
 serde = { version = "1.0.195", features = ["derive"], optional = true }
 
 [dev-dependencies]
-cairo-felt = "0.8.5"
+cairo-felt = "0.9.1"
 cairo-lang-runner = "2.5.0"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.1"
