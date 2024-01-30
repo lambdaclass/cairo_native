@@ -1050,13 +1050,16 @@ pub mod test {
             })
         }
 
+        // Implementing the secp256 syscalls for testing doesn't make sense. They're already
+        // properly tested in integration tests.
+
         fn secp256k1_new(
             &mut self,
             _x: U256,
             _y: U256,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256k1_add(
@@ -1065,7 +1068,7 @@ pub mod test {
             _p1: crate::starknet::Secp256k1Point,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<crate::starknet::Secp256k1Point> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256k1_mul(
@@ -1074,7 +1077,7 @@ pub mod test {
             _m: U256,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<crate::starknet::Secp256k1Point> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256k1_get_point_from_x(
@@ -1083,7 +1086,7 @@ pub mod test {
             _y_parity: bool,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256k1_get_xy(
@@ -1091,7 +1094,7 @@ pub mod test {
             _p: crate::starknet::Secp256k1Point,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<(U256, U256)> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256r1_new(
@@ -1100,7 +1103,7 @@ pub mod test {
             _y: U256,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256r1_add(
@@ -1109,7 +1112,7 @@ pub mod test {
             _p1: crate::starknet::Secp256r1Point,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<crate::starknet::Secp256r1Point> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256r1_mul(
@@ -1118,7 +1121,7 @@ pub mod test {
             _m: U256,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<crate::starknet::Secp256r1Point> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256r1_get_point_from_x(
@@ -1127,7 +1130,7 @@ pub mod test {
             _y_parity: bool,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
-            todo!()
+            unimplemented!()
         }
 
         fn secp256r1_get_xy(
@@ -1135,7 +1138,7 @@ pub mod test {
             _p: crate::starknet::Secp256r1Point,
             _remaining_gas: &mut u128,
         ) -> SyscallResult<(U256, U256)> {
-            todo!()
+            unimplemented!()
         }
     }
 }
