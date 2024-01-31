@@ -714,6 +714,26 @@
 <a href="#714" id="714">714</a>
 <a href="#715" id="715">715</a>
 <a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -727,7 +747,7 @@
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -779,6 +799,14 @@
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    Secp256K1Point {
+        x: (u128, u128),
+        y: (u128, u128),
+    },
+    Secp256R1Point {
+        x: (u128, u128),
+        y: (u128, u128),
+    },
     <span class="doccomment">/// Used as return value for Nullables that are null.
     </span>Null,
 }
@@ -1192,6 +1220,8 @@
 
                     ptr
                 }
+                <span class="self">Self</span>::Secp256K1Point { .. } =&gt; <span class="macro">todo!</span>(),
+                <span class="self">Self</span>::Secp256R1Point { .. } =&gt; <span class="macro">todo!</span>(),
                 <span class="self">Self</span>::Null =&gt; {
                     <span class="macro">unimplemented!</span>(<span class="string">&quot;null is meant as return value for nullable for now&quot;</span>)
                 }
@@ -1410,7 +1440,17 @@
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
                         <span class="macro">unimplemented!</span>(<span class="string">&quot;should be handled before&quot;</span>)
                     }
-                    StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+                    StarkNetTypeConcrete::Secp256Point(info) =&gt; {
+                        <span class="kw">let </span>data = ptr.cast::&lt;[[u128; <span class="number">2</span>]; <span class="number">2</span>]&gt;().as_ref();
+
+                        <span class="kw">let </span>x = (data[<span class="number">0</span>][<span class="number">0</span>], data[<span class="number">0</span>][<span class="number">1</span>]);
+                        <span class="kw">let </span>y = (data[<span class="number">1</span>][<span class="number">0</span>], data[<span class="number">1</span>][<span class="number">1</span>]);
+
+                        <span class="kw">match </span>info {
+                            Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; JitValue::Secp256K1Point { x, y },
+                            Secp256PointTypeConcrete::R1(<span class="kw">_</span>) =&gt; JitValue::Secp256R1Point { x, y },
+                        }
+                    }
                 },
                 CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement span from_jit&quot;</span>),
                 CoreTypeConcrete::Snapshot(info) =&gt; <span class="self">Self</span>::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),

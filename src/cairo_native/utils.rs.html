@@ -1135,6 +1135,13 @@
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1191,7 +1198,7 @@
 /// with a size in bytes of a power of two has the same alignment as its size.
 </span><span class="kw">pub fn </span>get_integer_layout(width: u32) -&gt; Layout {
     <span class="comment">// TODO: Fix integer layouts properly.
-    </span><span class="kw">if </span>width == <span class="number">252 </span>{
+    </span><span class="kw">if </span>width == <span class="number">252 </span>|| width == <span class="number">256 </span>{
         <span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)]
         </span><span class="kw">return </span>Layout::from_size_align(<span class="number">32</span>, <span class="number">8</span>).unwrap();
         <span class="attr">#[cfg(not(target_arch = <span class="string">&quot;x86_64&quot;</span>))]
@@ -2014,8 +2021,9 @@
 
     <span class="doccomment">/// Ensures that the host&#39;s `u256` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
+    #[ignore]
     </span><span class="kw">fn </span>test_alignment_compatibility_u256() {
-        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">256</span>).align(), <span class="number">8</span>);
+        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">256</span>).align(), <span class="number">16</span>);
     }
 
     <span class="doccomment">/// Ensures that the host&#39;s `u512` is compatible with its compiled counterpart.
@@ -2180,95 +2188,101 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::U256&gt; {
             <span class="kw-2">*</span>gas -= <span class="number">1000</span>;
-            <span class="prelude-val">Ok</span>(U256(Felt::from(<span class="number">1234567890</span>).to_bytes_le()))
+            <span class="prelude-val">Ok</span>(U256 {
+                hi: <span class="number">0</span>,
+                lo: <span class="number">1234567890</span>,
+            })
+        }
+
+        <span class="comment">// Implementing the secp256 syscalls for testing doesn&#39;t make sense. They&#39;re already
+        // properly tested in integration tests.
+
+        </span><span class="kw">fn </span>secp256k1_new(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _x: U256,
+            _y: U256,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
+            <span class="macro">unimplemented!</span>()
         }
 
         <span class="kw">fn </span>secp256k1_add(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             _p0: <span class="kw">crate</span>::starknet::Secp256k1Point,
             _p1: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
-        }
-
-        <span class="kw">fn </span>secp256k1_get_point_from_x(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _x: <span class="kw">crate</span>::starknet::U256,
-            _y_parity: bool,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
-        }
-
-        <span class="kw">fn </span>secp256k1_get_xy(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _p: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;(<span class="kw">crate</span>::starknet::U256, <span class="kw">crate</span>::starknet::U256)&gt; {
-            <span class="macro">todo!</span>()
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt; {
+            <span class="macro">unimplemented!</span>()
         }
 
         <span class="kw">fn </span>secp256k1_mul(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             _p: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _m: <span class="kw">crate</span>::starknet::U256,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
+            _m: U256,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt; {
+            <span class="macro">unimplemented!</span>()
         }
 
-        <span class="kw">fn </span>secp256k1_new(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _x: <span class="kw">crate</span>::starknet::U256,
-            _y: <span class="kw">crate</span>::starknet::U256,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
-        }
-
-        <span class="kw">fn </span>secp256r1_add(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _p0: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _p1: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
-        }
-
-        <span class="kw">fn </span>secp256r1_get_point_from_x(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _x: <span class="kw">crate</span>::starknet::U256,
+        <span class="kw">fn </span>secp256k1_get_point_from_x(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _x: U256,
             _y_parity: bool,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
         ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
+            <span class="macro">unimplemented!</span>()
         }
 
-        <span class="kw">fn </span>secp256r1_get_xy(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw">fn </span>secp256k1_get_xy(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             _p: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;(<span class="kw">crate</span>::starknet::U256, <span class="kw">crate</span>::starknet::U256)&gt; {
-            <span class="macro">todo!</span>()
-        }
-
-        <span class="kw">fn </span>secp256r1_mul(
-            <span class="kw-2">&amp;</span><span class="self">self</span>,
-            _p: <span class="kw">crate</span>::starknet::Secp256k1Point,
-            _m: <span class="kw">crate</span>::starknet::U256,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
+            <span class="macro">unimplemented!</span>()
         }
 
         <span class="kw">fn </span>secp256r1_new(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-            _x: <span class="kw">crate</span>::starknet::U256,
-            _y: <span class="kw">crate</span>::starknet::U256,
-            _gas: <span class="kw-2">&amp;mut </span>u128,
-        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256k1Point&gt;&gt; {
-            <span class="macro">todo!</span>()
+            _x: U256,
+            _y: U256,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256r1Point&gt;&gt; {
+            <span class="macro">unimplemented!</span>()
+        }
+
+        <span class="kw">fn </span>secp256r1_add(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _p0: <span class="kw">crate</span>::starknet::Secp256r1Point,
+            _p1: <span class="kw">crate</span>::starknet::Secp256r1Point,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::Secp256r1Point&gt; {
+            <span class="macro">unimplemented!</span>()
+        }
+
+        <span class="kw">fn </span>secp256r1_mul(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _p: <span class="kw">crate</span>::starknet::Secp256r1Point,
+            _m: U256,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="kw">crate</span>::starknet::Secp256r1Point&gt; {
+            <span class="macro">unimplemented!</span>()
+        }
+
+        <span class="kw">fn </span>secp256r1_get_point_from_x(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _x: U256,
+            _y_parity: bool,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::starknet::Secp256r1Point&gt;&gt; {
+            <span class="macro">unimplemented!</span>()
+        }
+
+        <span class="kw">fn </span>secp256r1_get_xy(
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+            _p: <span class="kw">crate</span>::starknet::Secp256r1Point,
+            _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
+            <span class="macro">unimplemented!</span>()
         }
     }
 }

@@ -779,6 +779,11 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1379,7 +1384,12 @@
                 StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
                 StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
                 StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*mut </span>()&gt;(),
-                StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">&quot;implement Secp256Point type&quot;</span>),
+                StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; {
+                    get_integer_layout(<span class="number">256</span>)
+                        .extend(get_integer_layout(<span class="number">256</span>))
+                        .unwrap()
+                        .<span class="number">0
+                </span>}
             },
             CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; Layout::new::&lt;u64&gt;(),
             CoreTypeConcrete::Snapshot(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>,
