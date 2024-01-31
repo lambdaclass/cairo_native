@@ -27,6 +27,15 @@ pub struct JitNativeExecutor<'m> {
     gas_metadata: Option<GasMetadata>,
 }
 
+impl std::fmt::Debug for JitNativeExecutor<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JitNativeExecutor")
+            .field("module", &self.module)
+            .field("gas_metadata", &self.gas_metadata)
+            .finish()
+    }
+}
+
 impl<'m> JitNativeExecutor<'m> {
     pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
         let NativeModule {

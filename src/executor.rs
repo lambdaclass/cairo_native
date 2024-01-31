@@ -47,6 +47,7 @@ extern "C" {
     );
 }
 
+#[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
     Jit(Rc<JitNativeExecutor<'m>>),
@@ -513,6 +514,16 @@ impl<'a> ArgumentMapper<'a> {
             (CoreTypeConcrete::Snapshot(info), _) => {
                 let type_info = self.registry.get_type(&info.ty)?;
                 self.push(&info.ty, type_info, value)?;
+            }
+            (
+                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)),
+                JitValue::Secp256K1Point { x, y } | JitValue::Secp256R1Point { x, y },
+            ) => {
+                let x_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([x.0, x.1]) };
+                let y_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([y.0, y.1]) };
+
+                self.push_aligned(get_integer_layout(252).align(), &x_data);
+                self.push_aligned(get_integer_layout(252).align(), &y_data);
             }
             (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))

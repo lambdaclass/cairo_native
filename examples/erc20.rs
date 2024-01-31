@@ -5,8 +5,8 @@ use cairo_native::{
     executor::JitNativeExecutor,
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{
-        BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
-        SyscallResult, TxInfo, TxV2Info, U256,
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
+        StarkNetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
     },
     utils::find_entry_point_by_idx,
 };
@@ -173,94 +173,97 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u128,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt::from(1234567890).to_bytes_le()))
+        Ok(U256 {
+            hi: 0,
+            lo: 1234567890,
+        })
+    }
+
+    fn secp256k1_new(
+        &mut self,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
+        todo!()
     }
 
     fn secp256k1_add(
         &mut self,
-        _p0: cairo_native::starknet::Secp256k1Point,
-        _p1: cairo_native::starknet::Secp256k1Point,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
-        todo!()
-    }
-
-    fn secp256k1_get_point_from_x(
-        &self,
-        _x: cairo_native::starknet::U256,
-        _y_parity: bool,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
-        todo!()
-    }
-
-    fn secp256k1_get_xy(
-        &self,
-        _p: cairo_native::starknet::Secp256k1Point,
-        _gas: &mut u128,
-    ) -> SyscallResult<(cairo_native::starknet::U256, cairo_native::starknet::U256)> {
+        _p0: Secp256k1Point,
+        _p1: Secp256k1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256k1Point> {
         todo!()
     }
 
     fn secp256k1_mul(
-        &self,
-        _p: cairo_native::starknet::Secp256k1Point,
-        _m: cairo_native::starknet::U256,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        &mut self,
+        _p: Secp256k1Point,
+        _m: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256k1Point> {
         todo!()
     }
 
-    fn secp256k1_new(
-        &self,
-        _x: cairo_native::starknet::U256,
-        _y: cairo_native::starknet::U256,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
-        todo!()
-    }
-
-    fn secp256r1_add(
-        &self,
-        _p0: cairo_native::starknet::Secp256k1Point,
-        _p1: cairo_native::starknet::Secp256k1Point,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
-        todo!()
-    }
-
-    fn secp256r1_get_point_from_x(
-        &self,
-        _x: cairo_native::starknet::U256,
+    fn secp256k1_get_point_from_x(
+        &mut self,
+        _x: U256,
         _y_parity: bool,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
         todo!()
     }
 
-    fn secp256r1_get_xy(
-        &self,
-        _p: cairo_native::starknet::Secp256k1Point,
-        _gas: &mut u128,
-    ) -> SyscallResult<(cairo_native::starknet::U256, cairo_native::starknet::U256)> {
-        todo!()
-    }
-
-    fn secp256r1_mul(
-        &self,
-        _p: cairo_native::starknet::Secp256k1Point,
-        _m: cairo_native::starknet::U256,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+    fn secp256k1_get_xy(
+        &mut self,
+        _p: Secp256k1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<(U256, U256)> {
         todo!()
     }
 
     fn secp256r1_new(
         &mut self,
-        _x: cairo_native::starknet::U256,
-        _y: cairo_native::starknet::U256,
-        _gas: &mut u128,
-    ) -> SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_add(
+        &mut self,
+        _p0: Secp256r1Point,
+        _p1: Secp256r1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256r1Point> {
+        todo!()
+    }
+
+    fn secp256r1_mul(
+        &mut self,
+        _p: Secp256r1Point,
+        _m: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256r1Point> {
+        todo!()
+    }
+
+    fn secp256r1_get_point_from_x(
+        &mut self,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        todo!()
+    }
+
+    fn secp256r1_get_xy(
+        &mut self,
+        _p: Secp256r1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<(U256, U256)> {
         todo!()
     }
 }

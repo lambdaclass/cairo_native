@@ -11,7 +11,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -28,11 +28,11 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe)]
+#[derive(Debug, Clone, Educe)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[educe(Debug, Eq, PartialEq)]
+#[educe(Eq, PartialEq)]
 pub enum JitValue {
-    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -63,6 +63,14 @@ pub enum JitValue {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    Secp256K1Point {
+        x: (u128, u128),
+        y: (u128, u128),
+    },
+    Secp256R1Point {
+        x: (u128, u128),
+        y: (u128, u128),
+    },
     /// Used as return value for Nullables that are null.
     Null,
 }
@@ -476,6 +484,8 @@ impl JitValue {
 
                     ptr
                 }
+                Self::Secp256K1Point { .. } => todo!(),
+                Self::Secp256R1Point { .. } => todo!(),
                 Self::Null => {
                     unimplemented!("null is meant as return value for nullable for now")
                 }
@@ -694,7 +704,17 @@ impl JitValue {
                     StarkNetTypeConcrete::System(_) => {
                         unimplemented!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+                    StarkNetTypeConcrete::Secp256Point(info) => {
+                        let data = ptr.cast::<[[u128; 2]; 2]>().as_ref();
+
+                        let x = (data[0][0], data[0][1]);
+                        let y = (data[1][0], data[1][1]);
+
+                        match info {
+                            Secp256PointTypeConcrete::K1(_) => JitValue::Secp256K1Point { x, y },
+                            Secp256PointTypeConcrete::R1(_) => JitValue::Secp256R1Point { x, y },
+                        }
+                    }
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),

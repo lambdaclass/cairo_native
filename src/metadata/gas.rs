@@ -8,16 +8,17 @@ use cairo_lang_sierra_gas::{calc_gas_postcost_info, compute_precost_info, gas_in
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
 /// Holds global gas info.
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct GasMetadata {
     pub ap_change_info: ApChangeInfo,
     pub gas_info: GasInfo,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GasCost(pub Option<u128>);
 
 /// Configuration for metadata computation.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct MetadataComputationConfig {
     pub function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
 }
