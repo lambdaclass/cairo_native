@@ -136,6 +136,11 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -151,14 +156,19 @@
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>libc::c_void;
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>tempfile::NamedTempFile;
 
-<span class="kw">pub struct </span>AotNativeExecutor {
-    library: Library,
-    registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<span class="attr">#[derive(Educe)]
+#[educe(Debug)]
+</span><span class="kw">pub struct </span>AotNativeExecutor {
+    <span class="attr">#[educe(Debug(ignore))]
+    </span>library: Library,
+    <span class="attr">#[educe(Debug(ignore))]
+    </span>registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 
     gas_metadata: <span class="prelude-ty">Option</span>&lt;GasMetadata&gt;,
 }

@@ -117,6 +117,7 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
@@ -127,16 +128,17 @@
 <span class="kw">use </span>cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
 <span class="doccomment">/// Holds global gas info.
+</span><span class="attr">#[derive(Debug, Default, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>GasMetadata {
     <span class="kw">pub </span>ap_change_info: ApChangeInfo,
     <span class="kw">pub </span>gas_info: GasInfo,
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy)]
+<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span><span class="prelude-ty">Option</span>&lt;u128&gt;);
 
 <span class="doccomment">/// Configuration for metadata computation.
-</span><span class="attr">#[derive(Default)]
+</span><span class="attr">#[derive(Default, Debug, Clone)]
 </span><span class="kw">pub struct </span>MetadataComputationConfig {
     <span class="kw">pub </span>function_set_costs: OrderedHashMap&lt;FunctionId, OrderedHashMap&lt;CostTokenType, i32&gt;&gt;,
 }

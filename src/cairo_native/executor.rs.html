@@ -736,6 +736,7 @@
 <a href="#736" id="736">736</a>
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
@@ -785,7 +786,8 @@
     );
 }
 
-<span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
+<span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
     Aot(Rc&lt;AotNativeExecutor&gt;),
     Jit(Rc&lt;JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt;&gt;),
 }

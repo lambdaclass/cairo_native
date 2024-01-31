@@ -130,6 +130,15 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -157,6 +166,15 @@
     registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 
     gas_metadata: <span class="prelude-ty">Option</span>&lt;GasMetadata&gt;,
+}
+
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>JitNativeExecutor&lt;<span class="lifetime">&#39;_</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;JitNativeExecutor&quot;</span>)
+            .field(<span class="string">&quot;module&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.module)
+            .field(<span class="string">&quot;gas_metadata&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.gas_metadata)
+            .finish()
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {

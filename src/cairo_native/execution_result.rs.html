@@ -123,13 +123,17 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{jit_engine::ErrorImpl, JitRunnerError},
     values::JitValue,
 };
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
-<span class="attr">#[derive(Clone, Debug, Default, Eq, PartialEq)]
+<span class="attr">#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>BuiltinStats {
     <span class="kw">pub </span>bitwise: usize,
     <span class="kw">pub </span>ec_op: usize,
@@ -140,7 +144,8 @@
 }
 
 <span class="doccomment">/// The result of the JIT execution.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>ExecutionResult {
     <span class="kw">pub </span>remaining_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
     <span class="kw">pub </span>return_value: JitValue,
@@ -148,7 +153,8 @@
 }
 
 <span class="doccomment">/// Starknet contract execution result.
-</span><span class="attr">#[derive(Debug, Default)]
+</span><span class="attr">#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>ContractExecutionResult {
     <span class="kw">pub </span>remaining_gas: u128,
     <span class="kw">pub </span>failure_flag: bool,

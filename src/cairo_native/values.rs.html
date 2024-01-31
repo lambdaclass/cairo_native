@@ -764,11 +764,11 @@
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it&#39;s inner value.
-</span><span class="attr">#[derive(Clone, Educe)]
+</span><span class="attr">#[derive(Debug, Clone, Educe)]
 #[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
-#[educe(Debug, Eq, PartialEq)]
+#[educe(Eq, PartialEq)]
 </span><span class="kw">pub enum </span>JitValue {
-    Felt252(<span class="attr">#[educe(Debug(method(std::fmt::Display::fmt)))] </span>Felt),
+    Felt252(Felt),
     <span class="doccomment">/// all elements need to be same type
     </span>Array(Vec&lt;<span class="self">Self</span>&gt;),
     Struct {
