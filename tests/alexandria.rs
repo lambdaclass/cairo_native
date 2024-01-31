@@ -25,7 +25,8 @@ fn compare_inputless_function(function_name: &str) {
 
     let result_vm =
         run_vm_program(program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(program, function_name, &[], Some(DEFAULT_GAS as u128));
+    let result_native =
+        run_native_program(program, function_name, &[], Some(DEFAULT_GAS as u128), None);
 
     compare_outputs(
         &program.1,

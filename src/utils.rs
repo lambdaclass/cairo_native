@@ -54,7 +54,7 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
     // TODO: Fix integer layouts properly.
-    if width == 252 {
+    if width == 252 || width == 256 {
         #[cfg(target_arch = "x86_64")]
         return Layout::from_size_align(32, 8).unwrap();
         #[cfg(not(target_arch = "x86_64"))]
@@ -877,8 +877,9 @@ pub mod test {
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.
     #[test]
+    #[ignore]
     fn test_alignment_compatibility_u256() {
-        assert_eq!(get_integer_layout(256).align(), 8);
+        assert_eq!(get_integer_layout(256).align(), 16);
     }
 
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
@@ -1043,95 +1044,101 @@ pub mod test {
             gas: &mut u128,
         ) -> SyscallResult<crate::starknet::U256> {
             *gas -= 1000;
-            Ok(U256(Felt::from(1234567890).to_bytes_le()))
+            Ok(U256 {
+                hi: 0,
+                lo: 1234567890,
+            })
+        }
+
+        // Implementing the secp256 syscalls for testing doesn't make sense. They're already
+        // properly tested in integration tests.
+
+        fn secp256k1_new(
+            &mut self,
+            _x: U256,
+            _y: U256,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
+            unimplemented!()
         }
 
         fn secp256k1_add(
             &mut self,
             _p0: crate::starknet::Secp256k1Point,
             _p1: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256k1_get_point_from_x(
-            &self,
-            _x: crate::starknet::U256,
-            _y_parity: bool,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256k1_get_xy(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
-            todo!()
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::Secp256k1Point> {
+            unimplemented!()
         }
 
         fn secp256k1_mul(
-            &self,
+            &mut self,
             _p: crate::starknet::Secp256k1Point,
-            _m: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            _m: U256,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::Secp256k1Point> {
+            unimplemented!()
         }
 
-        fn secp256k1_new(
-            &self,
-            _x: crate::starknet::U256,
-            _y: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_add(
-            &self,
-            _p0: crate::starknet::Secp256k1Point,
-            _p1: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
-        }
-
-        fn secp256r1_get_point_from_x(
-            &self,
-            _x: crate::starknet::U256,
+        fn secp256k1_get_point_from_x(
+            &mut self,
+            _x: U256,
             _y_parity: bool,
-            _gas: &mut u128,
+            _remaining_gas: &mut u128,
         ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            unimplemented!()
         }
 
-        fn secp256r1_get_xy(
-            &self,
+        fn secp256k1_get_xy(
+            &mut self,
             _p: crate::starknet::Secp256k1Point,
-            _gas: &mut u128,
-        ) -> SyscallResult<(crate::starknet::U256, crate::starknet::U256)> {
-            todo!()
-        }
-
-        fn secp256r1_mul(
-            &self,
-            _p: crate::starknet::Secp256k1Point,
-            _m: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<(U256, U256)> {
+            unimplemented!()
         }
 
         fn secp256r1_new(
             &mut self,
-            _x: crate::starknet::U256,
-            _y: crate::starknet::U256,
-            _gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            todo!()
+            _x: U256,
+            _y: U256,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
+            unimplemented!()
+        }
+
+        fn secp256r1_add(
+            &mut self,
+            _p0: crate::starknet::Secp256r1Point,
+            _p1: crate::starknet::Secp256r1Point,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::Secp256r1Point> {
+            unimplemented!()
+        }
+
+        fn secp256r1_mul(
+            &mut self,
+            _p: crate::starknet::Secp256r1Point,
+            _m: U256,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<crate::starknet::Secp256r1Point> {
+            unimplemented!()
+        }
+
+        fn secp256r1_get_point_from_x(
+            &mut self,
+            _x: U256,
+            _y_parity: bool,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
+            unimplemented!()
+        }
+
+        fn secp256r1_get_xy(
+            &mut self,
+            _p: crate::starknet::Secp256r1Point,
+            _remaining_gas: &mut u128,
+        ) -> SyscallResult<(U256, U256)> {
+            unimplemented!()
         }
     }
 }

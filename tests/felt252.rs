@@ -74,6 +74,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -99,6 +100,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -124,6 +126,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(
@@ -149,6 +152,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
+            None,
         );
 
         compare_outputs(

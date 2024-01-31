@@ -28,13 +28,15 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        starknet::StarkNetTypeConcrete, types::InfoOnlyConcreteType, GenericLibfunc, GenericType,
+        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        types::InfoOnlyConcreteType,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
@@ -89,7 +91,13 @@ where
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Secp256Point(_) => todo!(),
+        StarkNetTypeConcrete::Secp256Point(info) => build_secp256_point(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
     }
 }
 
@@ -170,4 +178,40 @@ where
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
 {
     Ok(llvm::r#type::opaque_pointer(context))
+}
+
+pub fn build_secp256_point<'ctx, TType, TLibfunc>(
+    context: &'ctx Context,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _metadata: &mut MetadataStorage,
+    _info: WithSelf<Secp256PointTypeConcrete>,
+) -> Result<Type<'ctx>>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
+{
+    Ok(llvm::r#type::r#struct(
+        context,
+        &[
+            llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, 128).into(),
+                    IntegerType::new(context, 128).into(),
+                ],
+                false,
+            ),
+            llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, 128).into(),
+                    IntegerType::new(context, 128).into(),
+                ],
+                false,
+            ),
+        ],
+        false,
+    ))
 }
