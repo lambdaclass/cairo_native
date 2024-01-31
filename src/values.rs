@@ -28,11 +28,11 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe)]
+#[derive(Debug, Clone, Educe)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[educe(Debug, Eq, PartialEq)]
+#[educe(Eq, PartialEq)]
 pub enum JitValue {
-    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
+    Felt252(Felt),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {

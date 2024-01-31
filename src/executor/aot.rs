@@ -13,13 +13,18 @@ use cairo_lang_sierra::{
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
+use educe::Educe;
 use libc::c_void;
 use libloading::Library;
 use starknet_types_core::felt::Felt;
 use tempfile::NamedTempFile;
 
+#[derive(Educe)]
+#[educe(Debug)]
 pub struct AotNativeExecutor {
+    #[educe(Debug(ignore))]
     library: Library,
+    #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
     gas_metadata: Option<GasMetadata>,

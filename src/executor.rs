@@ -47,6 +47,7 @@ extern "C" {
     );
 }
 
+#[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
     Jit(Rc<JitNativeExecutor<'m>>),
