@@ -181,7 +181,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _y: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256k1_add(
@@ -190,7 +190,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _p1: Secp256k1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256k1_mul(
@@ -199,7 +199,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256k1_get_point_from_x(
@@ -208,7 +208,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _y_parity: bool,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256k1_get_xy(
@@ -216,7 +216,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _p: Secp256k1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256r1_new(
@@ -225,7 +225,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _y: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256r1_add(
@@ -234,7 +234,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _p1: Secp256r1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256r1_mul(
@@ -243,7 +243,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256r1_get_point_from_x(
@@ -252,7 +252,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _y_parity: bool,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>> {
-        todo!()
+        unimplemented!()
     }
 
     fn secp256r1_get_xy(
@@ -260,7 +260,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _p: Secp256r1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
-        todo!()
+        unimplemented!()
     }
 }
 
