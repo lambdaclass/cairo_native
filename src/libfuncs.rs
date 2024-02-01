@@ -127,7 +127,14 @@ where
             Self::Box(selector) => self::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Bytes31(selector) => self::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Cast(selector) => self::cast::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Const(_) => todo!(),
+            Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Drop(info) => {
@@ -139,13 +146,59 @@ where
             Self::Ec(selector) => self::ec::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Enum(selector) => self::r#enum::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252(selector) => self::felt252::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Felt252Dict(selector) => self::felt252_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::FunctionCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
             Self::Gas(selector) => self::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Mem(selector) => self::mem::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Nullable(selector) => self::nullable::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Pedersen(selector) => self::pedersen::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Poseidon(selector) => self::poseidon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Range(_) => todo!(),
+            Self::Sint8(info) => {
+                self::sint8::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::Sint16(info) => {
+                self::sint16::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::Sint32(info) => {
+                self::sint32::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::Sint64(info) => {
+                self::sint64::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::Sint128(info) => {
+                self::sint128::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::SnapshotTake(info) => self::snapshot_take::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
+            Self::StarkNet(selector) => self::stark_net::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Uint8(selector) => self::uint8::build(
@@ -169,62 +222,11 @@ where
             Self::Uint512(selector) => self::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Mem(selector) => self::mem::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Nullable(selector) => self::nullable::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
             Self::UnconditionalJump(info) => self::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Enum(selector) => self::r#enum::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Struct(selector) => self::r#struct::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Felt252Dict(selector) => self::felt252_dict::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Pedersen(selector) => self::pedersen::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Poseidon(selector) => self::poseidon::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::StarkNet(selector) => self::stark_net::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::Debug(selector) => self::debug::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::SnapshotTake(info) => self::snapshot_take::build(
+            Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
-            ),
-            Self::Sint8(info) => {
-                self::sint8::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint16(info) => {
-                self::sint16::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint32(info) => {
-                self::sint32::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint64(info) => {
-                self::sint64::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint128(info) => {
-                self::sint128::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Bytes31(selector) => self::bytes31::build(
-                context, registry, entry, location, helper, metadata, selector,
             ),
         }
     }

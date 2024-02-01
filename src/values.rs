@@ -719,6 +719,9 @@ impl JitValue {
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
+
+                CoreTypeConcrete::Const(_) => todo!(),
+                CoreTypeConcrete::BoundedInt(_) => todo!(),
             }
         }
     }

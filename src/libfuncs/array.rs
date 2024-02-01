@@ -1331,7 +1331,7 @@ mod test {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
                 numbers.append(3_u32);
-                numbers.pop_front();
+                let _ = numbers.pop_front();
                 numbers.append(1_u32);
                 *numbers.at(0)
             }
@@ -1380,7 +1380,7 @@ mod test {
                 numbers.append(4_u32);
                 numbers.append(3_u32);
                 match numbers.pop_front_consume() {
-                    Option::Some((arr, x)) => x,
+                    Option::Some((_, x)) => x,
                     Option::None(()) => 0_u32,
                 }
             }

@@ -59,6 +59,7 @@ where
         EnumConcreteLibfunc::SnapshotMatch(info) => {
             build_snapshot_match(context, registry, entry, location, helper, metadata, info)
         }
+        EnumConcreteLibfunc::FromBoundedInt(_) => todo!(),
     }
 }
 

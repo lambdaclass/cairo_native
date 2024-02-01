@@ -26,6 +26,7 @@ pub fn create_vm_runner(program: &Program) -> SierraCasmRunner {
         program.clone(),
         Some(Default::default()),
         Default::default(),
+        false,
     )
     .unwrap()
 }

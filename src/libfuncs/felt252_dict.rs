@@ -133,7 +133,7 @@ mod test {
             use dict::Felt252DictTrait;
 
             fn run_test() {
-                let mut dict: Felt252Dict<u32> = Default::default();
+                let mut _dict: Felt252Dict<u32> = Default::default();
             }
         );
 

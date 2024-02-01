@@ -153,6 +153,7 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::BoundedInt(_) => todo!(),
             Self::Box(info) => self::r#box::build(
                 context,
                 module,
@@ -160,6 +161,7 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::Bytes31(info) => self::bytes31::build(context, module, registry, metadata, info),
             Self::BuiltinCosts(info) => self::builtin_costs::build(
                 context,
                 module,
@@ -167,6 +169,7 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::Const(_) => todo!(),
             Self::EcOp(info) => self::ec_op::build(
                 context,
                 module,
@@ -265,6 +268,41 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::Sint8(info) => self::uint8::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Sint16(info) => self::uint16::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Sint32(info) => self::uint32::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Sint64(info) => self::uint64::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Sint128(info) => self::uint128::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Snapshot(info) => self::snapshot::build(
                 context,
                 module,
@@ -343,44 +381,6 @@ where
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Sint8(info) => self::uint8::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint16(info) => self::uint16::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint32(info) => self::uint32::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint64(info) => self::uint64::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint128(info) => self::uint128::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Bytes31(info) => {
-                self::bytes31::build(context, module, registry, metadata, info)
-            }
         }
     }
 
@@ -456,9 +456,11 @@ where
             CoreTypeConcrete::Enum(_) => !self.is_zst(registry),
             CoreTypeConcrete::Struct(_) => true,
 
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
         }
     }
 
@@ -520,6 +522,8 @@ where
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
         }
     }
@@ -613,6 +617,9 @@ where
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
+
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
         })
     }
 
@@ -680,6 +687,9 @@ where
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Bytes31(_) => false,
+
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
         }
     }
 
@@ -690,6 +700,10 @@ where
             Self::Uint32(_) => Some(32),
             Self::Uint64(_) => Some(64),
             Self::Uint128(_) => Some(128),
+
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
+
             _ => None,
         }
     }

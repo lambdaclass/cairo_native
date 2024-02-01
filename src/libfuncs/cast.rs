@@ -73,11 +73,13 @@ where
         entry.argument(0)?.into(),
     )?;
 
-    let src_ty = registry.build_type(context, helper, registry, metadata, &info.from_ty)?;
-    let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
-    assert!(info.from_info.nbits >= info.to_info.nbits);
+    let src_type = registry.get_type(&info.from_ty)?;
+    let dst_type = registry.get_type(&info.to_ty)?;
 
-    if info.from_info.nbits == info.to_info.nbits {
+    let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
+    let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
+
+    if src_ty == dst_ty {
         let k0 = entry
             .append_operation(arith::constant(
                 context,
@@ -110,7 +112,14 @@ where
         let n_bits = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(info.to_info.nbits.try_into()?, src_ty).into(),
+                IntegerAttribute::new(
+                    dst_type
+                        .integer_width()
+                        .expect("casts always happen between numerical types")
+                        as i64,
+                    src_ty,
+                )
+                .into(),
                 location,
             ))
             .result(0)?

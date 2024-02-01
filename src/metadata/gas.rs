@@ -28,7 +28,7 @@ impl GasMetadata {
         let pre_gas_info = compute_precost_info(program).unwrap();
 
         let ap_change_info = calc_ap_changes(program, |idx, token_type| {
-            pre_gas_info.variable_values[(idx, token_type)] as usize
+            pre_gas_info.variable_values[&(idx, token_type)] as usize
         })
         .unwrap();
 
@@ -70,7 +70,7 @@ impl GasMetadata {
         }
 
         // Compute the initial gas required by the function.
-        let required_gas = self.gas_info.function_costs[func.clone()]
+        let required_gas = self.gas_info.function_costs[func]
             .iter()
             .map(|(cost_token_type, val)| {
                 let val_usize: u128 = (*val)

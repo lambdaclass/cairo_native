@@ -14,7 +14,10 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        lib_func::{
+            BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
+            SignatureOnlyConcreteLibfunc,
+        },
         nullable::NullableConcreteLibfunc,
         ConcreteLibfunc, GenericLibfunc, GenericType,
     },
@@ -43,8 +46,8 @@ pub fn build<'ctx, 'this, TType, TLibfunc>(
     selector: &NullableConcreteLibfunc,
 ) -> Result<()>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
@@ -58,9 +61,9 @@ where
         NullableConcreteLibfunc::MatchNullable(info) => {
             build_match_nullable(context, registry, entry, location, helper, metadata, info)
         }
-        NullableConcreteLibfunc::MatchNullableSnapshot(info) => build_match_nullable_snapshot(
-            context, registry, entry, location, helper, metadata, info,
-        ),
+        NullableConcreteLibfunc::ForwardSnapshot(info) => {
+            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -173,9 +176,7 @@ where
     Ok(())
 }
 
-/// Generate MLIR operations for the `match_nullable_snapshot` libfunc.
-#[allow(clippy::too_many_arguments)]
-fn build_match_nullable_snapshot<'ctx, 'this, TType, TLibfunc>(
+fn build_forward_snapshot<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
     registry: &ProgramRegistry<TType, TLibfunc>,
     entry: &'this Block<'ctx>,
@@ -185,12 +186,34 @@ fn build_match_nullable_snapshot<'ctx, 'this, TType, TLibfunc>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    TType: 'static + GenericType,
+    TLibfunc: 'static + GenericLibfunc,
     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 {
-    build_match_nullable(context, registry, entry, location, helper, metadata, info)
+    super::snapshot_take::build(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &SignatureOnlyConcreteLibfunc {
+            signature: LibfuncSignature {
+                param_signatures: info.signature.param_signatures.clone(),
+                branch_signatures: info
+                    .signature
+                    .branch_signatures
+                    .iter()
+                    .map(|x| BranchSignature {
+                        vars: x.vars.clone(),
+                        ap_change: x.ap_change.clone(),
+                    })
+                    .collect(),
+                fallthrough: info.signature.fallthrough,
+            },
+        },
+    )
 }
 
 #[cfg(test)]
@@ -210,7 +233,7 @@ mod test {
             use box::BoxTrait;
 
             fn run_test() {
-                let a: Nullable<u8> = null();
+                let _a: Nullable<u8> = null();
             }
         );
 
@@ -304,58 +327,6 @@ mod test {
                     debug_name: None
                 }
             ),
-        );
-    }
-
-    #[test]
-    fn run_match_nullable_snapshot() {
-        let program = load_cairo!(
-            use nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
-
-            fn run_test(x: u8) -> u8 {
-                let a = if x == 0 {
-                    @null()
-                } else {
-                    @NullableTrait::new(x)
-                };
-                let b = match match_nullable_snapshot(a) {
-                    FromNullableResult::Null => 99_u8,
-                    FromNullableResult::NotNull(value) => *(value.unbox()),
-                };
-                b
-            }
-        );
-
-        run_program_assert_output(&program, "run_test", &[4u8.into()], 4u8.into());
-        run_program_assert_output(&program, "run_test", &[0u8.into()], 99u8.into());
-    }
-
-    #[test]
-    fn run_match_nullable_snapshot_array() {
-        let program = load_cairo!(
-            use nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
-            use array::ArrayTrait;
-
-            fn run_test() -> u8 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u8);
-                numbers.append(3_u8);
-                numbers.append(2_u8);
-                numbers.append(1_u8);
-                let a = @NullableTrait::new(numbers);
-                let b = match match_nullable_snapshot(a) {
-                    FromNullableResult::Null => 99_u8,
-                    FromNullableResult::NotNull(value) => *(value.unbox())[0],
-                };
-                b
-            }
-        );
-
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[4u8.into()],
-            jit_enum!(0, jit_struct!(4u8.into())),
         );
     }
 }
