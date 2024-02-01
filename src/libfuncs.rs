@@ -176,7 +176,6 @@ where
             Self::Poseidon(selector) => self::poseidon::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Range(_) => todo!(),
             Self::Sint8(info) => {
                 self::sint8::build(context, registry, entry, location, helper, metadata, info)
             }

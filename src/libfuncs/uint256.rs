@@ -1095,7 +1095,7 @@ mod test {
             )
         }
 
-        let u256_is_zero = Felt::from_bytes_be_slice(b"u256 is 0");
+        let u256_is_zero = Felt::from_bytes_be_slice(b"Division by 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
         run((0, 0), (0, 0), jit_panic!(u256_is_zero));

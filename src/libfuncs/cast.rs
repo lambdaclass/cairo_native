@@ -79,80 +79,60 @@ where
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
 
-    if src_ty == dst_ty {
-        let k0 = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+    // Sierra compiler wont accept a downcast from the same type to the same type (u128 -> u128).
+    // So we don't need to check for it (because trunci doesn't work for same types).
 
-        entry.append_operation(helper.cond_br(
+    let k1 = entry
+        .append_operation(arith::constant(
             context,
-            k0,
-            [1, 0],
-            [
-                &[entry.argument(0)?.into()],
-                &[entry.argument(0)?.into(), entry.argument(1)?.into()],
-            ],
+            IntegerAttribute::new(1, src_ty).into(),
             location,
-        ));
-    } else {
-        let k1 = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(1, src_ty).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        ))
+        .result(0)?
+        .into();
 
-        let n_bits = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    dst_type
-                        .integer_width()
-                        .expect("casts always happen between numerical types")
-                        as i64,
-                    src_ty,
-                )
-                .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let max_value_plus_one = entry
-            .append_operation(arith::shli(k1, n_bits, location))
-            .result(0)?
-            .into();
-
-        let is_in_range = entry
-            .append_operation(arith::cmpi(
-                context,
-                CmpiPredicate::Ult,
-                entry.argument(1)?.into(),
-                max_value_plus_one,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let result = entry
-            .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
-            .result(0)?
-            .into();
-
-        entry.append_operation(helper.cond_br(
+    let n_bits = entry
+        .append_operation(arith::constant(
             context,
-            is_in_range,
-            [0, 1],
-            [&[range_check, result], &[range_check]],
+            IntegerAttribute::new(
+                dst_type
+                    .integer_width()
+                    .expect("casts always happen between numerical types") as i64,
+                src_ty,
+            )
+            .into(),
             location,
-        ));
-    };
+        ))
+        .result(0)?
+        .into();
+    let max_value_plus_one = entry
+        .append_operation(arith::shli(k1, n_bits, location))
+        .result(0)?
+        .into();
+
+    let is_in_range = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ult,
+            entry.argument(1)?.into(),
+            max_value_plus_one,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let result = entry
+        .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.cond_br(
+        context,
+        is_in_range,
+        [0, 1],
+        [&[range_check, result], &[range_check]],
+        location,
+    ));
 
     Ok(())
 }
@@ -212,14 +192,12 @@ mod test {
             use core::integer::downcast;
 
             fn run_test(v8: u8, v16: u16, v32: u32, v64: u64, v128: u128) -> (
-                (Option<u8>, Option<u8>, Option<u8>, Option<u8>, Option<u8>),
-                (Option<u16>, Option<u16>, Option<u16>, Option<u16>),
-                (Option<u32>, Option<u32>, Option<u32>),
-                (Option<u64>, Option<u64>),
-                (Option<u128>,)
+                (Option<u8>, Option<u8>, Option<u8>, Option<u8>),
+                (Option<u16>, Option<u16>, Option<u16>),
+                (Option<u32>, Option<u32>),
+                (Option<u64>,)
             ) {
                 (
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
                     (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
                     (downcast(v128), downcast(v64), downcast(v32)),
                     (downcast(v128), downcast(v64)),
@@ -266,21 +244,14 @@ mod test {
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(0, u8::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(0, u16::MAX.into()),
                 ),
-                jit_struct!(
-                    jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
-                    jit_enum!(0, u32::MAX.into()),
-                ),
-                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into()),),
-                jit_struct!(jit_enum!(0, u128::MAX.into()),),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!()),),
+                jit_struct!(jit_enum!(1, jit_struct!())),
             ),
         );
     }

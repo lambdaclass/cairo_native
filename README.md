@@ -208,7 +208,7 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
 1. `const_as_box`
-1. `constrain_range`
+1. `span_from_tuple`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
 1. `secp256k1_get_xy_syscall` (StarkNet)
@@ -389,6 +389,12 @@ make coverage
 
 ```bash
 make check
+```
+
+- Compile the runtime library used for ahead of time compilation:
+
+```bash
+make runtime
 ```
 
 ## Command Line Interface
