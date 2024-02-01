@@ -148,7 +148,7 @@
         <span class="kw">let </span>pre_gas_info = compute_precost_info(program).unwrap();
 
         <span class="kw">let </span>ap_change_info = calc_ap_changes(program, |idx, token_type| {
-            pre_gas_info.variable_values[(idx, token_type)] <span class="kw">as </span>usize
+            pre_gas_info.variable_values[<span class="kw-2">&amp;</span>(idx, token_type)] <span class="kw">as </span>usize
         })
         .unwrap();
 
@@ -190,7 +190,7 @@
         }
 
         <span class="comment">// Compute the initial gas required by the function.
-        </span><span class="kw">let </span>required_gas = <span class="self">self</span>.gas_info.function_costs[func.clone()]
+        </span><span class="kw">let </span>required_gas = <span class="self">self</span>.gas_info.function_costs[func]
             .iter()
             .map(|(cost_token_type, val)| {
                 <span class="kw">let </span>val_usize: u128 = (<span class="kw-2">*</span>val)

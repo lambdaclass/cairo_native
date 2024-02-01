@@ -527,6 +527,8 @@
 <a href="#527" id="527">527</a>
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -656,7 +658,14 @@
             <span class="self">Self</span>::Box(selector) =&gt; <span class="self">self</span>::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Bytes31(selector) =&gt; <span class="self">self</span>::bytes31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::Cast(selector) =&gt; <span class="self">self</span>::cast::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Drop(info) =&gt; {
@@ -668,13 +677,59 @@
             <span class="self">Self</span>::Ec(selector) =&gt; <span class="self">self</span>::ec::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Enum(selector) =&gt; <span class="self">self</span>::r#enum::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::Felt252(selector) =&gt; <span class="self">self</span>::felt252::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Felt252Dict(selector) =&gt; <span class="self">self</span>::felt252_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Felt252DictEntry(selector) =&gt; <span class="self">self</span>::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::FunctionCall(info) =&gt; <span class="self">self</span>::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
             <span class="self">Self</span>::Gas(selector) =&gt; <span class="self">self</span>::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Mem(selector) =&gt; <span class="self">self</span>::mem::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Nullable(selector) =&gt; <span class="self">self</span>::nullable::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Pedersen(selector) =&gt; <span class="self">self</span>::pedersen::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Range(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Sint8(info) =&gt; {
+                <span class="self">self</span>::sint8::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::Sint16(info) =&gt; {
+                <span class="self">self</span>::sint16::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::Sint32(info) =&gt; {
+                <span class="self">self</span>::sint32::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::Sint64(info) =&gt; {
+                <span class="self">self</span>::sint64::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::Sint128(info) =&gt; {
+                <span class="self">self</span>::sint128::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
+            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::stark_net::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Struct(selector) =&gt; <span class="self">self</span>::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Uint8(selector) =&gt; <span class="self">self</span>::uint8::build(
@@ -698,62 +753,11 @@
             <span class="self">Self</span>::Uint512(selector) =&gt; <span class="self">self</span>::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Mem(selector) =&gt; <span class="self">self</span>::mem::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Nullable(selector) =&gt; <span class="self">self</span>::nullable::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::UnwrapNonZero(info) =&gt; <span class="self">self</span>::unwrap_non_zero::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
             <span class="self">Self</span>::UnconditionalJump(info) =&gt; <span class="self">self</span>::unconditional_jump::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            <span class="self">Self</span>::Enum(selector) =&gt; <span class="self">self</span>::r#enum::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Struct(selector) =&gt; <span class="self">self</span>::r#struct::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Felt252Dict(selector) =&gt; <span class="self">self</span>::felt252_dict::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Felt252DictEntry(selector) =&gt; <span class="self">self</span>::felt252_dict_entry::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Pedersen(selector) =&gt; <span class="self">self</span>::pedersen::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::stark_net::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::build(
+            <span class="self">Self</span>::UnwrapNonZero(info) =&gt; <span class="self">self</span>::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
-            ),
-            <span class="self">Self</span>::Sint8(info) =&gt; {
-                <span class="self">self</span>::sint8::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint16(info) =&gt; {
-                <span class="self">self</span>::sint16::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint32(info) =&gt; {
-                <span class="self">self</span>::sint32::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint64(info) =&gt; {
-                <span class="self">self</span>::sint64::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Sint128(info) =&gt; {
-                <span class="self">self</span>::sint128::build(context, registry, entry, location, helper, metadata, info)
-            }
-            CoreConcreteLibfunc::Bytes31(selector) =&gt; <span class="self">self</span>::bytes31::build(
-                context, registry, entry, location, helper, metadata, selector,
             ),
         }
     }

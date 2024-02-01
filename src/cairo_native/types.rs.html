@@ -784,6 +784,20 @@
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -939,6 +953,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            <span class="self">Self</span>::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             <span class="self">Self</span>::Box(info) =&gt; <span class="self">self</span>::r#box::build(
                 context,
                 module,
@@ -946,6 +961,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            <span class="self">Self</span>::Bytes31(info) =&gt; <span class="self">self</span>::bytes31::build(context, module, registry, metadata, info),
             <span class="self">Self</span>::BuiltinCosts(info) =&gt; <span class="self">self</span>::builtin_costs::build(
                 context,
                 module,
@@ -953,6 +969,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            <span class="self">Self</span>::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             <span class="self">Self</span>::EcOp(info) =&gt; <span class="self">self</span>::ec_op::build(
                 context,
                 module,
@@ -1051,6 +1068,41 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            <span class="self">Self</span>::Sint8(info) =&gt; <span class="self">self</span>::uint8::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            <span class="self">Self</span>::Sint16(info) =&gt; <span class="self">self</span>::uint16::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            <span class="self">Self</span>::Sint32(info) =&gt; <span class="self">self</span>::uint32::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            <span class="self">Self</span>::Sint64(info) =&gt; <span class="self">self</span>::uint64::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            <span class="self">Self</span>::Sint128(info) =&gt; <span class="self">self</span>::uint128::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             <span class="self">Self</span>::Snapshot(info) =&gt; <span class="self">self</span>::snapshot::build(
                 context,
                 module,
@@ -1129,44 +1181,6 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Sint8(info) =&gt; <span class="self">self</span>::uint8::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint16(info) =&gt; <span class="self">self</span>::uint16::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint32(info) =&gt; <span class="self">self</span>::uint32::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint64(info) =&gt; <span class="self">self</span>::uint64::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Sint128(info) =&gt; <span class="self">self</span>::uint128::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
-            CoreTypeConcrete::Bytes31(info) =&gt; {
-                <span class="self">self</span>::bytes31::build(context, module, registry, metadata, info)
-            }
         }
     }
 
@@ -1242,9 +1256,11 @@
             CoreTypeConcrete::Enum(<span class="kw">_</span>) =&gt; !<span class="self">self</span>.is_zst(registry),
             CoreTypeConcrete::Struct(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1306,6 +1322,8 @@
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
@@ -1399,6 +1417,9 @@
             CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">64</span>),
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">248</span>),
+
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         })
     }
 
@@ -1466,6 +1487,9 @@
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1476,6 +1500,10 @@
             <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">32</span>),
             <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">64</span>),
             <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">128</span>),
+
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }

@@ -216,11 +216,13 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
-<span class="kw">use </span>cairo_lang_defs::plugin::{NamedPlugin, PluginSuite};
+<span class="kw">use </span>cairo_lang_defs::plugin::NamedPlugin;
+<span class="kw">use </span>cairo_lang_semantic::plugin::PluginSuite;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program::Program,

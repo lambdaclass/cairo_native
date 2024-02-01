@@ -330,35 +330,6 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable libfuncs
 //!
 //! Like a Box but it can be null.
@@ -375,7 +346,10 @@
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        lib_func::{
+            BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
+            SignatureOnlyConcreteLibfunc,
+        },
         nullable::NullableConcreteLibfunc,
         ConcreteLibfunc, GenericLibfunc, GenericType,
     },
@@ -404,8 +378,8 @@
     selector: <span class="kw-2">&amp;</span>NullableConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
+    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
@@ -419,9 +393,9 @@
         NullableConcreteLibfunc::MatchNullable(info) =&gt; {
             build_match_nullable(context, registry, entry, location, helper, metadata, info)
         }
-        NullableConcreteLibfunc::MatchNullableSnapshot(info) =&gt; build_match_nullable_snapshot(
-            context, registry, entry, location, helper, metadata, info,
-        ),
+        NullableConcreteLibfunc::ForwardSnapshot(info) =&gt; {
+            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -534,9 +508,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `match_nullable_snapshot` libfunc.
-</span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>build_match_nullable_snapshot&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+<span class="kw">fn </span>build_forward_snapshot&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
@@ -546,12 +518,34 @@
     info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
+    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
+    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc,
     &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
     &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 {
-    build_match_nullable(context, registry, entry, location, helper, metadata, info)
+    <span class="kw">super</span>::snapshot_take::build(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc {
+            signature: LibfuncSignature {
+                param_signatures: info.signature.param_signatures.clone(),
+                branch_signatures: info
+                    .signature
+                    .branch_signatures
+                    .iter()
+                    .map(|x| BranchSignature {
+                        vars: x.vars.clone(),
+                        ap_change: x.ap_change.clone(),
+                    })
+                    .collect(),
+                fallthrough: info.signature.fallthrough,
+            },
+        },
+    )
 }
 
 <span class="attr">#[cfg(test)]
@@ -571,7 +565,7 @@
             <span class="kw">use box</span>::BoxTrait;
 
             <span class="kw">fn </span>run_test() {
-                <span class="kw">let </span>a: Nullable&lt;u8&gt; = null();
+                <span class="kw">let </span>_a: Nullable&lt;u8&gt; = null();
             }
         );
 
@@ -665,58 +659,6 @@
                     debug_name: <span class="prelude-val">None
                 </span>}
             ),
-        );
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>run_match_nullable_snapshot() {
-        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-            <span class="kw">use </span>nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
-
-            <span class="kw">fn </span>run_test(x: u8) -&gt; u8 {
-                <span class="kw">let </span>a = <span class="kw">if </span>x == <span class="number">0 </span>{
-                    @null()
-                } <span class="kw">else </span>{
-                    @NullableTrait::new(x)
-                };
-                <span class="kw">let </span>b = <span class="kw">match </span>match_nullable_snapshot(a) {
-                    FromNullableResult::Null =&gt; <span class="number">99_u8</span>,
-                    FromNullableResult::NotNull(value) =&gt; <span class="kw-2">*</span>(value.unbox()),
-                };
-                b
-            }
-        );
-
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">4u8</span>.into()], <span class="number">4u8</span>.into());
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>.into()], <span class="number">99u8</span>.into());
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>run_match_nullable_snapshot_array() {
-        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-            <span class="kw">use </span>nullable::{null, NullableTrait, FromNullableResult, match_nullable_snapshot};
-            <span class="kw">use </span>array::ArrayTrait;
-
-            <span class="kw">fn </span>run_test() -&gt; u8 {
-                <span class="kw">let </span><span class="kw-2">mut </span>numbers = ArrayTrait::new();
-                numbers.append(<span class="number">4_u8</span>);
-                numbers.append(<span class="number">3_u8</span>);
-                numbers.append(<span class="number">2_u8</span>);
-                numbers.append(<span class="number">1_u8</span>);
-                <span class="kw">let </span>a = @NullableTrait::new(numbers);
-                <span class="kw">let </span>b = <span class="kw">match </span>match_nullable_snapshot(a) {
-                    FromNullableResult::Null =&gt; <span class="number">99_u8</span>,
-                    FromNullableResult::NotNull(value) =&gt; <span class="kw-2">*</span>(value.unbox())[<span class="number">0</span>],
-                };
-                b
-            }
-        );
-
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>program,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[<span class="number">4u8</span>.into()],
-            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">4u8</span>.into())),
         );
     }
 }

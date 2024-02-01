@@ -313,6 +313,15 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -388,11 +397,13 @@
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>src_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
-    <span class="macro">assert!</span>(info.from_info.nbits &gt;= info.to_info.nbits);
+    <span class="kw">let </span>src_type = registry.get_type(<span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_type = registry.get_type(<span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">if </span>info.from_info.nbits == info.to_info.nbits {
+    <span class="kw">let </span>src_ty = src_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
+
+    <span class="kw">if </span>src_ty == dst_ty {
         <span class="kw">let </span>k0 = entry
             .append_operation(arith::constant(
                 context,
@@ -425,7 +436,14 @@
         <span class="kw">let </span>n_bits = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(info.to_info.nbits.try_into()<span class="question-mark">?</span>, src_ty).into(),
+                IntegerAttribute::new(
+                    dst_type
+                        .integer_width()
+                        .expect(<span class="string">&quot;casts always happen between numerical types&quot;</span>)
+                        <span class="kw">as </span>i64,
+                    src_ty,
+                )
+                .into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
