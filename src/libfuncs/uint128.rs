@@ -962,7 +962,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JitValue::Felt252(Felt::from_bytes_be_slice(b"u128 is 0"));
+        let error = JitValue::Felt252(Felt::from_bytes_be_slice(b"Division by 0"));
 
         run_program_assert_output(
             program,

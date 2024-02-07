@@ -84,6 +84,7 @@ where
         ArrayConcreteLibfunc::SnapshotPopBack(info) => {
             build_snapshot_pop_back(context, registry, entry, location, helper, metadata, info)
         }
+        ArrayConcreteLibfunc::SpanFromTuple(_) => todo!(),
     }
 }
 

@@ -9,7 +9,7 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_sierra_generator::{
     db::SierraGenGroup,
-    pre_sierra::{LabelId, Statement as PreSierraStatement},
+    pre_sierra::{LabelId, Statement as PreSierraStatement, StatementWithLocation},
 };
 use id_arena::Arena;
 use itertools::Itertools;
@@ -72,13 +72,13 @@ fn find_statement_locations(
 fn map_sierra_to_pre_sierra_statements<'a>(
     lhs_entry_point: StatementIdx,
     lhs_statements: &[Statement],
-    rhs_statements: &'a [PreSierraStatement],
+    rhs_statements: &'a [StatementWithLocation],
 ) -> HashMap<StatementIdx, &'a GenStatement<LabelId>> {
     let mut mappings = HashMap::new();
 
     let mut lhs_iter = lhs_statements.iter().enumerate().skip(lhs_entry_point.0);
     for rhs_statement in rhs_statements {
-        let rhs_statement = match rhs_statement {
+        let rhs_statement = match &rhs_statement.statement {
             PreSierraStatement::Sierra(x) => x,
             PreSierraStatement::Label(_) => continue,
             PreSierraStatement::PushValues(_) => panic!(),
