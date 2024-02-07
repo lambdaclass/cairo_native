@@ -2239,7 +2239,7 @@
     </span><span class="kw">fn </span>u128_safe_divmod() {
         <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U128_SAFE_DIVMOD;
         <span class="kw">let </span>max_value = <span class="number">0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128</span>;
-        <span class="kw">let </span>error = JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b&quot;u128 is 0&quot;</span>));
+        <span class="kw">let </span>error = JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b&quot;Division by 0&quot;</span>));
 
         run_program_assert_output(
             program,

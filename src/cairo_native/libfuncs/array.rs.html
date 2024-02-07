@@ -1454,6 +1454,7 @@
 <a href="#1454" id="1454">1454</a>
 <a href="#1455" id="1455">1455</a>
 <a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -1540,6 +1541,7 @@
         ArrayConcreteLibfunc::SnapshotPopBack(info) =&gt; {
             build_snapshot_pop_back(context, registry, entry, location, helper, metadata, info)
         }
+        ArrayConcreteLibfunc::SpanFromTuple(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     }
 }
 

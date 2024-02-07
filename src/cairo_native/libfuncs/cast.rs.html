@@ -293,35 +293,6 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
@@ -403,80 +374,60 @@
     <span class="kw">let </span>src_ty = src_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">if </span>src_ty == dst_ty {
-        <span class="kw">let </span>k0 = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
+    <span class="comment">// Sierra compiler wont accept a downcast from the same type to the same type (u128 -&gt; u128).
+    // So we don&#39;t need to check for it (because trunci doesn&#39;t work for same types).
 
-        entry.append_operation(helper.cond_br(
+    </span><span class="kw">let </span>k1 = entry
+        .append_operation(arith::constant(
             context,
-            k0,
-            [<span class="number">1</span>, <span class="number">0</span>],
-            [
-                <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()],
-                <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()],
-            ],
+            IntegerAttribute::new(<span class="number">1</span>, src_ty).into(),
             location,
-        ));
-    } <span class="kw">else </span>{
-        <span class="kw">let </span>k1 = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(<span class="number">1</span>, src_ty).into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
-        <span class="kw">let </span>n_bits = entry
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    dst_type
-                        .integer_width()
-                        .expect(<span class="string">&quot;casts always happen between numerical types&quot;</span>)
-                        <span class="kw">as </span>i64,
-                    src_ty,
-                )
-                .into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
-        <span class="kw">let </span>max_value_plus_one = entry
-            .append_operation(arith::shli(k1, n_bits, location))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
-
-        <span class="kw">let </span>is_in_range = entry
-            .append_operation(arith::cmpi(
-                context,
-                CmpiPredicate::Ult,
-                entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                max_value_plus_one,
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
-
-        <span class="kw">let </span>result = entry
-            .append_operation(arith::trunci(entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), dst_ty, location))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
-
-        entry.append_operation(helper.cond_br(
+    <span class="kw">let </span>n_bits = entry
+        .append_operation(arith::constant(
             context,
-            is_in_range,
-            [<span class="number">0</span>, <span class="number">1</span>],
-            [<span class="kw-2">&amp;</span>[range_check, result], <span class="kw-2">&amp;</span>[range_check]],
+            IntegerAttribute::new(
+                dst_type
+                    .integer_width()
+                    .expect(<span class="string">&quot;casts always happen between numerical types&quot;</span>) <span class="kw">as </span>i64,
+                src_ty,
+            )
+            .into(),
             location,
-        ));
-    };
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>max_value_plus_one = entry
+        .append_operation(arith::shli(k1, n_bits, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="kw">let </span>is_in_range = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ult,
+            entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+            max_value_plus_one,
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="kw">let </span>result = entry
+        .append_operation(arith::trunci(entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), dst_ty, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    entry.append_operation(helper.cond_br(
+        context,
+        is_in_range,
+        [<span class="number">0</span>, <span class="number">1</span>],
+        [<span class="kw-2">&amp;</span>[range_check, result], <span class="kw-2">&amp;</span>[range_check]],
+        location,
+    ));
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -536,14 +487,12 @@
             <span class="kw">use </span>core::integer::downcast;
 
             <span class="kw">fn </span>run_test(v8: u8, v16: u16, v32: u32, v64: u64, v128: u128) -&gt; (
-                (<span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;),
-                (<span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;),
-                (<span class="prelude-ty">Option</span>&lt;u32&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;),
-                (<span class="prelude-ty">Option</span>&lt;u64&gt;, <span class="prelude-ty">Option</span>&lt;u64&gt;),
-                (<span class="prelude-ty">Option</span>&lt;u128&gt;,)
+                (<span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;),
+                (<span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;),
+                (<span class="prelude-ty">Option</span>&lt;u32&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;),
+                (<span class="prelude-ty">Option</span>&lt;u64&gt;,)
             ) {
                 (
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
                     (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
                     (downcast(v128), downcast(v64), downcast(v32)),
                     (downcast(v128), downcast(v64)),
@@ -590,21 +539,14 @@
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u8::MAX.into()),
                 ),
                 <span class="macro">jit_struct!</span>(
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
                     <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u16::MAX.into()),
                 ),
-                <span class="macro">jit_struct!</span>(
-                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u32::MAX.into()),
-                ),
-                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, u64::MAX.into()),),
-                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">0</span>, u128::MAX.into()),),
+                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),),
+                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())),
             ),
         );
     }
