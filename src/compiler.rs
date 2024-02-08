@@ -65,7 +65,7 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         gas::CostTokenType,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},

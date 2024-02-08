@@ -2,16 +2,8 @@
 //!
 //! Like a Box but it can be null.
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -20,7 +12,7 @@ use cairo_lang_sierra::{
             SignatureOnlyConcreteLibfunc,
         },
         nullable::NullableConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

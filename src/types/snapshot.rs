@@ -14,7 +14,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::{Error, Result},
+    error::types::Result,
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -22,7 +22,6 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoAndTypeConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -52,5 +51,5 @@ pub fn build<'ctx>(
     }
     .set_mapping(info.self_ty, registry.get_type(&info.ty)?.variants());
 
-    Ok(registry.build_type(context, module, registry, metadata, &info.ty)?)
+    registry.build_type(context, module, registry, metadata, &info.ty)
 }

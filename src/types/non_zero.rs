@@ -12,17 +12,12 @@
 //! pub struct NonZero<T>(pub T);
 //! ```
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoAndTypeConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -41,5 +36,5 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(registry.build_type(context, module, registry, metadata, &info.ty)?)
+    registry.build_type(context, module, registry, metadata, &info.ty)
 }

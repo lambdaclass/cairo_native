@@ -3,21 +3,13 @@
 //! Natively compiled code doesn't need `AP` tracking because it has no notion of the `AP` pointer.
 //! Because of this, all `AP`-related libfuncs are no-ops.
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         ap_tracking::ApTrackingConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

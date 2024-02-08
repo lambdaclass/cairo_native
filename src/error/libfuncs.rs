@@ -59,7 +59,7 @@ pub enum ErrorImpl {
 
 impl From<super::CoreTypeBuilderError> for ErrorImpl {
     fn from(value: super::CoreTypeBuilderError) -> Self {
-        match value.source {
+        match *value.source {
             super::types::ErrorImpl::LayoutError(e) => Self::LayoutError(e),
             super::types::ErrorImpl::ProgramRegistryError(e) => Self::ProgramRegistryError(e),
             super::types::ErrorImpl::TryFromIntError(e) => Self::TryFromIntError(e),

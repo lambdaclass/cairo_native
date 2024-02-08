@@ -1,14 +1,10 @@
 //! # Poseidon hashing libfuncs
 //!
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    types::TypeBuilder,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -16,7 +12,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         poseidon::PoseidonConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

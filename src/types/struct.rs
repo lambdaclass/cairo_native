@@ -32,17 +32,12 @@
 //! won't waste a single byte in padding; unless we're creating an array, in which case we'd waste
 //! only a single byte per element.
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         structure::StructConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -65,7 +60,7 @@ pub fn build<'ctx>(
     let fields: Vec<_> = info
         .members
         .iter()
-        .map(|field| Ok(registry.build_type(context, module, registry, metadata, field)?))
+        .map(|field| registry.build_type(context, module, registry, metadata, field))
         .collect::<Result<_>>()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);
 

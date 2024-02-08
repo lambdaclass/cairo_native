@@ -195,7 +195,7 @@ impl JitValue {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty
                             .layout(registry)
-                            .map_err(|e| make_type_builder_error(type_id)(e.into()))?
+                            .map_err(make_type_builder_error(type_id))?
                             .pad_to_align();
 
                         let ptr: *mut NonNull<()> =

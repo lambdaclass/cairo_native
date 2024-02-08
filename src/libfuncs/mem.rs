@@ -3,22 +3,14 @@
 //! Natively compiled code doesn't need this kind of memory tracking because it has no notion of the
 //! segments. Because of this, all of the memory-related libfuncs here are no-ops.
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         mem::MemConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

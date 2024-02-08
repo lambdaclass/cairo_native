@@ -3,12 +3,9 @@
 // TODO: A future possible improvement would be to put the array behind a double pointer and a
 //   reference counter, to avoid unnecessary clones.
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
@@ -18,7 +15,7 @@ use cairo_lang_sierra::{
         array::ArrayConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

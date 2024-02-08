@@ -21,17 +21,13 @@
 
 // TODO: Maybe the types used here can be i251 instead of i252.
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         types::InfoOnlyConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

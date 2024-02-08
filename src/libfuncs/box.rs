@@ -2,12 +2,9 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
@@ -20,7 +17,6 @@ use cairo_lang_sierra::{
             BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
             SignatureOnlyConcreteLibfunc,
         },
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

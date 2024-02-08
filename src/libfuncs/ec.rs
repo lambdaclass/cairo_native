@@ -1,15 +1,12 @@
 //! # Elliptic curve libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    types::{felt252::register_prime_modulo_meta, TypeBuilder},
+    types::felt252::register_prime_modulo_meta,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -17,7 +14,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         ec::EcConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

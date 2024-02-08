@@ -11,16 +11,12 @@
 //! |   2   | `!llvm.ptr`    | Pointer to the dictionary (rust) |
 //!
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoAndTypeConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

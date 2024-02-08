@@ -3,12 +3,9 @@
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
 //! at the [tail recursive metadata](crate::metadata::tail_recursion).
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,
@@ -17,7 +14,6 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         function_call::FunctionCallConcreteLibfunc,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

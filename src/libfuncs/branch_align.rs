@@ -3,20 +3,12 @@
 //! Natively compiled code doesn't need branch alignment because it has no notion of segments.
 //! Because of this, this libfunc is a no-op.
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

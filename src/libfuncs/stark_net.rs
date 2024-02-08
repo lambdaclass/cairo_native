@@ -1,15 +1,12 @@
 //! # StarkNet libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
-    types::{felt252::PRIME, TypeBuilder},
+    types::felt252::PRIME,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -18,7 +15,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         starknet::StarkNetConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

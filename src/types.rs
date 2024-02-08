@@ -13,9 +13,8 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
-        GenericLibfunc, GenericType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,

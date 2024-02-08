@@ -1,13 +1,9 @@
 //! # `Felt`-related libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::TypeBuilder,
     utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -18,7 +14,7 @@ use cairo_lang_sierra::{
             Felt252ConstConcreteLibfunc,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

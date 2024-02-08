@@ -2,12 +2,9 @@
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -16,7 +13,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };

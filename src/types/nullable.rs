@@ -7,11 +7,8 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{
-        libfuncs,
-        types::{Error, Result},
-    },
-    libfuncs::{LibfuncBuilder, LibfuncHelper},
+    error::{libfuncs, types::Result},
+    libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
@@ -20,7 +17,6 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoAndTypeConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

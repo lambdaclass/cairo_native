@@ -5,16 +5,12 @@
 //! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
 //! insert and get elements.
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoAndTypeConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

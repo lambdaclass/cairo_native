@@ -3,16 +3,12 @@
 //! The range check type is used in the VM for checking whether values are in a specific range.
 //! Since this can be done natively in MLIR, this type is effectively an unit type.
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoOnlyConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

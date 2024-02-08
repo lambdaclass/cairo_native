@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 //! # Debug libfuncs
 
 // Printable: 9-13, 27, 32, 33-126
@@ -11,21 +9,16 @@
 //         U+000D CARRIAGE RETURN.
 //         U+0020 SPACE
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    types::TypeBuilder,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         debug::DebugConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

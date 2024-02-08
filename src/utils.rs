@@ -7,10 +7,10 @@ use crate::{
 };
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+    extensions::core::{CoreLibfunc, CoreType},
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
-    program_registry::{ProgramRegistry, ProgramRegistryError},
+    program_registry::ProgramRegistry,
 };
 use melior::{
     ir::{Module, Type},
@@ -459,9 +459,9 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, super::error::types::Error> {
-        Ok(registry
+        registry
             .get_type(id)?
-            .build(context, module, registry, metadata, id)?)
+            .build(context, module, registry, metadata, id)
     }
 
     fn build_type_with_layout<'ctx>(

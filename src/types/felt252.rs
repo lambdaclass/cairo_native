@@ -4,16 +4,15 @@
 //! [finite field](https://en.wikipedia.org/wiki/Finite_field) modulo
 //! [a prime number](struct@self::PRIME).
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
-    error::types::{Error, Result},
+    error::types::Result,
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         types::InfoOnlyConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };

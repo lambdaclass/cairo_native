@@ -34,7 +34,7 @@ type CloneFnWrapper = Arc<
     ) -> libfuncs::Result<Value<'ctx, 'this>>,
 >;
 
-// #[derive(Debug)]
+#[derive(Default)]
 pub struct SnapshotClonesMeta {
     mappings: HashMap<ConcreteTypeId, CloneFnWrapper>,
 }
@@ -66,13 +66,5 @@ impl SnapshotClonesMeta {
 
     pub fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper> {
         self.mappings.get(id).cloned()
-    }
-}
-
-impl Default for SnapshotClonesMeta {
-    fn default() -> Self {
-        Self {
-            mappings: Default::default(),
-        }
     }
 }

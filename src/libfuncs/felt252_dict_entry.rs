@@ -1,11 +1,8 @@
 //! # `Felt` dictionary entry libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
@@ -18,7 +15,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         felt252_dict::Felt252DictEntryConcreteLibfunc,
         lib_func::SignatureAndTypeConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
