@@ -70,7 +70,7 @@ jobs:
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          cargo-udeps-*/cargo-udeps udeps --all-features
+          cargo-udeps-*/cargo-udeps udeps
 
   test:
     name: test (linux, amd64)
