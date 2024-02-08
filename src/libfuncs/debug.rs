@@ -22,8 +22,10 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        debug::DebugConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc,
-        GenericType,
+        core::{CoreLibfunc, CoreType},
+        debug::DebugConcreteLibfunc,
+        lib_func::SignatureOnlyConcreteLibfunc,
+        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -37,21 +39,15 @@ use melior::{
     Context,
 };
 
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, '_>,
     metadata: &mut MetadataStorage,
     selector: &DebugConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         DebugConcreteLibfunc::Print(info) => {
             build_print(context, registry, entry, location, helper, metadata, info)
@@ -59,21 +55,15 @@ where
     }
 }
 
-pub fn build_print<'ctx, TType, TLibfunc>(
+pub fn build_print<'ctx>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, '_>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");

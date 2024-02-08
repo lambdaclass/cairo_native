@@ -1,11 +1,7 @@
 use super::MetadataStorage;
-use crate::{
-    error::{libfuncs, CoreTypeBuilderError},
-    libfuncs::{LibfuncBuilder, LibfuncHelper},
-    types::{TypeBuilder, WithSelf},
-};
+use crate::{error::libfuncs, libfuncs::LibfuncHelper, types::WithSelf};
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
+    extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
@@ -15,9 +11,9 @@ use melior::{
 };
 use std::{collections::HashMap, sync::Arc};
 
-pub type CloneFn<TType, TLibfunc, P> = for<'ctx, 'this> fn(
+pub type CloneFn<P> = for<'ctx, 'this> fn(
     &'ctx Context,
-    &ProgramRegistry<TType, TLibfunc>,
+    &ProgramRegistry<CoreType, CoreLibfunc>,
     &'this Block<'ctx>,
     Location<'ctx>,
     &LibfuncHelper<'ctx, 'this>,
@@ -26,10 +22,10 @@ pub type CloneFn<TType, TLibfunc, P> = for<'ctx, 'this> fn(
     Value<'ctx, 'this>,
 ) -> libfuncs::Result<Value<'ctx, 'this>>;
 
-type CloneFnWrapper<TType, TLibfunc> = Arc<
+type CloneFnWrapper = Arc<
     dyn for<'ctx, 'this> Fn(
         &'ctx Context,
-        &ProgramRegistry<TType, TLibfunc>,
+        &ProgramRegistry<CoreType, CoreLibfunc>,
         &'this Block<'ctx>,
         Location<'ctx>,
         &LibfuncHelper<'ctx, 'this>,
@@ -39,31 +35,13 @@ type CloneFnWrapper<TType, TLibfunc> = Arc<
 >;
 
 // #[derive(Debug)]
-pub struct SnapshotClonesMeta<TType, TLibfunc>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete:
-        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
-{
-    mappings: HashMap<ConcreteTypeId, CloneFnWrapper<TType, TLibfunc>>,
+pub struct SnapshotClonesMeta {
+    mappings: HashMap<ConcreteTypeId, CloneFnWrapper>,
 }
 
-impl<TType, TLibfunc> SnapshotClonesMeta<TType, TLibfunc>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete:
-        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
-{
-    pub fn register<P>(
-        &mut self,
-        id: ConcreteTypeId,
-        handler: CloneFn<TType, TLibfunc, P>,
-        params: P,
-    ) where
+impl SnapshotClonesMeta {
+    pub fn register<P>(&mut self, id: ConcreteTypeId, handler: CloneFn<P>, params: P)
+    where
         P: 'static,
     {
         let self_ty = id.clone();
@@ -86,19 +64,12 @@ where
         );
     }
 
-    pub fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper<TType, TLibfunc>> {
+    pub fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper> {
         self.mappings.get(id).cloned()
     }
 }
 
-impl<TType, TLibfunc> Default for SnapshotClonesMeta<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete:
-        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
-{
+impl Default for SnapshotClonesMeta {
     fn default() -> Self {
         Self {
             mappings: Default::default(),

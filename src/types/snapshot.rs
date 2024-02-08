@@ -19,7 +19,11 @@ use crate::{
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
-    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoAndTypeConcreteType,
+        GenericLibfunc, GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -30,18 +34,13 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     // This type is like a `Cow<T>` that clones whenever the original type is modified to keep the
     // original data. Since implementing that is complicated we can just clone the entire value for
     // now.
@@ -53,5 +52,5 @@ where
     }
     .set_mapping(info.self_ty, registry.get_type(&info.ty)?.variants());
 
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    Ok(registry.build_type(context, module, registry, metadata, &info.ty)?)
 }

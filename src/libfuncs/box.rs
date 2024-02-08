@@ -15,6 +15,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         boxing::BoxConcreteLibfunc,
+        core::{CoreLibfunc, CoreType},
         lib_func::{
             BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
             SignatureOnlyConcreteLibfunc,
@@ -33,21 +34,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &BoxConcreteLibfunc,
-) -> Result<()>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         BoxConcreteLibfunc::Into(info) => {
             build_into_box(context, registry, entry, location, helper, metadata, info)
@@ -62,21 +57,15 @@ where
 }
 
 /// Generate MLIR operations for the `into_box` libfunc.
-pub fn build_into_box<'ctx, 'this, TType, TLibfunc>(
+pub fn build_into_box<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -120,21 +109,15 @@ where
 }
 
 /// Generate MLIR operations for the `unbox` libfunc.
-pub fn build_unbox<'ctx, 'this, TType, TLibfunc>(
+pub fn build_unbox<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let (inner_ty, inner_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
@@ -162,21 +145,15 @@ where
     Ok(())
 }
 
-fn build_forward_snapshot<'ctx, 'this, TType, TLibfunc>(
+fn build_forward_snapshot<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     super::snapshot_take::build(
         context,
         registry,

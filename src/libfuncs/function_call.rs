@@ -14,7 +14,11 @@ use crate::{
     utils::generate_function_name,
 };
 use cairo_lang_sierra::{
-    extensions::{function_call::FunctionCallConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        function_call::FunctionCallConcreteLibfunc,
+        GenericLibfunc, GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -35,21 +39,15 @@ use melior::{
 use std::alloc::Layout;
 
 /// Generate MLIR operations for the `function_call` libfunc.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &FunctionCallConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let mut arguments = Vec::new();
     let mut result_types = Vec::new();
 

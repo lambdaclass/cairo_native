@@ -14,6 +14,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        core::{CoreLibfunc, CoreType},
         lib_func::{
             BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
             SignatureOnlyConcreteLibfunc,
@@ -36,21 +37,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &NullableConcreteLibfunc,
-) -> Result<()>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         NullableConcreteLibfunc::Null(info) => {
             build_null(context, registry, entry, location, helper, metadata, info)
@@ -69,21 +64,15 @@ where
 
 /// Generate MLIR operations for the `null` libfunc.
 #[allow(clippy::too_many_arguments)]
-fn build_null<'ctx, 'this, TType, TLibfunc>(
+fn build_null<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let op = entry.append_operation(llvm::nullptr(opaque_pointer(context), location));
 
     entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
@@ -93,21 +82,15 @@ where
 
 /// Generate MLIR operations for the `nullable_from_box` libfunc.
 #[allow(clippy::too_many_arguments)]
-fn build_nullable_from_box<'ctx, 'this, TType, TLibfunc>(
+fn build_nullable_from_box<'ctx, 'this>(
     _context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
     Ok(())
@@ -115,21 +98,15 @@ where
 
 /// Generate MLIR operations for the `match_nullable` libfunc.
 #[allow(clippy::too_many_arguments)]
-fn build_match_nullable<'ctx, 'this, TType, TLibfunc>(
+fn build_match_nullable<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let param_ty = registry.build_type(
         context,
         helper,
@@ -176,21 +153,15 @@ where
     Ok(())
 }
 
-fn build_forward_snapshot<'ctx, 'this, TType, TLibfunc>(
+fn build_forward_snapshot<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     super::snapshot_take::build(
         context,
         registry,

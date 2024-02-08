@@ -44,7 +44,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
+    cairo_native::compile(
         &context,
         &module,
         &program.1,

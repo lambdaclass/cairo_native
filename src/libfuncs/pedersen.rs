@@ -13,8 +13,10 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        lib_func::SignatureOnlyConcreteLibfunc, pedersen::PedersenConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+        pedersen::PedersenConcreteLibfunc,
+        ConcreteLibfunc, GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -33,21 +35,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &PedersenConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         PedersenConcreteLibfunc::PedersenHash(info) => {
             build_pedersen(context, registry, entry, location, helper, metadata, info)
@@ -55,31 +51,21 @@ where
     }
 }
 
-pub fn build_pedersen<'ctx, TType, TLibfunc>(
+pub fn build_pedersen<'ctx>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'ctx Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, '_>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let pedersen_builtin = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+    let pedersen_builtin =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let felt252_ty = registry.build_type(
         context,

@@ -39,7 +39,11 @@ use crate::{
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
-    extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        structure::StructConcreteType,
+        GenericLibfunc, GenericType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -51,22 +55,17 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     let fields: Vec<_> = info
         .members
         .iter()
-        .map(|field| registry.build_type(context, module, registry, metadata, field))
+        .map(|field| Ok(registry.build_type(context, module, registry, metadata, field)?))
         .collect::<Result<_>>()?;
     let struct_ty = llvm::r#type::r#struct(context, &fields, false);
 

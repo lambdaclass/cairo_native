@@ -44,7 +44,9 @@ pub enum ErrorImpl {
     #[error(transparent)]
     LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
     #[error(transparent)]
-    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+    ProgramRegistryError(#[from] ProgramRegistryError),
+    #[error(transparent)]
+    ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
     #[error(transparent)]

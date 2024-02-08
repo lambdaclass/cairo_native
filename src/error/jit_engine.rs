@@ -1,16 +1,8 @@
-use crate::types::TypeBuilder;
-use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        GenericType,
-    },
-    ids::ConcreteTypeId,
-    program_registry::ProgramRegistryError,
-};
+use cairo_lang_sierra::{ids::ConcreteTypeId, program_registry::ProgramRegistryError};
 use std::{alloc::LayoutError, fmt, ops::Deref};
 use thiserror::Error;
 
-pub type RunnerError = Error;
+pub type RunnerError = Box<Error>;
 
 #[derive(Error)]
 pub struct Error {
@@ -77,7 +69,7 @@ pub enum ErrorImpl {
     #[error("Error building type '{type_id}': {error}")]
     TypeBuilderError {
         type_id: ConcreteTypeId,
-        error: <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
+        error: crate::error::types::Error,
     },
 
     #[error("missing parameter of type '{0}'")]
@@ -124,10 +116,7 @@ pub fn make_unexpected_value_error(expected: String) -> Error {
 
 pub fn make_type_builder_error(
     id: &ConcreteTypeId,
-) -> impl '_
-       + FnOnce(
-    <<CoreType as GenericType>::Concrete as TypeBuilder<CoreType, CoreLibfunc>>::Error,
-) -> Error {
+) -> impl '_ + FnOnce(crate::error::types::Error) -> Error {
     move |source| {
         ErrorImpl::TypeBuilderError {
             type_id: id.clone(),

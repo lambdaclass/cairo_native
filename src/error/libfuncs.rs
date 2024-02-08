@@ -8,7 +8,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    pub source: ErrorImpl,
+    pub source: Box<ErrorImpl>,
 }
 
 impl fmt::Display for Error {
@@ -32,7 +32,7 @@ where
     fn from(error: E) -> Self {
         Self {
             // backtrace: Backtrace::capture(),
-            source: error.into(),
+            source: Box::new(error.into()),
         }
     }
 }
@@ -46,7 +46,9 @@ pub enum ErrorImpl {
     #[error(transparent)]
     MlirError(#[from] melior::Error),
     #[error(transparent)]
-    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+    ProgramRegistryError(#[from] ProgramRegistryError),
+    #[error(transparent)]
+    ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
     #[error("error parsing attribute")]
@@ -63,7 +65,10 @@ impl From<super::CoreTypeBuilderError> for ErrorImpl {
             super::types::ErrorImpl::TryFromIntError(e) => Self::TryFromIntError(e),
             super::types::ErrorImpl::LayoutErrorPolyfill(e) => Self::LayoutErrorPolyfill(e),
             super::types::ErrorImpl::MlirError(e) => Self::MlirError(e),
-            super::types::ErrorImpl::LibFuncError(e) => e.source,
+            super::types::ErrorImpl::LibFuncError(e) => *e.source,
+            super::types::ErrorImpl::ProgramRegistryErrorBoxed(e) => {
+                Self::ProgramRegistryErrorBoxed(e)
+            }
         }
     }
 }

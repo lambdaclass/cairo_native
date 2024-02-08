@@ -28,6 +28,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        core::{CoreLibfunc, CoreType},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         types::InfoOnlyConcreteType,
         GenericLibfunc, GenericType,
@@ -43,18 +44,13 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     selector: WithSelf<StarkNetTypeConcrete>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     match &*selector {
         StarkNetTypeConcrete::ClassHash(info) => build_class_hash(
             context,
@@ -101,97 +97,67 @@ where
     }
 }
 
-pub fn build_class_hash<'ctx, TType, TLibfunc>(
+pub fn build_class_hash<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     // it's a felt252 value
     super::felt252::build(context, module, registry, metadata, info)
 }
 
-pub fn build_contract_address<'ctx, TType, TLibfunc>(
+pub fn build_contract_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     // it's a felt252 value
     super::felt252::build(context, module, registry, metadata, info)
 }
 
-pub fn build_storage_base_address<'ctx, TType, TLibfunc>(
+pub fn build_storage_base_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     // it's a felt252 value
     super::felt252::build(context, module, registry, metadata, info)
 }
 
-pub fn build_storage_address<'ctx, TType, TLibfunc>(
+pub fn build_storage_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     // it's a felt252 value
     super::felt252::build(context, module, registry, metadata, info)
 }
 
-pub fn build_system<'ctx, TType, TLibfunc>(
+pub fn build_system<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     Ok(llvm::r#type::opaque_pointer(context))
 }
 
-pub fn build_secp256_point<'ctx, TType, TLibfunc>(
+pub fn build_secp256_point<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
     _info: WithSelf<Secp256PointTypeConcrete>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     Ok(llvm::r#type::r#struct(
         context,
         &[

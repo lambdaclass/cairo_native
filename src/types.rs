@@ -13,7 +13,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreConcreteLibfunc, CoreTypeConcrete},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
         GenericLibfunc, GenericType,
     },
@@ -62,11 +62,7 @@ pub mod uninitialized;
 ///
 /// All possible Sierra types must implement it. It is already implemented for all the core Sierra
 /// types, contained in [CoreTypeConcrete].
-pub trait TypeBuilder<TType, TLibfunc>
-where
-    TType: GenericType<Concrete = Self>,
-    TLibfunc: GenericLibfunc,
-{
+pub trait TypeBuilder {
     /// Error type returned by this trait's methods.
     type Error: Error;
 
@@ -75,7 +71,7 @@ where
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error>;
@@ -83,18 +79,21 @@ where
     /// Return whether the type is a builtin.
     fn is_builtin(&self) -> bool;
     /// Return whether the type requires a return pointer when returning.
-    fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+    fn is_complex(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
     /// Return whether the Sierra type resolves to a zero-sized type.
-    fn is_zst(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+    fn is_zst(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
     /// Generate the layout of the MLIR type.
     ///
     /// Used in both the compiler and the interface when calling the compiled code.
-    fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error>;
+    fn layout(
+        &self,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ) -> Result<Layout, Self::Error>;
 
     /// Whether the layout should be allocated in memory (either the stack or the heap) when used as
     /// a function invocation argument or return value.
-    fn is_memory_allocated(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool;
+    fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
     /// If the type is an integer (felt not included) type, return its width in bits.
     ///
@@ -113,7 +112,7 @@ where
     fn build_drop<'ctx, 'this>(
         &self,
         context: &'ctx Context,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
@@ -122,22 +121,14 @@ where
     ) -> Result<(), Self::Error>;
 }
 
-impl<TType, TLibfunc> TypeBuilder<TType, TLibfunc> for CoreTypeConcrete
-where
-    TType: 'static + GenericType<Concrete = Self>,
-    TLibfunc: 'static + GenericLibfunc<Concrete = CoreConcreteLibfunc>,
-    // TODO: Find a way to remove the `Concrete = CoreConcreteLibfunc` requirement on `TLibfunc` and
-    //   instead add the following restriction without causing an overflow evaluating requirement
-    //   error:
-    // <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+impl TypeBuilder for CoreTypeConcrete {
     type Error = CoreTypeBuilderError;
 
     fn build<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error> {
@@ -402,7 +393,7 @@ where
         )
     }
 
-    fn is_complex(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+    fn is_complex(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
         match self {
             // Builtins.
             CoreTypeConcrete::Bitwise(_)
@@ -467,7 +458,7 @@ where
         }
     }
 
-    fn is_zst(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+    fn is_zst(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
         match self {
             // Builtin counters:
             CoreTypeConcrete::Bitwise(_)
@@ -531,7 +522,10 @@ where
         }
     }
 
-    fn layout(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> Result<Layout, Self::Error> {
+    fn layout(
+        &self,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ) -> Result<Layout, Self::Error> {
         Ok(match self {
             CoreTypeConcrete::Array(_) => {
                 Layout::new::<*mut ()>()
@@ -626,7 +620,7 @@ where
         })
     }
 
-    fn is_memory_allocated(&self, registry: &ProgramRegistry<TType, TLibfunc>) -> bool {
+    fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
         // Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         match self {
@@ -728,7 +722,7 @@ where
     fn build_drop<'ctx, 'this>(
         &self,
         context: &'ctx Context,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
