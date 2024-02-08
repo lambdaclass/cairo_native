@@ -6,6 +6,6 @@ edition = "2023_10"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-alexandria_math = { tag = "cairo-v2.3.0-rc0", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_data_structures = { tag = "cairo-v2.3.0-rc0", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_encoding = { tag = "cairo-v2.3.0-rc0", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_math = { rev = "39d20fb71ea4f64b9fe4d749eee475eb0b77a8c5", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_data_structures = { rev = "39d20fb71ea4f64b9fe4d749eee475eb0b77a8c5", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_encoding = { rev = "39d20fb71ea4f64b9fe4d749eee475eb0b77a8c5", git = "https://github.com/keep-starknet-strange/alexandria.git" }

@@ -84,7 +84,9 @@ where
         ArrayConcreteLibfunc::SnapshotPopBack(info) => {
             build_snapshot_pop_back(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::SpanFromTuple(_) => todo!(),
+        ArrayConcreteLibfunc::SpanFromTuple(info) => {
+            build_span_from_tuple(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -1177,6 +1179,191 @@ where
     Ok(())
 }
 
+/// Generate MLIR operations for the `span_from_tuple` libfunc.
+pub fn build_span_from_tuple<'ctx, 'this, TType, TLibfunc>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<TType, TLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()>
+where
+    TType: GenericType,
+    TLibfunc: GenericLibfunc,
+    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
+    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
+{
+    // tuple to array span (t,t,t) -> &[t,t,t]
+
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let struct_type_info = registry.get_type(&info.ty)?;
+
+    let struct_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+
+    let container: Value = {
+        // load box
+        entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                struct_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    struct_type_info.layout(registry)?.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into()
+    };
+
+    let fields = struct_type_info.fields().expect("should have fields");
+    let (field_ty, field_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &fields[0])?;
+    let field_stride = field_layout.pad_to_align().size();
+
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let array_len_value = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(fields.len().try_into().unwrap(), len_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let array_container = entry
+        .append_operation(llvm::undef(array_ty, location))
+        .result(0)?
+        .into();
+
+    // set len
+    let array_container = entry
+        .append_operation(llvm::insert_value(
+            context,
+            array_container,
+            DenseI64ArrayAttribute::new(context, &[1]),
+            array_len_value,
+            location,
+        ))
+        .result(0)?
+        .into();
+    // set capacity
+    let array_container = entry
+        .append_operation(llvm::insert_value(
+            context,
+            array_container,
+            DenseI64ArrayAttribute::new(context, &[2]),
+            array_len_value,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let opaque_ptr_ty = opaque_pointer(context);
+
+    let ptr = entry
+        .append_operation(llvm::nullptr(opaque_ptr_ty, location))
+        .result(0)?
+        .into();
+
+    let field_size: Value = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(
+                field_stride.try_into().unwrap(),
+                IntegerType::new(context, 64).into(),
+            )
+            .into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let array_len_value_i64 = entry
+        .append_operation(arith::extui(array_len_value, field_size.r#type(), location))
+        .result(0)?
+        .into();
+    let total_size = entry
+        .append_operation(arith::muli(field_size, array_len_value_i64, location))
+        .result(0)?
+        .into();
+
+    let ptr = entry
+        .append_operation(ReallocBindingsMeta::realloc(
+            context, ptr, total_size, location,
+        ))
+        .result(0)?
+        .into();
+
+    for (i, _) in fields.iter().enumerate() {
+        let value: Value = entry
+            .append_operation(llvm::extract_value(
+                context,
+                container,
+                DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
+                field_ty,
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let target_ptr = entry
+            .append_operation(llvm::get_element_ptr(
+                context,
+                ptr,
+                DenseI32ArrayAttribute::new(context, &[i as i32]),
+                field_ty,
+                opaque_pointer(context),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        entry.append_operation(llvm::store(
+            context,
+            value,
+            target_ptr,
+            location,
+            LoadStoreOptions::default(),
+        ));
+    }
+
+    let ptr = entry
+        .append_operation(llvm::bitcast(ptr, ptr_ty, location))
+        .result(0)?
+        .into();
+
+    let array_container = entry
+        .append_operation(llvm::insert_value(
+            context,
+            array_container,
+            DenseI64ArrayAttribute::new(context, &[0]),
+            ptr,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(helper.br(0, &[array_container], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::{
@@ -1184,6 +1371,7 @@ mod test {
         values::JitValue,
     };
     use pretty_assertions_sorted::assert_eq;
+    use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_roundtrip() {
@@ -1453,5 +1641,54 @@ mod test {
                 "1637570914057682275393755530660268060279989363"
             ))
         );
+    }
+
+    #[test]
+    fn run_span_from_tuple() {
+        let program = load_cairo!(
+            mod felt252_span_from_tuple {
+                pub extern fn span_from_tuple<T>(struct_like: Box<@T>) -> @Array<felt252> nopanic;
+            }
+
+            fn run_test() -> Array<felt252> {
+                let span = felt252_span_from_tuple::span_from_tuple(BoxTrait::new(@(10, 20, 30)));
+                span.clone()
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_enum!(
+                0,
+                jit_struct!(JitValue::from([
+                    JitValue::Felt252(Felt::from(10)),
+                    Felt::from(20).into(),
+                    Felt::from(30).into()
+                ]))
+            )
+        );
+    }
+
+    #[test]
+    fn run_span_from_multi_tuple() {
+        let program = load_cairo!(
+            mod tuple_span_from_tuple {
+                pub extern fn span_from_tuple<T>(
+                    struct_like: Box<@T>
+                ) -> @Array<(felt252, felt252, felt252)> nopanic;
+            }
+
+            fn run_test() {
+                let multi_tuple = ((10, 20, 30), (40, 50, 60), (70, 80, 90));
+                let span = tuple_span_from_tuple::span_from_tuple(BoxTrait::new(@multi_tuple));
+                assert!(*span[0] == (10, 20, 30));
+                assert!(*span[1] == (40, 50, 60));
+                assert!(*span[2] == (70, 80, 90));
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(result, jit_enum!(0, jit_struct!(jit_struct!())));
     }
 }
