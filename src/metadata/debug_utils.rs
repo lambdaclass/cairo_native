@@ -7,6 +7,7 @@
 //! ```
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
+//! #         core::{CoreLibfunc, CoreType},
 //! #         lib_func::SignatureAndTypeConcreteLibfunc,
 //! #         GenericType,
 //! #         GenericLibfunc,
@@ -36,7 +37,7 @@
 //!
 //! pub fn build_array_len<'ctx, 'this>(
 //!     context: &'ctx Context,
-//!     registry: &ProgramRegistry,
+//!     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
 //!     entry: &'this Block<'ctx>,
 //!     location: Location<'ctx>,
 //!     helper: &LibfuncHelper<'ctx, 'this>,
