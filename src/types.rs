@@ -101,10 +101,13 @@ where
     /// TODO: How is it used?
     fn integer_width(&self) -> Option<usize>;
 
-    /// If the type is a variant type, return all possible variants.
+    /// If the type is a enum type, return all possible variants.
     ///
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
+
+    // If the type is a struct, return the field types.
+    fn fields(&self) -> Option<&[ConcreteTypeId]>;
 
     #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
@@ -711,6 +714,13 @@ where
     fn variants(&self) -> Option<&[ConcreteTypeId]> {
         match self {
             Self::Enum(info) => Some(&info.variants),
+            _ => None,
+        }
+    }
+
+    fn fields(&self) -> Option<&[ConcreteTypeId]> {
+        match self {
+            Self::Struct(info) => Some(&info.members),
             _ => None,
         }
     }

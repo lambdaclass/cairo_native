@@ -130,6 +130,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `revoke_ap_tracking`
 1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (6)
+1. `span_from_tuple`
 1. `storage_address_from_base_and_offset` (StarkNet)
 1. `storage_address_from_base` (StarkNet)
 1. `storage_address_to_felt252` (StarkNet)
@@ -208,7 +209,6 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
 1. `const_as_box`
-1. `span_from_tuple`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
 1. `secp256k1_get_xy_syscall` (StarkNet)
