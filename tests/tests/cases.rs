@@ -1,7 +1,5 @@
-use common::compare_inputless_program;
+use crate::common::compare_inputless_program;
 use test_case::test_case;
-
-mod common;
 
 // Test cases for programs without input, it checks the outputs are correct automatically.
 

@@ -59,7 +59,6 @@ jobs:
           toolchain: nightly-2024-02-01
           components: rustfmt
 
-
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
@@ -77,7 +76,7 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
@@ -119,14 +118,14 @@ jobs:
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test
-        run: make test
+        run: make test-ci
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -146,14 +145,14 @@ jobs:
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
-        run: make test
+        run: make test-ci
   coverage:
     name: coverage
     runs-on: [self-hosted, macOS]
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/optimized-dev
+      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -175,7 +174,7 @@ jobs:
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: cargo build --profile=optimized-dev --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test and generate coverage
         run: make coverage
       - name: Upload coverage to Codecov
