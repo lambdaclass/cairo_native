@@ -135,7 +135,7 @@ pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Error {
         ty.debug_name
             .as_ref()
             .map(|x| x.to_string())
-            .unwrap_or_else(String::new),
+            .unwrap_or_default(),
     )
     .into()
 }
