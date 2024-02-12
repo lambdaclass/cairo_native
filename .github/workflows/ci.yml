@@ -18,7 +18,7 @@ jobs:
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.72.1
+      - uses: dtolnay/rust-toolchain@1.74.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.72.1
+      - uses: dtolnay/rust-toolchain@1.74.1
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -104,7 +104,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.72.1
+        uses: dtolnay/rust-toolchain@1.74.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -135,7 +135,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.72.1
+        uses: dtolnay/rust-toolchain@1.74.1
         with:
           components: clippy
       - name: Install scarb
@@ -162,7 +162,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.72.1
+        uses: dtolnay/rust-toolchain@1.74.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-llvm-cov
