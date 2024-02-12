@@ -44,7 +44,7 @@
 //!
 //! // Execute the program.
 //! let result = native_executor
-//!     .execute(entry_point_id, params, None)
+//!     .invoke_dynamic(entry_point_id, params, None, None)
 //!     .unwrap();
 //!
 //! println!("Cairo program was compiled and executed successfully.");
