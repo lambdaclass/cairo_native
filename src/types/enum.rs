@@ -459,14 +459,7 @@ where
     } else {
         match info.variants.len() {
             0 => unreachable!(),
-            1 => llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, tag_bits).into(),
-                    registry.build_type(context, module, registry, metadata, &info.variants[0])?,
-                ],
-                false,
-            ),
+            1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
             _ if info
                 .variants
                 .iter()
