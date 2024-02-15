@@ -1,10 +1,8 @@
+use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use std::{fs::File, io::BufReader};
 use test_case::test_case;
-
-mod common;
 
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {

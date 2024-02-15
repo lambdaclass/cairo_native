@@ -2,14 +2,10 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{
-    error::{CoreLibfuncBuilderError, CoreTypeBuilderError},
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+use crate::{error::CoreLibfuncBuilderError, metadata::MetadataStorage};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::{core::CoreConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
@@ -67,12 +63,7 @@ pub mod unwrap_non_zero;
 ///
 /// All possible Sierra libfuncs must implement it. It is already implemented for all the core
 /// libfuncs, contained in [CoreConcreteLibfunc].
-pub trait LibfuncBuilder<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc<Concrete = Self>,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-{
+pub trait LibfuncBuilder {
     /// Error type returned by this trait's methods.
     type Error: Error;
 
@@ -80,7 +71,7 @@ where
     fn build<'ctx, 'this>(
         &self,
         context: &'ctx Context,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
@@ -94,18 +85,13 @@ where
     fn is_function_call(&self) -> Option<&FunctionId>;
 }
 
-impl<TType, TLibfunc> LibfuncBuilder<TType, TLibfunc> for CoreConcreteLibfunc
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc<Concrete = Self>,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-{
+impl LibfuncBuilder for CoreConcreteLibfunc {
     type Error = CoreLibfuncBuilderError;
 
     fn build<'ctx, 'this>(
         &self,
         context: &'ctx Context,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         entry: &'this Block<'ctx>,
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
@@ -501,19 +487,12 @@ pub enum BranchTarget<'ctx, 'a> {
     Return(usize),
 }
 
-pub fn increment_builtin_counter<'ctx, 'a, TType, TLibfunc>(
+pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
-) -> crate::error::libfuncs::Result<Value<'ctx, 'a>>
-where
-    'ctx: 'a,
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> crate::error::libfuncs::Result<Value<'ctx, 'a>> {
     let k1 = block
         .append_operation(arith::constant(
             context,

@@ -92,20 +92,22 @@ impl AotNativeExecutor {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
         // TODO: Check signature for contract interface.
-        ContractExecutionResult::from_execution_result(super::invoke_dynamic(
-            &self.registry,
-            self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
-            &[JitValue::Struct {
-                fields: vec![JitValue::Array(
-                    args.iter().cloned().map(JitValue::Felt252).collect(),
-                )],
-                // TODO: Populate `debug_name`.
-                debug_name: None,
-            }],
-            gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
-        ))
+        Ok(ContractExecutionResult::from_execution_result(
+            super::invoke_dynamic(
+                &self.registry,
+                self.find_function_ptr(function_id),
+                self.extract_signature(function_id),
+                &[JitValue::Struct {
+                    fields: vec![JitValue::Array(
+                        args.iter().cloned().map(JitValue::Felt252).collect(),
+                    )],
+                    // TODO: Populate `debug_name`.
+                    debug_name: None,
+                }],
+                gas,
+                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            ),
+        )?)
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {

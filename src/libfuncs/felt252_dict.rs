@@ -1,18 +1,15 @@
 //! # `Felt` dictionary libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    types::TypeBuilder,
 };
 use cairo_lang_sierra::{
     extensions::{
-        felt252_dict::Felt252DictConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        felt252_dict::Felt252DictConcreteLibfunc,
+        lib_func::SignatureOnlyConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -22,21 +19,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &Felt252DictConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         Felt252DictConcreteLibfunc::New(info) => {
             build_new(context, registry, entry, location, helper, metadata, info)
@@ -47,27 +38,17 @@ where
     }
 }
 
-pub fn build_new<'ctx, 'this, TType, TLibfunc>(
+pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let segment_arena = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let segment_arena =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -80,33 +61,19 @@ where
     Ok(())
 }
 
-pub fn build_squash<'ctx, 'this, TType, TLibfunc>(
+pub fn build_squash<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
-    let segment_arena = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(2)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let segment_arena =
+        super::increment_builtin_counter(context, entry, location, entry.argument(2)?.into())?;
 
     entry.append_operation(helper.br(
         0,

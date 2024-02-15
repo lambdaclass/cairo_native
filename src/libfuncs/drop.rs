@@ -5,17 +5,13 @@
 //!
 //! However, types like an array need manual dropping.
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
-    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -24,21 +20,15 @@ use melior::{
 };
 
 /// Generate MLIR operations for the `drop` libfunc.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     // Note: Complex types implement drop within the type itself (in `build_drop`).
 
     let ty = registry.get_type(&info.signature.param_signatures[0].ty)?;

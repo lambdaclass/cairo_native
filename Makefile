@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria runtime
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria runtime test-ci proptest-ci
 
 #
 # Environment detection.
@@ -46,20 +46,26 @@ build-native: check-llvm
 	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
 
 build-dev: check-llvm
-	cargo build --profile optimized-dev --all-targets --all-features
+	cargo build --profile optimized-dev --all-features
 
 check: check-llvm
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
 test: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile optimized-dev --all-targets --all-features
+	cargo test --profile optimized-dev --all-features
 
 proptest: check-llvm needs-cairo2
-	cargo test --profile optimized-dev --all-targets --all-features proptest
+	cargo test --profile optimized-dev --all-features proptest
+
+test-ci: check-llvm needs-cairo2 build-alexandria
+	cargo test --profile ci --all-features
+
+proptest-ci: check-llvm needs-cairo2
+	cargo test --profile ci --all-features proptest
 
 coverage: check-llvm needs-cairo2 build-alexandria
-	cargo llvm-cov --verbose --profile optimized-dev --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace

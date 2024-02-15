@@ -231,15 +231,8 @@ pub fn run_native_program(
         MetadataComputationConfig::default(),
     ));
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
-        &context,
-        &module,
-        program,
-        &registry,
-        &mut metadata,
-        None,
-    )
-    .expect("Could not compile test program to MLIR.");
+    cairo_native::compile(&context, &module, program, &registry, &mut metadata, None)
+        .expect("Could not compile test program to MLIR.");
 
     assert!(
         module.as_operation().verify(),

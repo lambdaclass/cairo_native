@@ -7,6 +7,7 @@
 //! ```
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
+//! #         core::{CoreLibfunc, CoreType},
 //! #         lib_func::SignatureAndTypeConcreteLibfunc,
 //! #         GenericType,
 //! #         GenericLibfunc,
@@ -34,20 +35,15 @@
 //! #     Context,
 //! # };
 //!
-//! pub fn build_array_len<'ctx, 'this, TType, TLibfunc>(
+//! pub fn build_array_len<'ctx, 'this>(
 //!     context: &'ctx Context,
-//!     registry: &ProgramRegistry<TType, TLibfunc>,
+//!     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
 //!     entry: &'this Block<'ctx>,
 //!     location: Location<'ctx>,
 //!     helper: &LibfuncHelper<'ctx, 'this>,
 //!     metadata: &mut MetadataStorage,
 //!     info: &SignatureAndTypeConcreteLibfunc,
 //! ) -> Result<()>
-//! where
-//!     TType: GenericType,
-//!     TLibfunc: GenericLibfunc,
-//!     <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-//!     <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
 //! {
 //!     let array_val = entry.argument(0)?.into();
 //!     let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;

@@ -10,7 +10,6 @@ use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 use std::str::FromStr;
 
-mod common;
 
 lazy_static! {
     static ref EC_POINT_TRY_NEW: (String, Program, SierraCasmRunner) = load_cairo! {

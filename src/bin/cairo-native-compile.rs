@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
+    cairo_native::compile(
         &context,
         &module,
         &program,

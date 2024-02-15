@@ -1,19 +1,14 @@
 //! # Bytes31-related libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
-use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use super::LibfuncHelper;
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
-        bytes31::Bytes31ConcreteLibfunc, consts::SignatureAndConstConcreteLibfunc,
-        lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc, GenericLibfunc, GenericType,
+        bytes31::Bytes31ConcreteLibfunc,
+        consts::SignatureAndConstConcreteLibfunc,
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -28,21 +23,15 @@ use melior::{
 use num_bigint::BigUint;
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &Bytes31ConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         Bytes31ConcreteLibfunc::Const(info) => {
             build_const(context, registry, entry, location, helper, metadata, info)
@@ -57,21 +46,15 @@ where
 }
 
 /// Generate MLIR operations for the `bytes31_const` libfunc.
-pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let value = &info.c;
     let value_ty = registry.build_type(
         context,
@@ -92,21 +75,15 @@ where
 }
 
 /// Generate MLIR operations for the `bytes31_to_felt252` libfunc.
-pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
+pub fn build_to_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let felt252_ty = registry.build_type(
         context,
         helper,
@@ -126,27 +103,17 @@ where
 }
 
 /// Generate MLIR operations for the `u8_from_felt252` libfunc.
-pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
+pub fn build_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check: Value =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let value: Value = entry.argument(1)?.into();
 

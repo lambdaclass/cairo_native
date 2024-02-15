@@ -16,20 +16,20 @@
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
 //! [^2]: Both numbers are number of items, **not bytes**.
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
-    error::{
-        libfuncs,
-        types::{Error, Result},
-    },
-    libfuncs::{LibfuncBuilder, LibfuncHelper},
+    error::{libfuncs, types::Result},
+    libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
-    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoAndTypeConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -45,22 +45,15 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-    <TLibfunc as GenericLibfunc>::Concrete:
-        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
-{
+) -> Result<Type<'ctx>> {
     metadata
-        .get_or_insert_with::<SnapshotClonesMeta<TType, TLibfunc>>(SnapshotClonesMeta::default)
+        .get_or_insert_with::<SnapshotClonesMeta>(SnapshotClonesMeta::default)
         .register(
             info.self_ty().clone(),
             snapshot_take,
@@ -83,29 +76,22 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn snapshot_take<'ctx, 'this, TType, TLibfunc>(
+fn snapshot_take<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>>
-where
-    TType: 'static + GenericType,
-    TLibfunc: 'static + GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-    <TLibfunc as GenericLibfunc>::Concrete:
-        LibfuncBuilder<TType, TLibfunc, Error = libfuncs::Error>,
-{
+) -> libfuncs::Result<Value<'ctx, 'this>> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
     let elem_snapshot_take = metadata
-        .get::<SnapshotClonesMeta<TType, TLibfunc>>()
+        .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
     let (elem_ty, elem_layout) =

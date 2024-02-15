@@ -1,23 +1,20 @@
 //! # `Felt`-related libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::TypeBuilder,
     utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
+        core::{CoreLibfunc, CoreType},
         felt252::{
             Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete,
             Felt252ConstConcreteLibfunc,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -36,21 +33,15 @@ use num_bigint::{Sign, ToBigInt};
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &Felt252Concrete,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         Felt252Concrete::BinaryOperation(info) => {
             build_binary_operation(context, registry, entry, location, helper, metadata, info)
@@ -69,21 +60,15 @@ where
 ///   - `felt252_sub` and `felt252_sub_const`.
 ///   - `felt252_mul` and `felt252_mul_const`.
 ///   - `felt252_div` and `felt252_div_const`.
-pub fn build_binary_operation<'ctx, 'this, TType, TLibfunc>(
+pub fn build_binary_operation<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &Felt252BinaryOperationConcrete,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let bool_ty = IntegerType::new(context, 1).into();
     let felt252_ty = registry.build_type(
         context,
@@ -403,21 +388,15 @@ where
 }
 
 /// Generate MLIR operations for the `felt252_const` libfunc.
-pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &Felt252ConstConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let value = match info.c.sign() {
         Sign::Minus => {
             let prime = metadata
@@ -451,21 +430,15 @@ where
 }
 
 /// Generate MLIR operations for the `felt252_is_zero` libfunc.
-pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+pub fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
     let op = entry.append_operation(arith::constant(

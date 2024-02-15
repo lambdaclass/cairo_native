@@ -7,7 +7,6 @@ use common::{compare_outputs, DEFAULT_GAS};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
-mod common;
 
 lazy_static! {
     static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = load_cairo! {
