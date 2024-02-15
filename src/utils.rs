@@ -7,10 +7,10 @@ use crate::{
 };
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
+    extensions::core::{CoreLibfunc, CoreType},
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
-    program_registry::{ProgramRegistry, ProgramRegistryError},
+    program_registry::ProgramRegistry,
 };
 use melior::{
     ir::{Module, Type},
@@ -430,57 +430,35 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     Ok((layout, padded_size))
 }
 
-pub trait ProgramRegistryExt<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-{
+pub trait ProgramRegistryExt {
     fn build_type<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
-    where
-        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
-            From<Box<ProgramRegistryError>>;
+    ) -> Result<Type<'ctx>, super::error::types::Error>;
 
     fn build_type_with_layout<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
-    where
-        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
-            From<Box<ProgramRegistryError>>;
+    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error>;
 }
 
-impl<TType, TLibfunc> ProgramRegistryExt<TType, TLibfunc> for ProgramRegistry<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-{
+impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
     fn build_type<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, <TType::Concrete as TypeBuilder<TType, TLibfunc>>::Error>
-    where
-        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
-            From<Box<ProgramRegistryError>>,
-    {
+    ) -> Result<Type<'ctx>, super::error::types::Error> {
         registry
             .get_type(id)?
             .build(context, module, registry, metadata, id)
@@ -490,18 +468,10 @@ where
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<TType, TLibfunc>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<
-        (Type<'ctx>, Layout),
-        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
-    >
-    where
-        <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-        <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error:
-            From<Box<ProgramRegistryError>>,
-    {
+    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
         let concrete_type = registry.get_type(id)?;
 
         Ok((
@@ -798,15 +768,8 @@ pub mod test {
             metadata.insert(gas_metadata);
         }
 
-        crate::compile::<CoreType, CoreLibfunc>(
-            &context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )
-        .expect("Could not compile test program to MLIR.");
+        crate::compile(&context, &module, program, &registry, &mut metadata, None)
+            .expect("Could not compile test program to MLIR.");
 
         assert!(
             module.as_operation().verify(),

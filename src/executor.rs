@@ -111,8 +111,8 @@ fn invoke_dynamic(
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
-    let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
-    let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
+    let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
+    let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
@@ -130,8 +130,8 @@ fn invoke_dynamic(
         .filter(|id| {
             let info = registry.get_type(id).unwrap();
 
-            let is_builtin = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_builtin;
-            let is_zst = <CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst;
+            let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
+            let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
             !(is_builtin(info) && is_zst(info, registry))
         })
@@ -166,7 +166,7 @@ fn invoke_dynamic(
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
-        !<CoreTypeConcrete as TypeBuilder<CoreType, CoreLibfunc>>::is_zst(info, registry)
+        !<CoreTypeConcrete as TypeBuilder>::is_zst(info, registry)
     }) {
         let type_info = registry.get_type(type_id).unwrap();
 

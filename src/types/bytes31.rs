@@ -2,13 +2,12 @@
 //!
 //! A `bytes31` is a 248-bit number (31 bytes).
 
-use super::TypeBuilder;
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-};
+use crate::{error::types::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
-    extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoOnlyConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -19,17 +18,12 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
     _info: &InfoOnlyConcreteType,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     Ok(IntegerType::new(context, 248).into())
 }

@@ -9,8 +9,6 @@ use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
-mod common;
-
 lazy_static! {
 
     static ref FELT252_ADD: (String, Program, SierraCasmRunner) = load_cairo! {

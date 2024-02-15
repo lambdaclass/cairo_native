@@ -8,7 +8,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    pub source: ErrorImpl,
+    pub source: Box<ErrorImpl>,
 }
 
 impl fmt::Display for Error {
@@ -32,7 +32,7 @@ where
     fn from(error: E) -> Self {
         Self {
             // backtrace: Backtrace::capture(),
-            source: error.into(),
+            source: Box::new(error.into()),
         }
     }
 }
@@ -44,7 +44,9 @@ pub enum ErrorImpl {
     #[error(transparent)]
     LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
     #[error(transparent)]
-    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+    ProgramRegistryError(#[from] ProgramRegistryError),
+    #[error(transparent)]
+    ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
     #[error(transparent)]

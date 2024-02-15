@@ -1,23 +1,20 @@
 //! # `u128`-related libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::MetadataStorage,
-    types::TypeBuilder,
     utils::{mlir_asm, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
+        core::{CoreLibfunc, CoreType},
         int::{
             unsigned128::{Uint128Concrete, Uint128Traits},
             IntConstConcreteLibfunc, IntOperationConcreteLibfunc, IntOperator,
         },
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -36,21 +33,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &Uint128Concrete,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         Uint128Concrete::ByteReverse(info) => {
             build_byte_reverse(context, registry, entry, location, helper, metadata, info)
@@ -92,27 +83,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128_byte_reverse` libfunc.
-pub fn build_byte_reverse<'ctx, 'this, TType, TLibfunc>(
+pub fn build_byte_reverse<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let bitwise = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let bitwise =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let u128_ty = registry.build_type(
         context,
@@ -134,21 +115,15 @@ where
 }
 
 /// Generate MLIR operations for the `u128_const` libfunc.
-pub fn build_const<'ctx, 'this, TType, TLibfunc>(
+pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &IntConstConcreteLibfunc<Uint128Traits>,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let value = info.c;
 
     let u128_ty = registry.build_type(
@@ -171,27 +146,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128_safe_divmod` libfunc.
-pub fn build_divmod<'ctx, 'this, TType, TLibfunc>(
+pub fn build_divmod<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
@@ -207,21 +172,15 @@ where
 }
 
 /// Generate MLIR operations for the `u128_equal` libfunc.
-pub fn build_equal<'ctx, 'this, TType, TLibfunc>(
+pub fn build_equal<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
     let arg1: Value = entry.argument(1)?.into();
 
@@ -245,27 +204,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128s_from_felt252` libfunc.
-pub fn build_from_felt252<'ctx, 'this, TType, TLibfunc>(
+pub fn build_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let arg1 = entry.argument(1)?.into();
 
@@ -334,21 +283,15 @@ where
 }
 
 /// Generate MLIR operations for the `u128_is_zero` libfunc.
-pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+pub fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
     let op = entry.append_operation(arith::constant(
@@ -372,27 +315,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128_add` and `u128_sub` libfuncs.
-pub fn build_operation<'ctx, 'this, TType, TLibfunc>(
+pub fn build_operation<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     info: &IntOperationConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check: Value = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check: Value =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
@@ -452,27 +385,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128_sqrt` libfunc.
-pub fn build_square_root<'ctx, 'this, TType, TLibfunc>(
+pub fn build_square_root<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let i64_ty = IntegerType::new(context, 64).into();
     let i128_ty = IntegerType::new(context, 128).into();
@@ -724,21 +647,15 @@ where
 }
 
 /// Generate MLIR operations for the `u128_to_felt252` libfunc.
-pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
+pub fn build_to_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let op = entry.append_operation(arith::extui(
         entry.argument(0)?.into(),
         IntegerType::new(context, 252).into(),
@@ -750,21 +667,15 @@ where
 }
 
 /// Generate MLIR operations for the `u128_guarantee_mul` libfunc.
-pub fn build_guarantee_mul<'ctx, 'this, TType, TLibfunc>(
+pub fn build_guarantee_mul<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let lhs: Value = entry.argument(0)?.into();
     let rhs: Value = entry.argument(1)?.into();
 
@@ -811,27 +722,17 @@ where
 }
 
 /// Generate MLIR operations for the `u128_guarantee_verify` libfunc.
-pub fn build_guarantee_verify<'ctx, 'this, TType, TLibfunc>(
+pub fn build_guarantee_verify<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     entry.append_operation(helper.br(0, &[range_check], location));
     Ok(())
