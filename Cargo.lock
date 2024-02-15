@@ -889,7 +889,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "starknet-types-core 0.0.6",
+ "starknet-types-core",
  "tempfile",
  "test-case",
  "thiserror",
@@ -907,7 +907,7 @@ dependencies = [
  "libc",
  "starknet-crypto",
  "starknet-curve",
- "starknet-types-core 0.0.5",
+ "starknet-types-core",
 ]
 
 [[package]]
@@ -1854,12 +1854,6 @@ dependencies = [
  "rayon",
  "thiserror",
 ]
-
-[[package]]
-name = "lambdaworks-math"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "540c0715d7da472edc421ceca702d3f3a716b3b9168b6211f2e3939cb14c863c"
 
 [[package]]
 name = "lambdaworks-math"
@@ -3046,21 +3040,6 @@ dependencies = [
  "crypto-bigint",
  "getrandom",
  "hex",
-]
-
-[[package]]
-name = "starknet-types-core"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2441eb61d91a6bae832fda48e50b6ff09faa6cf63bfadd22dc16798d2cc024d"
-dependencies = [
- "bitvec",
- "lambdaworks-math 0.3.0",
- "lazy_static",
- "num-bigint",
- "num-integer",
- "num-traits 0.2.17",
- "serde",
 ]
 
 [[package]]
