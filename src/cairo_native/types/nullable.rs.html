@@ -175,20 +175,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable type
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
@@ -198,17 +184,17 @@
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
-    error::{
-        libfuncs,
-        types::{Error, <span class="prelude-ty">Result</span>},
-    },
-    libfuncs::{LibfuncBuilder, LibfuncHelper},
+    error::{libfuncs, types::Result},
+    libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
 };
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoAndTypeConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -228,22 +214,15 @@
 <span class="doccomment">/// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
-    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete:
-        LibfuncBuilder&lt;TType, TLibfunc, Error = libfuncs::Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     metadata
-        .get_or_insert_with::&lt;SnapshotClonesMeta&lt;TType, TLibfunc&gt;&gt;(SnapshotClonesMeta::default)
+        .get_or_insert_with::&lt;SnapshotClonesMeta&gt;(SnapshotClonesMeta::default)
         .register(
             info.self_ty().clone(),
             snapshot_take,
@@ -258,23 +237,16 @@
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>snapshot_take&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">fn </span>snapshot_take&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
     src_value: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
-) -&gt; libfuncs::Result&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
-    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete:
-        LibfuncBuilder&lt;TType, TLibfunc, Error = libfuncs::Error&gt;,
-{
+) -&gt; libfuncs::Result&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt; {
     <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }

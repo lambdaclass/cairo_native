@@ -1070,31 +1070,6 @@
 <a href="#1070" id="1070">1070</a>
 <a href="#1071" id="1071">1071</a>
 <a href="#1072" id="1072">1072</a>
-<a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1159,7 +1134,11 @@
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     edit_state,
-    extensions::{gas::CostTokenType, ConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+        ConcreteLibfunc,
+    },
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
@@ -1205,24 +1184,17 @@
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
-</span><span class="kw">pub fn </span>compile&lt;TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>compile(
     context: <span class="kw-2">&amp;</span>Context,
     module: <span class="kw-2">&amp;</span>Module,
     program: <span class="kw-2">&amp;</span>Program,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     debug_info: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DebugLocations&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), CompileError&lt;TType, TLibfunc&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete:
-        TypeBuilder&lt;TType, TLibfunc, Error = <span class="kw">crate</span>::error::types::Error&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), CompileError&gt; {
     <span class="kw">for </span>function <span class="kw">in </span><span class="kw-2">&amp;</span>program.funcs {
         <span class="macro">tracing::info!</span>(<span class="string">&quot;Compiling function `{}`.&quot;</span>, function.id);
-        compile_func::&lt;TType, TLibfunc&gt;(
+        compile_func(
             context,
             module,
             registry,
@@ -1243,22 +1215,15 @@
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
-</span><span class="kw">fn </span>compile_func&lt;TType, TLibfunc&gt;(
+</span><span class="kw">fn </span>compile_func(
     context: <span class="kw-2">&amp;</span>Context,
     module: <span class="kw-2">&amp;</span>Module,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     function: <span class="kw-2">&amp;</span>Function,
     statements: <span class="kw-2">&amp;</span>[Statement],
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     debug_info: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DebugLocations&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), CompileError&lt;TType, TLibfunc&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete:
-        TypeBuilder&lt;TType, TLibfunc, Error = <span class="kw">crate</span>::error::types::Error&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), CompileError&gt; {
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>blocks_arena = Bump::new();
 
@@ -1393,7 +1358,7 @@
     ));
 
     <span class="kw">let </span><span class="kw-2">mut </span>tailrec_storage = Vec::&lt;(Value, BlockRef)&gt;::new();
-    foreach_statement_in_function::&lt;<span class="kw">_</span>, CompileError&lt;TType, TLibfunc&gt;&gt;(
+    foreach_statement_in_function::&lt;<span class="kw">_</span>, CompileError&gt;(
         statements,
         function.entry_point,
         (initial_state, BTreeMap::&lt;usize, usize&gt;::new()),
@@ -1417,7 +1382,7 @@
                         .sorted_by_key(|x| x.id)
                         .enumerate()
                         .map(|(idx, var_id)| <span class="prelude-val">Ok</span>((var_id, landing_block.argument(idx)<span class="question-mark">?</span>.into())))
-                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?
+                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&gt;&gt;()<span class="question-mark">?
                         </span>.into_iter(),
                 )<span class="question-mark">?</span>;
 
@@ -1551,7 +1516,7 @@
                                 tailrec_state.clone(),
                             ))
                         })
-                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?
+                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&gt;&gt;()<span class="question-mark">?
                 </span>}
                 Statement::Return(var_ids) =&gt; {
                     <span class="macro">tracing::trace!</span>(<span class="string">&quot;Implementing the return statement at {statement_idx}&quot;</span>);
@@ -1778,7 +1743,7 @@
                     .argument((has_return_ptr == <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="kw">as </span>usize + i)<span class="question-mark">?
                     </span>.into())
             })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?</span>,
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&gt;&gt;()<span class="question-mark">?</span>,
         Location::unknown(context),
     ));
 
@@ -1807,21 +1772,15 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>generate_function_structure&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>, TType, TLibfunc&gt;(
+<span class="kw">fn </span>generate_function_structure&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;c </span>Context,
     module: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Module&lt;<span class="lifetime">&#39;c</span>&gt;,
     region: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Region&lt;<span class="lifetime">&#39;c</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     function: <span class="kw-2">&amp;</span>Function,
     statements: <span class="kw-2">&amp;</span>[Statement],
     metadata_storage: <span class="kw-2">&amp;mut </span>MetadataStorage,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(BlockRef&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;, BlockStorage&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;), CompileError&lt;TType, TLibfunc&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;(BlockRef&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;, BlockStorage&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>&gt;), CompileError&gt; {
     <span class="kw">let </span>initial_state = edit_state::put_results::&lt;(Type, bool)&gt;(
         HashMap::new(),
         function
@@ -1840,14 +1799,14 @@
                     ),
                 ))
             })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&gt;&gt;()<span class="question-mark">?
             </span>.into_iter(),
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>blocks = BTreeMap::new();
     <span class="kw">let </span><span class="kw-2">mut </span>predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), <span class="number">0</span>))]);
 
-    foreach_statement_in_function::&lt;<span class="kw">_</span>, CompileError&lt;TType, TLibfunc&gt;&gt;(
+    foreach_statement_in_function::&lt;<span class="kw">_</span>, CompileError&gt;(
         statements,
         function.entry_point,
         initial_state,
@@ -1897,26 +1856,24 @@
                                     branch_signature
                                         .vars
                                         .iter()
-                                        .map(
-                                            |var_info| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&lt;TType, TLibfunc&gt;&gt; {
-                                                <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
+                                        .map(|var_info| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&gt; {
+                                            <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
 
-                                                <span class="prelude-val">Ok</span>((
-                                                    type_info
-                                                        .build(
-                                                            context,
-                                                            module,
-                                                            registry,
-                                                            metadata_storage,
-                                                            <span class="kw-2">&amp;</span>var_info.ty,
-                                                        )
-                                                        .map_err(make_type_builder_error(
-                                                            <span class="kw-2">&amp;</span>var_info.ty,
-                                                        ))<span class="question-mark">?</span>,
-                                                    type_info.is_memory_allocated(registry),
-                                                ))
-                                            },
-                                        )
+                                            <span class="prelude-val">Ok</span>((
+                                                type_info
+                                                    .build(
+                                                        context,
+                                                        module,
+                                                        registry,
+                                                        metadata_storage,
+                                                        <span class="kw-2">&amp;</span>var_info.ty,
+                                                    )
+                                                    .map_err(make_type_builder_error(
+                                                        <span class="kw-2">&amp;</span>var_info.ty,
+                                                    ))<span class="question-mark">?</span>,
+                                                type_info.is_memory_allocated(registry),
+                                            ))
+                                        })
                                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
                                 ),
                             )<span class="question-mark">?</span>;
@@ -1931,7 +1888,7 @@
 
                             <span class="prelude-val">Ok</span>(state)
                         })
-                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?
+                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, CompileError&gt;&gt;()<span class="question-mark">?
                 </span>}
                 Statement::Return(var_ids) =&gt; {
                     <span class="macro">tracing::trace!</span>(
@@ -1971,7 +1928,7 @@
             metadata_storage,
         )
         .map(|ty| <span class="prelude-val">Ok</span>((ty<span class="question-mark">?</span>, Location::unknown(context))))
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;()<span class="question-mark">?</span>;
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, CompileError&gt;&gt;()<span class="question-mark">?</span>;
 
         <span class="kw">for </span>(type_info, (ty, <span class="kw">_</span>)) <span class="kw">in </span>function
             .signature
@@ -2064,20 +2021,13 @@
     ))
 }
 
-<span class="kw">fn </span>extract_types&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;a</span>, TType, TLibfunc&gt;(
+<span class="kw">fn </span>extract_types&lt;<span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;a</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;c </span>Context,
     module: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Module&lt;<span class="lifetime">&#39;c</span>&gt;,
     type_ids: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[ConcreteTypeId],
-    registry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata_storage: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>MetadataStorage,
-) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;a </span>+ Iterator&lt;Item = <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;c</span>&gt;, CompileError&lt;TType, TLibfunc&gt;&gt;&gt;
-<span class="kw">where
-    </span><span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;a</span>,
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;a </span>+ Iterator&lt;Item = <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;c</span>&gt;, CompileError&gt;&gt; {
     type_ids.iter().filter_map(|id| {
         <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(id) {
             <span class="prelude-val">Ok</span>(x) =&gt; x,

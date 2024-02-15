@@ -801,13 +801,6 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -823,9 +816,8 @@
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        core::{CoreConcreteLibfunc, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
-        GenericLibfunc, GenericType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -872,11 +864,7 @@
 ///
 /// All possible Sierra types must implement it. It is already implemented for all the core Sierra
 /// types, contained in [CoreTypeConcrete].
-</span><span class="kw">pub trait </span>TypeBuilder&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType&lt;Concrete = <span class="self">Self</span>&gt;,
-    TLibfunc: GenericLibfunc,
-{
+</span><span class="kw">pub trait </span>TypeBuilder {
     <span class="doccomment">/// Error type returned by this trait&#39;s methods.
     </span><span class="kw">type </span>Error: Error;
 
@@ -885,7 +873,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         self_ty: <span class="kw-2">&amp;</span>ConcreteTypeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, <span class="self">Self</span>::Error&gt;;
@@ -893,18 +881,21 @@
     <span class="doccomment">/// Return whether the type is a builtin.
     </span><span class="kw">fn </span>is_builtin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
     <span class="doccomment">/// Return whether the type requires a return pointer when returning.
-    </span><span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool;
+    </span><span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
     <span class="doccomment">/// Return whether the Sierra type resolves to a zero-sized type.
-    </span><span class="kw">fn </span>is_zst(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool;
+    </span><span class="kw">fn </span>is_zst(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
 
     <span class="doccomment">/// Generate the layout of the MLIR type.
     ///
     /// Used in both the compiler and the interface when calling the compiled code.
-    </span><span class="kw">fn </span>layout(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Layout, <span class="self">Self</span>::Error&gt;;
+    </span><span class="kw">fn </span>layout(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Layout, <span class="self">Self</span>::Error&gt;;
 
     <span class="doccomment">/// Whether the layout should be allocated in memory (either the stack or the heap) when used as
     /// a function invocation argument or return value.
-    </span><span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool;
+    </span><span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
 
     <span class="doccomment">/// If the type is an integer (felt not included) type, return its width in bits.
     ///
@@ -923,7 +914,7 @@
     </span><span class="kw">fn </span>build_drop&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
         location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
         helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
@@ -932,22 +923,14 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;;
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc&gt; TypeBuilder&lt;TType, TLibfunc&gt; <span class="kw">for </span>CoreTypeConcrete
-<span class="kw">where
-    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType&lt;Concrete = <span class="self">Self</span>&gt;,
-    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc&lt;Concrete = CoreConcreteLibfunc&gt;,
-    <span class="comment">// TODO: Find a way to remove the `Concrete = CoreConcreteLibfunc` requirement on `TLibfunc` and
-    //   instead add the following restriction without causing an overflow evaluating requirement
-    //   error:
-    // &lt;TLibfunc as GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-</span>{
+<span class="kw">impl </span>TypeBuilder <span class="kw">for </span>CoreTypeConcrete {
     <span class="kw">type </span>Error = CoreTypeBuilderError;
 
     <span class="kw">fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         self_ty: <span class="kw-2">&amp;</span>ConcreteTypeId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, <span class="self">Self</span>::Error&gt; {
@@ -1212,7 +1195,7 @@
         )
     }
 
-    <span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool {
+    <span class="kw">fn </span>is_complex(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// Builtins.
             </span>CoreTypeConcrete::Bitwise(<span class="kw">_</span>)
@@ -1277,7 +1260,7 @@
         }
     }
 
-    <span class="kw">fn </span>is_zst(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool {
+    <span class="kw">fn </span>is_zst(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// Builtin counters:
             </span>CoreTypeConcrete::Bitwise(<span class="kw">_</span>)
@@ -1341,7 +1324,10 @@
         }
     }
 
-    <span class="kw">fn </span>layout(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Layout, <span class="self">Self</span>::Error&gt; {
+    <span class="kw">fn </span>layout(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Layout, <span class="self">Self</span>::Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
             CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; {
                 Layout::new::&lt;<span class="kw-2">*mut </span>()&gt;()
@@ -1436,7 +1422,7 @@
         })
     }
 
-    <span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;) -&gt; bool {
+    <span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
         <span class="comment">// Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         </span><span class="kw">match </span><span class="self">self </span>{
@@ -1538,7 +1524,7 @@
     <span class="kw">fn </span>build_drop&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
         location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
         helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,

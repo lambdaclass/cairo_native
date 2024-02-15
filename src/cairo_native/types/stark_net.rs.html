@@ -177,44 +177,6 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # StarkNet types
 //!
 //! ## ClassHash
@@ -238,16 +200,13 @@
 
 </span><span class="comment">// TODO: Maybe the types used here can be i251 instead of i252.
 
-</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
-<span class="kw">use crate</span>::{
-    error::types::{Error, <span class="prelude-ty">Result</span>},
-    metadata::MetadataStorage,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
+<span class="kw">use crate</span>::{error::types::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
+        core::{CoreLibfunc, CoreType},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         types::InfoOnlyConcreteType,
-        GenericLibfunc, GenericType,
     },
     program_registry::ProgramRegistry,
 };
@@ -260,18 +219,13 @@
 <span class="doccomment">/// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: WithSelf&lt;StarkNetTypeConcrete&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="kw">match </span><span class="kw-2">&amp;*</span>selector {
         StarkNetTypeConcrete::ClassHash(info) =&gt; build_class_hash(
             context,
@@ -318,97 +272,67 @@
     }
 }
 
-<span class="kw">pub fn </span>build_class_hash&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_class_hash&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="comment">// it&#39;s a felt252 value
     </span><span class="kw">super</span>::felt252::build(context, module, registry, metadata, info)
 }
 
-<span class="kw">pub fn </span>build_contract_address&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_contract_address&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="comment">// it&#39;s a felt252 value
     </span><span class="kw">super</span>::felt252::build(context, module, registry, metadata, info)
 }
 
-<span class="kw">pub fn </span>build_storage_base_address&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_storage_base_address&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="comment">// it&#39;s a felt252 value
     </span><span class="kw">super</span>::felt252::build(context, module, registry, metadata, info)
 }
 
-<span class="kw">pub fn </span>build_storage_address&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_storage_address&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="comment">// it&#39;s a felt252 value
     </span><span class="kw">super</span>::felt252::build(context, module, registry, metadata, info)
 }
 
-<span class="kw">pub fn </span>build_system&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_system&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="prelude-val">Ok</span>(llvm::r#type::opaque_pointer(context))
 }
 
-<span class="kw">pub fn </span>build_secp256_point&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_secp256_point&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: WithSelf&lt;Secp256PointTypeConcrete&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="prelude-val">Ok</span>(llvm::r#type::r#struct(
         context,
         <span class="kw-2">&amp;</span>[

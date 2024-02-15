@@ -32,11 +32,6 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
@@ -44,13 +39,13 @@
 //! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
 //! insert and get elements.
 
-</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
-<span class="kw">use crate</span>::{
-    error::types::{Error, <span class="prelude-ty">Result</span>},
-    metadata::MetadataStorage,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
+<span class="kw">use crate</span>::{error::types::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoAndTypeConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -62,18 +57,13 @@
 <span class="doccomment">/// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="prelude-val">Ok</span>(llvm::r#type::opaque_pointer(context))
 }
 </code></pre></div></section></main></body></html>

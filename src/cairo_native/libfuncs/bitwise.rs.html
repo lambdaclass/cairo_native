@@ -118,33 +118,15 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bitwise libfuncs
 
-</span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
-<span class="kw">use crate</span>::{
-    error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use crate</span>::{error::libfuncs::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -154,27 +136,17 @@
 };
 
 <span class="doccomment">/// Generate MLIR operations for the `bitwise` libfunc.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
-    <span class="kw">let </span>bitwise = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
-        context,
-        entry,
-        location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-    )<span class="question-mark">?</span>;
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>bitwise =
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>lhs = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();

@@ -519,44 +519,16 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u512`-related libfuncs
 
-</span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
-<span class="kw">use crate</span>::{
-    error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use crate</span>::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        int::unsigned512::Uint512Concrete, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        int::unsigned512::Uint512Concrete,
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -571,21 +543,15 @@
 };
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: <span class="kw-2">&amp;</span>Uint512Concrete,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">match </span>selector {
         Uint512Concrete::DivModU256(info) =&gt; {
             build_divmod_u256(context, registry, entry, location, helper, metadata, info)
@@ -594,27 +560,17 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `u512_safe_divmod_by_u256` libfunc.
-</span><span class="kw">pub fn </span>build_divmod_u256&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build_divmod_u256&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
-    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter::&lt;TType, TLibfunc&gt;(
-        context,
-        entry,
-        location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-    )<span class="question-mark">?</span>;
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>range_check =
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i512_ty = IntegerType::new(context, <span class="number">512</span>).into();

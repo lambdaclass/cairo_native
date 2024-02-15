@@ -50,26 +50,18 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Snapshot taking libfuncs
 
-</span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
-    types::TypeBuilder,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -78,26 +70,20 @@
 };
 
 <span class="doccomment">/// Generate MLIR operations for the `snapshot_take` libfunc.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: <span class="lifetime">&#39;static </span>+ GenericType,
-    TLibfunc: <span class="lifetime">&#39;static </span>+ GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// Handle non-trivially-copyable types (ex. arrays) by invoking their override or just copy the
     // original value otherwise.
     </span><span class="kw">let </span>original_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>cloned_value = <span class="kw">match </span>metadata
-        .get_mut::&lt;SnapshotClonesMeta&lt;TType, TLibfunc&gt;&gt;()
+        .get_mut::&lt;SnapshotClonesMeta&gt;()
         .and_then(|meta| meta.wrap_invoke(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty))
     {
         <span class="prelude-val">Some</span>(invoke_fn) =&gt; invoke_fn(

@@ -26,20 +26,15 @@
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Unsigned 64-bit integer type
 
-</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
-<span class="kw">use crate</span>::{
-    error::types::{Error, <span class="prelude-ty">Result</span>},
-    metadata::MetadataStorage,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
+<span class="kw">use crate</span>::{error::types::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{types::InfoOnlyConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoOnlyConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -50,18 +45,13 @@
 <span class="doccomment">/// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
     _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: WithSelf&lt;InfoOnlyConcreteType&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;&gt; {
     <span class="prelude-val">Ok</span>(IntegerType::new(context, <span class="number">64</span>).into())
 }
 </code></pre></div></section></main></body></html>

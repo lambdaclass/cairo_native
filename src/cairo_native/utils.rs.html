@@ -1105,43 +1105,6 @@
 <a href="#1105" id="1105">1105</a>
 <a href="#1106" id="1106">1106</a>
 <a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1151,10 +1114,10 @@
 };
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{GenericLibfunc, GenericType},
+    extensions::core::{CoreLibfunc, CoreType},
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
-    program_registry::{ProgramRegistry, ProgramRegistryError},
+    program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
     ir::{Module, Type},
@@ -1574,57 +1537,35 @@
     <span class="prelude-val">Ok</span>((layout, padded_size))
 }
 
-<span class="kw">pub trait </span>ProgramRegistryExt&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-{
+<span class="kw">pub trait </span>ProgramRegistryExt {
     <span class="kw">fn </span>build_type&lt;<span class="lifetime">&#39;ctx</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, &lt;TType::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error&gt;
-    <span class="kw">where
-        </span>&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-        &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error:
-            From&lt;Box&lt;ProgramRegistryError&gt;&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, <span class="kw">super</span>::error::types::Error&gt;;
 
     <span class="kw">fn </span>build_type_with_layout&lt;<span class="lifetime">&#39;ctx</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, Layout), &lt;TType::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error&gt;
-    <span class="kw">where
-        </span>&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-        &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error:
-            From&lt;Box&lt;ProgramRegistryError&gt;&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, Layout), <span class="kw">super</span>::error::types::Error&gt;;
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc&gt; ProgramRegistryExt&lt;TType, TLibfunc&gt; <span class="kw">for </span>ProgramRegistry&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-{
+<span class="kw">impl </span>ProgramRegistryExt <span class="kw">for </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
     <span class="kw">fn </span>build_type&lt;<span class="lifetime">&#39;ctx</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, &lt;TType::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error&gt;
-    <span class="kw">where
-        </span>&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-        &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error:
-            From&lt;Box&lt;ProgramRegistryError&gt;&gt;,
-    {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, <span class="kw">super</span>::error::types::Error&gt; {
         registry
             .get_type(id)<span class="question-mark">?
             </span>.build(context, module, registry, metadata, id)
@@ -1634,18 +1575,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
         module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        (Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, Layout),
-        &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error,
-    &gt;
-    <span class="kw">where
-        </span>&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-        &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error:
-            From&lt;Box&lt;ProgramRegistryError&gt;&gt;,
-    {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">&#39;ctx</span>&gt;, Layout), <span class="kw">super</span>::error::types::Error&gt; {
         <span class="kw">let </span>concrete_type = registry.get_type(id)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
@@ -1942,15 +1875,8 @@
             metadata.insert(gas_metadata);
         }
 
-        <span class="kw">crate</span>::compile::&lt;CoreType, CoreLibfunc&gt;(
-            <span class="kw-2">&amp;</span>context,
-            <span class="kw-2">&amp;</span>module,
-            program,
-            <span class="kw-2">&amp;</span>registry,
-            <span class="kw-2">&amp;mut </span>metadata,
-            <span class="prelude-val">None</span>,
-        )
-        .expect(<span class="string">&quot;Could not compile test program to MLIR.&quot;</span>);
+        <span class="kw">crate</span>::compile(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;</span>module, program, <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;mut </span>metadata, <span class="prelude-val">None</span>)
+            .expect(<span class="string">&quot;Could not compile test program to MLIR.&quot;</span>);
 
         <span class="macro">assert!</span>(
             module.as_operation().verify(),

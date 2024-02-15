@@ -455,33 +455,11 @@
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
 <a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
 
-</span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::Result,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
@@ -491,8 +469,10 @@
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        felt252_dict::Felt252DictEntryConcreteLibfunc, lib_func::SignatureAndTypeConcreteLibfunc,
-        ConcreteLibfunc, GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        felt252_dict::Felt252DictEntryConcreteLibfunc,
+        lib_func::SignatureAndTypeConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -511,21 +491,15 @@
 };
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: <span class="kw-2">&amp;</span>Felt252DictEntryConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">match </span>selector {
         Felt252DictEntryConcreteLibfunc::Get(info) =&gt; {
             build_get(context, registry, entry, location, helper, metadata, info)
@@ -536,21 +510,15 @@
     }
 }
 
-<span class="kw">pub fn </span>build_get&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_get&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -744,21 +712,15 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>, TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>value_type = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>value_layout = value_type.layout(registry)<span class="question-mark">?</span>;
 

@@ -538,10 +538,6 @@
 <a href="#538" id="538">538</a>
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
@@ -551,6 +547,7 @@
 //! ```
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
+//! #         core::{CoreLibfunc, CoreType},
 //! #         lib_func::SignatureAndTypeConcreteLibfunc,
 //! #         GenericType,
 //! #         GenericLibfunc,
@@ -578,20 +575,15 @@
 //! #     Context,
 //! # };
 //!
-//! pub fn build_array_len&lt;&#39;ctx, &#39;this, TType, TLibfunc&gt;(
+//! pub fn build_array_len&lt;&#39;ctx, &#39;this&gt;(
 //!     context: &amp;&#39;ctx Context,
-//!     registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;,
+//!     registry: &amp;ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 //!     entry: &amp;&#39;this Block&lt;&#39;ctx&gt;,
 //!     location: Location&lt;&#39;ctx&gt;,
 //!     helper: &amp;LibfuncHelper&lt;&#39;ctx, &#39;this&gt;,
 //!     metadata: &amp;mut MetadataStorage,
 //!     info: &amp;SignatureAndTypeConcreteLibfunc,
 //! ) -&gt; Result&lt;()&gt;
-//! where
-//!     TType: GenericType,
-//!     TLibfunc: GenericLibfunc,
-//!     &lt;TType as GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-//!     &lt;TLibfunc as GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
 //! {
 //!     let array_val = entry.argument(0)?.into();
 //!     let elem_ty = registry.build_type(context, helper, registry, metadata, &amp;info.ty)?;

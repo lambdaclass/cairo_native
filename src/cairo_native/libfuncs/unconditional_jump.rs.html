@@ -28,29 +28,15 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Unconditional jump libfunc
 
-</span><span class="kw">use super</span>::{LibfuncBuilder, LibfuncHelper};
-<span class="kw">use crate</span>::{
-    error::{
-        libfuncs::{Error, <span class="prelude-ty">Result</span>},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-};
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use crate</span>::{error::libfuncs::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{lib_func::SignatureOnlyConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+    },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
@@ -59,21 +45,15 @@
 };
 
 <span class="doccomment">/// Generate MLIR operations for the `jump` libfunc.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>&gt;(
     _context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[], location));
 
     <span class="prelude-val">Ok</span>(())

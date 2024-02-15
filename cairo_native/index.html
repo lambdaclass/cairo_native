@@ -11,9 +11,9 @@ from an entrypoint.
 Programs and JIT states can be cached in contexts where their execution will be done multiple
 times.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>cairo_felt::Felt252;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>cairo_native::context::NativeContext;
-<span class="kw">use </span>cairo_native::executor::NativeExecutor;
+<span class="kw">use </span>cairo_native::executor::JitNativeExecutor;
 <span class="kw">use </span>cairo_native::values::JitValue;
 <span class="kw">use </span>std::path::Path;
 
@@ -29,18 +29,18 @@ times.</p>
 </span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
 
 <span class="comment">// The parameters of the entry point.
-</span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt252::from_bytes_be(<span class="string">b&quot;user&quot;</span>))];
+</span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b&quot;user&quot;</span>))];
 
 <span class="comment">// Find the entry point id by its name.
 </span><span class="kw">let </span>entry_point = <span class="string">&quot;hello::hello::greet&quot;</span>;
 <span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
 
 <span class="comment">// Instantiate the executor.
-</span><span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
+</span><span class="kw">let </span>native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
 <span class="comment">// Execute the program.
 </span><span class="kw">let </span>result = native_executor
-    .execute(entry_point_id, params, <span class="prelude-val">None</span>)
+    .invoke_dynamic(entry_point_id, params, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
     .unwrap();
 
 <span class="macro">println!</span>(<span class="string">&quot;Cairo program was compiled and executed successfully.&quot;</span>);

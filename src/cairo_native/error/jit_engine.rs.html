@@ -139,30 +139,11 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::TypeBuilder;
-<span class="kw">use </span>cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        GenericType,
-    },
-    ids::ConcreteTypeId,
-    program_registry::ProgramRegistryError,
-};
+</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{ids::ConcreteTypeId, program_registry::ProgramRegistryError};
 <span class="kw">use </span>std::{alloc::LayoutError, fmt, ops::Deref};
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">pub type </span>RunnerError = Error;
+<span class="kw">pub type </span>RunnerError = Box&lt;Error&gt;;
 
 <span class="attr">#[derive(Error)]
 </span><span class="kw">pub struct </span>Error {
@@ -229,7 +210,7 @@
     <span class="attr">#[error(<span class="string">&quot;Error building type &#39;{type_id}&#39;: {error}&quot;</span>)]
     </span>TypeBuilderError {
         type_id: ConcreteTypeId,
-        error: &lt;&lt;CoreType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::Error,
+        error: <span class="kw">crate</span>::error::types::Error,
     },
 
     <span class="attr">#[error(<span class="string">&quot;missing parameter of type &#39;{0}&#39;&quot;</span>)]
@@ -276,10 +257,7 @@
 
 <span class="kw">pub fn </span>make_type_builder_error(
     id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_
-       </span>+ FnOnce(
-    &lt;&lt;CoreType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::Error,
-) -&gt; Error {
+) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_ </span>+ FnOnce(<span class="kw">crate</span>::error::types::Error) -&gt; Error {
     <span class="kw">move </span>|source| {
         ErrorImpl::TypeBuilderError {
             type_id: id.clone(),

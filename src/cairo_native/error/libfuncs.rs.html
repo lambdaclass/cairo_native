@@ -67,6 +67,11 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::program_registry::ProgramRegistryError;
 <span class="kw">use </span>std::{alloc::LayoutError, fmt, num::TryFromIntError, ops::Deref};
 <span class="kw">use </span>thiserror::Error;
@@ -77,7 +82,7 @@
 </span><span class="kw">pub struct </span>Error {
     <span class="comment">// TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    </span><span class="kw">pub </span>source: ErrorImpl,
+    </span><span class="kw">pub </span>source: Box&lt;ErrorImpl&gt;,
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Error {
@@ -101,7 +106,7 @@
     <span class="kw">fn </span>from(error: E) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             <span class="comment">// backtrace: Backtrace::capture(),
-            </span>source: error.into(),
+            </span>source: Box::new(error.into()),
         }
     }
 }
@@ -115,7 +120,9 @@
     <span class="attr">#[error(transparent)]
     </span>MlirError(<span class="attr">#[from] </span>melior::Error),
     <span class="attr">#[error(transparent)]
-    </span>ProgramRegistryError(<span class="attr">#[from] </span>Box&lt;ProgramRegistryError&gt;),
+    </span>ProgramRegistryError(<span class="attr">#[from] </span>ProgramRegistryError),
+    <span class="attr">#[error(transparent)]
+    </span>ProgramRegistryErrorBoxed(<span class="attr">#[from] </span>Box&lt;ProgramRegistryError&gt;),
     <span class="attr">#[error(transparent)]
     </span>TryFromIntError(<span class="attr">#[from] </span>TryFromIntError),
     <span class="attr">#[error(<span class="string">&quot;error parsing attribute&quot;</span>)]
@@ -126,13 +133,16 @@
 
 <span class="kw">impl </span>From&lt;<span class="kw">super</span>::CoreTypeBuilderError&gt; <span class="kw">for </span>ErrorImpl {
     <span class="kw">fn </span>from(value: <span class="kw">super</span>::CoreTypeBuilderError) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>value.source {
+        <span class="kw">match </span><span class="kw-2">*</span>value.source {
             <span class="kw">super</span>::types::ErrorImpl::LayoutError(e) =&gt; <span class="self">Self</span>::LayoutError(e),
             <span class="kw">super</span>::types::ErrorImpl::ProgramRegistryError(e) =&gt; <span class="self">Self</span>::ProgramRegistryError(e),
             <span class="kw">super</span>::types::ErrorImpl::TryFromIntError(e) =&gt; <span class="self">Self</span>::TryFromIntError(e),
             <span class="kw">super</span>::types::ErrorImpl::LayoutErrorPolyfill(e) =&gt; <span class="self">Self</span>::LayoutErrorPolyfill(e),
             <span class="kw">super</span>::types::ErrorImpl::MlirError(e) =&gt; <span class="self">Self</span>::MlirError(e),
-            <span class="kw">super</span>::types::ErrorImpl::LibFuncError(e) =&gt; e.source,
+            <span class="kw">super</span>::types::ErrorImpl::LibFuncError(e) =&gt; <span class="kw-2">*</span>e.source,
+            <span class="kw">super</span>::types::ErrorImpl::ProgramRegistryErrorBoxed(e) =&gt; {
+                <span class="self">Self</span>::ProgramRegistryErrorBoxed(e)
+            }
         }
     }
 }

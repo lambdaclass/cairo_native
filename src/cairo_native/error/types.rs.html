@@ -52,6 +52,8 @@
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::program_registry::ProgramRegistryError;
 <span class="kw">use </span>std::{alloc::LayoutError, fmt, num::TryFromIntError, ops::Deref};
 <span class="kw">use </span>thiserror::Error;
@@ -62,7 +64,7 @@
 </span><span class="kw">pub struct </span>Error {
     <span class="comment">// TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    </span><span class="kw">pub </span>source: ErrorImpl,
+    </span><span class="kw">pub </span>source: Box&lt;ErrorImpl&gt;,
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Error {
@@ -86,7 +88,7 @@
     <span class="kw">fn </span>from(error: E) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             <span class="comment">// backtrace: Backtrace::capture(),
-            </span>source: error.into(),
+            </span>source: Box::new(error.into()),
         }
     }
 }
@@ -98,7 +100,9 @@
     <span class="attr">#[error(transparent)]
     </span>LayoutErrorPolyfill(<span class="attr">#[from] </span><span class="kw">crate</span>::utils::LayoutError),
     <span class="attr">#[error(transparent)]
-    </span>ProgramRegistryError(<span class="attr">#[from] </span>Box&lt;ProgramRegistryError&gt;),
+    </span>ProgramRegistryError(<span class="attr">#[from] </span>ProgramRegistryError),
+    <span class="attr">#[error(transparent)]
+    </span>ProgramRegistryErrorBoxed(<span class="attr">#[from] </span>Box&lt;ProgramRegistryError&gt;),
     <span class="attr">#[error(transparent)]
     </span>TryFromIntError(<span class="attr">#[from] </span>TryFromIntError),
     <span class="attr">#[error(transparent)]

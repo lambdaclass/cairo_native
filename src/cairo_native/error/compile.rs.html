@@ -133,130 +133,42 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{libfuncs::LibfuncBuilder, types::TypeBuilder};
-<span class="kw">use </span>cairo_lang_sierra::{
+</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::{
     edit_state::EditStateError,
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        GenericLibfunc, GenericType,
-    },
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
 <span class="kw">use </span>std::{fmt, ops::Deref};
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">pub type </span>CompileError = Box&lt;Error&lt;CoreType, CoreLibfunc&gt;&gt;;
+<span class="kw">use super</span>::{CoreLibfuncBuilderError, CoreTypeBuilderError};
+
+<span class="kw">pub type </span>CompileError = Box&lt;Error&gt;;
 
 <span class="attr">#[derive(Error)]
-</span><span class="kw">pub struct </span>Error&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+</span><span class="kw">pub struct </span>Error {
     <span class="comment">// TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    </span><span class="kw">pub </span>source: ErrorImpl&lt;TType, TLibfunc&gt;,
+    </span><span class="kw">pub </span>source: ErrorImpl,
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc&gt; fmt::Display <span class="kw">for </span>Error&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Error {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         fmt::Display::fmt(<span class="kw-2">&amp;</span><span class="self">self</span>.source, f)
     }
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc&gt; Deref <span class="kw">for </span>Error&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
-    <span class="kw">type </span>Target = ErrorImpl&lt;TType, TLibfunc&gt;;
+<span class="kw">impl </span>Deref <span class="kw">for </span>Error {
+    <span class="kw">type </span>Target = ErrorImpl;
 
     <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
         <span class="kw-2">&amp;</span><span class="self">self</span>.source
     }
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc, E&gt; From&lt;E&gt; <span class="kw">for </span>Error&lt;TType, TLibfunc&gt;
+<span class="kw">impl</span>&lt;E&gt; From&lt;E&gt; <span class="kw">for </span>Error
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-    ErrorImpl&lt;TType, TLibfunc&gt;: From&lt;E&gt;,
+    </span>ErrorImpl: From&lt;E&gt;,
 {
     <span class="kw">fn </span>from(error: E) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -266,13 +178,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;TType, TLibfunc, E&gt; From&lt;E&gt; <span class="kw">for </span>Box&lt;Error&lt;TType, TLibfunc&gt;&gt;
+<span class="kw">impl</span>&lt;E&gt; From&lt;E&gt; <span class="kw">for </span>Box&lt;Error&gt;
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-    ErrorImpl&lt;TType, TLibfunc&gt;: From&lt;E&gt;,
+    </span>ErrorImpl: From&lt;E&gt;,
 {
     <span class="kw">fn </span>from(error: E) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(Error::from(error))
@@ -281,13 +189,7 @@
 
 <span class="comment">// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn&#39;t the case.
-</span><span class="kw">impl</span>&lt;TType, TLibfunc&gt; fmt::Debug <span class="kw">for </span>Error&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+</span><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Error {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         f.debug_struct(<span class="string">&quot;Error&quot;</span>)
             <span class="comment">// .field(&quot;backtrace&quot;, &amp;self.backtrace)
@@ -297,13 +199,7 @@
 }
 
 <span class="attr">#[derive(Error)]
-</span><span class="kw">pub enum </span>ErrorImpl&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+</span><span class="kw">pub enum </span>ErrorImpl {
     <span class="attr">#[error(transparent)]
     </span>EditStateError(<span class="attr">#[from] </span>EditStateError),
     <span class="attr">#[error(transparent)]
@@ -314,24 +210,18 @@
     <span class="attr">#[error(<span class="string">&quot;Error building type &#39;{type_id}&#39;: {error}&quot;</span>)]
     </span>TypeBuilderError {
         type_id: ConcreteTypeId,
-        error: &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error,
+        error: CoreTypeBuilderError,
     },
     <span class="attr">#[error(<span class="string">&quot;Error building type &#39;{libfunc_id}&#39;: {error}&quot;</span>)]
     </span>LibfuncBuilderError {
         libfunc_id: ConcreteLibfuncId,
-        error: &lt;&lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete <span class="kw">as </span>LibfuncBuilder&lt;TType, TLibfunc&gt;&gt;::Error,
+        error: CoreLibfuncBuilderError,
     },
 }
 
 <span class="comment">// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn&#39;t the case.
-</span><span class="kw">impl</span>&lt;TType, TLibfunc&gt; fmt::Debug <span class="kw">for </span>ErrorImpl&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+</span><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>ErrorImpl {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::EditStateError(arg0) =&gt; f.debug_tuple(<span class="string">&quot;EditStateError&quot;</span>).field(arg0).finish(),
@@ -353,18 +243,11 @@
     }
 }
 
-<span class="kw">pub fn </span>make_type_builder_error&lt;TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>make_type_builder_error(
     id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_
-       </span>+ FnOnce(
-    &lt;&lt;TType <span class="kw">as </span>GenericType&gt;::Concrete <span class="kw">as </span>TypeBuilder&lt;TType, TLibfunc&gt;&gt;::Error,
-) -&gt; Error&lt;TType, TLibfunc&gt;
+) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_ </span>+ FnOnce(CoreTypeBuilderError) -&gt; Error
 <span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+</span>{
     <span class="kw">move </span>|source| {
         ErrorImpl::TypeBuilderError {
             type_id: id.clone(),
@@ -374,18 +257,9 @@
     }
 }
 
-<span class="kw">pub fn </span>make_libfunc_builder_error&lt;TType, TLibfunc&gt;(
+<span class="kw">pub fn </span>make_libfunc_builder_error(
     id: <span class="kw-2">&amp;</span>ConcreteLibfuncId,
-) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_
-       </span>+ FnOnce(
-    &lt;&lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete <span class="kw">as </span>LibfuncBuilder&lt;TType, TLibfunc&gt;&gt;::Error,
-) -&gt; Error&lt;TType, TLibfunc&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc&gt;,
-{
+) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;_ </span>+ FnOnce(CoreLibfuncBuilderError) -&gt; Error {
     <span class="kw">move </span>|source| {
         ErrorImpl::LibfuncBuilderError {
             libfunc_id: id.clone(),

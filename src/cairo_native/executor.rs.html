@@ -850,8 +850,8 @@
 ) -&gt; ExecutionResult {
     <span class="macro">tracing::info!</span>(<span class="string">&quot;Invoking function with signature: {function_signature:?}.&quot;</span>);
 
-    <span class="kw">let </span>is_builtin = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::is_builtin;
-    <span class="kw">let </span>is_zst = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::is_zst;
+    <span class="kw">let </span>is_builtin = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_builtin;
+    <span class="kw">let </span>is_zst = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_zst;
 
     <span class="kw">let </span>arena = Bump::new();
     <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = ArgumentMapper::new(<span class="kw-2">&amp;</span>arena, registry);
@@ -869,8 +869,8 @@
         .filter(|id| {
             <span class="kw">let </span>info = registry.get_type(id).unwrap();
 
-            <span class="kw">let </span>is_builtin = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::is_builtin;
-            <span class="kw">let </span>is_zst = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::is_zst;
+            <span class="kw">let </span>is_builtin = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_builtin;
+            <span class="kw">let </span>is_zst = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_zst;
 
             !(is_builtin(info) &amp;&amp; is_zst(info, registry))
         })
@@ -905,7 +905,7 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>iter = args.iter();
     <span class="kw">for </span>type_id <span class="kw">in </span>function_signature.param_types.iter().filter(|id| {
         <span class="kw">let </span>info = registry.get_type(id).unwrap();
-        !&lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&lt;CoreType, CoreLibfunc&gt;&gt;::is_zst(info, registry)
+        !&lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_zst(info, registry)
     }) {
         <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
 

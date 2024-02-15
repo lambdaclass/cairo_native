@@ -141,6 +141,8 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -235,20 +237,22 @@
         <span class="self">self</span>.process_required_initial_gas(function_id, gas.as_mut());
 
         <span class="comment">// TODO: Check signature for contract interface.
-        </span>ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
-            <span class="self">self</span>.find_function_ptr(function_id),
-            <span class="self">self</span>.extract_signature(function_id),
-            <span class="kw-2">&amp;</span>[JitValue::Struct {
-                fields: <span class="macro">vec!</span>[JitValue::Array(
-                    args.iter().cloned().map(JitValue::Felt252).collect(),
-                )],
-                <span class="comment">// TODO: Populate `debug_name`.
-                </span>debug_name: <span class="prelude-val">None</span>,
-            }],
-            gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
-        ))
+        </span><span class="prelude-val">Ok</span>(ContractExecutionResult::from_execution_result(
+            <span class="kw">super</span>::invoke_dynamic(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
+                <span class="self">self</span>.find_function_ptr(function_id),
+                <span class="self">self</span>.extract_signature(function_id),
+                <span class="kw-2">&amp;</span>[JitValue::Struct {
+                    fields: <span class="macro">vec!</span>[JitValue::Array(
+                        args.iter().cloned().map(JitValue::Felt252).collect(),
+                    )],
+                    <span class="comment">// TODO: Populate `debug_name`.
+                    </span>debug_name: <span class="prelude-val">None</span>,
+                }],
+                gas,
+                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            ),
+        )<span class="question-mark">?</span>)
     }
 
     <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
