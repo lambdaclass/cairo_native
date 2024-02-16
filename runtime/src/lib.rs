@@ -13,23 +13,9 @@ lazy_static! {
     .unwrap();
 }
 
-pub(crate) fn as_cairo_short_string(value: &Felt) -> Option<String> {
-    let mut as_string = String::default();
-    let mut is_end = false;
-    for byte in value.to_bytes_be() {
-        if byte == 0 {
-            is_end = true;
-        } else if is_end || !byte.is_ascii() {
-            return None;
-        } else {
-            as_string.push(byte as char);
-        }
-    }
-    Some(as_string)
-}
 /// Based on `cairo-lang-runner`'s implementation.
 ///
-/// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800>
+/// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1946-L1948>
 ///
 /// # Safety
 ///
@@ -44,27 +30,42 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     let mut target = File::from_raw_fd(target_fd);
 
     for i in 0..len {
-        let mut data = *data.add(i);
-        data.reverse();
+        let data = *data.add(i);
 
-        let value = Felt::from_bytes_be(&data);
-        if let Some(shortstring) = as_cairo_short_string(&value) {
-            if writeln!(
+        let value = Felt::from_bytes_le(&data);
+        if write!(target, "[DEBUG]\t{value:x}",).is_err() {
+            return 1;
+        };
+
+        if data[..32]
+            .iter()
+            .copied()
+            .all(|ch| ch == 0 || ch.is_ascii_graphic() || ch.is_ascii_whitespace())
+        {
+            let mut buf = [0; 31];
+            let mut len = 31;
+            for &ch in data.iter().take(31) {
+                if ch != 0 {
+                    len -= 1;
+                    buf[len] = ch;
+                }
+            }
+
+            if write!(
                 target,
-                "[DEBUG]\t{shortstring: <31}\t(raw: {})",
-                value.to_bigint()
+                " ('{}')",
+                std::str::from_utf8_unchecked(&buf[len..])
             )
             .is_err()
             {
                 return 1;
-            };
-        } else if writeln!(target, "[DEBUG]\t{:<31}\t(raw: {})", ' ', value.to_bigint()).is_err() {
-            return 1;
+            }
         }
+
+        if writeln!(target).is_err() {
+            return 1;
+        };
     }
-    if writeln!(target).is_err() {
-        return 1;
-    };
 
     // Avoid closing `stdout`.
     std::mem::forget(target);
