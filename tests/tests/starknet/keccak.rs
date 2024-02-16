@@ -266,7 +266,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
 lazy_static! {
     static ref KECCAK_CONTRACT: ContractClass = {
-        let path = Path::new("tests/starknet/contracts/test_keccak.cairo");
+        let path = Path::new("tests/tests/starknet/contracts/test_keccak.cairo");
 
         compile_path(
             path,

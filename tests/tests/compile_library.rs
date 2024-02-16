@@ -1,9 +1,9 @@
+use crate::common::load_cairo;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
 use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
-use common::load_cairo;
 use melior::{
     dialect::DialectRegistry,
     ir::{Location, Module},
@@ -13,8 +13,6 @@ use melior::{
 };
 use std::error::Error;
 use tempfile::NamedTempFile;
-
-mod common;
 
 #[test]
 pub fn compile_library() -> Result<(), Box<dyn Error>> {
@@ -44,7 +42,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
-    cairo_native::compile::<CoreType, CoreLibfunc>(
+    cairo_native::compile(
         &context,
         &module,
         &program.1,

@@ -6,6 +6,7 @@ on:
   merge_group:
     types: [checks_requested]
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -71,6 +72,7 @@ jobs:
         run: bash .github/scripts/merge-benches.sh
 
       - name: Find Bench Comment
+        continue-on-error: true
         uses: peter-evans/find-comment@v2
         id: fc
         with:
@@ -78,6 +80,7 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: Benchmarking
       - name: Create or update bench comment
+        continue-on-error: true
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}

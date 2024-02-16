@@ -1,64 +1,39 @@
-use crate::{libfuncs::LibfuncBuilder, types::TypeBuilder};
 use cairo_lang_sierra::{
     edit_state::EditStateError,
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        GenericLibfunc, GenericType,
-    },
     ids::{ConcreteLibfuncId, ConcreteTypeId},
     program_registry::ProgramRegistryError,
 };
 use std::{fmt, ops::Deref};
 use thiserror::Error;
 
-pub type CompileError = Box<Error<CoreType, CoreLibfunc>>;
+use super::{CoreLibfuncBuilderError, CoreTypeBuilderError};
+
+pub type CompileError = Box<Error>;
 
 #[derive(Error)]
-pub struct Error<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
-    pub source: ErrorImpl<TType, TLibfunc>,
+    pub source: ErrorImpl,
 }
 
-impl<TType, TLibfunc> fmt::Display for Error<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.source, f)
     }
 }
 
-impl<TType, TLibfunc> Deref for Error<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
-    type Target = ErrorImpl<TType, TLibfunc>;
+impl Deref for Error {
+    type Target = ErrorImpl;
 
     fn deref(&self) -> &Self::Target {
         &self.source
     }
 }
 
-impl<TType, TLibfunc, E> From<E> for Error<TType, TLibfunc>
+impl<E> From<E> for Error
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    ErrorImpl<TType, TLibfunc>: From<E>,
+    ErrorImpl: From<E>,
 {
     fn from(error: E) -> Self {
         Self {
@@ -68,13 +43,9 @@ where
     }
 }
 
-impl<TType, TLibfunc, E> From<E> for Box<Error<TType, TLibfunc>>
+impl<E> From<E> for Box<Error>
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-    ErrorImpl<TType, TLibfunc>: From<E>,
+    ErrorImpl: From<E>,
 {
     fn from(error: E) -> Self {
         Self::new(Error::from(error))
@@ -83,13 +54,7 @@ where
 
 // Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn't the case.
-impl<TType, TLibfunc> fmt::Debug for Error<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             // .field("backtrace", &self.backtrace)
@@ -99,13 +64,7 @@ where
 }
 
 #[derive(Error)]
-pub enum ErrorImpl<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+pub enum ErrorImpl {
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
     #[error(transparent)]
@@ -116,24 +75,18 @@ where
     #[error("Error building type '{type_id}': {error}")]
     TypeBuilderError {
         type_id: ConcreteTypeId,
-        error: <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
+        error: CoreTypeBuilderError,
     },
     #[error("Error building type '{libfunc_id}': {error}")]
     LibfuncBuilderError {
         libfunc_id: ConcreteLibfuncId,
-        error: <<TLibfunc as GenericLibfunc>::Concrete as LibfuncBuilder<TType, TLibfunc>>::Error,
+        error: CoreLibfuncBuilderError,
     },
 }
 
 // Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
 // both implement `Debug`, which isn't the case.
-impl<TType, TLibfunc> fmt::Debug for ErrorImpl<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+impl fmt::Debug for ErrorImpl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EditStateError(arg0) => f.debug_tuple("EditStateError").field(arg0).finish(),
@@ -155,17 +108,10 @@ where
     }
 }
 
-pub fn make_type_builder_error<TType, TLibfunc>(
+pub fn make_type_builder_error(
     id: &ConcreteTypeId,
-) -> impl '_
-       + FnOnce(
-    <<TType as GenericType>::Concrete as TypeBuilder<TType, TLibfunc>>::Error,
-) -> Error<TType, TLibfunc>
+) -> impl '_ + FnOnce(CoreTypeBuilderError) -> Error
 where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
 {
     move |source| {
         ErrorImpl::TypeBuilderError {
@@ -176,18 +122,9 @@ where
     }
 }
 
-pub fn make_libfunc_builder_error<TType, TLibfunc>(
+pub fn make_libfunc_builder_error(
     id: &ConcreteLibfuncId,
-) -> impl '_
-       + FnOnce(
-    <<TLibfunc as GenericLibfunc>::Concrete as LibfuncBuilder<TType, TLibfunc>>::Error,
-) -> Error<TType, TLibfunc>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> impl '_ + FnOnce(CoreLibfuncBuilderError) -> Error {
     move |source| {
         ErrorImpl::LibfuncBuilderError {
             libfunc_id: id.clone(),

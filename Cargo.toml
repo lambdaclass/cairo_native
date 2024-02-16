@@ -85,6 +85,11 @@ cc = "1.0"
 inherits = "dev"
 opt-level = 3
 
+[profile.ci]
+inherits = "dev"
+opt-level = 3
+debug = "line-tables-only"
+
 [profile.release]
 lto = true
 codegen-units = 1

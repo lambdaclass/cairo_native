@@ -1,21 +1,20 @@
 //! # Elliptic curve libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    types::{felt252::register_prime_modulo_meta, TypeBuilder},
+    types::felt252::register_prime_modulo_meta,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
-        ec::EcConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        ec::EcConcreteLibfunc,
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -35,21 +34,15 @@ use melior::{
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &EcConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         EcConcreteLibfunc::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, metadata, info)
@@ -85,21 +78,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_point_is_zero` libfunc.
-pub fn build_is_zero<'ctx, 'this, TType, TLibfunc>(
+pub fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let x = entry
         .append_operation(llvm::extract_value(
             context,
@@ -155,21 +142,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_neg` libfunc.
-pub fn build_neg<'ctx, 'this, TType, TLibfunc>(
+pub fn build_neg<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let y = entry
         .append_operation(llvm::extract_value(
             context,
@@ -247,27 +228,17 @@ where
 }
 
 /// Generate MLIR operations for the `ec_point_from_x_nz` libfunc.
-pub fn build_point_from_x<'ctx, 'this, TType, TLibfunc>(
+pub fn build_point_from_x<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let ec_point_ty = llvm::r#type::r#struct(
         context,
@@ -356,21 +327,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_state_add` libfunc.
-pub fn build_state_add<'ctx, 'this, TType, TLibfunc>(
+pub fn build_state_add<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let ec_state_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -470,27 +435,17 @@ where
 }
 
 /// Generate MLIR operations for the `ec_state_add_mul` libfunc.
-pub fn build_state_add_mul<'ctx, 'this, TType, TLibfunc>(
+pub fn build_state_add_mul<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let ec_op = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let ec_op =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
@@ -606,21 +561,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_state_try_finalize_nz` libfunc.
-pub fn build_state_finalize<'ctx, 'this, TType, TLibfunc>(
+pub fn build_state_finalize<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
         context,
@@ -704,21 +653,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_state_init` libfunc.
-pub fn build_state_init<'ctx, 'this, TType, TLibfunc>(
+pub fn build_state_init<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let ec_state_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -798,21 +741,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_point_try_new_nz` libfunc.
-pub fn build_try_new<'ctx, 'this, TType, TLibfunc>(
+pub fn build_try_new<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let ec_point_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -893,21 +830,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_point_unwrap` libfunc.
-pub fn build_unwrap_point<'ctx, 'this, TType, TLibfunc>(
+pub fn build_unwrap_point<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let x = entry
         .append_operation(llvm::extract_value(
             context,
@@ -946,21 +877,15 @@ where
 }
 
 /// Generate MLIR operations for the `ec_point_zero` libfunc.
-pub fn build_zero<'ctx, 'this, TType, TLibfunc>(
+pub fn build_zero<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let ec_point_ty = registry.build_type(
         context,
         helper,

@@ -32,14 +32,13 @@
 //! won't waste a single byte in padding; unless we're creating an array, in which case we'd waste
 //! only a single byte per element.
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
-    extensions::{structure::StructConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        structure::StructConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -51,18 +50,13 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     let fields: Vec<_> = info
         .members
         .iter()

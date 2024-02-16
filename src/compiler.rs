@@ -62,7 +62,11 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
-    extensions::{gas::CostTokenType, ConcreteLibfunc, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+        ConcreteLibfunc,
+    },
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
@@ -108,24 +112,17 @@ type BlockStorage<'c, 'a> =
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
-pub fn compile<TType, TLibfunc>(
+pub fn compile(
     context: &Context,
     module: &Module,
     program: &Program,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), CompileError<TType, TLibfunc>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete:
-        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> Result<(), CompileError> {
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
-        compile_func::<TType, TLibfunc>(
+        compile_func(
             context,
             module,
             registry,
@@ -146,22 +143,15 @@ where
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
-fn compile_func<TType, TLibfunc>(
+fn compile_func(
     context: &Context,
     module: &Module,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function: &Function,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), CompileError<TType, TLibfunc>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete:
-        TypeBuilder<TType, TLibfunc, Error = crate::error::types::Error>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> Result<(), CompileError> {
     let region = Region::new();
     let blocks_arena = Bump::new();
 
@@ -296,7 +286,7 @@ where
     ));
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
-    foreach_statement_in_function::<_, CompileError<TType, TLibfunc>>(
+    foreach_statement_in_function::<_, CompileError>(
         statements,
         function.entry_point,
         (initial_state, BTreeMap::<usize, usize>::new()),
@@ -320,7 +310,7 @@ where
                         .sorted_by_key(|x| x.id)
                         .enumerate()
                         .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
-                        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+                        .collect::<Result<Vec<_>, CompileError>>()?
                         .into_iter(),
                 )?;
 
@@ -454,7 +444,7 @@ where
                                 tailrec_state.clone(),
                             ))
                         })
-                        .collect::<Result<_, CompileError<TType, TLibfunc>>>()?
+                        .collect::<Result<_, CompileError>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
@@ -681,7 +671,7 @@ where
                     .argument((has_return_ptr == Some(true)) as usize + i)?
                     .into())
             })
-            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?,
+            .collect::<Result<Vec<_>, CompileError>>()?,
         Location::unknown(context),
     ));
 
@@ -710,21 +700,15 @@ where
     Ok(())
 }
 
-fn generate_function_structure<'c, 'a, TType, TLibfunc>(
+fn generate_function_structure<'c, 'a>(
     context: &'c Context,
     module: &'a Module<'c>,
     region: &'a Region<'c>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), CompileError<TType, TLibfunc>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), CompileError> {
     let initial_state = edit_state::put_results::<(Type, bool)>(
         HashMap::new(),
         function
@@ -743,14 +727,14 @@ where
                     ),
                 ))
             })
-            .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?
+            .collect::<Result<Vec<_>, CompileError>>()?
             .into_iter(),
     )?;
 
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
-    foreach_statement_in_function::<_, CompileError<TType, TLibfunc>>(
+    foreach_statement_in_function::<_, CompileError>(
         statements,
         function.entry_point,
         initial_state,
@@ -800,26 +784,24 @@ where
                                     branch_signature
                                         .vars
                                         .iter()
-                                        .map(
-                                            |var_info| -> Result<_, CompileError<TType, TLibfunc>> {
-                                                let type_info = registry.get_type(&var_info.ty)?;
+                                        .map(|var_info| -> Result<_, CompileError> {
+                                            let type_info = registry.get_type(&var_info.ty)?;
 
-                                                Ok((
-                                                    type_info
-                                                        .build(
-                                                            context,
-                                                            module,
-                                                            registry,
-                                                            metadata_storage,
-                                                            &var_info.ty,
-                                                        )
-                                                        .map_err(make_type_builder_error(
-                                                            &var_info.ty,
-                                                        ))?,
-                                                    type_info.is_memory_allocated(registry),
-                                                ))
-                                            },
-                                        )
+                                            Ok((
+                                                type_info
+                                                    .build(
+                                                        context,
+                                                        module,
+                                                        registry,
+                                                        metadata_storage,
+                                                        &var_info.ty,
+                                                    )
+                                                    .map_err(make_type_builder_error(
+                                                        &var_info.ty,
+                                                    ))?,
+                                                type_info.is_memory_allocated(registry),
+                                            ))
+                                        })
                                         .collect::<Result<Vec<_>, _>>()?,
                                 ),
                             )?;
@@ -834,7 +816,7 @@ where
 
                             Ok(state)
                         })
-                        .collect::<Result<_, CompileError<TType, TLibfunc>>>()?
+                        .collect::<Result<_, CompileError>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!(
@@ -874,7 +856,7 @@ where
             metadata_storage,
         )
         .map(|ty| Ok((ty?, Location::unknown(context))))
-        .collect::<Result<Vec<_>, CompileError<TType, TLibfunc>>>()?;
+        .collect::<Result<Vec<_>, CompileError>>()?;
 
         for (type_info, (ty, _)) in function
             .signature
@@ -967,20 +949,13 @@ where
     ))
 }
 
-fn extract_types<'c, 'a, TType, TLibfunc>(
+fn extract_types<'c: 'a, 'a>(
     context: &'c Context,
     module: &'a Module<'c>,
     type_ids: &'a [ConcreteTypeId],
-    registry: &'a ProgramRegistry<TType, TLibfunc>,
+    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
     metadata_storage: &'a mut MetadataStorage,
-) -> impl 'a + Iterator<Item = Result<Type<'c>, CompileError<TType, TLibfunc>>>
-where
-    'c: 'a,
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc>,
-{
+) -> impl 'a + Iterator<Item = Result<Type<'c>, CompileError>> {
     type_ids.iter().filter_map(|id| {
         let type_info = match registry.get_type(id) {
             Ok(x) => x,

@@ -1,4 +1,3 @@
-mod common;
 use crate::common::{compare_outputs, run_native_program, run_vm_program};
 use common::load_cairo;
 

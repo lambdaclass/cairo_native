@@ -10,8 +10,6 @@ use cairo_native::{
 };
 use starknet_types_core::felt::Felt;
 
-mod common;
-
 fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> ExecutionResult {
     let entry_point_id = find_function_id(program, entry_point);
 

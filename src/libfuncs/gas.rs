@@ -1,19 +1,17 @@
 //! # Gas management libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, ErrorImpl, Result},
-        CoreTypeBuilderError,
-    },
+    error::libfuncs::{ErrorImpl, Result},
     metadata::{gas::GasCost, MetadataStorage},
-    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        gas::GasConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        core::{CoreLibfunc, CoreType},
+        gas::GasConcreteLibfunc,
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -27,21 +25,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &GasConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         GasConcreteLibfunc::WithdrawGas(info) => {
             build_withdraw_gas(context, registry, entry, location, helper, metadata, info)
@@ -60,21 +52,15 @@ where
 }
 
 /// Generate MLIR operations for the `get_builtin_costs` libfunc.
-pub fn build_get_available_gas<'ctx, 'this, TType, TLibfunc>(
+pub fn build_get_available_gas<'ctx, 'this>(
     _context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     entry.append_operation(helper.br(
         0,
         &[entry.argument(0)?.into(), entry.argument(0)?.into()],
@@ -84,27 +70,17 @@ where
 }
 
 /// Generate MLIR operations for the `withdraw_gas` libfunc.
-pub fn build_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
+pub fn build_withdraw_gas<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
@@ -154,27 +130,17 @@ where
 }
 
 /// Generate MLIR operations for the `withdraw_gas_all` libfunc.
-pub fn build_builtin_withdraw_gas<'ctx, 'this, TType, TLibfunc>(
+pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<TType, TLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
-    let range_check = super::increment_builtin_counter::<TType, TLibfunc>(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-    )?;
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
@@ -224,21 +190,15 @@ where
 }
 
 /// Generate MLIR operations for the `get_builtin_costs` libfunc.
-pub fn build_get_builtin_costs<'ctx, 'this, TType, TLibfunc>(
+pub fn build_get_builtin_costs<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let builtin_costs_ty = registry.build_type(
         context,
         helper,

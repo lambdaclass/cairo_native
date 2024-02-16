@@ -12,14 +12,13 @@
 //! pub struct NonZero<T>(pub T);
 //! ```
 
-use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::{Error, Result},
-    metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::WithSelf;
+use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
-    extensions::{types::InfoAndTypeConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        types::InfoAndTypeConcreteType,
+    },
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -30,17 +29,12 @@ use melior::{
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     registry.build_type(context, module, registry, metadata, &info.ty)
 }

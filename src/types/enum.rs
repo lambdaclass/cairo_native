@@ -403,12 +403,15 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::{Error, Result},
+    error::types::Result,
     metadata::MetadataStorage,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
-    extensions::{enm::EnumConcreteType, GenericLibfunc, GenericType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        enm::EnumConcreteType,
+    },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
@@ -425,18 +428,13 @@ pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
-pub fn build<'ctx, TType, TLibfunc>(
+pub fn build<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<EnumConcreteType>,
-) -> Result<Type<'ctx>>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<Type<'ctx>> {
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 
     let tag_layout = get_integer_layout(tag_bits);
@@ -487,15 +485,10 @@ where
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
-pub fn get_layout_for_variants<TType, TLibfunc>(
-    registry: &ProgramRegistry<TType, TLibfunc>,
+pub fn get_layout_for_variants(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     variants: &[ConcreteTypeId],
-) -> Result<(Layout, Layout, Vec<Layout>)>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<(Layout, Layout, Vec<Layout>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);
 
@@ -521,18 +514,13 @@ where
 /// payloads.
 // TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice
 //   with one `ConcreteTypeId` per variant (deploy_syscalls has two types for the Ok() variant).
-pub fn get_type_for_variants<'ctx, TType, TLibfunc>(
+pub fn get_type_for_variants<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     variants: &[ConcreteTypeId],
-) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
     let tag_layout = get_integer_layout(tag_bits);
     let tag_ty: Type = IntegerType::new(context, tag_bits).into();

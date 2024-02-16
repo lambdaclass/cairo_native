@@ -1,19 +1,16 @@
 //! # Boolean libfuncs
 
-use super::{LibfuncBuilder, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
-    error::{
-        libfuncs::{Error, Result},
-        CoreTypeBuilderError,
-    },
-    metadata::MetadataStorage,
-    types::TypeBuilder,
+    error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        boolean::BoolConcreteLibfunc, lib_func::SignatureOnlyConcreteLibfunc, ConcreteLibfunc,
-        GenericLibfunc, GenericType,
+        boolean::BoolConcreteLibfunc,
+        core::{CoreLibfunc, CoreType},
+        lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -28,21 +25,15 @@ use melior::{
 };
 
 /// Select and call the correct libfunc builder function from the selector.
-pub fn build<'ctx, 'this, TType, TLibfunc>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &BoolConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     match selector {
         BoolConcreteLibfunc::And(info) => build_bool_binary(
             context,
@@ -92,22 +83,16 @@ enum BoolOp {
 
 /// Generate MLIR operations for the `bool_not_impl` libfunc.
 #[allow(clippy::too_many_arguments)]
-fn build_bool_binary<'ctx, 'this, TType, TLibfunc>(
+fn build_bool_binary<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
     bin_op: BoolOp,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
@@ -177,21 +162,15 @@ where
 }
 
 /// Generate MLIR operations for the `bool_not_impl` libfunc.
-pub fn build_bool_not<'ctx, 'this, TType, TLibfunc>(
+pub fn build_bool_not<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
@@ -252,21 +231,15 @@ where
 }
 
 /// Generate MLIR operations for the `unbox` libfunc.
-pub fn build_bool_to_felt252<'ctx, 'this, TType, TLibfunc>(
+pub fn build_bool_to_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<TType, TLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()>
-where
-    TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    <TType as GenericType>::Concrete: TypeBuilder<TType, TLibfunc, Error = CoreTypeBuilderError>,
-    <TLibfunc as GenericLibfunc>::Concrete: LibfuncBuilder<TType, TLibfunc, Error = Error>,
-{
+) -> Result<()> {
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let felt252_ty = registry.build_type(
         context,

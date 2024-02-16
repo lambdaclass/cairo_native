@@ -252,7 +252,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
 
 lazy_static! {
     static ref SECP256_PROGRAM: (String, Program, SierraCasmRunner) =
-        load_cairo_path("tests/starknet/programs/secp256.cairo");
+        load_cairo_path("tests/tests/starknet/programs/secp256.cairo");
 }
 
 #[test]

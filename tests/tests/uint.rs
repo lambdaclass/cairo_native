@@ -1,12 +1,9 @@
-use crate::common::{load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
+use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JitValue;
-use common::compare_outputs;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
-
-mod common;
 
 lazy_static! {
     static ref U8_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
