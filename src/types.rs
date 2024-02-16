@@ -446,7 +446,11 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Uninitialized(info)
             | CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty).unwrap().is_complex(registry),
 
-            CoreTypeConcrete::Enum(_) => !self.is_zst(registry),
+            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+                0 => false,
+                1 => registry.get_type(&info.variants[0]).unwrap().is_complex(registry),
+                _ => !self.is_zst(registry),
+            },
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
