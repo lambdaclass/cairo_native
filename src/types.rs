@@ -20,8 +20,15 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm::{self, r#type::opaque_pointer},
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Module, Type, Value},
+    dialect::{
+        arith,
+        llvm::{self, r#type::opaque_pointer},
+    },
+    ir::{
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        r#type::IntegerType,
+        Block, Location, Module, Type, Value,
+    },
     Context,
 };
 use std::{alloc::Layout, error::Error, ops::Deref};
@@ -106,6 +113,18 @@ pub trait TypeBuilder {
 
     // If the type is a struct, return the field types.
     fn fields(&self) -> Option<&[ConcreteTypeId]>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_default<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
+    ) -> Result<Value<'ctx, 'this>, Self::Error>;
 
     #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
@@ -716,6 +735,61 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Struct(info) => Some(&info.members),
             _ => None,
         }
+    }
+
+    fn build_default<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        _helper: &LibfuncHelper<'ctx, 'this>,
+        _metadata: &mut MetadataStorage,
+        _self_ty: &ConcreteTypeId,
+    ) -> Result<Value<'ctx, 'this>, Self::Error> {
+        Ok(match self {
+            CoreTypeConcrete::Uint8(_) | CoreTypeConcrete::Sint8(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 8).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            CoreTypeConcrete::Uint16(_) | CoreTypeConcrete::Sint16(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 16).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            CoreTypeConcrete::Uint32(_) | CoreTypeConcrete::Sint32(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            CoreTypeConcrete::Uint64(_) | CoreTypeConcrete::Sint64(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            CoreTypeConcrete::Uint128(_) | CoreTypeConcrete::Sint128(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 128).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            _ => todo!(),
+        })
     }
 
     fn build_drop<'ctx, 'this>(
