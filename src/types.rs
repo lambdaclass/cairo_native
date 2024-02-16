@@ -748,7 +748,15 @@ impl TypeBuilder for CoreTypeConcrete {
         _self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error> {
         Ok(match self {
-            CoreTypeConcrete::Uint8(_) | CoreTypeConcrete::Sint8(_) => entry
+            Self::Felt252(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint8(_) | Self::Sint8(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 8).into()).into(),
@@ -756,7 +764,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            CoreTypeConcrete::Uint16(_) | CoreTypeConcrete::Sint16(_) => entry
+            Self::Uint16(_) | Self::Sint16(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 16).into()).into(),
@@ -764,7 +772,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            CoreTypeConcrete::Uint32(_) | CoreTypeConcrete::Sint32(_) => entry
+            Self::Uint32(_) | Self::Sint32(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
@@ -772,7 +780,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            CoreTypeConcrete::Uint64(_) | CoreTypeConcrete::Sint64(_) => entry
+            Self::Uint64(_) | Self::Sint64(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
@@ -780,7 +788,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            CoreTypeConcrete::Uint128(_) | CoreTypeConcrete::Sint128(_) => entry
+            Self::Uint128(_) | Self::Sint128(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 128).into()).into(),
