@@ -74,6 +74,9 @@ jobs:
 
   test:
     name: test (linux, amd64)
+    strategy:
+      matrix:
+        rust_version: ["1.74.1", "stable"]
     runs-on: ubuntu-latest
     env:
       CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
@@ -104,7 +107,9 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.74.1
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust_version }}
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
