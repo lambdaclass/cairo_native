@@ -17,7 +17,7 @@ jobs:
       LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.74.1
         with:
           components: clippy, rustfmt
@@ -37,7 +37,7 @@ jobs:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.74.1
         with:
           components: rustfmt
@@ -53,7 +53,7 @@ jobs:
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly-2024-02-01
@@ -86,7 +86,7 @@ jobs:
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
       RUST_LOG: debug
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
@@ -138,7 +138,7 @@ jobs:
       TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
       RUST_LOG: debug
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Rustup toolchain install
         uses: dtolnay/rust-toolchain@1.74.1
         with:
@@ -165,7 +165,7 @@ jobs:
       TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
       RUST_LOG: debug
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.74.1
       - name: Retreive cached dependecies
@@ -193,7 +193,7 @@ jobs:
     name: dockerfile (linux, amd64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
