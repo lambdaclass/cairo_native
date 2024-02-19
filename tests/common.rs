@@ -644,7 +644,7 @@ pub fn compare_outputs(
                     if let Some(JitValue::Struct {
                         fields: _,
                         debug_name,
-                    }) = fields.get(0)
+                    }) = fields.first()
                     {
                         if debug_name == &Some("core::panics::Panic".to_owned()) {
                             // The next field of the original struct will be an Array

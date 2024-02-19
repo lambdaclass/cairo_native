@@ -146,7 +146,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.4.0"
+          scarb-version: "2.5.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -175,7 +175,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.4.0"
+          scarb-version: "2.5.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -183,9 +183,9 @@ jobs:
       - name: test and generate coverage
         run: make coverage
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: true
 
