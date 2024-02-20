@@ -821,6 +821,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairo-lang-test-plugin"
+version = "2.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5e416a932754f190de2de011f3b3eb20dcb8093fb073cad15a8e70be833c3d"
+dependencies = [
+ "anyhow",
+ "cairo-felt",
+ "cairo-lang-compiler",
+ "cairo-lang-debug",
+ "cairo-lang-defs",
+ "cairo-lang-diagnostics",
+ "cairo-lang-filesystem",
+ "cairo-lang-lowering",
+ "cairo-lang-semantic",
+ "cairo-lang-sierra",
+ "cairo-lang-sierra-generator",
+ "cairo-lang-starknet",
+ "cairo-lang-syntax",
+ "cairo-lang-utils",
+ "indoc",
+ "itertools 0.11.0",
+ "num-bigint",
+ "num-traits 0.2.18",
+ "serde",
+]
+
+[[package]]
 name = "cairo-lang-utils"
 version = "2.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -839,6 +866,7 @@ dependencies = [
 name = "cairo-native"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bumpalo",
  "cairo-felt",
  "cairo-lang-compiler",
@@ -853,10 +881,12 @@ dependencies = [
  "cairo-lang-sierra-gas",
  "cairo-lang-sierra-generator",
  "cairo-lang-starknet",
+ "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "cairo-native-runtime",
  "cc",
  "clap",
+ "colored",
  "criterion",
  "educe",
  "id-arena",
