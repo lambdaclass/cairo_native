@@ -49,7 +49,6 @@ use melior::{
     Context,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use num_traits::identities::Zero;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
 use std::{
@@ -850,5 +849,5 @@ pub fn any_felt() -> impl Strategy<Value = Felt> {
 
 /// Returns a [`Strategy`] that generates any nonzero Felt
 pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
-    any_felt().prop_filter("is zero", |x| !x.is_zero())
+    any_felt().prop_filter("is zero", |x| x != &Felt::ZERO)
 }
