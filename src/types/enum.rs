@@ -542,3 +542,46 @@ pub fn get_type_for_variants<'ctx>(
 
     Ok((layout, (tag_ty, tag_layout), output))
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use cairo_lang_sierra::{
+        extensions::core::{CoreLibfunc, CoreType},
+        program_registry::ProgramRegistry,
+    };
+    use melior::{
+        ir::{r#type::IntegerType, Location, Module},
+        Context,
+    };
+
+    #[test]
+    fn enum_type_single_variant_no_i0() {
+        let (_, program) = load_cairo! {
+            enum MyEnum {
+                A: felt252,
+            }
+
+            fn run_program(x: MyEnum) -> MyEnum {
+                x
+            }
+        };
+
+        let context = Context::new();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let module = Module::new(Location::unknown(&context));
+        let mut metadata = MetadataStorage::new();
+
+        let i0_ty = IntegerType::new(&context, 0).into();
+        program
+            .type_declarations
+            .iter()
+            .map(|ty| (&ty.id, registry.get_type(&ty.id).unwrap()))
+            .map(|(id, ty)| {
+                ty.build(&context, &module, &registry, &mut metadata, id)
+                    .unwrap()
+            })
+            .any(|width| width == i0_ty);
+    }
+}
