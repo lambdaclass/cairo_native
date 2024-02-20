@@ -46,7 +46,7 @@ melior = { version = "0.15.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
-starknet-types-core = { version = "0.0.5", default-features = false, features = [
+starknet-types-core = { version = "0.0.6", default-features = false, features = [
   "serde",
 ] }
 tempfile = "3.6"
