@@ -17,6 +17,7 @@ use cairo_lang_sierra::{
         starknet::StarkNetTypeConcrete,
     },
     ids::ConcreteTypeId,
+    program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -31,6 +32,7 @@ use melior::{
     },
     Context,
 };
+use num_traits::Zero;
 use std::{alloc::Layout, error::Error, ops::Deref};
 
 pub mod array;
@@ -748,6 +750,10 @@ impl TypeBuilder for CoreTypeConcrete {
         _self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error> {
         Ok(match self {
+            Self::Enum(info) => match &info.info.long_id.generic_args[0] {
+                GenericArg::UserType(id) if dbg!(&id.id).is_zero() => todo!(),
+                _ => unreachable!(),
+            },
             Self::Felt252(_) => entry
                 .append_operation(arith::constant(
                     context,
@@ -756,7 +762,14 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            Self::Uint8(_) | Self::Sint8(_) => entry
+            Self::Nullable(_) => entry
+                .append_operation(llvm::nullptr(
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint8(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 8).into()).into(),
@@ -764,7 +777,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            Self::Uint16(_) | Self::Sint16(_) => entry
+            Self::Uint16(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 16).into()).into(),
@@ -772,7 +785,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            Self::Uint32(_) | Self::Sint32(_) => entry
+            Self::Uint32(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
@@ -780,7 +793,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            Self::Uint64(_) | Self::Sint64(_) => entry
+            Self::Uint64(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
@@ -788,7 +801,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            Self::Uint128(_) | Self::Sint128(_) => entry
+            Self::Uint128(_) => entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 128).into()).into(),
