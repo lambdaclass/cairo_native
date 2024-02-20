@@ -737,6 +737,19 @@
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
 <a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
@@ -1284,8 +1297,8 @@
     type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     <span class="kw-2">mut </span>return_ptr: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
-    <span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)] </span>ret_registers: [u64; <span class="number">2</span>],
-    <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)] </span>ret_registers: [u64; <span class="number">4</span>],
+    <span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
+    <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
 ) -&gt; JitValue {
     <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
 
@@ -1399,7 +1412,7 @@
             <span class="kw">let </span>(<span class="kw">_</span>, tag_layout, variant_layouts) =
                 <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants).unwrap();
 
-            <span class="kw">let </span>(tag, ptr) = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            <span class="kw">let </span>(tag, ptr) = <span class="kw">if </span>type_info.is_memory_allocated(registry) || return_ptr.is_some() {
                 <span class="kw">let </span>ptr = return_ptr.unwrap();
 
                 <span class="kw">let </span>tag = <span class="kw">unsafe </span>{
@@ -1413,32 +1426,45 @@
                     }
                 };
 
-                (tag, <span class="kw">unsafe </span>{
-                    NonNull::new_unchecked(
-                        ptr.cast::&lt;u8&gt;()
-                            .as_ptr()
-                            .add(tag_layout.extend(variant_layouts[tag]).unwrap().<span class="number">1</span>),
-                    )
-                    .cast()
-                })
+                (
+                    tag,
+                    <span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{
+                        NonNull::new_unchecked(
+                            ptr.cast::&lt;u8&gt;()
+                                .as_ptr()
+                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().<span class="number">1</span>),
+                        )
+                        .cast()
+                    }),
+                )
             } <span class="kw">else </span>{
-                <span class="comment">// TODO: Shouldn&#39;t the pointer be always `None` within this block?
-                </span><span class="kw">match </span>(info.variants.len().next_power_of_two().trailing_zeros() + <span class="number">7</span>) / <span class="number">8 </span>{
-                    <span class="number">0 </span>=&gt; (<span class="number">0</span>, return_ptr.unwrap_or_else(NonNull::dangling)),
+                <span class="kw">match </span>info.variants.len() {
+                    <span class="number">0 </span>| <span class="number">1 </span>=&gt; (<span class="number">0</span>, <span class="prelude-val">Err</span>(<span class="number">0</span>)),
                     <span class="kw">_ </span>=&gt; (
                         <span class="kw">match </span>tag_layout.size() {
-                            <span class="number">0 </span>=&gt; <span class="number">0</span>,
                             <span class="number">1 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>u8 <span class="kw">as </span>usize,
                             <span class="number">2 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>u16 <span class="kw">as </span>usize,
                             <span class="number">4 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>u32 <span class="kw">as </span>usize,
                             <span class="number">8 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>usize,
                             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                         },
-                        return_ptr.unwrap_or_else(NonNull::dangling),
+                        <span class="prelude-val">Err</span>(<span class="number">1</span>),
                     ),
                 }
             };
-            <span class="kw">let </span>value = Box::new(JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry));
+
+            <span class="kw">let </span>value = <span class="kw">match </span>ptr {
+                <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)),
+                <span class="prelude-val">Err</span>(offset) =&gt; {
+                    ret_registers.copy_within(offset.., <span class="number">0</span>);
+                    Box::new(parse_result(
+                        <span class="kw-2">&amp;</span>info.variants[tag],
+                        registry,
+                        <span class="prelude-val">None</span>,
+                        ret_registers,
+                    ))
+                }
+            };
 
             JitValue::Enum {
                 tag,
