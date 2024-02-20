@@ -195,10 +195,19 @@ pub fn build_get<'ctx, 'this>(
         ));
         let value_ptr = op.result(0)?.into();
 
-        let op = block_is_null.append_operation(llvm::undef(value_ty, location));
-        let undef_value = op.result(0)?.into();
+        let default_value = registry
+            .get_type(&info.branch_signatures()[0].vars[1].ty)?
+            .build_default(
+                context,
+                registry,
+                block_is_null,
+                location,
+                helper,
+                metadata,
+                &info.branch_signatures()[0].vars[1].ty,
+            )?;
 
-        block_is_null.append_operation(cf::br(block_final, &[value_ptr, undef_value], location));
+        block_is_null.append_operation(cf::br(block_final, &[value_ptr, default_value], location));
     }
 
     // found block
