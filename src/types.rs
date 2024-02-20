@@ -16,7 +16,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
     },
-    ids::ConcreteTypeId,
+    ids::{ConcreteTypeId, UserTypeId},
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
@@ -32,8 +32,7 @@ use melior::{
     },
     Context,
 };
-use num_traits::Zero;
-use std::{alloc::Layout, error::Error, ops::Deref};
+use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 pub mod bitwise;
@@ -749,10 +748,48 @@ impl TypeBuilder for CoreTypeConcrete {
         _metadata: &mut MetadataStorage,
         _self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error> {
+        static BOOL_USER_TYPE_ID: OnceLock<UserTypeId> = OnceLock::new();
+        let bool_user_type_id =
+            BOOL_USER_TYPE_ID.get_or_init(|| UserTypeId::from_string("core::bool"));
+
         Ok(match self {
             Self::Enum(info) => match &info.info.long_id.generic_args[0] {
-                GenericArg::UserType(id) if dbg!(&id.id).is_zero() => todo!(),
-                _ => unreachable!(),
+                GenericArg::UserType(id) if id == bool_user_type_id => {
+                    let tag = entry
+                        .append_operation(arith::constant(
+                            context,
+                            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                            location,
+                        ))
+                        .result(0)?
+                        .into();
+
+                    let value = entry
+                        .append_operation(llvm::undef(
+                            llvm::r#type::r#struct(
+                                context,
+                                &[
+                                    IntegerType::new(context, 1).into(),
+                                    llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+                                ],
+                                false,
+                            ),
+                            location,
+                        ))
+                        .result(0)?
+                        .into();
+                    entry
+                        .append_operation(llvm::insert_value(
+                            context,
+                            value,
+                            DenseI64ArrayAttribute::new(context, &[0]),
+                            tag,
+                            location,
+                        ))
+                        .result(0)?
+                        .into()
+                }
+                _ => unimplemented!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry
                 .append_operation(arith::constant(
@@ -809,7 +846,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 ))
                 .result(0)?
                 .into(),
-            _ => todo!(),
+            _ => unimplemented!("unsupported dict value type"),
         })
     }
 
