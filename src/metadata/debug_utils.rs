@@ -15,7 +15,7 @@
 //! #     program_registry::ProgramRegistry,
 //! # };
 //! # use cairo_native::{
-//! #     error::libfuncs::{Error, Result},
+//! #     error::builders::{Error, Result},
 //! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
 //! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
 //! #     types::TypeBuilder,
