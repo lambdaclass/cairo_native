@@ -27,7 +27,7 @@
 //! let sierra_program = cairo_native::utils::cairo_to_sierra("programs/examples/hello.cairo");
 //!
 //! // Create a new Cairo compilation context and use it to compile our Cairo program.
-//! let native_context = NativeContext::new();
+//! let native_context = NativeContext::default();
 //! let native_program = native_context.compile(&sierra_program)?;
 //!
 //! // We want to call the `hello::hello::greet` function with an argument containing the
@@ -36,7 +36,7 @@
 //! let arguments = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 //!
 //! // To execute the program we need an engine. In this example we'll use the JIT engine.
-//! let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+//! let native_executor = JitNativeExecutor::new(native_program, Default::default());
 //!
 //! // Obtain the Sierra function ID of the entry point and execute it using the engine.
 //! let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
