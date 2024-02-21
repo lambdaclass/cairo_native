@@ -1,9 +1,10 @@
 //! # Poseidon type
 //!
-//! Type representing the Poseidon builtin.
+//! Type representing the Poseidon builtin. Only used for tracking builtin usage, therefore it's an
+//! integer counter.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

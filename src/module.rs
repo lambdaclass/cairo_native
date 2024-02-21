@@ -1,3 +1,5 @@
+//! # Cairo native program module.
+
 use crate::metadata::{gas::GasMetadata, MetadataStorage};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -17,6 +19,7 @@ pub struct NativeModule<'m> {
 }
 
 impl<'m> NativeModule<'m> {
+    /// Create a [`NativeModule`] from an MLIR module, the program registry and metadata.
     pub fn new(
         module: Module<'m>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
@@ -70,14 +73,17 @@ impl<'m> NativeModule<'m> {
         self.metadata.get::<T>()
     }
 
+    /// Return the [`NativeModule`]'s metadata.
     pub fn metadata(&self) -> &MetadataStorage {
         &self.metadata
     }
 
+    /// Return the [`NativeModule`]'s MLIR module.
     pub fn module(&self) -> &Module {
         &self.module
     }
 
+    /// Return the [`NativeModule`]'s program registry.
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
     }

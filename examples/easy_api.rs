@@ -9,7 +9,7 @@ fn main() {
 
     // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
     // initialization and compilation of sierra programs into a MLIR module.
-    let native_context = NativeContext::new();
+    let native_context = NativeContext::default();
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program).unwrap();
@@ -22,7 +22,7 @@ fn main() {
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::new(native_program, Default::default());
 
     // Execute the program.
     let result = native_executor

@@ -1,15 +1,20 @@
+//! # Executor caching
+
 pub use self::{aot::AotProgramCache, jit::JitProgramCache};
 use std::hash::Hash;
 
-pub mod aot;
-pub mod jit;
+mod aot;
+mod jit;
 
+/// A cache to store compiled programs.
 #[derive(Debug)]
 pub enum ProgramCache<'a, K>
 where
     K: PartialEq + Eq + Hash,
 {
+    /// Cache is for AOT-compiled programs.
     Aot(AotProgramCache<'a, K>),
+    /// Cache is for JIT-compiled programs.
     Jit(JitProgramCache<'a, K>),
 }
 

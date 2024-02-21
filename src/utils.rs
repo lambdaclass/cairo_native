@@ -1,6 +1,7 @@
 //! # Various utilities
 
 use crate::{
+    error::BuilderError,
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
@@ -18,19 +19,12 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use std::{
-    alloc::Layout,
-    borrow::Cow,
-    fmt::{self, Display},
-    ops::Neg,
-    path::Path,
-    ptr::NonNull,
-    sync::Arc,
-};
-use thiserror::Error;
+use std::{alloc::Layout, borrow::Cow, fmt, ops::Neg, path::Path, ptr::NonNull, sync::Arc};
 
+/// Shared library extension.
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
+/// Shared library extension.
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
 
@@ -74,13 +68,14 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 128 {
         Layout::new::<u128>()
     } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
+        Layout::array::<u64>((width as usize).next_multiple_of(64) >> 6).unwrap()
     }
 }
 
 /// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
+pub fn cairo_to_sierra(program: impl AsRef<Path>) -> Arc<Program> {
     if program
+        .as_ref()
         .extension()
         .map(|x| {
             x.to_ascii_lowercase()
@@ -90,7 +85,7 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
         .unwrap_or(false)
     {
         cairo_lang_compiler::compile_cairo_project_at_path(
-            program,
+            program.as_ref(),
             CompilerConfig {
                 replace_ids: true,
                 ..Default::default()
@@ -213,6 +208,7 @@ pub fn create_engine(
     engine
 }
 
+/// Create and execute all the passes required to lower the generated MLIR to the LLVM dialect.
 pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Error> {
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
@@ -227,6 +223,7 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     pass_manager.run(module)
 }
 
+/// Register the runtime-provided symbols into the JIT execution engine.
 #[cfg(feature = "with-runtime")]
 pub fn register_runtime_symbols(engine: &ExecutionEngine) {
     unsafe {
@@ -333,104 +330,9 @@ where
     FmtWrapper(fmt)
 }
 
-// POLYFILLS of nightly features
-
-#[inline]
-pub const fn next_multiple_of_usize(lhs: usize, rhs: usize) -> usize {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
-#[inline]
-pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
-/// Edit: Copied from the std lib.
-///
-/// Returns the amount of padding we must insert after `layout`
-/// to ensure that the following address will satisfy `align`
-/// (measured in bytes).
-///
-/// e.g., if `layout.size()` is 9, then `layout.padding_needed_for(4)`
-/// returns 3, because that is the minimum number of bytes of
-/// padding required to get a 4-aligned address (assuming that the
-/// corresponding memory block starts at a 4-aligned address).
-///
-/// The return value of this function has no meaning if `align` is
-/// not a power-of-two.
-///
-/// Note that the utility of the returned value requires `align`
-/// to be less than or equal to the alignment of the starting
-/// address for the whole allocated block of memory. One way to
-/// satisfy this constraint is to ensure `align <= layout.align()`.
-#[inline]
-pub const fn padding_needed_for(layout: &Layout, align: usize) -> usize {
-    let len = layout.size();
-
-    // Rounded up value is:
-    //   len_rounded_up = (len + align - 1) & !(align - 1);
-    // and then we return the padding difference: `len_rounded_up - len`.
-    //
-    // We use modular arithmetic throughout:
-    //
-    // 1. align is guaranteed to be > 0, so align - 1 is always
-    //    valid.
-    //
-    // 2. `len + align - 1` can overflow by at most `align - 1`,
-    //    so the &-mask with `!(align - 1)` will ensure that in the
-    //    case of overflow, `len_rounded_up` will itself be 0.
-    //    Thus the returned padding, when added to `len`, yields 0,
-    //    which trivially satisfies the alignment `align`.
-    //
-    // (Of course, attempts to allocate blocks of memory whose
-    // size and padding overflow in the above manner should cause
-    // the allocator to yield an error anyway.)
-
-    let len_rounded_up = len.wrapping_add(align).wrapping_sub(1) & !align.wrapping_sub(1);
-    len_rounded_up.wrapping_sub(len)
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Error)]
-pub struct LayoutError;
-
-impl Display for LayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("layout error")
-    }
-}
-
-/// Copied from std.
-///
-/// Creates a layout describing the record for `n` instances of
-/// `self`, with a suitable amount of padding between each to
-/// ensure that each instance is given its requested size and
-/// alignment. On success, returns `(k, offs)` where `k` is the
-/// layout of the array and `offs` is the distance between the start
-/// of each element in the array.
-///
-/// On arithmetic overflow, returns `LayoutError`.
-//#[unstable(feature = "alloc_layout_extra", issue = "55724")]
-#[inline]
-pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), LayoutError> {
-    // This cannot overflow. Quoting from the invariant of Layout:
-    // > `size`, when rounded up to the nearest multiple of `align`,
-    // > must not overflow isize (i.e., the rounded value must be
-    // > less than or equal to `isize::MAX`)
-    let padded_size = layout.size() + padding_needed_for(layout, layout.align());
-    let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
-
-    // The safe constructor is called here to enforce the isize size limit.
-    let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
-    Ok((layout, padded_size))
-}
-
+/// Program registry extension trait with various utility methods.
 pub trait ProgramRegistryExt {
+    /// Build a type directly.
     fn build_type<'ctx>(
         &self,
         context: &'ctx Context,
@@ -438,8 +340,9 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error>;
+    ) -> Result<Type<'ctx>, BuilderError>;
 
+    /// Build a type along with its layout directly.
     fn build_type_with_layout<'ctx>(
         &self,
         context: &'ctx Context,
@@ -447,7 +350,7 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error>;
+    ) -> Result<(Type<'ctx>, Layout), BuilderError>;
 }
 
 impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
@@ -458,7 +361,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error> {
+    ) -> Result<Type<'ctx>, BuilderError> {
         registry
             .get_type(id)?
             .build(context, module, registry, metadata, id)
@@ -471,7 +374,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
+    ) -> Result<(Type<'ctx>, Layout), BuilderError> {
         let concrete_type = registry.get_type(id)?;
 
         Ok((
@@ -610,10 +513,8 @@ pub mod test {
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
         metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
-            MetadataStorage,
+            gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta,
+            syscall_handler::SyscallHandlerMeta, MetadataStorage,
         },
         module::NativeModule,
         starknet::{
@@ -764,7 +665,7 @@ pub mod test {
             .iter()
             .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
         {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            let gas_metadata = GasMetadata::new(program, Default::default());
             metadata.insert(gas_metadata);
         }
 
@@ -784,7 +685,7 @@ pub mod test {
 
         let native_module = NativeModule::new(module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        let executor = JitNativeExecutor::new(native_module, OptLevel::None);
         executor
             .invoke_dynamic(
                 entry_point_id,

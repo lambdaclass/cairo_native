@@ -15,10 +15,7 @@
 //! #     program_registry::ProgramRegistry,
 //! # };
 //! # use cairo_native::{
-//! #     error::{
-//! #         libfuncs::{Error, Result},
-//! #         CoreTypeBuilderError,
-//! #     },
+//! #     error::builders::{Error, Result},
 //! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
 //! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
 //! #     types::TypeBuilder,
@@ -84,7 +81,7 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::error::libfuncs::Result;
+use crate::error::builders::Result;
 use melior::{
     dialect::{arith, func, llvm},
     ir::{
@@ -108,12 +105,16 @@ enum DebugBinding {
     PrintFelt252,
 }
 
+/// Debug utils metadata.
 #[derive(Debug, Default)]
 pub struct DebugUtils {
     active_map: HashSet<DebugBinding>,
 }
 
 impl DebugUtils {
+    /// Insert a breakpoint marker.
+    ///
+    /// A breakpoint marker just prints `[DEBUG] Breakpoint marker.\n` when executed.
     pub fn breakpoint_marker<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -149,6 +150,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert a breakpoint trap instruction (for debuggers).
     pub fn debug_breakpoint_trap<'c, 'a>(
         &mut self,
         block: &'a Block<'c>,
@@ -161,6 +163,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert operations to print a pointer's value.
     pub fn print_pointer<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -200,6 +203,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert operations to print a boolean's (`i1`) value.
     pub fn print_i1<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -238,6 +242,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert operations to print a felt252's value.
     pub fn print_felt252<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -340,6 +345,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert operations to print an i8's value.
     pub fn print_i8<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -378,6 +384,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Insert operations to print an i128's value.
     pub fn print_i128<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -447,6 +454,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Register the debug callbacks' symbols into an execution engine.
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {

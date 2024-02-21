@@ -1,3 +1,6 @@
+//! # Compiler errors.
+
+use super::BuilderError;
 use cairo_lang_sierra::{
     edit_state::EditStateError,
     ids::{ConcreteLibfuncId, ConcreteTypeId},
@@ -6,14 +9,15 @@ use cairo_lang_sierra::{
 use std::{fmt, ops::Deref};
 use thiserror::Error;
 
-use super::{CoreLibfuncBuilderError, CoreTypeBuilderError};
+/// A [`Result`](std::result::Result) alias with the error type fixed to [`Error`].
+pub type Result<T> = std::result::Result<T, Error>;
 
-pub type CompileError = Box<Error>;
-
+/// Wrapper for the error type and the error's origin backtrace (soon™).
 #[derive(Error)]
 pub struct Error {
-    // TODO: enable once its stable in rust
+    // TODO: Enable once it stabilizes.
     // pub backtrace: Backtrace,
+    /// The actual error.
     pub source: ErrorImpl,
 }
 
@@ -63,24 +67,36 @@ impl fmt::Debug for Error {
     }
 }
 
+/// A compilation error.
 #[derive(Error)]
 pub enum ErrorImpl {
+    /// Failed to edit the Sierra state. This should mean an invalid Sierra has been provided to the
+    /// compiler.
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
+    /// An MLIR error has occurred.
     #[error(transparent)]
     MlirError(#[from] melior::Error),
+    /// The program registry returned an error. This should mean an invalid Sierra has been provided
+    /// to the compiler.
     #[error(transparent)]
     ProgramRegistryError(#[from] Box<ProgramRegistryError>),
 
+    /// A [TypeBuilder](crate::types::TypeBuilder) error.
     #[error("Error building type '{type_id}': {error}")]
     TypeBuilderError {
+        /// The type which caused an error.
         type_id: ConcreteTypeId,
-        error: CoreTypeBuilderError,
+        /// The actual error.
+        error: BuilderError,
     },
-    #[error("Error building type '{libfunc_id}': {error}")]
+    /// A [LibfuncBuilder](crate::libfuncs::LibfuncBuilder) error.
+    #[error("Error building type '{type_id}': {error}")]
     LibfuncBuilderError {
-        libfunc_id: ConcreteLibfuncId,
-        error: CoreLibfuncBuilderError,
+        /// The type which caused an error.
+        type_id: ConcreteLibfuncId,
+        /// The actual error.
+        error: BuilderError,
     },
 }
 
@@ -99,18 +115,18 @@ impl fmt::Debug for ErrorImpl {
                 .field("type_id", type_id)
                 .field("error", error)
                 .finish(),
-            Self::LibfuncBuilderError { libfunc_id, error } => f
+            Self::LibfuncBuilderError { type_id, error } => f
                 .debug_struct("LibfuncBuilderError")
-                .field("libfunc_id", libfunc_id)
+                .field("type_id", type_id)
                 .field("error", error)
                 .finish(),
         }
     }
 }
 
-pub fn make_type_builder_error(
+pub(crate) fn make_type_builder_error(
     id: &ConcreteTypeId,
-) -> impl '_ + FnOnce(CoreTypeBuilderError) -> Error
+) -> impl '_ + FnOnce(BuilderError) -> Error
 where
 {
     move |source| {
@@ -122,12 +138,14 @@ where
     }
 }
 
-pub fn make_libfunc_builder_error(
+pub(crate) fn make_libfunc_builder_error(
     id: &ConcreteLibfuncId,
-) -> impl '_ + FnOnce(CoreLibfuncBuilderError) -> Error {
+) -> impl '_ + FnOnce(BuilderError) -> Error
+where
+{
     move |source| {
         ErrorImpl::LibfuncBuilderError {
-            libfunc_id: id.clone(),
+            type_id: id.clone(),
             error: source,
         }
         .into()

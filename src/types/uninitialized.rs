@@ -1,7 +1,7 @@
 //! # Uninitialized type
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::builders::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

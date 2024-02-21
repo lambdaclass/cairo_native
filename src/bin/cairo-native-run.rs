@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let native_context = NativeContext::new();
+    let native_context = NativeContext::default();
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context.compile(&sierra_program).unwrap();
@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let native_executor: NativeExecutor = match args.mode {
         RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Jit => JitNativeExecutor::new(native_module, opt_level).into(),
     };
     let result = native_executor
         .invoke_dynamic(&entry_point.id, &params, Some(u64::MAX.into()), None)
@@ -135,7 +135,8 @@ struct CmdLine {
 
     #[clap(short, long, default_value = "jit")]
     mode: RunMode,
-    /// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    /// Note: This is bugged for any non-zero values. See <https://github.com/lambdaclass/cairo_native/issues/404>.
+    // TODO: Is this still bugged?
     #[clap(short = 'O', long, default_value = "0")]
     opt_level: usize,
 

@@ -3,7 +3,7 @@
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-use crate::error::libfuncs::Result;
+use crate::error::builders::Result;
 use melior::{
     dialect::{func, llvm},
     ir::{
@@ -414,6 +414,7 @@ impl RuntimeBindingsMeta {
         )))
     }
 
+    /// Register if necessary, then invoke the `ec_state_try_finalize_nz()` function.
     pub fn libfunc_ec_state_try_finalize_nz<'c, 'a>(
         &mut self,
         context: &'c Context,

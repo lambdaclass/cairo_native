@@ -22,7 +22,7 @@
 // TODO: Maybe the types used here can be i251 instead of i252.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -93,6 +93,7 @@ pub fn build<'ctx>(
     }
 }
 
+/// Build the `ClassHash` Starknet type.
 pub fn build_class_hash<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -104,6 +105,7 @@ pub fn build_class_hash<'ctx>(
     super::felt252::build(context, module, registry, metadata, info)
 }
 
+/// Build the `ContractAddress` Starknet type.
 pub fn build_contract_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -115,6 +117,7 @@ pub fn build_contract_address<'ctx>(
     super::felt252::build(context, module, registry, metadata, info)
 }
 
+/// Build the `StorageBaseAddress` Starknet type.
 pub fn build_storage_base_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -126,6 +129,7 @@ pub fn build_storage_base_address<'ctx>(
     super::felt252::build(context, module, registry, metadata, info)
 }
 
+/// Build the `StorageAddress` Starknet type.
 pub fn build_storage_address<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -137,6 +141,7 @@ pub fn build_storage_address<'ctx>(
     super::felt252::build(context, module, registry, metadata, info)
 }
 
+/// Build the `System` Starknet builtin type.
 pub fn build_system<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
@@ -147,6 +152,7 @@ pub fn build_system<'ctx>(
     Ok(llvm::r#type::opaque_pointer(context))
 }
 
+/// Build the `Secp256k1` and `Secp256r1` Starknet types.
 pub fn build_secp256_point<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,

@@ -111,7 +111,7 @@ fn load_program<'c>(
                     buffer
                 })?;
 
-                Some(DebugLocations::extract(context, &db, &debug_info))
+                Some(DebugLocations::convert(context, &db, &debug_info))
             } else {
                 None
             };
@@ -150,7 +150,7 @@ fn load_program<'c>(
                     buffer
                 })?;
 
-                Some(DebugLocations::extract(context, &db, &debug_info))
+                Some(DebugLocations::convert(context, &db, &debug_info))
             } else {
                 None
             };

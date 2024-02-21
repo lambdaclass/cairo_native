@@ -1,10 +1,10 @@
 //! # Elliptic curve operation type
 //!
-//! The ec operation type is used in the VM for computing bitwise operations. Since this can be done
-//! natively in MLIR, this type is effectively an unit type.
+//! The ec operation type is used in the VM for computing bitwise operations. Only used for tracking
+//! builtin usage, therefore it's an integer counter.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

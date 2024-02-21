@@ -2,7 +2,10 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{error::CoreLibfuncBuilderError, metadata::MetadataStorage};
+use crate::{
+    error::{builders, BuilderError},
+    metadata::MetadataStorage,
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -86,7 +89,7 @@ pub trait LibfuncBuilder {
 }
 
 impl LibfuncBuilder for CoreConcreteLibfunc {
-    type Error = CoreLibfuncBuilderError;
+    type Error = BuilderError;
 
     fn build<'ctx, 'this>(
         &self,
@@ -395,7 +398,7 @@ where
         default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
         branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>, CoreLibfuncBuilderError> {
+    ) -> Result<Operation<'ctx>, BuilderError> {
         let default_destination = match default.0 {
             BranchTarget::Jump(x) => (x, Cow::Borrowed(default.1)),
             BranchTarget::Return(i) => {
@@ -487,12 +490,13 @@ pub enum BranchTarget<'ctx, 'a> {
     Return(usize),
 }
 
+/// Increment a builtin counter.
 pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
-) -> crate::error::libfuncs::Result<Value<'ctx, 'a>> {
+) -> builders::Result<Value<'ctx, 'a>> {
     let k1 = block
         .append_operation(arith::constant(
             context,

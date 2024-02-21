@@ -1,13 +1,14 @@
 //! # Nullable type
 //!
-//! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
+//! Nullable has the same representation as a [box](crate::types::r#box), except that the null value
+//! is permitted.
 //!
 //! A nullable is functionally equivalent to Rust's `Option<Box<T>>`. Since it's always paired with
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{libfuncs, types::Result},
+    error::builders::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -69,7 +70,7 @@ fn snapshot_take<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>> {
+) -> Result<Value<'ctx, 'this>> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }

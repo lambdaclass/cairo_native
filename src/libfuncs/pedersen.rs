@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -47,6 +47,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `pedersen` libfunc.
 pub fn build_pedersen<'ctx>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,

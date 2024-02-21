@@ -49,6 +49,7 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
     unsafe { Type::from_raw(ty_ptr) }
 }
 
+/// An LLVM compilation error.
 #[derive(Debug, Clone)]
 pub struct LLVMCompileError(String);
 
@@ -61,12 +62,17 @@ impl Display for LLVMCompileError {
     }
 }
 
+/// Optimization level.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OptLevel {
+    /// Equivalent to `-O0`.
     None,
+    /// Equivalent to `-O1`.
     Less,
+    /// Equivalent to `-O2`.
     #[default]
     Default,
+    /// Equivalent to `-O3`.
     Aggressive,
 }
 
@@ -164,6 +170,7 @@ pub fn module_to_object(
     }
 }
 
+/// Link an object file into a shared library.
 pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;

@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
@@ -141,6 +141,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `call_contract_syscall` libfunc.
 pub fn build_call_contract<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -524,6 +525,7 @@ pub fn build_call_contract<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `class_hash_const` libfunc.
 pub fn build_class_hash_const<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -551,6 +553,7 @@ pub fn build_class_hash_const<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `class_hash_to_felt252` libfunc.
 pub fn build_class_hash_to_felt252<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -564,6 +567,7 @@ pub fn build_class_hash_to_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `class_hash_try_from_felt252` libfunc.
 pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -611,6 +615,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `contract_address_const` libfunc.
 pub fn build_contract_address_const<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -638,6 +643,7 @@ pub fn build_contract_address_const<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `contract_address_try_from_felt252` libfunc.
 pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -685,6 +691,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `contract_address_to_felt252` libfunc.
 pub fn build_contract_address_to_felt252<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -698,6 +705,7 @@ pub fn build_contract_address_to_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_read_syscall` libfunc.
 pub fn build_storage_read<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1011,6 +1019,7 @@ pub fn build_storage_read<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_write_syscall` libfunc.
 pub fn build_storage_write<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1358,6 +1367,7 @@ pub fn build_storage_write<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_base_address_const` libfunc.
 pub fn build_storage_base_address_const<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1385,6 +1395,7 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_base_address_from_felt252` libfunc.
 pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1439,6 +1450,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_address_from_base` libfunc.
 pub fn build_storage_address_from_base<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1452,6 +1464,7 @@ pub fn build_storage_address_from_base<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_address_from_base_and_offset` libfunc.
 pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1478,6 +1491,7 @@ pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_address_to_felt252` libfunc.
 pub fn build_storage_address_to_felt252<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1491,6 +1505,7 @@ pub fn build_storage_address_to_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `storage_address_try_from_felt252` libfunc.
 pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1538,6 +1553,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `emit_event_syscall` libfunc.
 pub fn build_emit_event<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1905,6 +1921,7 @@ pub fn build_emit_event<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `get_block_hash_syscall` libfunc.
 pub fn build_get_block_hash<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -2188,6 +2205,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `get_execution_info_syscall` libfunc.
 pub fn build_get_execution_info<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -2464,6 +2482,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `get_execution_info_v2_syscall` libfunc.
 pub fn build_get_execution_info_v2<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -2740,6 +2759,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `deploy_syscall` libfunc.
 pub fn build_deploy<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -3202,6 +3222,7 @@ pub fn build_deploy<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `keccak_syscall` libfunc.
 pub fn build_keccak<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -3514,6 +3535,7 @@ pub fn build_keccak<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `library_call_syscall` libfunc.
 pub fn build_library_call<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -3897,6 +3919,7 @@ pub fn build_library_call<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `replace_class_syscall` libfunc.
 pub fn build_replace_class<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -4206,6 +4229,7 @@ pub fn build_replace_class<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `send_message_to_l1_syscall` libfunc.
 pub fn build_send_message_to_l1<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,

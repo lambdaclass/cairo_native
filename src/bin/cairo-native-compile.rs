@@ -123,7 +123,7 @@ fn load_program<'c>(
                     buffer
                 })?;
 
-                Some(DebugLocations::extract(context, &db, &debug_info))
+                Some(DebugLocations::convert(context, &db, &debug_info))
             } else {
                 None
             };
@@ -162,7 +162,7 @@ fn load_program<'c>(
                     buffer
                 })?;
 
-                Some(DebugLocations::extract(context, &db, &debug_info))
+                Some(DebugLocations::convert(context, &db, &debug_info))
             } else {
                 None
             };
@@ -188,7 +188,8 @@ struct CmdLine {
     #[clap(value_parser = parse_input)]
     input: PathBuf,
 
-    /// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
+    /// Note: This is bugged for any non-zero values. See <https://github.com/lambdaclass/cairo_native/issues/404>.
+    // TODO: Is this still bugged?
     #[clap(short = 'O', long, default_value = "0")]
     opt_level: usize,
 

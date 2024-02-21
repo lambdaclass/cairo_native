@@ -1,6 +1,9 @@
+//! # Syscall handler metadata
+
 use crate::starknet::{handler::StarkNetSyscallHandlerCallbacks, StarkNetSyscallHandler};
 use std::{alloc::Layout, fmt::Debug, ptr::NonNull};
 
+/// Syscall handler metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyscallHandlerMeta {
     handler: NonNull<()>,
@@ -8,6 +11,7 @@ pub struct SyscallHandlerMeta {
 }
 
 impl SyscallHandlerMeta {
+    /// Create the syscall handler metadata from a syscall handler.
     pub fn new<T>(handler_impl: &mut T) -> Self
     where
         T: StarkNetSyscallHandler,
@@ -29,6 +33,7 @@ impl SyscallHandlerMeta {
         }
     }
 
+    /// Return a pointer to the syscall handler.
     pub fn as_ptr(&self) -> NonNull<()> {
         self.handler
     }

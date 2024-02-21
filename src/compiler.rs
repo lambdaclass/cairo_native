@@ -12,7 +12,7 @@
 //! multiple target branches.
 //!
 //! > Note: Libfunc builders must have a branching operation out into each possible branch, even if
-//!     it's unreachable. This is required to keep the state consistent. More on that later.
+//!     it's unreachable. This is a requirement from MLIR, which doesn't allow unreachable blocks.
 //!
 //! Some statements do require a special landing block. Those are the ones which are the branching
 //! target of more than a single statement. In other words, if a statement can be reached (directly)
@@ -32,15 +32,14 @@
 //! ## Function nomenclature transforms
 //!
 //! When compiling from Cairo, or from a Sierra source with debug information (the `-r` flag on
-//! `cairo-compile`), those identifiers are the function's exported symbol. However, Sierra programs
-//! are not required to contain that information. In those cases, the
-//! (`generate_function_name`)[generate_function_name] will generate a new symbol name based on its
-//! function id.
+//! `cairo-compile`), those identifiers (and their function id) are the function's exported symbol.
+//! However, Sierra programs are not required to contain that information. In those cases, the
+//! [`generate_function_name`] utility will generate a new symbol name based on its function id.
 //!
 //! ## Tail-recursive functions
 //!
 //! Part of the tail-recursion handling algorithm is implemented here, but tail-recursive functions
-//! are better explained in (their metadata section)[crate::metadata::tail_recursion].
+//! are better explained in [their metadata section](crate::metadata::tail_recursion).
 //!
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
@@ -102,11 +101,6 @@ type BlockStorage<'c, 'a> =
 
 /// Run the compiler on a program. The compiled program is stored in the MLIR module.
 ///
-/// The generics `TType` and `TLibfunc` contain the information required to generate the MLIR types
-/// and statement operations. Most of the time you'll want to use the default ones, which are
-/// [CoreType](cairo_lang_sierra::extensions::core::CoreType) and
-/// [CoreLibfunc](cairo_lang_sierra::extensions::core::CoreLibfunc) respectively.
-///
 /// This function needs the program and the program's registry, which doesn't need to have AP
 /// tracking information.
 ///
@@ -140,7 +134,7 @@ pub fn compile(
 /// Compile a single Sierra function.
 ///
 /// The function accepts a `Function` argument, which provides the function's entry point, signature
-/// and name. Check out [compile](self::compile) for a description of the other arguments.
+/// and name. Check out [compile] for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
 fn compile_func(

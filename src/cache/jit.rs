@@ -7,7 +7,9 @@ use std::{
     rc::Rc,
 };
 
-/// A Cache for programs with the same context.
+/// A JIT-compiled program cache.
+///
+/// Supports user-defined keys.
 pub struct JitProgramCache<'a, K>
 where
     K: Eq + Hash + PartialEq,
@@ -23,6 +25,7 @@ impl<'a, K> JitProgramCache<'a, K>
 where
     K: Eq + Hash + PartialEq,
 {
+    /// Create a new program cache for JIT-compiled programs with a specific context.
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
             context,
@@ -30,15 +33,19 @@ where
         }
     }
 
-    // Return the native context.
+    /// Return a reference to the native context.
     pub const fn context(&self) -> &'a NativeContext {
         self.context
     }
 
+    /// Retrieve a program given its key.
     pub fn get(&self, key: &K) -> Option<Rc<JitNativeExecutor<'a>>> {
         self.cache.get(key).cloned()
     }
 
+    /// Try to compile a program. If the compilation succeeds, insert (or replace) it into the
+    /// program cache and return the native executor.
+    // TODO: Error handling.
     pub fn compile_and_insert(
         &mut self,
         key: K,
@@ -46,7 +53,7 @@ where
         opt_level: OptLevel,
     ) -> Rc<JitNativeExecutor<'a>> {
         let module = self.context.compile(program).expect("should compile");
-        let executor = JitNativeExecutor::from_native_module(module, opt_level);
+        let executor = JitNativeExecutor::new(module, opt_level);
 
         let executor = Rc::new(executor);
         self.cache.insert(key, executor.clone());
@@ -84,7 +91,7 @@ mod test {
             }
         );
 
-        let context = NativeContext::new();
+        let context = NativeContext::default();
         let mut cache: JitProgramCache<&'static str> = JitProgramCache::new(&context);
 
         let start = Instant::now();

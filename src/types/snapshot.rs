@@ -1,6 +1,8 @@
 //! # Snapshot type
 //!
-//! The type snapshot for a given type `T`.
+//! The type snapshot for a given type `T`. Since the VM uses segments with write-only cells, a
+//! snapshot over there is just a pointer to the already-written data. We cannot do that in Cairo
+//! native, we need to clone the value here.
 //!
 //! ## Layout
 //!
@@ -14,7 +16,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::Result,
+    error::builders::Result,
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };

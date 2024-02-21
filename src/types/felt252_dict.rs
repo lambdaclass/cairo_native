@@ -2,11 +2,11 @@
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!
-//! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
-//! insert and get elements.
+//! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the
+//! runtime functions to insert and get elements.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
