@@ -34,7 +34,7 @@ impl<'m> NativeModule<'m> {
     /// If no initial gas is required, `None` is returned.
     pub fn get_required_init_gas(&self, fn_id: &FunctionId) -> Option<u128> {
         if let Some(gas_metadata) = self.metadata.get::<GasMetadata>() {
-            gas_metadata.get_initial_required_gas(fn_id)
+            gas_metadata.initial_required_gas(fn_id)
         } else {
             None
         }

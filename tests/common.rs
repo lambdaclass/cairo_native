@@ -228,7 +228,7 @@ pub fn run_native_program(
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
     metadata.insert(GasMetadata::new(
         program,
-        MetadataComputationConfig::default(),
+        Some(MetadataComputationConfig::default()),
     ));
 
     cairo_native::compile(&context, &module, program, &registry, &mut metadata, None)

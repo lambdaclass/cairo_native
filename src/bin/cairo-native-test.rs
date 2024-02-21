@@ -25,7 +25,7 @@ use cairo_lang_utils::{
 };
 use cairo_native::{
     context::NativeContext,
-    execution_result::{ContractExecutionResult, ExecutionResult},
+    execution_result::ExecutionResult,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     values::JitValue,
@@ -291,7 +291,7 @@ pub struct TestsSummary {
 }
 
 fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValue> {
-    let mut is_success = true;
+    let is_success;
     let mut felts: Vec<Felt> = Vec::new();
 
     match &result.return_value {
@@ -315,6 +315,7 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
         .into_iter()
         .map(|x| x.to_bigint().into())
         .collect_vec();
+
     Ok(match is_success {
         true => RunResultValue::Success(return_values),
         false => RunResultValue::Panic(return_values),
@@ -325,13 +326,9 @@ fn jitvalue_to_felt(value: &JitValue) -> Felt {
     match value {
         JitValue::Felt252(felt) => felt.to_bigint().into(),
         JitValue::Array(_) => todo!(),
-        JitValue::Struct { fields, debug_name } => todo!(),
-        JitValue::Enum {
-            tag,
-            value,
-            debug_name,
-        } => todo!(),
-        JitValue::Felt252Dict { value, debug_name } => todo!(),
+        JitValue::Struct { .. } => todo!(),
+        JitValue::Enum { .. } => todo!(),
+        JitValue::Felt252Dict { .. } => todo!(),
         JitValue::Uint8(x) => (*x).into(),
         JitValue::Uint16(x) => (*x).into(),
         JitValue::Uint32(x) => (*x).into(),
@@ -344,8 +341,8 @@ fn jitvalue_to_felt(value: &JitValue) -> Felt {
         JitValue::Sint128(x) => (*x).into(),
         JitValue::EcPoint(_, _) => todo!(),
         JitValue::EcState(_, _, _, _) => todo!(),
-        JitValue::Secp256K1Point { x, y } => todo!(),
-        JitValue::Secp256R1Point { x, y } => todo!(),
+        JitValue::Secp256K1Point { .. } => todo!(),
+        JitValue::Secp256R1Point { .. } => todo!(),
         JitValue::Null => 0.into(),
     }
 }
@@ -363,13 +360,16 @@ fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile_with_metadata(&sierra_program, MetadataComputationConfig {
-        function_set_costs: dbg!(function_set_costs),
-        linear_ap_change_solver: true,
-        linear_gas_solver: true,
-    }).unwrap();
-
-    let gas_metadata = native_module.get_metadata::<GasMetadata>().cloned();
+    let native_module = native_context
+        .compile_with_metadata(
+            &sierra_program,
+            MetadataComputationConfig {
+                function_set_costs: function_set_costs.clone(),
+                linear_ap_change_solver: true,
+                linear_gas_solver: true,
+            },
+        )
+        .unwrap();
 
     let opt_level = match args.opt_level {
         0 => OptLevel::None,
@@ -382,6 +382,16 @@ fn run_tests(
         RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
         RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
     };
+
+    let gas_metadata = GasMetadata::new(
+        &sierra_program,
+        Some(MetadataComputationConfig {
+            function_set_costs,
+            linear_ap_change_solver: true,
+            linear_gas_solver: true,
+        }),
+    )
+    .unwrap();
 
     println!("running {} tests", named_tests.len());
     let wrapped_summary = Mutex::new(Ok(TestsSummary {
@@ -398,9 +408,16 @@ fn run_tests(
                     return Ok((name, None));
                 }
                 let func = find_function(&sierra_program, name.as_str())?;
-                let initial_gas = test.available_gas.map(|x| x as u128);
+
+                let initial_gas = gas_metadata
+                    .get_initial_available_gas(
+                        &func.id,
+                        test.available_gas.map(|x| x.try_into().unwrap()),
+                    )
+                    .unwrap();
+
                 let result = native_executor
-                    .invoke_dynamic(&func.id, &[], initial_gas, None)
+                    .invoke_dynamic(&func.id, &[], Some(initial_gas), None)
                     .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
 
                 /*let result = runner
@@ -412,14 +429,7 @@ fn run_tests(
                 )
                 .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;*/
 
-                let gas_counter = initial_gas.zip(result.remaining_gas).map(|(a, b)| a - b);
-                dbg!(gas_counter);
-                dbg!(initial_gas);
-                dbg!(result.remaining_gas);
                 let run_result = result_to_runresult(&result)?;
-                dbg!(gas_metadata
-                    .as_ref()
-                    .and_then(|x| x.get_initial_required_gas(&func.id)));
                 Ok((
                     name,
                     Some(TestResult {
@@ -442,14 +452,13 @@ fn run_tests(
                         },
                         gas_usage: test
                             .available_gas
-                            .zip(gas_counter)
+                            .zip(result.remaining_gas)
                             .map(|(before, after)| {
                                 before.into_or_panic::<i64>() - after.to_i64().unwrap()
                             })
                             .or_else(|| {
                                 gas_metadata
-                                    .as_ref()
-                                    .and_then(|x| x.get_initial_required_gas(&func.id))
+                                    .initial_required_gas(&func.id)
                                     .map(|gas| gas.try_into().unwrap())
                             }),
                         profiling_info: None,

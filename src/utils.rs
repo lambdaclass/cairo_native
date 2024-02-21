@@ -764,7 +764,8 @@ pub mod test {
             .iter()
             .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
         {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            let gas_metadata =
+                GasMetadata::new(program, Some(MetadataComputationConfig::default()));
             metadata.insert(gas_metadata);
         }
 

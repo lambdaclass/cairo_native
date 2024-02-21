@@ -133,7 +133,7 @@ impl AotNativeExecutor {
             gas,
             self.gas_metadata
                 .as_ref()
-                .and_then(|gas_metadata| gas_metadata.get_initial_required_gas(function_id)),
+                .and_then(|gas_metadata| gas_metadata.initial_required_gas(function_id)),
         ) {
             if required_init_gas > *gas {
                 panic!("Not enough gas");
