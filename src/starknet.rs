@@ -5,6 +5,7 @@
 
 use starknet_types_core::felt::Felt;
 
+/// Syscall invocation result type.
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
 /// Binary representation of a `Felt` (in MLIR).
@@ -19,100 +20,158 @@ pub struct Felt252Abi(pub [u8; 32]);
 #[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
 pub struct U256 {
+    /// Higher half.
     pub hi: u128,
+    /// Lower half.
     pub lo: u128,
 }
 
+/// Response type for `get_execution_info_syscall`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionInfo {
+    /// Block information.
     pub block_info: BlockInfo,
+    /// Transaction information.
     pub tx_info: TxInfo,
+    /// Caller address.
     pub caller_address: Felt,
+    /// Contract address.
     pub contract_address: Felt,
+    /// Entry point selector.
     pub entry_point_selector: Felt,
 }
 
+/// Response type for `get_execution_info_v2_syscall`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionInfoV2 {
+    /// Block information.
     pub block_info: BlockInfo,
+    /// Transaction information.
     pub tx_info: TxV2Info,
+    /// Caller address.
     pub caller_address: Felt,
+    /// Contract address.
     pub contract_address: Felt,
+    /// Entry point selector.
     pub entry_point_selector: Felt,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TxV2Info {
-    pub version: Felt,
-    pub account_contract_address: Felt,
-    pub max_fee: u128,
-    pub signature: Vec<Felt>,
-    pub transaction_hash: Felt,
-    pub chain_id: Felt,
-    pub nonce: Felt,
-    pub resource_bounds: Vec<ResourceBounds>,
-    pub tip: u128,
-    pub paymaster_data: Vec<Felt>,
-    pub nonce_data_availability_mode: u32,
-    pub fee_data_availability_mode: u32,
-    pub account_deployment_data: Vec<Felt>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ResourceBounds {
-    pub resource: Felt,
-    pub max_amount: u64,
-    pub max_price_per_unit: u128,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BlockInfo {
-    pub block_number: u64,
-    pub block_timestamp: u64,
-    pub sequencer_address: Felt,
-}
-
+/// Transaction information (v1).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TxInfo {
+    /// Transaction version.
     pub version: Felt,
+    /// Account contract address.
     pub account_contract_address: Felt,
+    /// Max fee.
     pub max_fee: u128,
+    /// Transaction signature.
     pub signature: Vec<Felt>,
+    /// Transaction hash.
     pub transaction_hash: Felt,
+    /// Transaction chain id.
     pub chain_id: Felt,
+    /// Transaction nonce.
     pub nonce: Felt,
 }
 
+/// Transaction information (v2).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TxV2Info {
+    /// Transaction version.
+    pub version: Felt,
+    /// Account contract address.
+    pub account_contract_address: Felt,
+    /// Max fee.
+    pub max_fee: u128,
+    /// Transaction signature.
+    pub signature: Vec<Felt>,
+    /// Transaction hash.
+    pub transaction_hash: Felt,
+    /// Transaction chain id.
+    pub chain_id: Felt,
+    /// Transaction nonce.
+    pub nonce: Felt,
+
+    /// Resource bounds.
+    pub resource_bounds: Vec<ResourceBounds>,
+    /// Transaction tip.
+    pub tip: u128,
+    /// Paymaster data.
+    pub paymaster_data: Vec<Felt>,
+    /// Nonce data availability mode.
+    pub nonce_data_availability_mode: u32,
+    /// Fee data availability mode.
+    pub fee_data_availability_mode: u32,
+    /// Account deployment data.
+    pub account_deployment_data: Vec<Felt>,
+}
+
+/// Resource bounds (from [`TxV2Info`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ResourceBounds {
+    /// The resource.
+    pub resource: Felt,
+    /// The max amount.
+    pub max_amount: u64,
+    /// The max price per unit.
+    pub max_price_per_unit: u128,
+}
+
+/// Block info.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct BlockInfo {
+    /// Block number.
+    pub block_number: u64,
+    /// Block timestamp.
+    pub block_timestamp: u64,
+    /// Sequencer address.
+    pub sequencer_address: Felt,
+}
+
+/// A `Secp256k1` point.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Secp256k1Point {
+    /// The `x` coordinate.
     pub x: U256,
+    /// The `y` coordinate.
     pub y: U256,
 }
 
+/// A `Secp256r1` point.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Secp256r1Point {
+    /// The `x` coordinate.
     pub x: U256,
+    /// The `y` coordinate.
     pub y: U256,
 }
 
+/// The Starknet syscall handler interface.
+///
+/// Must be implemented by all syscall handlers compatible with Cairo native.
 pub trait StarkNetSyscallHandler {
+    /// The `get_block_hash` syscall.
     fn get_block_hash(
         &mut self,
         block_number: u64,
         remaining_gas: &mut u128,
     ) -> SyscallResult<Felt>;
 
+    /// The `get_execution_info` syscall.
     fn get_execution_info(&mut self, remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo>;
 
+    /// The `get_execution_info_v2` syscall.
     fn get_execution_info_v2(&mut self, remaining_gas: &mut u128)
         -> SyscallResult<ExecutionInfoV2>;
 
+    /// The `deploy` syscall.
     fn deploy(
         &mut self,
         class_hash: Felt,
@@ -121,8 +180,11 @@ pub trait StarkNetSyscallHandler {
         deploy_from_zero: bool,
         remaining_gas: &mut u128,
     ) -> SyscallResult<(Felt, Vec<Felt>)>;
+
+    /// The `replace_class` syscall.
     fn replace_class(&mut self, class_hash: Felt, remaining_gas: &mut u128) -> SyscallResult<()>;
 
+    /// The `library_call` syscall.
     fn library_call(
         &mut self,
         class_hash: Felt,
@@ -131,6 +193,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>>;
 
+    /// The `call_contract` syscall.
     fn call_contract(
         &mut self,
         address: Felt,
@@ -139,6 +202,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>>;
 
+    /// The `storage_read` syscall.
     fn storage_read(
         &mut self,
         address_domain: u32,
@@ -146,6 +210,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Felt>;
 
+    /// The `storage_write` syscall.
     fn storage_write(
         &mut self,
         address_domain: u32,
@@ -154,6 +219,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<()>;
 
+    /// The `emit_event` syscall.
     fn emit_event(
         &mut self,
         keys: &[Felt],
@@ -161,6 +227,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<()>;
 
+    /// The `send_message_to_l1` syscall.
     fn send_message_to_l1(
         &mut self,
         to_address: Felt,
@@ -168,8 +235,10 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<()>;
 
+    /// The `keccak` syscall.
     fn keccak(&mut self, input: &[u64], remaining_gas: &mut u128) -> SyscallResult<U256>;
 
+    /// The `secp256k1_new` syscall.
     fn secp256k1_new(
         &mut self,
         x: U256,
@@ -177,6 +246,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
+    /// The `secp256k1_add` syscall.
     fn secp256k1_add(
         &mut self,
         p0: Secp256k1Point,
@@ -184,6 +254,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point>;
 
+    /// The `secp256k1_mul` syscall.
     fn secp256k1_mul(
         &mut self,
         p: Secp256k1Point,
@@ -191,6 +262,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point>;
 
+    /// The `secp256k1_get_point_from_x` syscall.
     fn secp256k1_get_point_from_x(
         &mut self,
         x: U256,
@@ -198,12 +270,14 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>>;
 
+    /// The `secp256k1_get_xy` syscall.
     fn secp256k1_get_xy(
         &mut self,
         p: Secp256k1Point,
         remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)>;
 
+    /// The `secp256r1_new` syscall.
     fn secp256r1_new(
         &mut self,
         x: U256,
@@ -211,6 +285,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>>;
 
+    /// The `secp256r1_add` syscall.
     fn secp256r1_add(
         &mut self,
         p0: Secp256r1Point,
@@ -218,6 +293,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point>;
 
+    /// The `secp256r1_mul` syscall.
     fn secp256r1_mul(
         &mut self,
         p: Secp256r1Point,
@@ -225,6 +301,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point>;
 
+    /// The `secp256r1_get_point_from_x` syscall.
     fn secp256r1_get_point_from_x(
         &mut self,
         x: U256,
@@ -232,6 +309,7 @@ pub trait StarkNetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>>;
 
+    /// The `secp256r1_get_xy` syscall.
     fn secp256r1_get_xy(
         &mut self,
         p: Secp256r1Point,
@@ -239,54 +317,68 @@ pub trait StarkNetSyscallHandler {
     ) -> SyscallResult<(U256, U256)>;
 
     // Testing syscalls.
+
+    /// The `pop_log` testing syscall.
     fn pop_log(&mut self) {
         unimplemented!()
     }
 
+    /// The `set_account_contract_address` testing syscall.
     fn set_account_contract_address(&mut self, _contract_address: Felt) {
         unimplemented!()
     }
 
+    /// The `set_block_number` testing syscall.
     fn set_block_number(&mut self, _block_number: u64) {
         unimplemented!()
     }
 
+    /// The `set_block_timestamp` testing syscall.
     fn set_block_timestamp(&mut self, _block_timestamp: u64) {
         unimplemented!()
     }
 
+    /// The `set_caller_address` testing syscall.
     fn set_caller_address(&mut self, _address: Felt) {
         unimplemented!()
     }
 
+    /// The `set_chain_id` testing syscall.
     fn set_chain_id(&mut self, _chain_id: Felt) {
         unimplemented!()
     }
 
+    /// The `set_contract_address` testing syscall.
     fn set_contract_address(&mut self, _address: Felt) {
         unimplemented!()
     }
 
+    /// The `set_max_fee` testing syscall.
     fn set_max_fee(&mut self, _max_fee: u128) {
         unimplemented!()
     }
 
+    /// The `set_nonce` testing syscall.
     fn set_nonce(&mut self, _nonce: Felt) {
         unimplemented!()
     }
 
+    /// The `set_sequencer_address` testing syscall.
     fn set_sequencer_address(&mut self, _address: Felt) {
         unimplemented!()
     }
 
+    /// The `set_signature` testing syscall.
     fn set_signature(&mut self, _signature: &[Felt]) {
         unimplemented!()
     }
 
+    /// The `set_transaction_hash` testing syscall.
     fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
         unimplemented!()
     }
 
+    /// The `set_version` testing syscall.
     fn set_version(&mut self, _version: Felt) {
         unimplemented!()
     }

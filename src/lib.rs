@@ -1,56 +1,54 @@
 //! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
-//! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
-//! compiled (externally) into a binary
-//! [ahead of time](https://en.wikipedia.org/wiki/Ahead-of-time_compilation).
+//! which can then be executed using MLIR's
+//! [JIT](https://en.wikipedia.org/wiki/Just-in-time_compilation) engine, or compiled (externally)
+//! into a binary or a library ([AOT](https://en.wikipedia.org/wiki/Ahead-of-time_compilation)).
 //!
 //! ## Usage
 //!
-//! The API contains two structs, `NativeContext` and `NativeExecutor`.
-//! The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
-//! `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
-//! from an entrypoint.
-//! Programs and JIT states can be cached in contexts where their execution will be done multiple
-//! times.
+//! The API contains two types for interfacing: `NativeContext` and `NativeExecutor`. The main
+//! purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
+//! `NativeExecutor` is responsible of executing MLIR compiled sierra programs starting from an
+//! entrypoint, using either the JIT or an AOT-compiled library. Programs (both AOT and
+//! JIT-compiled) can be cached to be reused later on.
 //!
 //! ```
-//! use starknet_types_core::felt::Felt;
-//! use cairo_native::context::NativeContext;
-//! use cairo_native::executor::JitNativeExecutor;
-//! use cairo_native::values::JitValue;
-//! use std::path::Path;
-//!
-//! let program_path = Path::new("programs/examples/hello.cairo");
+//! # use starknet_types_core::felt::Felt;
+//! # use cairo_native::{
+//! #     context::NativeContext,
+//! #     executor::JitNativeExecutor,
+//! #     values::JitValue,
+//! # };
+//! # use std::path::Path;
+//! #
+//! # fn run() -> Result<(), Box<dyn std::error::Error>> {
 //! // Compile the cairo program to sierra.
-//! let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+//! let sierra_program = cairo_native::utils::cairo_to_sierra("programs/examples/hello.cairo");
 //!
-//! // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-//! // initialization and compilation of sierra programs into a MLIR module.
+//! // Create a new Cairo compilation context and use it to compile our Cairo program.
 //! let native_context = NativeContext::new();
+//! let native_program = native_context.compile(&sierra_program)?;
 //!
-//! // Compile the sierra program into a MLIR module.
-//! let native_program = native_context.compile(&sierra_program).unwrap();
-//!
-//! // The parameters of the entry point.
-//! let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
-//!
-//! // Find the entry point id by its name.
+//! // We want to call the `hello::hello::greet` function with an argument containing the
+//! // representation of the string `user` as a felt.
 //! let entry_point = "hello::hello::greet";
-//! let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+//! let arguments = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 //!
-//! // Instantiate the executor.
+//! // To execute the program we need an engine. In this example we'll use the JIT engine.
 //! let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 //!
-//! // Execute the program.
-//! let result = native_executor
-//!     .invoke_dynamic(entry_point_id, params, None, None)
-//!     .unwrap();
+//! // Obtain the Sierra function ID of the entry point and execute it using the engine.
+//! let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+//! let result = native_executor.invoke_dynamic(entry_point_id, arguments, None, None)?;
 //!
 //! println!("Cairo program was compiled and executed successfully.");
 //! println!("{:?}", result);
-//!
-//!
+//! #
+//! # Ok(())
+//! # }
+//! #
+//! # run().unwrap();
 //! ```
 //!
 //! ## Common definitions
@@ -64,7 +62,7 @@
 //!   - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted from the program.
 //!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
 
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{

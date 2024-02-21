@@ -33,7 +33,7 @@
 //! only a single byte per element.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::builders::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

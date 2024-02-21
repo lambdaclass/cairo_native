@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
@@ -38,6 +38,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `felt252_dict_new` libfunc.
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -61,6 +62,7 @@ pub fn build_new<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `felt252_dict_squash` libfunc.
 pub fn build_squash<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,

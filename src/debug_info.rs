@@ -21,15 +21,22 @@ mod libfunc_declarations;
 mod statements;
 mod type_declarations;
 
+/// Cairo program debug information as provided by the Cairo compiler database. Only available when
+/// compiling from Cairo sources.
 #[derive(Clone, Debug)]
 pub struct DebugInfo {
+    /// Type declarations' locations.
     pub type_declarations: HashMap<ConcreteTypeId, StableLocation>,
+    /// Libfunc declarations' locations.
     pub libfunc_declarations: HashMap<ConcreteLibfuncId, StableLocation>,
+    /// Statement declarations' locations.
     pub statements: HashMap<StatementIdx, LocationId>,
+    /// Function declarations' locations.
     pub funcs: HashMap<FunctionId, StableLocation>,
 }
 
 impl DebugInfo {
+    /// Extract the [`DebugInfo`] for a given program from the Cairo compiler database.
     pub fn extract(db: &RootDatabase, program: &Program) -> Result<Self, DiagnosticAdded> {
         let type_declarations = program
             .type_declarations
@@ -69,16 +76,23 @@ impl DebugInfo {
     }
 }
 
+/// Cairo program debug information as [MLIR locations](melior::ir::Location). Only available when
+/// compiling from Cairo sources.
 #[derive(Clone, Debug)]
 pub struct DebugLocations<'c> {
+    /// Type declarations' locations.
     pub type_declarations: HashMap<ConcreteTypeId, Location<'c>>,
+    /// Libfunc declarations' locations.
     pub libfunc_declarations: HashMap<ConcreteLibfuncId, Location<'c>>,
+    /// Statement declarations' locations.
     pub statements: HashMap<StatementIdx, Location<'c>>,
+    /// Function declarations' locations.
     pub funcs: HashMap<FunctionId, Location<'c>>,
 }
 
 impl<'c> DebugLocations<'c> {
-    pub fn extract(context: &'c Context, db: &RootDatabase, debug_info: &DebugInfo) -> Self {
+    /// Convert a program's [`DebugInfo`] into its [`DebugLocations`].
+    pub fn convert(context: &'c Context, db: &RootDatabase, debug_info: &DebugInfo) -> Self {
         let type_declarations = debug_info
             .type_declarations
             .iter()

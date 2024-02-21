@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,

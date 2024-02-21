@@ -6,7 +6,7 @@
 
 use super::WithSelf;
 use crate::{
-    error::types::Result,
+    error::builders::Result,
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
@@ -30,6 +30,7 @@ lazy_static! {
         "3618502788666131213697322783095070105623107215331596699973092056135872020481"
             .parse()
             .unwrap();
+    /// The `felt252` prime modulo, minus one, then divided by two.
     pub static ref HALF_PRIME: BigInt =
         "1809251394333065606848661391547535052811553607665798349986546028067936010240"
             .parse()
@@ -56,6 +57,7 @@ pub fn build<'ctx>(
     Ok(IntegerType::new(context, 252).into())
 }
 
+/// Register the prime modulo metadata for `felt252`.
 pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &mut PrimeModuloMeta<Felt> {
     metadata
         .insert(PrimeModuloMeta::<Felt>::new(PRIME.clone()))

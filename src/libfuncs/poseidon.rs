@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -46,6 +46,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `hades_permutation` libfunc.
 pub fn build_hades_permutation<'ctx>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,

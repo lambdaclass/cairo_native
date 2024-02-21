@@ -18,7 +18,7 @@ fn main() {
     // Compile the cairo program to sierra.
     let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-    let native_context = NativeContext::new();
+    let native_context = NativeContext::default();
 
     let native_program = native_context.compile(&sierra_program).unwrap();
 
@@ -28,7 +28,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::new(native_program, Default::default());
 
     let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None, None);
 

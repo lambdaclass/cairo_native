@@ -1,13 +1,19 @@
+//! # Executor errors.
+
+use super::BuilderError;
 use cairo_lang_sierra::{ids::ConcreteTypeId, program_registry::ProgramRegistryError};
 use std::{alloc::LayoutError, fmt, ops::Deref};
 use thiserror::Error;
 
-pub type RunnerError = Box<Error>;
+/// A [`Result`](std::result::Result) alias with the error type fixed to [`Error`].
+pub type Result<T> = std::result::Result<T, Error>;
 
+/// Wrapper for the error type and the error's origin backtrace (soon™).
 #[derive(Error)]
 pub struct Error {
-    // TODO: enable once its stable in rust
+    // TODO: Enable once it stabilizes.
     // pub backtrace: Backtrace,
+    /// The actual error.
     pub source: ErrorImpl,
 }
 
@@ -57,30 +63,46 @@ impl fmt::Debug for Error {
     }
 }
 
+/// An executor error.
 #[derive(Error)]
 pub enum ErrorImpl {
+    /// An invalid layout was generated. This should never happen.
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
+    /// An MLIR error has occurred.
     #[error(transparent)]
     MlirError(#[from] melior::Error),
+    /// The program registry returned an error. This should mean an invalid Sierra has been provided
+    /// to the compiler.
     #[error(transparent)]
     ProgramRegistryError(#[from] Box<ProgramRegistryError>),
 
+    /// A [TypeBuilder](crate::types::TypeBuilder) error.
     #[error("Error building type '{type_id}': {error}")]
     TypeBuilderError {
+        /// The type which caused an error.
         type_id: ConcreteTypeId,
-        error: crate::error::types::Error,
+        /// The actual error.
+        error: BuilderError,
     },
 
+    /// There's not enough parameters to invoke an entrypoint.
     #[error("missing parameter of type '{0}'")]
     MissingParameter(String),
 
+    /// Found a value of an unexpected type.
     #[error("unexpected value, expected value of type '{0}'")]
-    UnexpectedValue(String),
+    UnexpectedType(String),
 
+    /// There's not enough gas to run the program.
     #[error("not enough gas to run, needed '{needed}' had '{have}'")]
-    InsufficientGasError { needed: u128, have: u128 },
-
+    InsufficientGasError {
+        /// The required gas amount.
+        needed: u128,
+        /// The current gas amount.
+        have: u128,
+    },
+    /// The syscall handler is required, but has not been provided.
     #[error("a syscall handler was expected but was not provided")]
     MissingSyscallHandler,
 }
@@ -95,11 +117,11 @@ impl fmt::Debug for ErrorImpl {
                 f.debug_tuple("ProgramRegistryError").field(arg0).finish()
             }
             Self::TypeBuilderError { type_id, error } => f
-                .debug_struct("TypeBuilderError")
+                .debug_struct("BuilderError")
                 .field("type_id", type_id)
                 .field("error", error)
                 .finish(),
-            Self::UnexpectedValue(arg0) => f.debug_tuple("UnexpectedValue").field(arg0).finish(),
+            Self::UnexpectedType(arg0) => f.debug_tuple("UnexpectedValue").field(arg0).finish(),
             Self::MissingSyscallHandler => f.debug_struct("MissingSyscallHandler").finish(),
             Self::InsufficientGasError { needed, have } => f
                 .debug_struct("InsufficientGasError")
@@ -110,13 +132,9 @@ impl fmt::Debug for ErrorImpl {
     }
 }
 
-pub fn make_unexpected_value_error(expected: String) -> Error {
-    ErrorImpl::UnexpectedValue(expected).into()
-}
-
-pub fn make_type_builder_error(
+pub(crate) fn make_type_builder_error(
     id: &ConcreteTypeId,
-) -> impl '_ + FnOnce(crate::error::types::Error) -> Error {
+) -> impl '_ + FnOnce(BuilderError) -> Error {
     move |source| {
         ErrorImpl::TypeBuilderError {
             type_id: id.clone(),
@@ -124,18 +142,4 @@ pub fn make_type_builder_error(
         }
         .into()
     }
-}
-
-pub fn make_insufficient_gas_error(needed: u128, have: u128) -> Error {
-    ErrorImpl::InsufficientGasError { needed, have }.into()
-}
-
-pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Error {
-    ErrorImpl::MissingParameter(
-        ty.debug_name
-            .as_ref()
-            .map(|x| x.to_string())
-            .unwrap_or_default(),
-    )
-    .into()
 }

@@ -1,5 +1,5 @@
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,

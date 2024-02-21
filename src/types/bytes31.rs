@@ -2,7 +2,7 @@
 //!
 //! A `bytes31` is a 248-bit number (31 bytes).
 
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

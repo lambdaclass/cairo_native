@@ -3,13 +3,13 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{
-    error::CoreTypeBuilderError,
+    error::BuilderError,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -104,9 +104,10 @@ pub trait TypeBuilder {
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
 
-    // If the type is a struct, return the field types.
+    /// If the type is a struct, return its fields' types.
     fn fields(&self) -> Option<&[ConcreteTypeId]>;
 
+    /// Build the drop operations for a type.
     #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
         &self,
@@ -121,7 +122,7 @@ pub trait TypeBuilder {
 }
 
 impl TypeBuilder for CoreTypeConcrete {
-    type Error = CoreTypeBuilderError;
+    type Error = BuilderError;
 
     fn build<'ctx>(
         &self,
@@ -536,8 +537,14 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
-            CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
+            CoreTypeConcrete::EcPoint(_) => {
+                let layout = get_integer_layout(252);
+                layout.extend(layout)?.0
+            }
+            CoreTypeConcrete::EcState(_) => {
+                let layout = get_integer_layout(252);
+                layout.extend(layout)?.0.extend(layout)?.0.extend(layout)?.0
+            }
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
@@ -772,6 +779,7 @@ impl TypeBuilder for CoreTypeConcrete {
     }
 }
 
+/// A type combined with its concrete ID.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct WithSelf<'a, T> {
     self_ty: &'a ConcreteTypeId,
@@ -779,10 +787,12 @@ pub struct WithSelf<'a, T> {
 }
 
 impl<'a, T> WithSelf<'a, T> {
+    /// Create a new [`WithSelf`].
     pub fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
         Self { self_ty, inner }
     }
 
+    /// Return its type ID.
     pub fn self_ty(&self) -> &ConcreteTypeId {
         self.self_ty
     }

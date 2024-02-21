@@ -292,7 +292,7 @@ fn main() {
     let entry_point = contract.entry_points_by_type.external.get(0).unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
 
-    let native_context = NativeContext::new();
+    let native_context = NativeContext::default();
 
     let native_program = native_context.compile(&sierra_program).unwrap();
 
@@ -303,7 +303,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::new(native_program, Default::default());
 
     let result = native_executor
         .invoke_contract_dynamic(

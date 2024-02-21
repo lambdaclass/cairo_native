@@ -1,5 +1,5 @@
 use crate::{
-    error::jit_engine::RunnerError,
+    error::executor::Result,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
     module::NativeModule,
@@ -19,6 +19,7 @@ use libloading::Library;
 use starknet_types_core::felt::Felt;
 use tempfile::NamedTempFile;
 
+/// AOT-compiled program executor.
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct AotNativeExecutor {
@@ -31,6 +32,10 @@ pub struct AotNativeExecutor {
 }
 
 impl AotNativeExecutor {
+    /// Create a new AOT-compiled executor from a compiled library.
+    ///
+    /// This function is intended for disk-based caching only. It's recommended to use
+    /// [`from_native_module`](Self::from_native_module) instead when compiling from sources.
     pub fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
@@ -63,13 +68,31 @@ impl AotNativeExecutor {
         }
     }
 
+    /// Return the native library.
+    pub fn library(&self) -> &Library {
+        &self.library
+    }
+
+    /// Return the program registry.
+    pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+        &self.registry
+    }
+
+    /// Return the gas metadata (if any).
+    pub fn gas_metadata(&self) -> Option<&GasMetadata> {
+        self.gas_metadata.as_ref()
+    }
+
+    /// Execute a program with the given params.
+    ///
+    /// See [`NativeExecutor::invoke_dynamic`](crate::executor::NativeExecutor::invoke_dynamic).
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
         args: &[JitValue],
         mut gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult> {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
         Ok(super::invoke_dynamic(
@@ -82,34 +105,36 @@ impl AotNativeExecutor {
         ))
     }
 
+    /// Execute a contract with the given params, gas and syscall handler.
+    ///
+    /// See [`NativeExecutor::invoke_contract_dynamic`](crate::executor::NativeExecutor::invoke_contract_dynamic).
     pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
         args: &[Felt],
         mut gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+    ) -> Result<ContractExecutionResult> {
         self.process_required_initial_gas(function_id, gas.as_mut());
 
         // TODO: Check signature for contract interface.
-        Ok(ContractExecutionResult::from_execution_result(
-            super::invoke_dynamic(
-                &self.registry,
-                self.find_function_ptr(function_id),
-                self.extract_signature(function_id),
-                &[JitValue::Struct {
-                    fields: vec![JitValue::Array(
-                        args.iter().cloned().map(JitValue::Felt252).collect(),
-                    )],
-                    // TODO: Populate `debug_name`.
-                    debug_name: None,
-                }],
-                gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
-            ),
-        )?)
+        ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            &self.registry,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            &[JitValue::Struct {
+                fields: vec![JitValue::Array(
+                    args.iter().cloned().map(JitValue::Felt252).collect(),
+                )],
+                // TODO: Populate `debug_name`.
+                debug_name: None,
+            }],
+            gas,
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+        ))
     }
 
+    /// Find the function pointer of an entry point given its function id.
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");

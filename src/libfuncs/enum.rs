@@ -4,7 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::builders::{ErrorImpl, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
 };

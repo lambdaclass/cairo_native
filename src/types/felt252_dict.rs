@@ -6,7 +6,7 @@
 //! insert and get elements.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

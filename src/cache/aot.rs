@@ -11,11 +11,17 @@ use std::{
     rc::Rc,
 };
 
+/// An AOT-compiled program cache.
+///
+/// Supports user-defined keys.
 pub struct AotProgramCache<'a, K>
 where
     K: PartialEq + Eq + Hash,
 {
     context: &'a NativeContext,
+    // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
+    // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
+    // Send nor Sync.
     cache: HashMap<K, Rc<AotNativeExecutor>>,
 }
 
@@ -23,6 +29,7 @@ impl<'a, K> AotProgramCache<'a, K>
 where
     K: PartialEq + Eq + Hash,
 {
+    /// Create a new program cache for AOT-compiled programs with a specific context.
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
             context,
@@ -30,10 +37,19 @@ where
         }
     }
 
+    /// Return a reference to the native context.
+    pub const fn context(&self) -> &'a NativeContext {
+        self.context
+    }
+
+    /// Retrieve a program given its key.
     pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
+    /// Try to compile a program. If the compilation succeeds, insert (or replace) it into the
+    /// program cache and return the native executor.
+    // TODO: Error handling.
     pub fn compile_and_insert(
         &mut self,
         key: K,

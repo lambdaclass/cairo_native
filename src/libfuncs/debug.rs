@@ -11,7 +11,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
@@ -32,6 +32,7 @@ use melior::{
     Context,
 };
 
+/// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -48,6 +49,7 @@ pub fn build<'ctx>(
     }
 }
 
+/// Generate MLIR operations for the `print` libfunc.
 pub fn build_print<'ctx>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,

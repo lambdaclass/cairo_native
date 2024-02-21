@@ -403,7 +403,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::Result,
+    error::builders::Result,
     metadata::MetadataStorage,
     utils::{get_integer_layout, ProgramRegistryExt},
 };

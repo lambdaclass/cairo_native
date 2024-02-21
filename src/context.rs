@@ -1,10 +1,8 @@
+//! # Cairo native compilation context
+
 use crate::{
-    error::compile::CompileError,
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
+    error::CompileError,
+    metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
     utils::run_pass_manager,
 };
@@ -19,6 +17,9 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use std::sync::Once;
+
+static MLIR_INIT_GUARD: Once = Once::new();
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -31,16 +32,24 @@ unsafe impl Sync for NativeContext {}
 
 impl Default for NativeContext {
     fn default() -> Self {
-        Self::new()
+        MLIR_INIT_GUARD.call_once(|| {
+            // This should be done only once.
+            register_all_passes();
+        });
+
+        let registry = DialectRegistry::new();
+        register_all_dialects(&registry);
+
+        let context = Context::new();
+        context.append_dialect_registry(&registry);
+        context.load_all_available_dialects();
+        register_all_llvm_translations(&context);
+
+        Self { context }
     }
 }
 
 impl NativeContext {
-    pub fn new() -> Self {
-        let context = initialize_mlir();
-        Self { context }
-    }
-
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
@@ -56,13 +65,13 @@ impl NativeContext {
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
         if has_gas_builtin {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            let gas_metadata = GasMetadata::new(program, Default::default());
             // Unwrapping here is not necessary since the insertion will only fail if there was
             // already some metadata of the same type.
             metadata.insert(gas_metadata);
         }
 
-        // Create the Sierra program registry
+        // Create the Sierra program registry.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
         crate::compile(
@@ -78,18 +87,4 @@ impl NativeContext {
 
         Ok(NativeModule::new(module, registry, metadata))
     }
-}
-
-/// Initialize an MLIR context.
-pub fn initialize_mlir() -> Context {
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_passes();
-    register_all_llvm_translations(&context);
-    context
 }

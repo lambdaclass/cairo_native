@@ -1,7 +1,7 @@
 //! # Bytes31-related libfuncs
 
 use super::LibfuncHelper;
-use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::builders::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         bytes31::Bytes31ConcreteLibfunc,

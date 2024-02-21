@@ -13,7 +13,7 @@ use starknet_types_core::felt::Felt;
 use std::path::Path;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let context = NativeContext::new();
+    let context = NativeContext::default();
     let mut aot_cache = AotProgramCache::new(&context);
     let mut jit_cache = JitProgramCache::new(&context);
 

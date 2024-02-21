@@ -24,10 +24,8 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        syscall_handler::SyscallHandlerMeta,
-        MetadataStorage,
+        gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta,
+        syscall_handler::SyscallHandlerMeta, MetadataStorage,
     },
     module::NativeModule,
     starknet::StarkNetSyscallHandler,
@@ -226,10 +224,7 @@ pub fn run_native_program(
 
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-    metadata.insert(GasMetadata::new(
-        program,
-        MetadataComputationConfig::default(),
-    ));
+    metadata.insert(GasMetadata::new(program, Default::default()));
 
     cairo_native::compile(&context, &module, program, &registry, &mut metadata, None)
         .expect("Could not compile test program to MLIR.");
@@ -245,7 +240,7 @@ pub fn run_native_program(
 
     let native_module = NativeModule::new(module, registry, metadata);
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+    let executor = JitNativeExecutor::new(native_module, OptLevel::None);
     executor
         .invoke_dynamic(entry_point_id, args, gas, syscall_handler)
         .unwrap()
@@ -294,14 +289,14 @@ pub fn run_native_starknet_contract<T>(
 where
     T: StarkNetSyscallHandler,
 {
-    let native_context = NativeContext::new();
+    let native_context = NativeContext::default();
 
     let native_program = native_context.compile(sierra_program).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::new(native_program, Default::default());
 
     native_executor
         .invoke_contract_dynamic(

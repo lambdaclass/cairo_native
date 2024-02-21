@@ -48,12 +48,12 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 BenchmarkId::new(filename, "jit-cold"),
                 &program,
                 |b, program| {
-                    let native_context = NativeContext::new();
+                    let native_context = NativeContext::default();
                     b.iter(|| {
                         let module = native_context.compile(program).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
-                            JitNativeExecutor::from_native_module(module, Default::default());
+                            JitNativeExecutor::new(module, Default::default());
 
                         // Execute the program.
                         let result = native_executor
@@ -68,11 +68,11 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 BenchmarkId::new(filename, "jit-hot"),
                 program,
                 |b, program| {
-                    let native_context = NativeContext::new();
+                    let native_context = NativeContext::default();
                     let module = native_context.compile(program).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
-                        JitNativeExecutor::from_native_module(module, Default::default());
+                        JitNativeExecutor::new(module, Default::default());
 
                     // warmup
                     for _ in 0..5 {

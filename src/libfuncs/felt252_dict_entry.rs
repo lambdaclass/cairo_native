@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::builders::Result,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
@@ -53,6 +53,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `felt252_dict_entry_get` libfunc.
 pub fn build_get<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -255,6 +256,7 @@ pub fn build_get<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `felt252_dict_entry_finalize` libfunc.
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,

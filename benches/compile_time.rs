@@ -13,7 +13,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
-                    let native_context = NativeContext::new();
+                    let native_context = NativeContext::default();
                     native_context.compile(program).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                 })
@@ -24,7 +24,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
     {
         let mut c = c.benchmark_group("Compilation With Shared Context");
 
-        let native_context = NativeContext::new();
+        let native_context = NativeContext::default();
 
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
@@ -42,7 +42,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
-                    let native_context = NativeContext::new();
+                    let native_context = NativeContext::default();
                     let module = native_context.compile(black_box(program)).unwrap();
                     let object = module_to_object(module.module(), OptLevel::None)
                         .expect("to compile correctly to a object file");
@@ -55,7 +55,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
     {
         let mut c = c.benchmark_group("Compilation With Shared Context To Object Code");
 
-        let native_context = NativeContext::new();
+        let native_context = NativeContext::default();
 
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {

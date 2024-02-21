@@ -1,3 +1,5 @@
+//! # Gas-related metadata
+
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
@@ -7,24 +9,23 @@ use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, calc_ap_changes}
 use cairo_lang_sierra_gas::{calc_gas_postcost_info, compute_precost_info, gas_info::GasInfo};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
-/// Holds global gas info.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct GasMetadata {
-    pub ap_change_info: ApChangeInfo,
-    pub gas_info: GasInfo,
-}
-
+/// The gas cost metadata.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GasCost(pub Option<u128>);
 
-/// Configuration for metadata computation.
-#[derive(Default, Debug, Clone)]
-pub struct MetadataComputationConfig {
-    pub function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
+/// The gas metadata.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct GasMetadata {
+    ap_change_info: ApChangeInfo,
+    gas_info: GasInfo,
 }
 
 impl GasMetadata {
-    pub fn new(program: &Program, config: MetadataComputationConfig) -> GasMetadata {
+    /// Create the gas metadata from a program and its function set costs.
+    pub fn new(
+        program: &Program,
+        function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
+    ) -> GasMetadata {
         let pre_gas_info = compute_precost_info(program).unwrap();
 
         let ap_change_info = calc_ap_changes(program, |idx, token_type| {
@@ -32,8 +33,7 @@ impl GasMetadata {
         })
         .unwrap();
 
-        let post_function_set_costs = config
-            .function_set_costs
+        let post_function_set_costs = function_set_costs
             .iter()
             .map(|(func, costs)| {
                 (
@@ -61,7 +61,7 @@ impl GasMetadata {
         }
     }
 
-    // Compute the initial gas required by the function.
+    /// Compute the initial gas required by the function.
     pub fn get_initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
         // In case we don't have any costs - it means no equations were solved - so the gas builtin
         // is irrelevant, and we can return any value.
@@ -88,6 +88,7 @@ impl GasMetadata {
         Some(required_gas)
     }
 
+    /// Compute the gas cost for a statement.
     pub fn get_gas_cost_for_statement(
         &self,
         idx: StatementIdx,

@@ -92,6 +92,8 @@ impl MetadataStorage {
             .map(|meta| meta.downcast_mut::<T>().unwrap())
     }
 
+    /// Insert the metadata returned by `meta_gen` if not already present, then return a mutable
+    /// reference to that specific metadata.
     pub fn get_or_insert_with<T>(&mut self, meta_gen: impl FnOnce() -> T) -> &mut T
     where
         T: Any,

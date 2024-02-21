@@ -1,13 +1,18 @@
+//! # MLIR builder errors.
+
 use cairo_lang_sierra::program_registry::ProgramRegistryError;
 use std::{alloc::LayoutError, fmt, num::TryFromIntError, ops::Deref};
 use thiserror::Error;
 
+/// A [`Result`](std::result::Result) alias with the error type fixed to [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Wrapper for the error type and the error's origin backtrace (soon™).
 #[derive(Debug, Error)]
 pub struct Error {
-    // TODO: enable once its stable in rust
+    // TODO: Enable once it stabilizes.
     // pub backtrace: Backtrace,
+    /// The actual error.
     pub source: Box<ErrorImpl>,
 }
 
@@ -37,38 +42,27 @@ where
     }
 }
 
+/// A [`TypeBuilder`](crate::types::TypeBuilder) or
+/// [`LibfuncBuilder`](crate::libfuncs::LibfuncBuilder) error.
 #[derive(Debug, Error)]
 pub enum ErrorImpl {
+    /// A [Layout](std::alloc::Layout) error.
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
-    #[error(transparent)]
-    LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
+    /// An MLIR error (from [melior](melior::Error)).
     #[error(transparent)]
     MlirError(#[from] melior::Error),
+    /// A Sierra program registry error. This should mean an invalid Sierra has been provided to the
+    /// compiler.
     #[error(transparent)]
-    ProgramRegistryError(#[from] ProgramRegistryError),
-    #[error(transparent)]
-    ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
+    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
+    /// An integer conversion error.
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
+    /// An MLIR attribute parser error.
     #[error("error parsing attribute")]
     ParseAttributeError,
+    /// Some required metadata is missing.
     #[error("missing metadata")]
     MissingMetadata,
-}
-
-impl From<super::CoreTypeBuilderError> for ErrorImpl {
-    fn from(value: super::CoreTypeBuilderError) -> Self {
-        match *value.source {
-            super::types::ErrorImpl::LayoutError(e) => Self::LayoutError(e),
-            super::types::ErrorImpl::ProgramRegistryError(e) => Self::ProgramRegistryError(e),
-            super::types::ErrorImpl::TryFromIntError(e) => Self::TryFromIntError(e),
-            super::types::ErrorImpl::LayoutErrorPolyfill(e) => Self::LayoutErrorPolyfill(e),
-            super::types::ErrorImpl::MlirError(e) => Self::MlirError(e),
-            super::types::ErrorImpl::LibFuncError(e) => *e.source,
-            super::types::ErrorImpl::ProgramRegistryErrorBoxed(e) => {
-                Self::ProgramRegistryErrorBoxed(e)
-            }
-        }
-    }
 }

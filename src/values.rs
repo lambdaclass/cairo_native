@@ -1,11 +1,11 @@
-//! # JIT params and return values de/serialization
-
+//! # Execution arguments' and return values' de/serialization
+//!
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    error::executor::{make_type_builder_error, ErrorImpl, Result},
     types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
+    utils::{felt252_bigint, get_integer_layout},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -32,46 +32,75 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[educe(Eq, PartialEq)]
 pub enum JitValue {
+    /// A `felt252`.
     Felt252(Felt),
-    /// all elements need to be same type
+    /// An array. All elements must be of the same kind.
     Array(Vec<Self>),
+    /// A struct.
     Struct {
+        /// The struct's fields.
         fields: Vec<Self>,
+        /// The struct's debug name.
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
-    }, // element types can differ
+    },
+    /// An enum (or tagged union).
     Enum {
+        /// The enum's tag (variant index).
         tag: usize,
+        /// The enum's payload.
         value: Box<Self>,
+        /// The enum's debug name.
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    /// A dictionary with `felt252` keys. All values must be of the same kind.
     Felt252Dict {
+        /// The dictionary's values.
         value: HashMap<Felt, Self>,
+        /// The dictionary's debug name.
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    /// An `u8`.
     Uint8(u8),
+    /// An `u16`.
     Uint16(u16),
+    /// An `u32`.
     Uint32(u32),
+    /// An `u64`.
     Uint64(u64),
+    /// An `u128`.
     Uint128(u128),
+    /// An `i8`.
     Sint8(i8),
+    /// An `i16`.
     Sint16(i16),
+    /// An `i32`.
     Sint32(i32),
+    /// An `i64`.
     Sint64(i64),
+    /// An `i128`.
     Sint128(i128),
+    /// An `EcPoint`.
     EcPoint(Felt, Felt),
+    /// An `EcState`.
     EcState(Felt, Felt, Felt, Felt),
+    /// A `Secp256k1Point`.
     Secp256K1Point {
+        /// The `x` component.
         x: (u128, u128),
+        /// The `y` component.
         y: (u128, u128),
     },
+    /// A `Secp256t1Point`.
     Secp256R1Point {
+        /// The `x` component.
         x: (u128, u128),
+        /// The `y` component.
         y: (u128, u128),
     },
-    /// Used as return value for Nullables that are null.
+    /// A null `Nullable<T>`. Use the data directly if not null.
     Null,
 }
 
@@ -178,7 +207,7 @@ impl JitValue {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-    ) -> Result<NonNull<()>, RunnerError> {
+    ) -> Result<NonNull<()>> {
         let ty = registry.get_type(type_id)?;
 
         Ok(unsafe {
@@ -248,7 +277,7 @@ impl JitValue {
                             .as_mut() = cap;
                         target.cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(ErrorImpl::UnexpectedType(format!(
                             "expected value of type {:?} but got an array",
                             type_id.debug_name
                         )))?
@@ -313,7 +342,7 @@ impl JitValue {
                             ptr
                         }
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(ErrorImpl::UnexpectedType(format!(
                             "expected value of type {:?} but got a struct",
                             type_id.debug_name
                         )))?
@@ -357,7 +386,7 @@ impl JitValue {
                             .unwrap()
                             .cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(ErrorImpl::UnexpectedType(format!(
                             "expected value of type {:?} but got an enum value",
                             type_id.debug_name
                         )))?
@@ -390,7 +419,7 @@ impl JitValue {
 
                         NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(ErrorImpl::UnexpectedType(format!(
                             "expected value of type {:?} but got a felt dict",
                             type_id.debug_name
                         )))?
@@ -458,7 +487,10 @@ impl JitValue {
                 }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
+                        .alloc_layout({
+                            let layout = get_integer_layout(252);
+                            layout.extend(layout)?.0
+                        })
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -471,7 +503,10 @@ impl JitValue {
                 }
                 Self::EcState(a, b, c, d) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
+                        .alloc_layout({
+                            let layout = get_integer_layout(252);
+                            layout.extend(layout)?.0.extend(layout)?.0.extend(layout)?.0
+                        })
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -594,11 +629,9 @@ impl JitValue {
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
                         0 | 1 => 0,
-                        num_variants => {
-                            (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
-                                .try_into()
-                                .unwrap()
-                        }
+                        num_variants => (num_variants.next_power_of_two().next_multiple_of(8) >> 3)
+                            .try_into()
+                            .unwrap(),
                     });
                     let tag_value = match info.variants.len() {
                         0 => {
