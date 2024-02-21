@@ -4,15 +4,11 @@ use cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
 };
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
-use cairo_lang_runner::{
-    casm_run::format_next_item,
-    profiling::{ProfilingInfo, ProfilingInfoProcessor},
-    RunResultValue,
-};
+use cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
-    program::{Function, Program, StatementIdx},
+    program::{Function, Program},
 };
 use cairo_lang_starknet::{contract::ContractInfo, starknet_plugin_suite};
 use cairo_lang_test_plugin::{
@@ -20,9 +16,7 @@ use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     test_plugin_suite, TestCompilation, TestConfig,
 };
-use cairo_lang_utils::{
-    casts::IntoOrPanic, ordered_hash_map::OrderedHashMap, unordered_hash_map::UnorderedHashMap,
-};
+use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
 use cairo_native::{
     context::NativeContext,
     execution_result::ExecutionResult,
@@ -143,7 +137,6 @@ fn main() -> anyhow::Result<()> {
         compiled.sierra_program,
         compiled.function_set_costs,
         compiled.contracts_info,
-        compiled.statements_functions,
         &args,
     )?;
 
@@ -277,8 +270,6 @@ struct TestResult {
     status: TestStatus,
     /// The gas usage of the run if relevant.
     gas_usage: Option<i64>,
-    /// The profiling info of the run, if requested.
-    profiling_info: Option<ProfilingInfo>,
 }
 
 /// Summary data of the ran tests.
@@ -367,7 +358,6 @@ fn run_tests(
     sierra_program: Program,
     function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
     _contracts_info: OrderedHashMap<Felt252, ContractInfo>,
-    statements_functions: UnorderedHashMap<StatementIdx, String>,
     args: &Args,
 ) -> anyhow::Result<TestsSummary> {
     let native_context = NativeContext::new();
@@ -474,7 +464,6 @@ fn run_tests(
                                     .initial_required_gas(&func.id)
                                     .map(|gas| gas.try_into().unwrap())
                             }),
-                        profiling_info: None,
                     }),
                 ))
             },
@@ -492,31 +481,19 @@ fn run_tests(
                 }
             };
             let summary = wrapped_summary.as_mut().unwrap();
-            let (res_type, status_str, gas_usage, profiling_info) = match status {
+            let (res_type, status_str, gas_usage) = match status {
                 Some(TestResult {
                     status: TestStatus::Success,
                     gas_usage,
-                    profiling_info,
-                }) => (
-                    &mut summary.passed,
-                    "ok".bright_green(),
-                    gas_usage,
-                    profiling_info,
-                ),
+                }) => (&mut summary.passed, "ok".bright_green(), gas_usage),
                 Some(TestResult {
                     status: TestStatus::Fail(run_result),
                     gas_usage,
-                    profiling_info,
                 }) => {
                     summary.failed_run_results.push(run_result);
-                    (
-                        &mut summary.failed,
-                        "fail".bright_red(),
-                        gas_usage,
-                        profiling_info,
-                    )
+                    (&mut summary.failed, "fail".bright_red(), gas_usage)
                 }
-                None => (&mut summary.ignored, "ignored".bright_yellow(), None, None),
+                None => (&mut summary.ignored, "ignored".bright_yellow(), None),
             };
             if let Some(gas_usage) = gas_usage {
                 println!("test {name} ... {status_str} (gas usage est.: {gas_usage})");
