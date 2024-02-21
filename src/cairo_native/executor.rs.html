@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/executor.rs`."><title>executor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/executor.rs`."><title>executor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -781,12 +782,12 @@
 <span class="kw">mod </span>aot;
 <span class="kw">mod </span>jit;
 
-<span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)]
-</span><span class="macro">global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">&quot;arch/aarch64.s&quot;</span>));
-<span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)]
-</span><span class="macro">global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">&quot;arch/x86_64.s&quot;</span>));
+<span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
+</span><span class="macro">global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">"arch/aarch64.s"</span>));
+<span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+</span><span class="macro">global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">"arch/x86_64.s"</span>));
 
-<span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
+<span class="kw">extern </span><span class="string">"C" </span>{
     <span class="doccomment">/// Invoke an AOT-compiled function.
     ///
     /// The `ret_ptr` argument is only used when the first argument (the actual return pointer) is
@@ -800,12 +801,12 @@
 }
 
 <span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
+</span><span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
     Aot(Rc&lt;AotNativeExecutor&gt;),
-    Jit(Rc&lt;JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt;&gt;),
+    Jit(Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt;),
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; NativeExecutor&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; NativeExecutor&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">pub fn </span>invoke_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
@@ -841,14 +842,14 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; From&lt;AotNativeExecutor&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; From&lt;AotNativeExecutor&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
     <span class="kw">fn </span>from(value: AotNativeExecutor) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Aot(Rc::new(value))
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;m</span>&gt; From&lt;JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt;&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt; {
-    <span class="kw">fn </span>from(value: JitNativeExecutor&lt;<span class="lifetime">&#39;m</span>&gt;) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; From&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
+    <span class="kw">fn </span>from(value: JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Jit(Rc::new(value))
     }
 }
@@ -861,7 +862,7 @@
     gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
     syscall_handler: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
 ) -&gt; ExecutionResult {
-    <span class="macro">tracing::info!</span>(<span class="string">&quot;Invoking function with signature: {function_signature:?}.&quot;</span>);
+    <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
 
     <span class="kw">let </span>is_builtin = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_builtin;
     <span class="kw">let </span>is_zst = &lt;CoreTypeConcrete <span class="kw">as </span>TypeBuilder&gt;::is_zst;
@@ -931,14 +932,14 @@
                         <span class="kw-2">&amp;</span>[gas <span class="kw">as </span>u64, (gas &gt;&gt; <span class="number">64</span>) <span class="kw">as </span>u64],
                     );
                 }
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Gas is required&quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Gas is required"</span>),
             },
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; <span class="kw">match </span>syscall_handler {
                 <span class="prelude-val">Some</span>(syscall_handler) =&gt; invoke_data.push_aligned(
                     get_integer_layout(<span class="number">64</span>).align(),
                     <span class="kw-2">&amp;</span>[syscall_handler.as_ptr() <span class="kw">as </span>u64],
                 ),
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Syscall handler is required&quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Syscall handler is required"</span>),
             },
             <span class="kw">_ if </span>is_builtin(type_info) =&gt; invoke_data
                 .push(type_id, type_info, <span class="kw-2">&amp;</span>JitValue::Uint64(<span class="number">0</span>))
@@ -950,9 +951,9 @@
     }
 
     <span class="comment">// Invoke the trampoline.
-    </span><span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)]
+    </span><span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
     </span><span class="kw">let </span><span class="kw-2">mut </span>ret_registers = [<span class="number">0</span>; <span class="number">2</span>];
-    <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)]
+    <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
     </span><span class="kw">let </span><span class="kw-2">mut </span>ret_registers = [<span class="number">0</span>; <span class="number">4</span>];
 
     <span class="kw">unsafe </span>{
@@ -985,7 +986,7 @@
                 remaining_gas = <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="kw-2">&amp;mut </span>return_ptr {
                     <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u128&gt;(return_ptr) },
                     <span class="prelude-val">None </span>=&gt; {
-                        <span class="comment">// If there&#39;s no return ptr then the function only returned the gas. We don&#39;t
+                        <span class="comment">// If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
                         </span>((ret_registers[<span class="number">1</span>] <span class="kw">as </span>u128) &lt;&lt; <span class="number">64</span>) | ret_registers[<span class="number">0</span>] <span class="kw">as </span>u128
                     }
@@ -1012,7 +1013,7 @@
                         CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; builtin_stats.segment_arena = value,
-                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;{type_id:?}&quot;</span>),
+                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"{type_id:?}"</span>),
                     }
                 }
             }
@@ -1038,15 +1039,15 @@
     }
 }
 
-<span class="kw">pub struct </span>ArgumentMapper&lt;<span class="lifetime">&#39;a</span>&gt; {
-    arena: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Bump,
-    registry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<span class="kw">pub struct </span>ArgumentMapper&lt;<span class="lifetime">'a</span>&gt; {
+    arena: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Bump,
+    registry: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 
     invoke_data: Vec&lt;u64&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ArgumentMapper&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub fn </span>new(arena: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Bump, registry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ArgumentMapper&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub fn </span>new(arena: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Bump, registry: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             arena,
             registry,
@@ -1058,16 +1059,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.invoke_data
     }
 
-    <span class="attr">#[cfg_attr(target_arch = <span class="string">&quot;x86_64&quot;</span>, allow(unused_mut))]
+    <span class="attr">#[cfg_attr(target_arch = <span class="string">"x86_64"</span>, allow(unused_mut))]
     </span><span class="kw">pub fn </span>push_aligned(<span class="kw-2">&amp;mut </span><span class="self">self</span>, align: usize, <span class="kw-2">mut </span>values: <span class="kw-2">&amp;</span>[u64]) {
         <span class="macro">assert!</span>(align.is_power_of_two());
         <span class="macro">assert!</span>(align &lt;= <span class="number">16</span>);
 
-        <span class="comment">// x86_64&#39;s max alignment is 8 bytes.
-        </span><span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)]
+        <span class="comment">// x86_64's max alignment is 8 bytes.
+        </span><span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
         </span><span class="macro">assert!</span>(align &lt;= <span class="number">8</span>);
 
-        <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)]
+        <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
         </span><span class="kw">if </span>align == <span class="number">16 </span>{
             <span class="comment">// This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
@@ -1103,12 +1104,12 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;ProgramRegistryError&gt;&gt; {
         <span class="kw">match </span>(type_info, value) {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) =&gt; {
-                <span class="comment">// TODO: Assert that `info.ty` matches all the values&#39; types.
+                <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
                 </span><span class="kw">let </span>type_info = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                 <span class="kw">let </span>type_layout = type_info.layout(<span class="self">self</span>.registry).unwrap().pad_to_align();
 
-                <span class="comment">// This needs to be a heap-allocated pointer because it&#39;s the actual array data.
+                <span class="comment">// This needs to be a heap-allocated pointer because it's the actual array data.
                 </span><span class="kw">let </span>ptr = <span class="kw">if </span>values.is_empty() {
                     null_mut()
                 } <span class="kw">else </span>{
@@ -1203,10 +1204,10 @@
                 <span class="self">self</span>.push_aligned(get_integer_layout(<span class="number">252</span>).align(), <span class="kw-2">&amp;</span>value.to_le_digits());
             }
             (CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>), JitValue::Felt252Dict { .. }) =&gt; {
-                <span class="attr">#[cfg(not(feature = <span class="string">&quot;with-runtime&quot;</span>))]
-                </span><span class="macro">unimplemented!</span>(<span class="string">&quot;enable the `with-runtime` feature to use felt252 dicts&quot;</span>);
+                <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
+                </span><span class="macro">unimplemented!</span>(<span class="string">"enable the `with-runtime` feature to use felt252 dicts"</span>);
 
-                <span class="comment">// TODO: Assert that `info.ty` matches all the values&#39; types.
+                <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
                 </span><span class="self">self</span>.invoke_data.push(
                     value
@@ -1297,8 +1298,8 @@
     type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     <span class="kw-2">mut </span>return_ptr: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
-    <span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
-    <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
+    <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
+    <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
 ) -&gt; JitValue {
     <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
 
@@ -1334,10 +1335,10 @@
         ) =&gt; <span class="kw">match </span>return_ptr {
             <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(return_ptr, type_id, registry),
             <span class="prelude-val">None </span>=&gt; {
-                <span class="attr">#[cfg(target_arch = <span class="string">&quot;x86_64&quot;</span>)]
+                <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="kw">let </span>value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
 
-                <span class="attr">#[cfg(target_arch = <span class="string">&quot;aarch64&quot;</span>)]
+                <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
                 </span><span class="kw">let </span>value =
                     JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
                         std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)

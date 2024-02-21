@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/starknet.rs`."><title>starknet.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/starknet.rs`."><title>starknet.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1391,22 +1392,22 @@
 
 <span class="doccomment">/// Binary representation of a `Felt` (in MLIR).
 </span><span class="attr">#[derive(Debug, Clone)]
-#[cfg_attr(target_arch = <span class="string">&quot;x86_64&quot;</span>, repr(C, align(<span class="number">8</span>)))]
-#[cfg_attr(not(target_arch = <span class="string">&quot;x86_64&quot;</span>), repr(C, align(<span class="number">16</span>)))]
+#[cfg_attr(target_arch = <span class="string">"x86_64"</span>, repr(C, align(<span class="number">8</span>)))]
+#[cfg_attr(not(target_arch = <span class="string">"x86_64"</span>), repr(C, align(<span class="number">16</span>)))]
 </span><span class="kw">pub struct </span>Felt252Abi(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
 <span class="doccomment">/// Binary representation of a `u256` (in MLIR).
-</span><span class="comment">// TODO: This shouldn&#39;t need to be public.
+</span><span class="comment">// TODO: This shouldn't need to be public.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(target_arch = <span class="string">&quot;x86_64&quot;</span>, repr(C, align(<span class="number">8</span>)))]
-#[cfg_attr(not(target_arch = <span class="string">&quot;x86_64&quot;</span>), repr(C, align(<span class="number">16</span>)))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(target_arch = <span class="string">"x86_64"</span>, repr(C, align(<span class="number">8</span>)))]
+#[cfg_attr(not(target_arch = <span class="string">"x86_64"</span>), repr(C, align(<span class="number">16</span>)))]
 </span><span class="kw">pub struct </span>U256 {
     <span class="kw">pub </span>hi: u128,
     <span class="kw">pub </span>lo: u128,
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>ExecutionInfo {
     <span class="kw">pub </span>block_info: BlockInfo,
     <span class="kw">pub </span>tx_info: TxInfo,
@@ -1416,7 +1417,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>ExecutionInfoV2 {
     <span class="kw">pub </span>block_info: BlockInfo,
     <span class="kw">pub </span>tx_info: TxV2Info,
@@ -1426,7 +1427,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>TxV2Info {
     <span class="kw">pub </span>version: Felt,
     <span class="kw">pub </span>account_contract_address: Felt,
@@ -1444,7 +1445,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>ResourceBounds {
     <span class="kw">pub </span>resource: Felt,
     <span class="kw">pub </span>max_amount: u64,
@@ -1452,7 +1453,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>BlockInfo {
     <span class="kw">pub </span>block_number: u64,
     <span class="kw">pub </span>block_timestamp: u64,
@@ -1460,7 +1461,7 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">&quot;with-serde&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>TxInfo {
     <span class="kw">pub </span>version: Felt,
     <span class="kw">pub </span>account_contract_address: Felt,
@@ -1777,26 +1778,26 @@
 
     <span class="attr">#[repr(C)]
     #[derive(Debug)]
-    </span><span class="kw">pub struct </span>StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">&#39;a</span>, T&gt; {
-        self_ptr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>T,
+    </span><span class="kw">pub struct </span>StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">'a</span>, T&gt; {
+        self_ptr: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>T,
 
-        get_block_hash: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        get_block_hash: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             block_number: u64,
         ),
-        get_execution_info: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        get_execution_info: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;NonNull&lt;ExecutionInfoAbi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
         ),
-        get_execution_info_v2: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        get_execution_info_v2: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;NonNull&lt;ExecutionInfoV2Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
         ),
-        deploy: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        deploy: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, (NonNull&lt;Felt252Abi&gt;, u32, u32))&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -1805,13 +1806,13 @@
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
             deploy_from_zero: bool,
         ),
-        replace_class: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        replace_class: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             _gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
         ),
-        library_call: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        library_call: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -1819,7 +1820,7 @@
             function_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ),
-        call_contract: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        call_contract: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -1827,14 +1828,14 @@
             entry_point_selector: <span class="kw-2">&amp;</span>Felt252Abi,
             calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ),
-        storage_read: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        storage_read: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             address_domain: u32,
             address: <span class="kw-2">&amp;</span>Felt252Abi,
         ),
-        storage_write: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        storage_write: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -1842,91 +1843,91 @@
             address: <span class="kw-2">&amp;</span>Felt252Abi,
             value: <span class="kw-2">&amp;</span>Felt252Abi,
         ),
-        emit_event: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        emit_event: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             keys: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
             data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ),
-        send_message_to_l1: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        send_message_to_l1: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             to_address: <span class="kw-2">&amp;</span>Felt252Abi,
             data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
         ),
-        keccak: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        keccak: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;U256&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             input: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>u64, u32, u32),
         ),
 
-        secp256k1_new: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256k1_new: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256k1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             x: <span class="kw-2">&amp;</span>U256,
             y: <span class="kw-2">&amp;</span>U256,
         ),
-        secp256k1_add: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256k1_add: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256k1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             p0: <span class="kw-2">&amp;</span>Secp256k1Point,
             p1: <span class="kw-2">&amp;</span>Secp256k1Point,
         ),
-        secp256k1_mul: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256k1_mul: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256k1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256k1Point,
             scalar: <span class="kw-2">&amp;</span>U256,
         ),
-        secp256k1_get_point_from_x: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256k1_get_point_from_x: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256k1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             x: <span class="kw-2">&amp;</span>U256,
             y_parity: <span class="kw-2">&amp;</span>bool,
         ),
-        secp256k1_get_xy: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256k1_get_xy: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(U256, U256)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256k1Point,
         ),
 
-        secp256r1_new: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256r1_new: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256r1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             x: <span class="kw-2">&amp;</span>U256,
             y: <span class="kw-2">&amp;</span>U256,
         ),
-        secp256r1_add: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256r1_add: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256r1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             p0: <span class="kw-2">&amp;</span>Secp256r1Point,
             p1: <span class="kw-2">&amp;</span>Secp256r1Point,
         ),
-        secp256r1_mul: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256r1_mul: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256r1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256r1Point,
             scalar: <span class="kw-2">&amp;</span>U256,
         ),
-        secp256r1_get_point_from_x: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256r1_get_point_from_x: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256r1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             x: <span class="kw-2">&amp;</span>U256,
             y_parity: <span class="kw-2">&amp;</span>bool,
         ),
-        secp256r1_get_xy: <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn</span>(
+        secp256r1_get_xy: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(U256, U256)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -1934,9 +1935,9 @@
         ),
     }
 
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T&gt; StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">&#39;a</span>, T&gt;
+    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">'a</span>, T&gt;
     <span class="kw">where
-        </span>T: <span class="lifetime">&#39;a</span>,
+        </span>T: <span class="lifetime">'a</span>,
     {
         <span class="comment">// Callback field indices.
         </span><span class="kw">pub const </span>CALL_CONTRACT: usize = <span class="macro">field_offset!</span>(<span class="self">Self</span>, call_contract) &gt;&gt; <span class="number">3</span>;
@@ -1967,11 +1968,11 @@
     }
 
     <span class="attr">#[allow(unused_variables)]
-    </span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T&gt; StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">&#39;a</span>, T&gt;
+    </span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; StarkNetSyscallHandlerCallbacks&lt;<span class="lifetime">'a</span>, T&gt;
     <span class="kw">where
-        </span>T: StarkNetSyscallHandler + <span class="lifetime">&#39;a</span>,
+        </span>T: StarkNetSyscallHandler + <span class="lifetime">'a</span>,
     {
-        <span class="kw">pub fn </span>new(handler: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>T) -&gt; <span class="self">Self </span>{
+        <span class="kw">pub fn </span>new(handler: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>T) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 self_ptr: handler,
                 get_block_hash: <span class="self">Self</span>::wrap_get_block_hash,
@@ -2022,7 +2023,7 @@
             }
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_get_block_hash(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_get_block_hash(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2041,7 +2042,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_get_execution_info(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_get_execution_info(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;NonNull&lt;ExecutionInfoAbi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2106,7 +2107,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_get_execution_info_v2(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_get_execution_info_v2(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;NonNull&lt;ExecutionInfoV2Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2202,7 +2203,7 @@
 
         <span class="comment">// TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
-        </span><span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_deploy(
+        </span><span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_deploy(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, (NonNull&lt;Felt252Abi&gt;, u32, u32))&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2259,7 +2260,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_replace_class(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_replace_class(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2283,7 +2284,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_library_call(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_library_call(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2333,7 +2334,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_call_contract(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_call_contract(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2383,7 +2384,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_storage_read(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_storage_read(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2408,7 +2409,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_storage_write(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_storage_write(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2439,7 +2440,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_emit_event(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_emit_event(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2487,7 +2488,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_send_message_to_l1(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_send_message_to_l1(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2526,7 +2527,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_keccak(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_keccak(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;U256&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2551,7 +2552,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256k1_new(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256k1_new(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256k1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2574,7 +2575,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256k1_add(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256k1_add(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256k1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2594,7 +2595,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256k1_mul(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256k1_mul(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256k1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2614,7 +2615,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256k1_get_point_from_x(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256k1_get_point_from_x(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256k1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2637,7 +2638,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256k1_get_xy(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256k1_get_xy(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(U256, U256)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2656,7 +2657,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256r1_new(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256r1_new(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256r1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2679,7 +2680,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256r1_add(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256r1_add(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256r1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2699,7 +2700,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256r1_mul(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256r1_mul(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Secp256r1Point&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2719,7 +2720,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256r1_get_point_from_x(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256r1_get_point_from_x(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(u8, MaybeUninit&lt;Secp256r1Point&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
@@ -2742,7 +2743,7 @@
             };
         }
 
-        <span class="kw">extern </span><span class="string">&quot;C&quot; </span><span class="kw">fn </span>wrap_secp256r1_get_xy(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_secp256r1_get_xy(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(U256, U256)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ffi.rs`."><title>ffi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ffi.rs`."><title>ffi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -272,7 +273,7 @@
 };
 <span class="kw">use </span>tempfile::NamedTempFile;
 
-<span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
+<span class="kw">extern </span><span class="string">"C" </span>{
     <span class="kw">fn </span>LLVMStructType_getFieldTypeAt(ty_ptr: <span class="kw-2">*const </span>c_void, index: u32) -&gt; <span class="kw-2">*const </span>c_void;
 
     <span class="doccomment">/// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
@@ -284,7 +285,7 @@
 }
 
 <span class="doccomment">/// For any `!llvm.struct&lt;...&gt;` type, return the MLIR type of the field at the requested index.
-</span><span class="kw">pub fn </span>get_struct_field_type_at&lt;<span class="lifetime">&#39;c</span>&gt;(r#type: <span class="kw-2">&amp;</span>Type&lt;<span class="lifetime">&#39;c</span>&gt;, index: usize) -&gt; Type&lt;<span class="lifetime">&#39;c</span>&gt; {
+</span><span class="kw">pub fn </span>get_struct_field_type_at&lt;<span class="lifetime">'c</span>&gt;(r#type: <span class="kw-2">&amp;</span>Type&lt;<span class="lifetime">'c</span>&gt;, index: usize) -&gt; Type&lt;<span class="lifetime">'c</span>&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>ty_ptr = r#type.to_raw();
 
     ty_ptr.ptr = <span class="kw">unsafe </span>{ LLVMStructType_getFieldTypeAt(ty_ptr.ptr, index <span class="kw">as </span>u32) };
@@ -298,7 +299,7 @@
 
 <span class="kw">impl </span>Display <span class="kw">for </span>LLVMCompileError {
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         f.write_str(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -314,7 +315,7 @@
 
 <span class="doccomment">/// Make sure to call
 </span><span class="kw">pub fn </span>module_to_object(
-    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">&#39;_</span>&gt;,
+    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'_</span>&gt;,
     opt_level: OptLevel,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LLVMCompileError&gt; {
     <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
@@ -407,7 +408,7 @@
 }
 
 <span class="kw">pub fn </span>object_to_shared_lib(object: <span class="kw-2">&amp;</span>[u8], output_filename: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-    <span class="comment">// linker seems to need a file and doesn&#39;t accept stdin
+    <span class="comment">// linker seems to need a file and doesn't accept stdin
     </span><span class="kw">let </span><span class="kw-2">mut </span>file = NamedTempFile::new()<span class="question-mark">?</span>;
     file.write_all(object)<span class="question-mark">?</span>;
     <span class="kw">let </span>file = file.into_temp_path();
@@ -415,71 +416,71 @@
     <span class="kw">let </span>file_path = file.display().to_string();
     <span class="kw">let </span>output_path = output_filename.display().to_string();
 
-    <span class="kw">let </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = {
-        <span class="attr">#[cfg(target_os = <span class="string">&quot;macos&quot;</span>)]
+    <span class="kw">let </span>args: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt; = {
+        <span class="attr">#[cfg(target_os = <span class="string">"macos"</span>)]
         </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
-                <span class="string">&quot;-demangle&quot;</span>.into(),
-                <span class="string">&quot;-no_deduplicate&quot;</span>.into(),
-                <span class="string">&quot;-dynamic&quot;</span>.into(),
-                <span class="string">&quot;-dylib&quot;</span>.into(),
-                <span class="string">&quot;-L/usr/local/lib&quot;</span>.into(),
-                <span class="string">&quot;-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib&quot;</span>.into(),
+            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
+                <span class="string">"-demangle"</span>.into(),
+                <span class="string">"-no_deduplicate"</span>.into(),
+                <span class="string">"-dynamic"</span>.into(),
+                <span class="string">"-dylib"</span>.into(),
+                <span class="string">"-L/usr/local/lib"</span>.into(),
+                <span class="string">"-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"</span>.into(),
             ];
 
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">&quot;CAIRO_NATIVE_RUNTIME_LIBDIR&quot;</span>) {
-                args.extend([Cow::from(<span class="macro">format!</span>(<span class="string">&quot;-L{extra_dir}&quot;</span>))]);
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">"CAIRO_NATIVE_RUNTIME_LIBDIR"</span>) {
+                args.extend([Cow::from(<span class="macro">format!</span>(<span class="string">"-L{extra_dir}"</span>))]);
             }
 
             args.extend([
                 Cow::from(file_path),
-                <span class="string">&quot;-o&quot;</span>.into(),
+                <span class="string">"-o"</span>.into(),
                 Cow::from(output_path),
-                <span class="string">&quot;-lSystem&quot;</span>.into(),
-                <span class="string">&quot;-lcairo_native_runtime&quot;</span>.into(),
+                <span class="string">"-lSystem"</span>.into(),
+                <span class="string">"-lcairo_native_runtime"</span>.into(),
             ]);
             args
         }
-        <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+        <span class="attr">#[cfg(target_os = <span class="string">"linux"</span>)]
         </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
-                <span class="string">&quot;--hash-style=gnu&quot;</span>.into(),
-                <span class="string">&quot;--eh-frame-hdr&quot;</span>.into(),
-                <span class="string">&quot;-shared&quot;</span>.into(),
-                <span class="string">&quot;-L/lib/../lib64&quot;</span>.into(),
-                <span class="string">&quot;-L/usr/lib/../lib64&quot;</span>.into(),
+            <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
+                <span class="string">"--hash-style=gnu"</span>.into(),
+                <span class="string">"--eh-frame-hdr"</span>.into(),
+                <span class="string">"-shared"</span>.into(),
+                <span class="string">"-L/lib/../lib64"</span>.into(),
+                <span class="string">"-L/usr/lib/../lib64"</span>.into(),
             ];
 
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">&quot;CAIRO_NATIVE_RUNTIME_LIBDIR&quot;</span>) {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">"CAIRO_NATIVE_RUNTIME_LIBDIR"</span>) {
                 args.extend([
-                    Cow::from(<span class="macro">format!</span>(<span class="string">&quot;-L{extra_dir}&quot;</span>)),
-                    <span class="macro">format!</span>(<span class="string">&quot;-rpath={extra_dir}&quot;</span>).into(),
-                    <span class="macro">format!</span>(<span class="string">&quot;-rpath-link={extra_dir}&quot;</span>).into(),
+                    Cow::from(<span class="macro">format!</span>(<span class="string">"-L{extra_dir}"</span>)),
+                    <span class="macro">format!</span>(<span class="string">"-rpath={extra_dir}"</span>).into(),
+                    <span class="macro">format!</span>(<span class="string">"-rpath-link={extra_dir}"</span>).into(),
                 ]);
             }
 
             args.extend([
-                <span class="string">&quot;-o&quot;</span>.into(),
+                <span class="string">"-o"</span>.into(),
                 Cow::from(output_path),
-                <span class="string">&quot;-lc&quot;</span>.into(),
-                <span class="string">&quot;-lcairo_native_runtime&quot;</span>.into(),
+                <span class="string">"-lc"</span>.into(),
+                <span class="string">"-lcairo_native_runtime"</span>.into(),
                 Cow::from(file_path),
             ]);
             args
         }
-        <span class="attr">#[cfg(target_os = <span class="string">&quot;windows&quot;</span>)]
+        <span class="attr">#[cfg(target_os = <span class="string">"windows"</span>)]
         </span>{
             <span class="macro">unimplemented!</span>()
         }
     };
 
-    <span class="kw">let </span><span class="kw-2">mut </span>linker = std::process::Command::new(<span class="string">&quot;ld&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>linker = std::process::Command::new(<span class="string">"ld"</span>);
     <span class="kw">let </span>proc = linker.args(args.iter().map(|x| x.as_ref())).output()<span class="question-mark">?</span>;
     <span class="kw">if </span>proc.status.success() {
         <span class="prelude-val">Ok</span>(())
     } <span class="kw">else </span>{
         <span class="kw">let </span>msg = String::from_utf8_lossy(<span class="kw-2">&amp;</span>proc.stderr);
-        <span class="macro">panic!</span>(<span class="string">&quot;error linking:\n{}&quot;</span>, msg);
+        <span class="macro">panic!</span>(<span class="string">"error linking:\n{}"</span>, msg);
     }
 }
 </code></pre></div></section></main></body></html>

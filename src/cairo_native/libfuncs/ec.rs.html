@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/ec.rs`."><title>ec.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/ec.rs`."><title>ec.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1325,12 +1326,12 @@
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: <span class="kw-2">&amp;</span>EcConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1369,12 +1370,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_point_is_zero` libfunc.
-</span><span class="kw">pub fn </span>build_is_zero&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_is_zero&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1433,12 +1434,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_neg` libfunc.
-</span><span class="kw">pub fn </span>build_neg&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_neg&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1459,7 +1460,7 @@
             Attribute::parse(
                 context,
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-                    <span class="string">&quot;{} : i252&quot;</span>,
+                    <span class="string">"{} : i252"</span>,
                     <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;() {
                         <span class="prelude-val">Some</span>(x) =&gt; x.prime(),
                         <span class="prelude-val">None </span>=&gt; {
@@ -1495,7 +1496,7 @@
         </span>.into();
     <span class="kw">let </span>y_neg = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;arith.select&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"arith.select"</span>, location)
                 .add_operands(<span class="kw-2">&amp;</span>[y_is_zero, k0, y_neg])
                 .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">252</span>).into()])
                 .build()<span class="question-mark">?</span>,
@@ -1519,12 +1520,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_point_from_x_nz` libfunc.
-</span><span class="kw">pub fn </span>build_point_from_x&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_point_from_x&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1551,9 +1552,9 @@
         </span>.into();
     <span class="kw">let </span>point_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1618,12 +1619,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_state_add` libfunc.
-</span><span class="kw">pub fn </span>build_state_add&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_state_add&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1657,9 +1658,9 @@
         </span>.into();
     <span class="kw">let </span>state_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1674,9 +1675,9 @@
         </span>.into();
     <span class="kw">let </span>point_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1726,12 +1727,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_state_add_mul` libfunc.
-</span><span class="kw">pub fn </span>build_state_add_mul&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_state_add_mul&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1757,9 +1758,9 @@
         </span>.into();
     <span class="kw">let </span>state_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1774,9 +1775,9 @@
         </span>.into();
     <span class="kw">let </span>scalar_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1791,9 +1792,9 @@
         </span>.into();
     <span class="kw">let </span>point_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1852,12 +1853,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_state_try_finalize_nz` libfunc.
-</span><span class="kw">pub fn </span>build_state_finalize&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_state_finalize&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1880,9 +1881,9 @@
         </span>.into();
     <span class="kw">let </span>point_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1897,9 +1898,9 @@
         </span>.into();
     <span class="kw">let </span>state_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1944,12 +1945,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_state_init` libfunc.
-</span><span class="kw">pub fn </span>build_state_init&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_state_init&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1972,7 +1973,7 @@
     <span class="kw">let </span>x = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252&quot;</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+            Attribute::parse(context, <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252"</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1980,7 +1981,7 @@
     <span class="kw">let </span>y = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252&quot;</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+            Attribute::parse(context, <span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252"</span>).ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2032,12 +2033,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_point_try_new_nz` libfunc.
-</span><span class="kw">pub fn </span>build_try_new&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_try_new&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -2061,9 +2062,9 @@
         </span>.into();
     <span class="kw">let </span>point_ptr = entry
         .append_operation(
-            OperationBuilder::new(<span class="string">&quot;llvm.alloca&quot;</span>, location)
+            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">&quot;alignment&quot;</span>),
+                    Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
                         get_integer_layout(<span class="number">252</span>).align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
@@ -2121,12 +2122,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_point_unwrap` libfunc.
-</span><span class="kw">pub fn </span>build_unwrap_point&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_unwrap_point&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -2168,12 +2169,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `ec_point_zero` libfunc.
-</span><span class="kw">pub fn </span>build_zero&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_zero&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -2317,7 +2318,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_is_zero() {
         <span class="kw">let </span>r = |x, y| {
-            run_program(<span class="kw-2">&amp;</span>EC_POINT_IS_ZERO, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value
+            run_program(<span class="kw-2">&amp;</span>EC_POINT_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value
         };
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into(), <span class="number">0</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
@@ -2337,7 +2338,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_neg() {
-        <span class="kw">let </span>r = |x, y| run_program(<span class="kw-2">&amp;</span>EC_NEG, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value;
+        <span class="kw">let </span>r = |x, y| run_program(<span class="kw-2">&amp;</span>EC_NEG, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value;
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into(), <span class="number">0</span>.into()), JitValue::EcPoint(<span class="number">0</span>.into(), <span class="number">0</span>.into()));
         <span class="macro">assert_eq!</span>(
@@ -2354,78 +2355,78 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_from_x() {
         <span class="kw">let </span>r =
-            |x| run_program(<span class="kw-2">&amp;</span>EC_POINT_FROM_X_NZ, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[JitValue::Felt252(x)]).return_value;
+            |x| run_program(<span class="kw-2">&amp;</span>EC_POINT_FROM_X_NZ, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::Felt252(x)]).return_value;
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
         <span class="macro">assert_eq!</span>(r(<span class="number">1234</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
             Felt::from(<span class="number">1234</span>),
-            Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+            Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
         )));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_state_add() {
-        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
+        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
             JitValue::EcPoint(
-                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
         JitValue::EcState(
-            Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
-            Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
-            Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-            Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+            Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
+            Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
+            Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+            Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
         ));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_state_add_mul() {
-        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
+        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
             Felt::from(<span class="number">1</span>).into(), <span class="comment">// scalar
             </span>JitValue::EcPoint(
-                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             )
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
+        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
             Felt::from(<span class="number">2</span>).into(), <span class="comment">// scalar
             </span>JitValue::EcPoint(
-                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;3016674370847061744386893405108272070153695046160622325692702034987910716850&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;898133181809473419542838028331350248951548889944002871647069130998202992502&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"3016674370847061744386893405108272070153695046160622325692702034987910716850"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"898133181809473419542838028331350248951548889944002871647069130998202992502"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             )
         );
     }
@@ -2434,38 +2435,38 @@
     </span><span class="kw">fn </span>ec_state_finalize() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_STATE_FINALIZE,
-            <span class="string">&quot;run_test&quot;</span>,
+            <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[JitValue::EcState(
                 Felt::from_dec_str(
-                    <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
+                    <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
+                    <span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
+                    <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
+                    <span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>,
                 )
                 .unwrap(),
             )],
             <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
-        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_FINALIZE, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[
+        run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_FINALIZE, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
             JitValue::EcState(
-                Felt::from_dec_str(<span class="string">&quot;763975897824944497806946001227010133599886598340174017198031710397718335159&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2805180267536471620369715068237762638204710971142209985448115065526708105983&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>).unwrap()
+                Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
         ],
             <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
                     Felt::from(<span class="number">1234</span>),
-                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+                    Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
                 )
             )
         );
@@ -2475,23 +2476,23 @@
     </span><span class="kw">fn </span>ec_state_init() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_STATE_INIT,
-            <span class="string">&quot;run_test&quot;</span>,
+            <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
             JitValue::EcState(
                 Felt::from_dec_str(
-                    <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
+                    <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
+                    <span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;3151312365169595090315724863753927489909436624354740709748557281394568342450&quot;</span>,
+                    <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>,
                 )
                 .unwrap(),
                 Felt::from_dec_str(
-                    <span class="string">&quot;2835232394579952276045648147338966184268723952674536708929458753792035266179&quot;</span>,
+                    <span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>,
                 )
                 .unwrap(),
             ),
@@ -2502,35 +2503,35 @@
     </span><span class="kw">fn </span>ec_point_try_new_nz() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
-            <span class="string">&quot;run_test&quot;</span>,
+            <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().into(),
-                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">"0"</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">"0"</span>).unwrap().into(),
             ],
             <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
-            <span class="string">&quot;run_test&quot;</span>,
+            <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[
-                Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap().into(),
-                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().into()
+                Felt::from_dec_str(<span class="string">"1234"</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().into()
             ],
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
-                    Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
-                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap()
+                    Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
+                    Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
                 ))
             ,
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_POINT_TRY_NEW_NZ,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[  Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap().into(),
-                Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().neg().into()
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[  Felt::from_dec_str(<span class="string">"1234"</span>).unwrap().into(),
+                Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().neg().into()
                 ],
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
-                    Felt::from_dec_str(<span class="string">&quot;1234&quot;</span>).unwrap(),
-                    Felt::from_dec_str(<span class="string">&quot;1301976514684871091717790968549291947487646995000837413367950573852273027507&quot;</span>).unwrap().neg()
+                    Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
+                    Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().neg()
                 ))
                 ,
         );
@@ -2539,7 +2540,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_unwrap() {
         <span class="kw">fn </span>parse(x: <span class="kw-2">&amp;</span>str) -&gt; Felt {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(x) = x.strip_prefix(<span class="string">&#39;-&#39;</span>) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(x) = x.strip_prefix(<span class="string">'-'</span>) {
                 Felt::from_dec_str(x).unwrap().neg()
             } <span class="kw">else </span>{
                 Felt::from_dec_str(x).unwrap()
@@ -2550,32 +2551,32 @@
         </span><span class="kw">fn </span>run(a: <span class="kw-2">&amp;</span>str, b: <span class="kw-2">&amp;</span>str, ea: <span class="kw-2">&amp;</span>str, eb: <span class="kw-2">&amp;</span>str) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>EC_POINT_UNWRAP,
-                <span class="string">&quot;run_test&quot;</span>,
+                <span class="string">"run_test"</span>,
                 <span class="kw-2">&amp;</span>[JitValue::EcPoint(parse(a), parse(b))],
                 <span class="macro">jit_struct!</span>(parse(ea).into(), parse(eb).into()),
             );
         }
 
-        run(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;0&quot;</span>);
-        run(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>);
-        run(<span class="string">&quot;0&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;-1&quot;</span>);
-        run(<span class="string">&quot;1&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;0&quot;</span>);
-        run(<span class="string">&quot;1&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;1&quot;</span>);
-        run(<span class="string">&quot;1&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;-1&quot;</span>);
-        run(<span class="string">&quot;-1&quot;</span>, <span class="string">&quot;0&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;0&quot;</span>);
-        run(<span class="string">&quot;-1&quot;</span>, <span class="string">&quot;1&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;1&quot;</span>);
-        run(<span class="string">&quot;-1&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;-1&quot;</span>, <span class="string">&quot;-1&quot;</span>);
+        run(<span class="string">"0"</span>, <span class="string">"0"</span>, <span class="string">"0"</span>, <span class="string">"0"</span>);
+        run(<span class="string">"0"</span>, <span class="string">"1"</span>, <span class="string">"0"</span>, <span class="string">"1"</span>);
+        run(<span class="string">"0"</span>, <span class="string">"-1"</span>, <span class="string">"0"</span>, <span class="string">"-1"</span>);
+        run(<span class="string">"1"</span>, <span class="string">"0"</span>, <span class="string">"1"</span>, <span class="string">"0"</span>);
+        run(<span class="string">"1"</span>, <span class="string">"1"</span>, <span class="string">"1"</span>, <span class="string">"1"</span>);
+        run(<span class="string">"1"</span>, <span class="string">"-1"</span>, <span class="string">"1"</span>, <span class="string">"-1"</span>);
+        run(<span class="string">"-1"</span>, <span class="string">"0"</span>, <span class="string">"-1"</span>, <span class="string">"0"</span>);
+        run(<span class="string">"-1"</span>, <span class="string">"1"</span>, <span class="string">"-1"</span>, <span class="string">"1"</span>);
+        run(<span class="string">"-1"</span>, <span class="string">"-1"</span>, <span class="string">"-1"</span>, <span class="string">"-1"</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_zero() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_POINT_ZERO,
-            <span class="string">&quot;run_test&quot;</span>,
+            <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
             JitValue::EcPoint(
-                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap(),
-                Felt::from_dec_str(<span class="string">&quot;0&quot;</span>).unwrap().neg(),
+                Felt::from_dec_str(<span class="string">"0"</span>).unwrap(),
+                Felt::from_dec_str(<span class="string">"0"</span>).unwrap().neg(),
             ),
         );
     }

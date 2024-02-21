@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/metadata/tail_recursion.rs`."><title>tail_recursion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/metadata/tail_recursion.rs`."><title>tail_recursion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -85,7 +86,7 @@
 <a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Tail recursion information
 //!
-//! Whenever the compiler detects a direct tail-recursive function call it&#39;ll insert this metadata.
+//! Whenever the compiler detects a direct tail-recursive function call it'll insert this metadata.
 //! If the libfunc handler decides to use it by setting a return target, the compiler will insert
 //! the required instructions to make it really tail-recursive.
 //!
@@ -99,7 +100,7 @@
 //!
 //! When tail recursion is detected, a counter is added which counts the current recursion depth.
 //! The counter being zero means that no recursion has taken place (either because the program
-//! hasn&#39;t reached the recursion point yet, or because it has completely unwinded already).
+//! hasn't reached the recursion point yet, or because it has completely unwinded already).
 //!
 //! Every time the recursive function call is invoked, the libfunc builder should increment this
 //! counter by one and jump to the recursion target block provided by the meta. This recursion
@@ -108,9 +109,9 @@
 //! block which jumps to the next libfunc (a standard libfunc builder terminator as in every other
 //! libfunc).
 //!
-//! When the compiler generates the code for a return statement of a tail recursive function, it&#39;ll
+//! When the compiler generates the code for a return statement of a tail recursive function, it'll
 //! first check whether the depth counter is zero or not. If zero, a normal return statement will be
-//! generated since it&#39;d mean our parent frame is a different function. However if the counter is
+//! generated since it'd mean our parent frame is a different function. However if the counter is
 //! not zero, the counter is decremented by one and a jump to the return target is generated, which
 //! will return control to the function call libfunc builder. The builder should then jump to the
 //! next libfunc statement as if it were a normal function call.
@@ -148,17 +149,17 @@
     }
 
     <span class="doccomment">/// Return the current depth counter value.
-    </span><span class="kw">pub fn </span>depth_counter&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; {
+    </span><span class="kw">pub fn </span>depth_counter&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; {
         <span class="kw">unsafe </span>{ Value::from_raw(<span class="self">self</span>.depth_counter) }
     }
 
     <span class="doccomment">/// Return the recursion target block.
-    </span><span class="kw">pub fn </span>recursion_target&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BlockRef&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; {
+    </span><span class="kw">pub fn </span>recursion_target&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BlockRef&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; {
         <span class="kw">unsafe </span>{ BlockRef::from_raw(<span class="self">self</span>.recursion_target) }
     }
 
     <span class="doccomment">/// Return the return target block, if set.
-    </span><span class="kw">pub fn </span>return_target&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;BlockRef&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt; {
+    </span><span class="kw">pub fn </span>return_target&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;BlockRef&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
         <span class="self">self</span>.return_target
             .map(|ptr| <span class="kw">unsafe </span>{ BlockRef::from_raw(ptr) })
     }

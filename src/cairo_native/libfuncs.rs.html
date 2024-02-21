@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs.rs`."><title>libfuncs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../cairo_native/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs.rs`."><title>libfuncs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -573,17 +574,17 @@
 /// All possible Sierra libfuncs must implement it. It is already implemented for all the core
 /// libfuncs, contained in [CoreConcreteLibfunc].
 </span><span class="kw">pub trait </span>LibfuncBuilder {
-    <span class="doccomment">/// Error type returned by this trait&#39;s methods.
+    <span class="doccomment">/// Error type returned by this trait's methods.
     </span><span class="kw">type </span>Error: Error;
 
     <span class="doccomment">/// Generate the MLIR operations.
-    </span><span class="kw">fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
+    </span><span class="kw">fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-        entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+        entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+        helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;;
 
@@ -597,13 +598,13 @@
 <span class="kw">impl </span>LibfuncBuilder <span class="kw">for </span>CoreConcreteLibfunc {
     <span class="kw">type </span>Error = CoreLibfuncBuilderError;
 
-    <span class="kw">fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
+    <span class="kw">fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-        entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-        helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+        entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+        helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
@@ -742,32 +743,32 @@
 /// This helper is necessary because the statement following the current one may not have the same
 /// arguments as the results returned by the current statement. Because of that, a direct jump
 /// cannot be made and some processing is required.
-</span><span class="kw">pub struct </span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;
+</span><span class="kw">pub struct </span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;
 <span class="kw">where
-    </span><span class="lifetime">&#39;this</span>: <span class="lifetime">&#39;ctx</span>,
+    </span><span class="lifetime">'this</span>: <span class="lifetime">'ctx</span>,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) module: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Module&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) init_block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>BlockRef&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) module: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) init_block: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>BlockRef&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) region: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Region&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) blocks_arena: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Bump,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) last_block: Cell&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>BlockRef&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) region: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Region&lt;<span class="lifetime">'ctx</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) blocks_arena: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Bump,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) last_block: Cell&lt;<span class="kw-2">&amp;</span><span class="lifetime">'this </span>BlockRef&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;,
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) branches: Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;, Vec&lt;BranchArg&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt;)&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) results: Vec&lt;Vec&lt;Cell&lt;<span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt;&gt;&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) branches: Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;, Vec&lt;BranchArg&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;)&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) results: Vec&lt;Vec&lt;Cell&lt;<span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;
 <span class="kw">where
-    </span><span class="lifetime">&#39;this</span>: <span class="lifetime">&#39;ctx</span>,
+    </span><span class="lifetime">'this</span>: <span class="lifetime">'ctx</span>,
 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Vec&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;&gt;&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Vec&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt; {
         <span class="self">self</span>.results.into_iter().enumerate().map(|(branch_idx, x)| {
             x.into_iter()
                 .enumerate()
                 .map(|(arg_idx, x)| {
                     x.into_inner().unwrap_or_else(|| {
-                        <span class="macro">panic!</span>(<span class="string">&quot;Argument #{arg_idx} of branch {branch_idx} doesn&#39;t have a value.&quot;</span>)
+                        <span class="macro">panic!</span>(<span class="string">"Argument #{arg_idx} of branch {branch_idx} doesn't have a value."</span>)
                     })
                 })
                 .collect()
@@ -779,17 +780,17 @@
     /// The init block is used for `llvm.alloca` instructions. It is guaranteed to not be executed
     /// multiple times on tail-recursive functions. This property allows generating tail-recursive
     /// functions that do not grow the stack.
-    </span><span class="kw">pub fn </span>init_block(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    </span><span class="kw">pub fn </span>init_block(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt; {
         <span class="self">self</span>.init_block
     }
 
-    <span class="doccomment">/// Inserts a new block after all the current libfunc&#39;s blocks.
-    </span><span class="kw">pub fn </span>append_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block: Block&lt;<span class="lifetime">&#39;ctx</span>&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+    <span class="doccomment">/// Inserts a new block after all the current libfunc's blocks.
+    </span><span class="kw">pub fn </span>append_block(<span class="kw-2">&amp;</span><span class="self">self</span>, block: Block&lt;<span class="lifetime">'ctx</span>&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt; {
         <span class="kw">let </span>block = <span class="self">self
             </span>.region
             .insert_block_after(<span class="kw-2">*</span><span class="self">self</span>.last_block.get(), block);
 
-        <span class="kw">let </span>block_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span><span class="kw-2">mut </span>BlockRef&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; = <span class="self">self</span>.blocks_arena.alloc(block);
+        <span class="kw">let </span>block_ref: <span class="kw-2">&amp;</span><span class="lifetime">'this </span><span class="kw-2">mut </span>BlockRef&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; = <span class="self">self</span>.blocks_arena.alloc(block);
         <span class="self">self</span>.last_block.set(block_ref);
 
         block_ref
@@ -802,9 +803,9 @@
     </span><span class="kw">pub fn </span>br(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         branch: usize,
-        results: <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;],
-        location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; Operation&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+        results: <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;],
+        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    ) -&gt; Operation&lt;<span class="lifetime">'ctx</span>&gt; {
         <span class="kw">let </span>(successor, operands) = <span class="kw-2">&amp;</span><span class="self">self</span>.branches[branch];
 
         <span class="kw">for </span>(dst, src) <span class="kw">in </span><span class="self">self</span>.results[branch].iter().zip(results) {
@@ -826,7 +827,7 @@
     <span class="doccomment">/// Creates a conditional binary branching operation, potentially jumping out of the libfunc and
     /// into the next statement.
     ///
-    /// While generating a `cond_br` that doesn&#39;t jump out of the libfunc is possible, it should be
+    /// While generating a `cond_br` that doesn't jump out of the libfunc is possible, it should be
     /// avoided whenever possible. In those cases just use [melior::dialect::cf::cond_br].
     ///
     /// This method will also store the returned values so that they can be moved into the state and
@@ -834,12 +835,12 @@
     </span><span class="comment">// TODO: Allow one block to be libfunc-internal.
     </span><span class="kw">pub fn </span>cond_br(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-        condition: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+        condition: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         branches: [usize; <span class="number">2</span>],
-        results: [<span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;]; <span class="number">2</span>],
-        location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; Operation&lt;<span class="lifetime">&#39;ctx</span>&gt; {
+        results: [<span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;]; <span class="number">2</span>],
+        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    ) -&gt; Operation&lt;<span class="lifetime">'ctx</span>&gt; {
         <span class="kw">let </span>(block_true, args_true) = {
             <span class="kw">let </span>(successor, operands) = <span class="kw-2">&amp;</span><span class="self">self</span>.branches[branches[<span class="number">0</span>]];
 
@@ -892,19 +893,19 @@
     <span class="doccomment">/// Creates a conditional multi-branching operation, potentially jumping out of the libfunc and
     /// into the next statement.
     ///
-    /// While generating a `switch` that doesn&#39;t jump out of the libfunc is possible, it should be
+    /// While generating a `switch` that doesn't jump out of the libfunc is possible, it should be
     /// avoided whenever possible. In those cases just use [melior::dialect::cf::switch].
     ///
     /// This method will also store the returned values so that they can be moved into the state and
     /// used later on when required.
     </span><span class="kw">pub fn </span>switch(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-        flag: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
-        default: (BranchTarget&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;]),
-        branches: <span class="kw-2">&amp;</span>[(i64, BranchTarget&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;])],
-        location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">&#39;ctx</span>&gt;, CoreLibfuncBuilderError&gt; {
+        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+        flag: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+        default: (BranchTarget&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;]),
+        branches: <span class="kw-2">&amp;</span>[(i64, BranchTarget&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;])],
+        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Operation&lt;<span class="lifetime">'ctx</span>&gt;, CoreLibfuncBuilderError&gt; {
         <span class="kw">let </span>default_destination = <span class="kw">match </span>default.<span class="number">0 </span>{
             BranchTarget::Jump(x) =&gt; (x, Cow::Borrowed(default.<span class="number">1</span>)),
             BranchTarget::Return(i) =&gt; {
@@ -970,8 +971,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; Deref <span class="kw">for </span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; {
-    <span class="kw">type </span>Target = Module&lt;<span class="lifetime">&#39;ctx</span>&gt;;
+<span class="kw">impl</span>&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; Deref <span class="kw">for </span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; {
+    <span class="kw">type </span>Target = Module&lt;<span class="lifetime">'ctx</span>&gt;;
 
     <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
         <span class="self">self</span>.module
@@ -979,29 +980,29 @@
 }
 
 <span class="attr">#[derive(Clone, Copy, Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>BranchArg&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt; {
-    External(Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;),
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>BranchArg&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; {
+    External(Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;),
     Returned(usize),
 }
 
 <span class="doccomment">/// A libfunc branching target.
 ///
 /// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
-/// statement&#39;s branches using [BranchTarget::Return] with the branch index.
+/// statement's branches using [BranchTarget::Return] with the branch index.
 </span><span class="attr">#[derive(Clone, Copy, Debug)]
-</span><span class="kw">pub enum </span>BranchTarget&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;a</span>&gt; {
+</span><span class="kw">pub enum </span>BranchTarget&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// A block within the current libfunc.
-    </span>Jump(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;),
-    <span class="doccomment">/// A statement&#39;s branch target by its index.
+    </span>Jump(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'ctx</span>&gt;),
+    <span class="doccomment">/// A statement's branch target by its index.
     </span>Return(usize),
 }
 
-<span class="kw">pub fn </span>increment_builtin_counter&lt;<span class="lifetime">&#39;ctx</span>: <span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;a</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
-    block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    value: Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;_</span>&gt;,
-) -&gt; <span class="kw">crate</span>::error::libfuncs::Result&lt;Value&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;a</span>&gt;&gt; {
+<span class="kw">pub fn </span>increment_builtin_counter&lt;<span class="lifetime">'ctx</span>: <span class="lifetime">'a</span>, <span class="lifetime">'a</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    block: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
+) -&gt; <span class="kw">crate</span>::error::libfuncs::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
     <span class="kw">let </span>k1 = block
         .append_operation(arith::constant(
             context,

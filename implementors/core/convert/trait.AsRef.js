@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"cairo_native":[["impl&lt;'a, T&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.74.1/core/convert/trait.AsRef.html\" title=\"trait core::convert::AsRef\">AsRef</a>&lt;T&gt; for <a class=\"struct\" href=\"cairo_native/types/struct.WithSelf.html\" title=\"struct cairo_native::types::WithSelf\">WithSelf</a>&lt;'a, T&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

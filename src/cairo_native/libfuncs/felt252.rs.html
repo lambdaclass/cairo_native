@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/felt252.rs`."><title>felt252.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../cairo_native/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/felt252.rs`."><title>felt252.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -832,12 +833,12 @@
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: <span class="kw-2">&amp;</span>Felt252Concrete,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -859,12 +860,12 @@
 ///   - `felt252_sub` and `felt252_sub_const`.
 ///   - `felt252_mul` and `felt252_mul_const`.
 ///   - `felt252_div` and `felt252_div_const`.
-</span><span class="kw">pub fn </span>build_binary_operation&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_binary_operation&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>Felt252BinaryOperationConcrete,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -882,7 +883,7 @@
     <span class="kw">let </span>attr_prime_i256 = Attribute::parse(
         context,
         <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-            <span class="string">&quot;{} : {i256}&quot;</span>,
+            <span class="string">"{} : {i256}"</span>,
             metadata
                 .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
                 .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
@@ -893,7 +894,7 @@
     <span class="kw">let </span>attr_prime_i512 = Attribute::parse(
         context,
         <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-            <span class="string">&quot;{} : {i512}&quot;</span>,
+            <span class="string">"{} : {i512}"</span>,
             metadata
                 .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
                 .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
@@ -926,19 +927,19 @@
                         .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
                         .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
                         </span>.prime();
-                    (<span class="kw-2">&amp;</span>operation.c + prime.to_bigint().expect(<span class="string">&quot;always is Some&quot;</span>))
+                    (<span class="kw-2">&amp;</span>operation.c + prime.to_bigint().expect(<span class="string">"always is Some"</span>))
                         .to_biguint()
-                        .expect(<span class="string">&quot;always positive&quot;</span>)
+                        .expect(<span class="string">"always positive"</span>)
                 }
-                <span class="kw">_ </span>=&gt; operation.c.to_biguint().expect(<span class="string">&quot;sign already checked&quot;</span>),
+                <span class="kw">_ </span>=&gt; operation.c.to_biguint().expect(<span class="string">"sign already checked"</span>),
             };
 
-            <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>))
+            <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {felt252_ty}"</span>))
                 .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?</span>;
 
             <span class="comment">// TODO: Ensure that the constant is on the correct side of the operation.
             </span><span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-                ; rhs = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_c } : () -&gt; felt252_ty
+                ; rhs = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; felt252_ty
             }
 
             (operation.operator, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), rhs)
@@ -948,48 +949,48 @@
     <span class="kw">let </span>result = <span class="kw">match </span>op {
         Felt252BinaryOperator::Add =&gt; {
             <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-                ; lhs = <span class="string">&quot;arith.extui&quot;</span>(lhs) : (felt252_ty) -&gt; i256
-                ; rhs = <span class="string">&quot;arith.extui&quot;</span>(rhs) : (felt252_ty) -&gt; i256
-                ; result = <span class="string">&quot;arith.addi&quot;</span>(lhs, rhs) : (i256, i256) -&gt; i256
+                ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i256
+                ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i256
+                ; result = <span class="string">"arith.addi"</span>(lhs, rhs) : (i256, i256) -&gt; i256
 
-                ; prime = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_prime_i256 } : () -&gt; i256
-                ; result_mod = <span class="string">&quot;arith.subi&quot;</span>(result, prime) : (i256, i256) -&gt; i256
-                ; is_out_of_range = <span class="string">&quot;arith.cmpi&quot;</span>(result, prime) { <span class="string">&quot;predicate&quot; </span>= attr_cmp_uge } : (i256, i256) -&gt; bool_ty
+                ; prime = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_prime_i256 } : () -&gt; i256
+                ; result_mod = <span class="string">"arith.subi"</span>(result, prime) : (i256, i256) -&gt; i256
+                ; is_out_of_range = <span class="string">"arith.cmpi"</span>(result, prime) { <span class="string">"predicate" </span>= attr_cmp_uge } : (i256, i256) -&gt; bool_ty
 
-                ; result = <span class="string">&quot;arith.select&quot;</span>(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -&gt; i256
-                ; result = <span class="string">&quot;arith.trunci&quot;</span>(result) : (i256) -&gt; felt252_ty
+                ; result = <span class="string">"arith.select"</span>(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -&gt; i256
+                ; result = <span class="string">"arith.trunci"</span>(result) : (i256) -&gt; felt252_ty
             };
 
             result
         }
         Felt252BinaryOperator::Sub =&gt; {
             <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-                ; lhs = <span class="string">&quot;arith.extui&quot;</span>(lhs) : (felt252_ty) -&gt; i256
-                ; rhs = <span class="string">&quot;arith.extui&quot;</span>(rhs) : (felt252_ty) -&gt; i256
-                ; result = <span class="string">&quot;arith.subi&quot;</span>(lhs, rhs) : (i256, i256) -&gt; i256
+                ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i256
+                ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i256
+                ; result = <span class="string">"arith.subi"</span>(lhs, rhs) : (i256, i256) -&gt; i256
 
-                ; prime = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_prime_i256 } : () -&gt; i256
-                ; result_mod = <span class="string">&quot;arith.addi&quot;</span>(result, prime) : (i256, i256) -&gt; i256
-                ; is_out_of_range = <span class="string">&quot;arith.cmpi&quot;</span>(lhs, rhs) { <span class="string">&quot;predicate&quot; </span>= attr_cmp_ult } : (i256, i256) -&gt; bool_ty
+                ; prime = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_prime_i256 } : () -&gt; i256
+                ; result_mod = <span class="string">"arith.addi"</span>(result, prime) : (i256, i256) -&gt; i256
+                ; is_out_of_range = <span class="string">"arith.cmpi"</span>(lhs, rhs) { <span class="string">"predicate" </span>= attr_cmp_ult } : (i256, i256) -&gt; bool_ty
 
-                ; result = <span class="string">&quot;arith.select&quot;</span>(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -&gt; i256
-                ; result = <span class="string">&quot;arith.trunci&quot;</span>(result) : (i256) -&gt; felt252_ty
+                ; result = <span class="string">"arith.select"</span>(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -&gt; i256
+                ; result = <span class="string">"arith.trunci"</span>(result) : (i256) -&gt; felt252_ty
             }
 
             result
         }
         Felt252BinaryOperator::Mul =&gt; {
             <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-                ; lhs = <span class="string">&quot;arith.extui&quot;</span>(lhs) : (felt252_ty) -&gt; i512
-                ; rhs = <span class="string">&quot;arith.extui&quot;</span>(rhs) : (felt252_ty) -&gt; i512
-                ; result = <span class="string">&quot;arith.muli&quot;</span>(lhs, rhs) : (i512, i512) -&gt; i512
+                ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i512
+                ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i512
+                ; result = <span class="string">"arith.muli"</span>(lhs, rhs) : (i512, i512) -&gt; i512
 
-                ; prime = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_prime_i512 } : () -&gt; i512
-                ; result_mod = <span class="string">&quot;arith.remui&quot;</span>(result, prime) : (i512, i512) -&gt; i512
-                ; is_out_of_range = <span class="string">&quot;arith.cmpi&quot;</span>(result, prime) { <span class="string">&quot;predicate&quot; </span>= attr_cmp_uge } : (i512, i512) -&gt; bool_ty
+                ; prime = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_prime_i512 } : () -&gt; i512
+                ; result_mod = <span class="string">"arith.remui"</span>(result, prime) : (i512, i512) -&gt; i512
+                ; is_out_of_range = <span class="string">"arith.cmpi"</span>(result, prime) { <span class="string">"predicate" </span>= attr_cmp_uge } : (i512, i512) -&gt; bool_ty
 
-                ; result = <span class="string">&quot;arith.select&quot;</span>(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -&gt; i512
-                ; result = <span class="string">&quot;arith.trunci&quot;</span>(result) : (i512) -&gt; felt252_ty
+                ; result = <span class="string">"arith.select"</span>(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -&gt; i512
+                ; result = <span class="string">"arith.trunci"</span>(result) : (i512) -&gt; felt252_ty
             }
 
             result
@@ -998,7 +999,7 @@
             <span class="comment">// The extended euclidean algorithm calculates the greatest common divisor of two integers,
             // as well as the bezout coefficients x and y such that for inputs a and b, ax+by=gcd(a,b)
             // We use this in felt division to find the modular inverse of a given number
-            // If a is the number we&#39;re trying to find the inverse of, we can do
+            // If a is the number we're trying to find the inverse of, we can do
             // ax+y*PRIME=gcd(a,PRIME)=1 =&gt; ax = 1 (mod PRIME)
             // Hence for input a, we return x
             // The input MUST be non-zero
@@ -1021,7 +1022,7 @@
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
             <span class="kw">let </span>remainder = start_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-            <span class="comment">// Similarly we&#39;ll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
+            <span class="comment">// Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             </span><span class="kw">let </span>prev_inverse = start_block
                 .append_operation(arith::constant(
                     context,
@@ -1159,7 +1160,7 @@
                 .append_operation(arith::extui(rhs, i512, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
-            <span class="comment">// Calculate inverse of rhs, callling the inverse implementation&#39;s starting block
+            <span class="comment">// Calculate inverse of rhs, callling the inverse implementation's starting block
             </span>entry.append_operation(cf::br(start_block, <span class="kw-2">&amp;</span>[rhs], location));
             <span class="comment">// Fetch the inverse result from the result block
             </span><span class="kw">let </span>inverse = inverse_result_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -1170,11 +1171,11 @@
                 </span>.into();
             <span class="comment">// Apply modulo and convert result to felt252
             </span><span class="macro">mlir_asm! </span>{ context, inverse_result_block, location =&gt;
-                ; result_mod = <span class="string">&quot;arith.remui&quot;</span>(result, prime) : (i512, i512) -&gt; i512
-                ; is_out_of_range = <span class="string">&quot;arith.cmpi&quot;</span>(result, prime) { <span class="string">&quot;predicate&quot; </span>= attr_cmp_uge } : (i512, i512) -&gt; bool_ty
+                ; result_mod = <span class="string">"arith.remui"</span>(result, prime) : (i512, i512) -&gt; i512
+                ; is_out_of_range = <span class="string">"arith.cmpi"</span>(result, prime) { <span class="string">"predicate" </span>= attr_cmp_uge } : (i512, i512) -&gt; bool_ty
 
-                ; result = <span class="string">&quot;arith.select&quot;</span>(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -&gt; i512
-                ; result = <span class="string">&quot;arith.trunci&quot;</span>(result) : (i512) -&gt; felt252_ty
+                ; result = <span class="string">"arith.select"</span>(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -&gt; i512
+                ; result = <span class="string">"arith.trunci"</span>(result) : (i512) -&gt; felt252_ty
             }
             inverse_result_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
@@ -1187,12 +1188,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `felt252_const` libfunc.
-</span><span class="kw">pub fn </span>build_const&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_const&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>Felt252ConstConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1202,11 +1203,11 @@
                 .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
                 .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
                 </span>.prime();
-            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().expect(<span class="string">&quot;always is Some&quot;</span>))
+            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().expect(<span class="string">"always is Some"</span>))
                 .to_biguint()
-                .expect(<span class="string">&quot;always is positive&quot;</span>)
+                .expect(<span class="string">"always is positive"</span>)
         }
-        <span class="kw">_ </span>=&gt; info.c.to_biguint().expect(<span class="string">&quot;sign already checked&quot;</span>),
+        <span class="kw">_ </span>=&gt; info.c.to_biguint().expect(<span class="string">"sign already checked"</span>),
     };
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
@@ -1217,11 +1218,11 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{value} : {felt252_ty}&quot;</span>))
+    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {felt252_ty}"</span>))
         .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-        ; k0 = <span class="string">&quot;arith.constant&quot;</span>() { <span class="string">&quot;value&quot; </span>= attr_c } : () -&gt; felt252_ty
+        ; k0 = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; felt252_ty
     }
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[k0], location));
@@ -1229,12 +1230,12 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `felt252_is_zero` libfunc.
-</span><span class="kw">pub fn </span>build_is_zero&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ctx </span>Context,
+</span><span class="kw">pub fn </span>build_is_zero&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;this </span>Block&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">&#39;ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">&#39;ctx</span>, <span class="lifetime">&#39;this</span>&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -1316,21 +1317,21 @@
     </span><span class="kw">fn </span>felt252_add_new() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
+            JitValue::felt_str(<span class="string">"0"</span>),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)],
+            JitValue::felt_str(<span class="string">"1"</span>),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
+            JitValue::felt_str(<span class="string">"0"</span>),
         );
     }
 
@@ -1338,248 +1339,248 @@
     </span><span class="kw">fn </span>felt252_add() {
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
+            JitValue::felt_str(<span class="string">"0"</span>),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)],
+            JitValue::felt_str(<span class="string">"1"</span>),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">&quot;run_test&quot;</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)],
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>),
+            <span class="string">"run_test"</span>,
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
+            JitValue::felt_str(<span class="string">"0"</span>),
         );
 
         <span class="kw">fn </span>r(lhs: JitValue, rhs: JitValue) -&gt; JitValue {
-            run_program(<span class="kw-2">&amp;</span>FELT252_ADD, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value
+            run_program(<span class="kw-2">&amp;</span>FELT252_ADD, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value
         }
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
-        );
-
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;2&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-4&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-3&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-3&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"-4"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"-3"</span>)
+        );
+
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"-3"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>felt252_sub() {
-        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>FELT252_SUB, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value;
+        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>FELT252_SUB, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value;
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
-        );
-
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;3&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-3&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"3"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"2"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-3"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
+        );
+
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>felt252_mul() {
-        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>FELT252_MUL, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value;
+        <span class="kw">let </span>r = |lhs, rhs| run_program(<span class="kw-2">&amp;</span>FELT252_MUL, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[lhs, rhs]).return_value;
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
-        );
-
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;4&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;0&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;0&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-2"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;2&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"4"</span>)
         );
         <span class="macro">assert_eq!</span>(
-            r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>), JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)),
-            JitValue::felt_str(<span class="string">&quot;1&quot;</span>)
+            r(JitValue::felt_str(<span class="string">"-2"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"2"</span>)
+        );
+
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"0"</span>)),
+            JitValue::felt_str(<span class="string">"0"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"1"</span>)),
+            JitValue::felt_str(<span class="string">"-1"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-2"</span>)),
+            JitValue::felt_str(<span class="string">"2"</span>)
+        );
+        <span class="macro">assert_eq!</span>(
+            r(JitValue::felt_str(<span class="string">"-1"</span>), JitValue::felt_str(<span class="string">"-1"</span>)),
+            JitValue::felt_str(<span class="string">"1"</span>)
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>felt252_const() {
         <span class="macro">assert_eq!</span>(
-            run_program(<span class="kw-2">&amp;</span>FELT252_CONST, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[]).return_value,
+            run_program(<span class="kw-2">&amp;</span>FELT252_CONST, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
             JitValue::Struct {
                 fields: <span class="macro">vec!</span>[
-                    JitValue::felt_str(<span class="string">&quot;0&quot;</span>),
-                    JitValue::felt_str(<span class="string">&quot;1&quot;</span>),
-                    JitValue::felt_str(<span class="string">&quot;-2&quot;</span>),
-                    JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)
+                    JitValue::felt_str(<span class="string">"0"</span>),
+                    JitValue::felt_str(<span class="string">"1"</span>),
+                    JitValue::felt_str(<span class="string">"-2"</span>),
+                    JitValue::felt_str(<span class="string">"-1"</span>)
                 ],
                 debug_name: <span class="prelude-val">None
             </span>}
@@ -1588,12 +1589,12 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>felt252_is_zero() {
-        <span class="kw">let </span>r = |x| run_program(<span class="kw-2">&amp;</span>FELT252_IS_ZERO, <span class="string">&quot;run_test&quot;</span>, <span class="kw-2">&amp;</span>[x]).return_value;
+        <span class="kw">let </span>r = |x| run_program(<span class="kw-2">&amp;</span>FELT252_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[x]).return_value;
 
-        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">&quot;0&quot;</span>)), JitValue::felt_str(<span class="string">&quot;1&quot;</span>));
-        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">&quot;1&quot;</span>)), JitValue::felt_str(<span class="string">&quot;0&quot;</span>));
-        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">&quot;-2&quot;</span>)), JitValue::felt_str(<span class="string">&quot;0&quot;</span>));
-        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">&quot;-1&quot;</span>)), JitValue::felt_str(<span class="string">&quot;0&quot;</span>));
+        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">"0"</span>)), JitValue::felt_str(<span class="string">"1"</span>));
+        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">"1"</span>)), JitValue::felt_str(<span class="string">"0"</span>));
+        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">"-2"</span>)), JitValue::felt_str(<span class="string">"0"</span>));
+        <span class="macro">assert_eq!</span>(r(JitValue::felt_str(<span class="string">"-1"</span>)), JitValue::felt_str(<span class="string">"0"</span>));
     }
 }
 </code></pre></div></section></main></body></html>
