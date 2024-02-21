@@ -211,6 +211,7 @@ jobs:
           path: ./lcov.info
 
   upload-coverage:
+    name: Upload Coverage
     runs-on: ubuntu-latest
     needs: [ coverage ]
     steps:
