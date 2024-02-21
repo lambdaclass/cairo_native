@@ -16,15 +16,23 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
     },
-    ids::ConcreteTypeId,
+    ids::{ConcreteTypeId, UserTypeId},
+    program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm::{self, r#type::opaque_pointer},
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Module, Type, Value},
+    dialect::{
+        arith,
+        llvm::{self, r#type::opaque_pointer},
+    },
+    ir::{
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        r#type::IntegerType,
+        Block, Location, Module, Type, Value,
+    },
     Context,
 };
-use std::{alloc::Layout, error::Error, ops::Deref};
+use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 pub mod bitwise;
@@ -106,6 +114,18 @@ pub trait TypeBuilder {
 
     // If the type is a struct, return the field types.
     fn fields(&self) -> Option<&[ConcreteTypeId]>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_default<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        helper: &LibfuncHelper<'ctx, 'this>,
+        metadata: &mut MetadataStorage,
+        self_ty: &ConcreteTypeId,
+    ) -> Result<Value<'ctx, 'this>, Self::Error>;
 
     #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
@@ -446,7 +466,11 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Uninitialized(info)
             | CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty).unwrap().is_complex(registry),
 
-            CoreTypeConcrete::Enum(_) => !self.is_zst(registry),
+            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+                0 => false,
+                1 => registry.get_type(&info.variants[0]).unwrap().is_complex(registry),
+                _ => !self.is_zst(registry),
+            },
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
@@ -716,6 +740,118 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Struct(info) => Some(&info.members),
             _ => None,
         }
+    }
+
+    fn build_default<'ctx, 'this>(
+        &self,
+        context: &'ctx Context,
+        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        entry: &'this Block<'ctx>,
+        location: Location<'ctx>,
+        _helper: &LibfuncHelper<'ctx, 'this>,
+        _metadata: &mut MetadataStorage,
+        _self_ty: &ConcreteTypeId,
+    ) -> Result<Value<'ctx, 'this>, Self::Error> {
+        static BOOL_USER_TYPE_ID: OnceLock<UserTypeId> = OnceLock::new();
+        let bool_user_type_id =
+            BOOL_USER_TYPE_ID.get_or_init(|| UserTypeId::from_string("core::bool"));
+
+        Ok(match self {
+            Self::Enum(info) => match &info.info.long_id.generic_args[0] {
+                GenericArg::UserType(id) if id == bool_user_type_id => {
+                    let tag = entry
+                        .append_operation(arith::constant(
+                            context,
+                            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                            location,
+                        ))
+                        .result(0)?
+                        .into();
+
+                    let value = entry
+                        .append_operation(llvm::undef(
+                            llvm::r#type::r#struct(
+                                context,
+                                &[
+                                    IntegerType::new(context, 1).into(),
+                                    llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+                                ],
+                                false,
+                            ),
+                            location,
+                        ))
+                        .result(0)?
+                        .into();
+                    entry
+                        .append_operation(llvm::insert_value(
+                            context,
+                            value,
+                            DenseI64ArrayAttribute::new(context, &[0]),
+                            tag,
+                            location,
+                        ))
+                        .result(0)?
+                        .into()
+                }
+                _ => unimplemented!("unsupported dict value type"),
+            },
+            Self::Felt252(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Nullable(_) => entry
+                .append_operation(llvm::nullptr(
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint8(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 8).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint16(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 16).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint32(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint64(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            Self::Uint128(_) => entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 128).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+            _ => unimplemented!("unsupported dict value type"),
+        })
     }
 
     fn build_drop<'ctx, 'this>(
