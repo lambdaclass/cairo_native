@@ -1,4 +1,6 @@
 //! # Elliptic curve state type
+//!
+//! An `EcState` contains two `EcPoint`s: the current and the initial points.
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};

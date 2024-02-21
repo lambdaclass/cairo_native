@@ -1,4 +1,6 @@
 //! # Squashed `Felt` dictionary type
+//!
+//! This type is equivalent to the [`felt252_dict`](crate::types::felt252_dict) type.
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};
@@ -25,8 +27,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    //let inner = registry.get_type(&info.ty)?;
-    //let layout = inner.layout(registry)?;
-
     Ok(llvm::r#type::opaque_pointer(context))
 }

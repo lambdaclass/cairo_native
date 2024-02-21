@@ -1,4 +1,6 @@
 //! # Elliptic curve point type
+//!
+//! An `EcPoint` is a pair of felts, one for each of the `x` and `y` coordinates.
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};

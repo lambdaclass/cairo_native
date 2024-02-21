@@ -9,7 +9,6 @@
 //! |   0   | `i252`         | The entry key.                   |
 //! |   1   | `!llvm.ptr`    | Pointer to the entry value.      |
 //! |   2   | `!llvm.ptr`    | Pointer to the dictionary (rust) |
-//!
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};

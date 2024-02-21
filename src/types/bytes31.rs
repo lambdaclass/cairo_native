@@ -1,6 +1,6 @@
 //! # `bytes31` type
 //!
-//! A `bytes31` is a 248-bit number (31 bytes).
+//! A `bytes31` is a 31-byte array (248 bits).
 
 use crate::{error::builders::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{

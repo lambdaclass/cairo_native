@@ -1,7 +1,7 @@
 //! # Builtin costs type
 //!
 //! The range check type is used in the VM for checking whether values are in a specific range.
-//! Since this can be done natively in MLIR, this type is effectively an unit type.
+//! Only used for tracking builtin usage, therefore it's an integer counter.
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};

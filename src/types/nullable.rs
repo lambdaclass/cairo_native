@@ -1,6 +1,7 @@
 //! # Nullable type
 //!
-//! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
+//! Nullable has the same representation as a [box](crate::types::r#box), except that the null value
+//! is permitted.
 //!
 //! A nullable is functionally equivalent to Rust's `Option<Box<T>>`. Since it's always paired with
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.

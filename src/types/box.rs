@@ -4,13 +4,8 @@
 //!
 //! ## Layout
 //!
-//! Its layout is that of whatever it wraps. In other words, if it was Rust it would be equivalent
-//! to the following:
-//!
-//! ```
-//! #[repr(transparent)]
-//! pub struct Box<T>(pub T);
-//! ```
+//! It's just a pointer to the heap-allocated data. The pointer cannot be null, it must always have
+//! a value. For null-compatible boxes, check out [nullables](crate::types::nullable).
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};
@@ -22,7 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm::r#type::opaque_pointer,
+    dialect::llvm,
     ir::{Module, Type},
     Context,
 };
@@ -37,5 +32,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(opaque_pointer(context))
+    Ok(llvm::r#type::opaque_pointer(context))
 }

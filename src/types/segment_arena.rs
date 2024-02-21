@@ -1,4 +1,6 @@
 //! # Segment arena type
+//!
+//! Only used for tracking builtin usage, therefore it's an integer counter.
 
 use super::WithSelf;
 use crate::{error::builders::Result, metadata::MetadataStorage};
