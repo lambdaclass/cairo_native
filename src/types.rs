@@ -115,7 +115,7 @@ pub trait TypeBuilder {
     /// If the type is a struct, return its fields' types.
     fn fields(&self) -> Option<&[ConcreteTypeId]>;
 
-    /// Build the drop operations for a type.
+    /// Build the default value for a type.
     #[allow(clippy::too_many_arguments)]
     fn build_default<'ctx, 'this>(
         &self,
@@ -128,6 +128,7 @@ pub trait TypeBuilder {
         self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error>;
 
+    /// Build the drop operations for a type.
     #[allow(clippy::too_many_arguments)]
     fn build_drop<'ctx, 'this>(
         &self,
