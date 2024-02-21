@@ -143,7 +143,6 @@ fn main() -> anyhow::Result<()> {
         compiled.sierra_program,
         compiled.function_set_costs,
         compiled.contracts_info,
-        false,
         compiled.statements_functions,
         &args,
     )?;
@@ -298,14 +297,16 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
         JitValue::Enum { tag, value, .. } => {
             is_success = *tag == 0;
 
-            match &**value {
-                JitValue::Struct { fields, .. } => {
-                    for field in fields {
-                        let felt = jitvalue_to_felt(field);
-                        felts.push(felt);
+            if !is_success {
+                match &**value {
+                    JitValue::Struct { fields, .. } => {
+                        for field in fields {
+                            let felt = jitvalue_to_felt(field);
+                            felts.extend(felt);
+                        }
                     }
+                    _ => bail!("unsuported return value in cairo-native"),
                 }
-                _ => bail!("unsuported return value in cairo-native"),
             }
         }
         _ => bail!("unsuported return value in cairo-native"),
@@ -322,28 +323,41 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
     })
 }
 
-fn jitvalue_to_felt(value: &JitValue) -> Felt {
+fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
+    let mut felts = Vec::new();
     match value {
-        JitValue::Felt252(felt) => felt.to_bigint().into(),
-        JitValue::Array(_) => todo!(),
-        JitValue::Struct { .. } => todo!(),
+        JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
+        JitValue::Array(values) => {
+            for value in values {
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+            felts
+        }
+        JitValue::Struct { fields, .. } => {
+            for field in fields {
+                let felt = jitvalue_to_felt(field);
+                felts.extend(felt);
+            }
+            felts
+        }
         JitValue::Enum { .. } => todo!(),
         JitValue::Felt252Dict { .. } => todo!(),
-        JitValue::Uint8(x) => (*x).into(),
-        JitValue::Uint16(x) => (*x).into(),
-        JitValue::Uint32(x) => (*x).into(),
-        JitValue::Uint64(x) => (*x).into(),
-        JitValue::Uint128(x) => (*x).into(),
-        JitValue::Sint8(x) => (*x).into(),
-        JitValue::Sint16(x) => (*x).into(),
-        JitValue::Sint32(x) => (*x).into(),
-        JitValue::Sint64(x) => (*x).into(),
-        JitValue::Sint128(x) => (*x).into(),
+        JitValue::Uint8(x) => vec![(*x).into()],
+        JitValue::Uint16(x) => vec![(*x).into()],
+        JitValue::Uint32(x) => vec![(*x).into()],
+        JitValue::Uint64(x) => vec![(*x).into()],
+        JitValue::Uint128(x) => vec![(*x).into()],
+        JitValue::Sint8(x) => vec![(*x).into()],
+        JitValue::Sint16(x) => vec![(*x).into()],
+        JitValue::Sint32(x) => vec![(*x).into()],
+        JitValue::Sint64(x) => vec![(*x).into()],
+        JitValue::Sint128(x) => vec![(*x).into()],
         JitValue::EcPoint(_, _) => todo!(),
         JitValue::EcState(_, _, _, _) => todo!(),
         JitValue::Secp256K1Point { .. } => todo!(),
         JitValue::Secp256R1Point { .. } => todo!(),
-        JitValue::Null => 0.into(),
+        JitValue::Null => vec![0.into()],
     }
 }
 
@@ -353,7 +367,6 @@ fn run_tests(
     sierra_program: Program,
     function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
     _contracts_info: OrderedHashMap<Felt252, ContractInfo>,
-    _run_profiler: bool,
     statements_functions: UnorderedHashMap<StatementIdx, String>,
     args: &Args,
 ) -> anyhow::Result<TestsSummary> {
@@ -509,14 +522,6 @@ fn run_tests(
                 println!("test {name} ... {status_str} (gas usage est.: {gas_usage})");
             } else {
                 println!("test {name} ... {status_str}");
-            }
-            if let Some(profiling_info) = profiling_info {
-                let profiling_processor = ProfilingInfoProcessor::new(
-                    sierra_program.clone(),
-                    statements_functions.clone(),
-                );
-                let processed_profiling_info = profiling_processor.process(&profiling_info);
-                println!("Profiling info:\n{processed_profiling_info}");
             }
             res_type.push(name);
         });
