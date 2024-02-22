@@ -582,10 +582,6 @@
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum type
 //!
 //! Enumerations are special because they can potentially represent an unlimited amount of things at
@@ -1040,35 +1036,31 @@
     });
 
     <span class="kw">let </span>i8_ty = IntegerType::new(context, <span class="number">8</span>).into();
-    <span class="prelude-val">Ok</span>(<span class="kw">if </span>layout.size() == <span class="number">0 </span>{
-        llvm::r#type::array(i8_ty, <span class="number">0</span>)
-    } <span class="kw">else </span>{
-        <span class="kw">match </span>info.variants.len() {
-            <span class="number">0 </span>=&gt; <span class="macro">unreachable!</span>(),
-            <span class="number">1 </span>=&gt; registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?</span>,
-            <span class="kw">_ if </span>info
-                .variants
-                .iter()
-                .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =&gt;
-            {
-                llvm::r#type::r#struct(
-                    context,
-                    <span class="kw-2">&amp;</span>[
-                        IntegerType::new(context, tag_bits).into(),
-                        llvm::r#type::array(i8_ty, <span class="number">0</span>),
-                    ],
-                    <span class="bool-val">false</span>,
-                )
-            }
-            <span class="kw">_ </span>=&gt; llvm::r#type::r#struct(
+    <span class="prelude-val">Ok</span>(<span class="kw">match </span>info.variants.len() {
+        <span class="number">0 </span>=&gt; llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>),
+        <span class="number">1 </span>=&gt; registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?</span>,
+        <span class="kw">_ if </span>info
+            .variants
+            .iter()
+            .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =&gt;
+        {
+            llvm::r#type::r#struct(
                 context,
                 <span class="kw-2">&amp;</span>[
-                    IntegerType::new(context, (<span class="number">8 </span>* layout.align()) <span class="kw">as </span>u32).into(),
-                    llvm::r#type::array(i8_ty, (layout.size() - layout.align()) <span class="kw">as </span>u32),
+                    IntegerType::new(context, tag_bits).into(),
+                    llvm::r#type::array(i8_ty, <span class="number">0</span>),
                 ],
                 <span class="bool-val">false</span>,
-            ),
+            )
         }
+        <span class="kw">_ </span>=&gt; llvm::r#type::r#struct(
+            context,
+            <span class="kw-2">&amp;</span>[
+                IntegerType::new(context, (<span class="number">8 </span>* layout.align()) <span class="kw">as </span>u32).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - layout.align()) <span class="kw">as </span>u32),
+            ],
+            <span class="bool-val">false</span>,
+        ),
     })
 }
 
