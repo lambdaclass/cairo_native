@@ -226,10 +226,19 @@ pub fn run_native_program(
 
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-    metadata.insert(GasMetadata::new(
-        program,
-        Some(MetadataComputationConfig::default()),
-    ));
+
+    let has_gas_builtin = program
+        .type_declarations
+        .iter()
+        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
+
+    let gas_metadata = if has_gas_builtin {
+        GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap()
+    } else {
+        GasMetadata::new(program, None).unwrap()
+    };
+
+    metadata.insert(gas_metadata);
 
     cairo_native::compile(&context, &module, program, &registry, &mut metadata, None)
         .expect("Could not compile test program to MLIR.");

@@ -59,7 +59,8 @@ impl NativeContext {
             GasMetadata::new(program, Some(MetadataComputationConfig::default()))
         } else {
             GasMetadata::new(program, None)
-        };
+        }
+        .unwrap();
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);

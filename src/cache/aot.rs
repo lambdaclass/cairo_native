@@ -62,7 +62,7 @@ where
         let executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata.get::<GasMetadata>().cloned(),
+            metadata.get::<GasMetadata>().cloned().unwrap(),
         );
 
         let executor = Rc::new(executor);

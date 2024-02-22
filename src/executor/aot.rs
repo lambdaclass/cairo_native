@@ -27,14 +27,14 @@ pub struct AotNativeExecutor {
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
-    gas_metadata: Option<GasMetadata>,
+    gas_metadata: GasMetadata,
 }
 
 impl AotNativeExecutor {
     pub fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        gas_metadata: Option<GasMetadata>,
+        gas_metadata: GasMetadata,
     ) -> Self {
         Self {
             library,
@@ -59,7 +59,7 @@ impl AotNativeExecutor {
         Self {
             library: unsafe { Library::new(library_path).unwrap() },
             registry,
-            gas_metadata: metadata.remove(),
+            gas_metadata: metadata.remove().unwrap(),
         }
     }
 
@@ -67,17 +67,20 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[JitValue],
-        mut gas: Option<u128>,
+        gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
-        self.process_required_initial_gas(function_id, gas.as_mut());
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .expect("not enough gas");
 
         Ok(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
-            gas,
+            available_gas,
             syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
@@ -86,10 +89,13 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        mut gas: Option<u128>,
+        gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ContractExecutionResult, RunnerError> {
-        self.process_required_initial_gas(function_id, gas.as_mut());
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .expect("not enough gas");
 
         // TODO: Check signature for contract interface.
         Ok(ContractExecutionResult::from_execution_result(
@@ -104,7 +110,7 @@ impl AotNativeExecutor {
                     // TODO: Populate `debug_name`.
                     debug_name: None,
                 }],
-                gas,
+                available_gas,
                 syscall_handler.map(SyscallHandlerMeta::as_ptr),
             ),
         )?)
@@ -126,20 +132,5 @@ impl AotNativeExecutor {
 
     fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
         &self.registry.get_function(function_id).unwrap().signature
-    }
-
-    fn process_required_initial_gas(&self, function_id: &FunctionId, gas: Option<&mut u128>) {
-        if let (Some(gas), Some(required_init_gas)) = (
-            gas,
-            self.gas_metadata
-                .as_ref()
-                .and_then(|gas_metadata| gas_metadata.initial_required_gas(function_id)),
-        ) {
-            if required_init_gas > *gas {
-                panic!("Not enough gas");
-            }
-
-            *gas -= required_init_gas;
-        }
     }
 }

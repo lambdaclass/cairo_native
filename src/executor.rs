@@ -106,7 +106,7 @@ fn invoke_dynamic(
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
-    gas: Option<u128>,
+    gas: u128,
     syscall_handler: Option<NonNull<()>>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
@@ -172,15 +172,10 @@ fn invoke_dynamic(
 
         // Process gas requirements and syscall handler.
         match type_info {
-            CoreTypeConcrete::GasBuiltin(_) => match gas {
-                Some(gas) => {
-                    invoke_data.push_aligned(
-                        get_integer_layout(128).align(),
-                        &[gas as u64, (gas >> 64) as u64],
-                    );
-                }
-                None => panic!("Gas is required"),
-            },
+            CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
+                get_integer_layout(128).align(),
+                &[gas as u64, (gas >> 64) as u64],
+            ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
                 Some(syscall_handler) => invoke_data.push_aligned(
                     get_integer_layout(64).align(),
