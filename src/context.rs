@@ -59,8 +59,7 @@ impl NativeContext {
             GasMetadata::new(program, Some(MetadataComputationConfig::default()))
         } else {
             GasMetadata::new(program, None)
-        }
-        .unwrap();
+        }?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
@@ -95,7 +94,7 @@ impl NativeContext {
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
 
-        let gas_metadata = GasMetadata::new(program, Some(metadata_config));
+        let gas_metadata = GasMetadata::new(program, Some(metadata_config))?;
         metadata.insert(gas_metadata);
 
         // Create the Sierra program registry

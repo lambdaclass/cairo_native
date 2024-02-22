@@ -417,20 +417,11 @@ fn run_tests(
                         &func.id,
                         test.available_gas.map(|x| x.try_into().unwrap()),
                     )
-                    .unwrap();
+                    .with_context(|| "not enough gas to run")?;
 
                 let result = native_executor
                     .invoke_dynamic(&func.id, &[], Some(initial_gas), None)
                     .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
-
-                /*let result = runner
-                .run_function_with_starknet_context(
-                    func,
-                    &[],
-                    test.available_gas,
-                    Default::default(),
-                )
-                .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;*/
 
                 let run_result = result_to_runresult(&result)?;
                 Ok((

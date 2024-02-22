@@ -39,6 +39,8 @@ pub enum GasMetadataError {
     ApChangeError(#[from] ApChangeError),
     #[error(transparent)]
     CostError(#[from] CostError),
+    #[error("not enough gas to run")]
+    NotEnoughGas,
 }
 
 impl Default for MetadataComputationConfig {
@@ -81,9 +83,9 @@ impl GasMetadata {
             return Ok(0);
         };
 
-        Ok(available_gas
+        available_gas
             .checked_sub(required_gas)
-            .expect("not enough gas"))
+            .ok_or(GasMetadataError::NotEnoughGas)
     }
 
     pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
