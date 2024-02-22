@@ -745,3 +745,29 @@ sierra2mlir program.sierra -o program.mlir
 
 ./program
 ```
+
+# cairo-native-test cli tool
+This tool mimics the `cairo-test` [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) and is identical to it, the only feature it doesn't have is the profiler.
+
+```bash
+$ cairo-native-test --help
+Compiles a Cairo project and runs all the functions marked as `#[test]`.
+Exits with 1 if the compilation or run fails, otherwise 0.
+
+Usage: cairo-native-test [OPTIONS] <PATH>
+
+Arguments:
+  <PATH>  The Cairo project path to compile and run its tests
+
+Options:
+  -s, --single-file            Whether path is a single file
+      --allow-warnings         Allows the compilation to succeed with warnings
+  -f, --filter <FILTER>        The filter for the tests, running only tests containing the filter string [default: ]
+      --include-ignored        Should we run ignored tests as well
+      --ignored                Should we run only the ignored tests
+      --starknet               Should we add the starknet plugin to run the tests
+      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
