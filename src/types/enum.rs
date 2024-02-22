@@ -452,35 +452,31 @@ pub fn build<'ctx>(
     });
 
     let i8_ty = IntegerType::new(context, 8).into();
-    Ok(if layout.size() == 0 {
-        llvm::r#type::array(i8_ty, 0)
-    } else {
-        match info.variants.len() {
-            0 => unreachable!(),
-            1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
-            _ if info
-                .variants
-                .iter()
-                .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
-            {
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, tag_bits).into(),
-                        llvm::r#type::array(i8_ty, 0),
-                    ],
-                    false,
-                )
-            }
-            _ => llvm::r#type::r#struct(
+    Ok(match info.variants.len() {
+        0 => llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+        1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+        _ if info
+            .variants
+            .iter()
+            .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+        {
+            llvm::r#type::r#struct(
                 context,
                 &[
-                    IntegerType::new(context, (8 * layout.align()) as u32).into(),
-                    llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
+                    IntegerType::new(context, tag_bits).into(),
+                    llvm::r#type::array(i8_ty, 0),
                 ],
                 false,
-            ),
+            )
         }
+        _ => llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, (8 * layout.align()) as u32).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
+            ],
+            false,
+        ),
     })
 }
 

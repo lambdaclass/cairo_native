@@ -676,7 +676,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 //   - Has only variant which is memory-allocated.
                 //   - Has more than one variants, at least one of them being non-ZST.
                 match info.variants.len() {
-                    0 => unreachable!(),
+                    0 => false,
                     1 => registry
                         .get_type(&info.variants[0])
                         .unwrap()
