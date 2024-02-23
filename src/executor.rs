@@ -445,6 +445,12 @@ impl<'a> ArgumentMapper<'a> {
             ) => {
                 self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
             }
+            (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
+                self.push_aligned(
+                    get_integer_layout(248).align(),
+                    &Felt::from_bytes_be_slice(value).to_le_digits(),
+                );
+            }
             (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
                 #[cfg(not(feature = "with-runtime"))]
                 unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
