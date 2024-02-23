@@ -53,7 +53,14 @@ use melior::{
 use num_bigint::{BigInt, Sign};
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, env::var, fs, iter::repeat_with, ops::Neg, path::Path};
+use std::{
+    collections::HashMap,
+    env::var,
+    fs,
+    iter::repeat_with,
+    ops::{Deref, Neg},
+    path::Path,
+};
 
 #[allow(unused_macros)]
 macro_rules! load_cairo {
@@ -440,6 +447,9 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
+            CoreTypeConcrete::Array(info) => {
+                todo!("array")
+            }
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -453,30 +463,49 @@ pub fn compare_outputs(
         .as_ref()
         .map(|x| x.starts_with("core::panics::PanicResult"))
         .unwrap_or(false);
+    /*
+       the returned values have their meaning changed based on whether
+       the return type is a panic or not:
 
-    let mut buf = Vec::new();
+       if its a panic the panic case will return the values of the array inside the panic structure.
+       if its a panic the enum tag itself wont be returned as a value.
+       if its not a panic a array will, return the start and end addresses in memory to look up the values.
+    */
 
-    let values = if returns_panic {
-        let enum_size = map_vm_sizes(&mut size_cache, &registry, ty);
-        let (tag, payload) = match &vm_result.value {
-            RunResultValue::Success(x) => (0, x), // suponiendo que 0 es el tag de Ok
-            RunResultValue::Panic(x) => (1, x),   // suponiendo que 0 es el tag de Err
-        };
-        buf.push(Felt252::from(tag));
-        buf.extend(repeat_with(|| Felt252::from(0)).take(enum_size - payload.len() - 1));
-        buf.extend(payload.iter().cloned());
-        assert_eq!(buf.len(), enum_size);
-        &buf
-    } else {
-        match &vm_result.value {
-            RunResultValue::Success(x) => x,
-            RunResultValue::Panic(_) => todo!(),
+    let vm_result = match &vm_result.value {
+        RunResultValue::Success(x) => Ok(if returns_panic {
+            let inner_ty = match registry.get_type(ty)? {
+                CoreTypeConcrete::Enum(info) => &info.variants[0],
+                _ => unreachable!(),
+            };
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(map_vm_values(&mut size_cache, &registry, x, inner_ty)),
+                debug_name: None,
+            }
+        } else {
+            map_vm_values(&mut size_cache, &registry, x, ty)
+        }),
+        RunResultValue::Panic(e) => Err(JitValue::Enum {
+            tag: 1,
+            value: Box::new(map_vm_values(&mut size_cache, &registry, e, ty)),
+            debug_name: None,
+        }),
+    };
+    let native_result = if returns_panic {
+        match &native_result.return_value {
+            JitValue::Enum { tag, value, .. } => match tag {
+                0 => Ok(value.deref().clone()),
+                1 => Err(value.deref().clone()),
+                _ => panic!(),
+            },
+            _ => panic!(),
         }
+    } else {
+        Ok(native_result.return_value.clone())
     };
 
-    let vm_result = map_vm_values(&mut size_cache, &registry, values, ty);
-
-    pretty_assertions_sorted::assert_eq!(native_result.return_value, vm_result);
+    pretty_assertions_sorted::assert_eq!(native_result, vm_result);
     Ok(())
 }
 
