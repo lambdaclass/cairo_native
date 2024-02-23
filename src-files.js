@@ -3,6 +3,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["cairo_native_compile",["",[],["cairo-native-compile.rs"]]],\
 ["cairo_native_dump",["",[],["cairo-native-dump.rs"]]],\
 ["cairo_native_run",["",[],["cairo-native-run.rs"]]],\
-["cairo_native_runtime",["",[],["lib.rs"]]]\
+["cairo_native_runtime",["",[],["lib.rs"]]],\
+["cairo_native_test",["",[],["cairo-native-test.rs"]]]\
 ]'));
 createSrcSidebar();

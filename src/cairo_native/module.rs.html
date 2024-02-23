@@ -77,22 +77,9 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::metadata::{gas::GasMetadata, MetadataStorage};
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::metadata::MetadataStorage;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
-    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::ir::Module;
@@ -118,17 +105,6 @@
             registry,
             metadata,
         }
-    }
-
-    <span class="doccomment">/// Given some contract function's id, returns an option of the required
-    /// initial gas to execute it.
-    /// If no initial gas is required, `None` is returned.
-    </span><span class="kw">pub fn </span>get_required_init_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(gas_metadata) = <span class="self">self</span>.metadata.get::&lt;GasMetadata&gt;() {
-            gas_metadata.get_initial_required_gas(fn_id)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>}
     }
 
     <span class="doccomment">/// Insert some metadata for the program execution and return a mutable reference to it.

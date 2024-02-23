@@ -145,7 +145,7 @@
         <span class="kw">let </span>executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata.get::&lt;GasMetadata&gt;().cloned(),
+            metadata.get::&lt;GasMetadata&gt;().cloned().unwrap(),
         );
 
         <span class="kw">let </span>executor = Rc::new(executor);

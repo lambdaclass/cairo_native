@@ -134,16 +134,6 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -173,14 +163,14 @@
     <span class="attr">#[educe(Debug(ignore))]
     </span>registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 
-    gas_metadata: <span class="prelude-ty">Option</span>&lt;GasMetadata&gt;,
+    gas_metadata: GasMetadata,
 }
 
 <span class="kw">impl </span>AotNativeExecutor {
     <span class="kw">pub fn </span>new(
         library: Library,
         registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-        gas_metadata: <span class="prelude-ty">Option</span>&lt;GasMetadata&gt;,
+        gas_metadata: GasMetadata,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             library,
@@ -205,7 +195,7 @@
         <span class="self">Self </span>{
             library: <span class="kw">unsafe </span>{ Library::new(library_path).unwrap() },
             registry,
-            gas_metadata: metadata.remove(),
+            gas_metadata: metadata.remove().unwrap(),
         }
     }
 
@@ -213,17 +203,20 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
-        <span class="kw-2">mut </span>gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
-        <span class="self">self</span>.process_required_initial_gas(function_id, gas.as_mut());
+        <span class="kw">let </span>available_gas = <span class="self">self
+            </span>.gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             <span class="self">self</span>.extract_signature(function_id),
             args,
-            gas,
+            available_gas,
             syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
@@ -232,13 +225,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
-        <span class="kw-2">mut </span>gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, RunnerError&gt; {
-        <span class="self">self</span>.process_required_initial_gas(function_id, gas.as_mut());
+        <span class="kw">let </span>available_gas = <span class="self">self
+            </span>.gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
 
-        <span class="comment">// TODO: Check signature for contract interface.
-        </span><span class="prelude-val">Ok</span>(ContractExecutionResult::from_execution_result(
+        <span class="prelude-val">Ok</span>(ContractExecutionResult::from_execution_result(
             <span class="kw">super</span>::invoke_dynamic(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
                 <span class="self">self</span>.find_function_ptr(function_id),
@@ -250,7 +245,7 @@
                     <span class="comment">// TODO: Populate `debug_name`.
                     </span>debug_name: <span class="prelude-val">None</span>,
                 }],
-                gas,
+                available_gas,
                 syscall_handler.map(SyscallHandlerMeta::as_ptr),
             ),
         )<span class="question-mark">?</span>)
@@ -272,21 +267,6 @@
 
     <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">&amp;</span>FunctionSignature {
         <span class="kw-2">&amp;</span><span class="self">self</span>.registry.get_function(function_id).unwrap().signature
-    }
-
-    <span class="kw">fn </span>process_required_initial_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId, gas: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>u128&gt;) {
-        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(gas), <span class="prelude-val">Some</span>(required_init_gas)) = (
-            gas,
-            <span class="self">self</span>.gas_metadata
-                .as_ref()
-                .and_then(|gas_metadata| gas_metadata.get_initial_required_gas(function_id)),
-        ) {
-            <span class="kw">if </span>required_init_gas &gt; <span class="kw-2">*</span>gas {
-                <span class="macro">panic!</span>(<span class="string">"Not enough gas"</span>);
-            }
-
-            <span class="kw-2">*</span>gas -= required_init_gas;
-        }
     }
 }
 </code></pre></div></section></main></body></html>

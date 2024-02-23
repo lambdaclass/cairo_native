@@ -746,11 +746,6 @@
 <a href="#745" id="745">745</a>
 <a href="#746" id="746">746</a>
 <a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
@@ -859,7 +854,7 @@
     function_ptr: <span class="kw-2">*const </span>c_void,
     function_signature: <span class="kw-2">&amp;</span>FunctionSignature,
     args: <span class="kw-2">&amp;</span>[JitValue],
-    gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+    gas: u128,
     syscall_handler: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
 ) -&gt; ExecutionResult {
     <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
@@ -925,15 +920,10 @@
 
         <span class="comment">// Process gas requirements and syscall handler.
         </span><span class="kw">match </span>type_info {
-            CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="kw">match </span>gas {
-                <span class="prelude-val">Some</span>(gas) =&gt; {
-                    invoke_data.push_aligned(
-                        get_integer_layout(<span class="number">128</span>).align(),
-                        <span class="kw-2">&amp;</span>[gas <span class="kw">as </span>u64, (gas &gt;&gt; <span class="number">64</span>) <span class="kw">as </span>u64],
-                    );
-                }
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Gas is required"</span>),
-            },
+            CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; invoke_data.push_aligned(
+                get_integer_layout(<span class="number">128</span>).align(),
+                <span class="kw-2">&amp;</span>[gas <span class="kw">as </span>u64, (gas &gt;&gt; <span class="number">64</span>) <span class="kw">as </span>u64],
+            ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; <span class="kw">match </span>syscall_handler {
                 <span class="prelude-val">Some</span>(syscall_handler) =&gt; invoke_data.push_aligned(
                     get_integer_layout(<span class="number">64</span>).align(),

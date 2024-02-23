@@ -1106,6 +1106,10 @@
 <a href="#1105" id="1105">1105</a>
 <a href="#1106" id="1106">1106</a>
 <a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1872,7 +1876,11 @@
             .iter()
             .any(|decl| decl.long_id.generic_id.<span class="number">0 </span>== <span class="string">"GasBuiltin"</span>)
         {
-            <span class="kw">let </span>gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            <span class="kw">let </span>gas_metadata =
+                GasMetadata::new(program, <span class="prelude-val">Some</span>(MetadataComputationConfig::default())).unwrap();
+            metadata.insert(gas_metadata);
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>gas_metadata = GasMetadata::new(program, <span class="prelude-val">None</span>).unwrap();
             metadata.insert(gas_metadata);
         }
 
