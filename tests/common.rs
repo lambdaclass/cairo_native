@@ -33,7 +33,7 @@ use cairo_native::{
     },
     module::NativeModule,
     starknet::StarkNetSyscallHandler,
-    types::felt252::PRIME,
+    types::felt252::{HALF_PRIME, PRIME},
     utils::{find_entry_point_by_idx, run_pass_manager},
     values::JitValue,
     OptLevel,
@@ -53,14 +53,7 @@ use melior::{
 use num_bigint::{BigInt, Sign};
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
-use std::{
-    collections::HashMap,
-    env::var,
-    fs,
-    iter::repeat_with,
-    ops::{Deref, Neg},
-    path::Path,
-};
+use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
 
 #[allow(unused_macros)]
 macro_rules! load_cairo {
@@ -406,11 +399,41 @@ pub fn compare_outputs(
             CoreTypeConcrete::Uint32(_) => JitValue::Uint32(values[0].to_u32().unwrap()),
             CoreTypeConcrete::Uint16(_) => JitValue::Uint16(values[0].to_u16().unwrap()),
             CoreTypeConcrete::Uint8(_) => JitValue::Uint8(values[0].to_u8().unwrap()),
-            CoreTypeConcrete::Sint128(_) => JitValue::Sint128(values[0].to_i128().unwrap()),
-            CoreTypeConcrete::Sint64(_) => JitValue::Sint64(values[0].to_i64().unwrap()),
-            CoreTypeConcrete::Sint32(_) => JitValue::Sint32(values[0].to_i32().unwrap()),
-            CoreTypeConcrete::Sint16(_) => JitValue::Sint16(values[0].to_i16().unwrap()),
-            CoreTypeConcrete::Sint8(_) => JitValue::Sint8(values[0].to_i8().unwrap()),
+            CoreTypeConcrete::Sint128(_) => {
+                JitValue::Sint128(if values[0].to_bigint() >= *HALF_PRIME {
+                    -(&*PRIME - &values[0].to_biguint()).to_i128().unwrap()
+                } else {
+                    values[0].to_biguint().to_i128().unwrap()
+                })
+            }
+            CoreTypeConcrete::Sint64(_) => {
+                JitValue::Sint64(if values[0].to_bigint() >= *HALF_PRIME {
+                    -(&*PRIME - &values[0].to_biguint()).to_i64().unwrap()
+                } else {
+                    values[0].to_biguint().to_i64().unwrap()
+                })
+            }
+            CoreTypeConcrete::Sint32(_) => {
+                JitValue::Sint32(if values[0].to_bigint() >= *HALF_PRIME {
+                    -(&*PRIME - &values[0].to_biguint()).to_i32().unwrap()
+                } else {
+                    values[0].to_biguint().to_i32().unwrap()
+                })
+            }
+            CoreTypeConcrete::Sint16(_) => {
+                JitValue::Sint16(if values[0].to_bigint() >= *HALF_PRIME {
+                    -(&*PRIME - &values[0].to_biguint()).to_i16().unwrap()
+                } else {
+                    values[0].to_biguint().to_i16().unwrap()
+                })
+            }
+            CoreTypeConcrete::Sint8(_) => {
+                JitValue::Sint8(if values[0].to_bigint() >= *HALF_PRIME {
+                    -(&*PRIME - &values[0].to_biguint()).to_i8().unwrap()
+                } else {
+                    values[0].to_biguint().to_i8().unwrap()
+                })
+            }
             CoreTypeConcrete::Enum(info) => {
                 let enum_size = map_vm_sizes(size_cache, registry, ty);
                 assert_eq!(values.len(), enum_size);
@@ -447,7 +470,7 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
-            CoreTypeConcrete::Array(info) => {
+            CoreTypeConcrete::Array(_info) => {
                 todo!("array")
             }
             x => {

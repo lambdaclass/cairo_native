@@ -435,34 +435,6 @@ lazy_static! {
     };
 }
 
-#[test]
-fn edgar_test() {
-    let a = 2;
-    let b = 20000;
-    let program = &U8_OVERFLOWING_ADD;
-        let result_vm = run_vm_program(
-            program,
-            "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
-            Some(DEFAULT_GAS as usize),
-        )
-        .unwrap();
-        let result_native = run_native_program(
-            program,
-            "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
-            None,
-        );
-
-        compare_outputs(
-            &program.1,
-            &program.2.find_function("run_test").unwrap().id,
-            &result_vm,
-            &result_native,
-        ).unwrap();
-}
-
 proptest! {
     #[test]
     fn u8_overflowing_add_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
