@@ -473,39 +473,44 @@ pub fn compare_outputs(
     */
 
     let vm_result = match &vm_result.value {
-        RunResultValue::Success(x) => Ok(if returns_panic {
-            let inner_ty = match registry.get_type(ty)? {
-                CoreTypeConcrete::Enum(info) => &info.variants[0],
-                _ => unreachable!(),
-            };
-            JitValue::Enum {
-                tag: 0,
-                value: Box::new(map_vm_values(&mut size_cache, &registry, x, inner_ty)),
-                debug_name: None,
+        RunResultValue::Success(values) => {
+            if returns_panic {
+                let inner_ty = match registry.get_type(ty)? {
+                    CoreTypeConcrete::Enum(info) => &info.variants[0],
+                    _ => unreachable!(),
+                };
+                JitValue::Enum {
+                    tag: 0,
+                    value: Box::new(map_vm_values(&mut size_cache, &registry, values, inner_ty)),
+                    debug_name: None,
+                }
+            } else {
+                map_vm_values(&mut size_cache, &registry, values, ty)
             }
-        } else {
-            map_vm_values(&mut size_cache, &registry, x, ty)
-        }),
-        RunResultValue::Panic(e) => Err(JitValue::Enum {
-            tag: 1,
-            value: Box::new(map_vm_values(&mut size_cache, &registry, e, ty)),
-            debug_name: None,
-        }),
-    };
-    let native_result = if returns_panic {
-        match &native_result.return_value {
-            JitValue::Enum { tag, value, .. } => match tag {
-                0 => Ok(value.deref().clone()),
-                1 => Err(value.deref().clone()),
-                _ => panic!(),
-            },
-            _ => panic!(),
         }
-    } else {
-        Ok(native_result.return_value.clone())
+        RunResultValue::Panic(values) => JitValue::Enum {
+            tag: 1,
+            value: Box::new(JitValue::Struct {
+                fields: vec![
+                    JitValue::Struct {
+                        fields: Vec::new(),
+                        debug_name: None,
+                    },
+                    JitValue::Array(
+                        values
+                            .iter()
+                            .map(|value| Felt::from_bytes_le(&value.to_le_bytes()))
+                            .map(JitValue::Felt252)
+                            .collect(),
+                    ),
+                ],
+                debug_name: None,
+            }),
+            debug_name: None,
+        },
     };
 
-    pretty_assertions_sorted::assert_eq!(native_result, vm_result);
+    pretty_assertions_sorted::assert_eq!(native_result.return_value, vm_result);
     Ok(())
 }
 
