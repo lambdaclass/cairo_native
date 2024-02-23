@@ -7,7 +7,6 @@ use crate::{
     error::libfuncs::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,9 +22,13 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    ir::{
+        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        r#type::IntegerType,
+        Block, Location,
+    },
     Context,
 };
 
@@ -69,36 +72,66 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let op = entry.append_operation(llvm::nullptr(opaque_pointer(context), location));
-    let nullptr = op.result(0)?.into();
+    let value_len = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(
+                inner_layout.pad_to_align().size().try_into()?,
+                IntegerType::new(context, 64).into(),
+            )
+            .into(),
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(
-            inner_layout.pad_to_align().size().try_into()?,
-            IntegerType::new(context, 64).into(),
-        )
-        .into(),
-        location,
-    ));
-    let value_len = op.result(0)?.into();
+    let ptr = entry
+        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .result(0)?
+        .into();
+    let ptr = entry
+        .append_operation(ReallocBindingsMeta::realloc(
+            context, ptr, value_len, location,
+        ))
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(ReallocBindingsMeta::realloc(
-        context, nullptr, value_len, location,
-    ));
-
-    let ptr = op.result(0)?.into();
-
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(0)?.into(),
-        ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
+    match inner_type.variants() {
+        Some(variants)
+            if variants.len() > 1
+                && !variants
+                    .iter()
+                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+        {
+            let is_volatile = entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            entry.append_operation(llvm::call_intrinsic(
+                context,
+                StringAttribute::new(context, "llvm.memcpy.inline"),
+                &[ptr, entry.argument(0)?.into(), value_len, is_volatile],
+                &[],
+                location,
+            ));
+        }
+        _ => {
+            entry.append_operation(llvm::store(
+                context,
+                entry.argument(0)?.into(),
+                ptr,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    inner_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ));
+        }
+    }
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -114,22 +147,79 @@ pub fn build_unbox<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let (inner_ty, inner_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let inner_type = registry.get_type(&info.ty)?;
+    let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
+    let inner_layout = inner_type.layout(registry)?;
 
-    let value = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(0)?.into(),
-            inner_ty,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                inner_layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
-        ))
-        .result(0)?
-        .into();
+    let value = match inner_type.variants() {
+        Some(variants)
+            if variants.len() > 1
+                && !variants
+                    .iter()
+                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+        {
+            let value_len = helper
+                .init_block()
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(
+                        inner_layout.size() as i64,
+                        IntegerType::new(context, 64).into(),
+                    )
+                    .into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            let stack_ptr = helper
+                .init_block()
+                .append_operation(llvm::alloca(
+                    context,
+                    value_len,
+                    llvm::r#type::opaque_pointer(context),
+                    location,
+                    AllocaOptions::new()
+                        .align(Some(IntegerAttribute::new(
+                            inner_layout.align() as i64,
+                            IntegerType::new(context, 64).into(),
+                        )))
+                        .elem_type(Some(TypeAttribute::new(inner_ty))),
+                ))
+                .result(0)?
+                .into();
+
+            let is_volatile = entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            entry.append_operation(llvm::call_intrinsic(
+                context,
+                StringAttribute::new(context, "llvm.memcpy.inline"),
+                &[stack_ptr, entry.argument(0)?.into(), value_len, is_volatile],
+                &[],
+                location,
+            ));
+
+            stack_ptr
+        }
+        _ => entry
+            .append_operation(llvm::load(
+                context,
+                entry.argument(0)?.into(),
+                inner_ty,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    inner_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ))
+            .result(0)?
+            .into(),
+    };
 
     entry.append_operation(ReallocBindingsMeta::free(
         context,
@@ -184,7 +274,7 @@ mod test {
 
     #[test]
     fn run_box_unbox() {
-        let program = load_cairo!(
+        let program = load_cairo! {
             use box::BoxTrait;
             use box::BoxImpl;
 
@@ -193,14 +283,14 @@ mod test {
                 let box_x: Box<u32> = BoxTrait::new(x);
                 box_x.unbox()
             }
-        );
+        };
 
         run_program_assert_output(&program, "run_test", &[], JitValue::Uint32(2));
     }
 
     #[test]
     fn run_box() {
-        let program = load_cairo!(
+        let program = load_cairo! {
             use box::BoxTrait;
             use box::BoxImpl;
 
@@ -209,8 +299,94 @@ mod test {
                 let box_x: Box<u32> = BoxTrait::new(x);
                 box_x
             }
-        );
+        };
 
         run_program_assert_output(&program, "run_test", &[], JitValue::Uint32(2));
+    }
+
+    #[test]
+    fn box_unbox_stack_allocated_enum_single() {
+        let program = load_cairo! {
+            use core::box::BoxTrait;
+
+            enum MyEnum {
+                A: felt252,
+            }
+
+            fn run_test() -> MyEnum {
+                let x = BoxTrait::new(MyEnum::A(1234));
+                x.unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Felt252(1234.into())),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn box_unbox_stack_allocated_enum_c() {
+        let program = load_cairo! {
+            use core::box::BoxTrait;
+
+            enum MyEnum {
+                A: (),
+                B: (),
+            }
+
+            fn run_test() -> MyEnum {
+                let x = BoxTrait::new(MyEnum::A);
+                x.unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn box_unbox_stack_allocated_enum() {
+        let program = load_cairo! {
+            use core::box::BoxTrait;
+
+            enum MyEnum {
+                A: felt252,
+                B: u128,
+            }
+
+            fn run_test() -> MyEnum {
+                let x = BoxTrait::new(MyEnum::A(1234));
+                x.unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Felt252(1234.into())),
+                debug_name: None,
+            },
+        );
     }
 }
