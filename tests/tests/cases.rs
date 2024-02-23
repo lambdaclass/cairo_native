@@ -25,7 +25,8 @@ use test_case::test_case;
 #[test_case("tests/cases/enums/enum_init_multiple.cairo")]
 #[test_case("tests/cases/enums/enum_init_nested_c_style.cairo")]
 #[test_case("tests/cases/enums/enum_init_nested_empty.cairo")]
-#[test_case("tests/cases/enums/enum_init_nested_multiple.cairo")] // fails, incorrect content (likely incorrect result parsing)
+#[test_case("tests/cases/enums/enum_init_nested_multiple.cairo")]
+// fails, incorrect content (likely incorrect result parsing)
 // #[test_case("tests/cases/enums/enum_init_nested_single_scalar.cairo")] // fails, as above
 // #[test_case("tests/cases/enums/enum_init_nested_single_struct.cairo")] // fails, as above
 // #[test_case("tests/cases/enums/enum_init_nested_single_tuple.cairo")] // fails, as above

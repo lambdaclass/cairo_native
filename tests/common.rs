@@ -11,7 +11,10 @@ use cairo_lang_runner::{
     Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        ConcreteType,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program::Program,
     program_registry::ProgramRegistry,
@@ -50,7 +53,7 @@ use melior::{
 use num_bigint::{BigInt, Sign};
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
+use std::{collections::HashMap, env::var, fs, iter::repeat_with, ops::Neg, path::Path};
 
 #[allow(unused_macros)]
 macro_rules! load_cairo {
@@ -331,6 +334,8 @@ pub fn compare_outputs(
 ) -> Result<(), TestCaseError> {
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program).unwrap();
     let function = registry.get_function(entry_point).unwrap();
+    dbg!(&native_result.return_value);
+    dbg!(&vm_result.value);
 
     fn map_vm_sizes(
         size_cache: &mut HashMap<ConcreteTypeId, usize>,
@@ -340,9 +345,23 @@ pub fn compare_outputs(
         match size_cache.get(ty) {
             Some(&type_size) => type_size,
             None => {
-                let type_size = match registry.get_type(dbg!(ty)).unwrap() {
-                    CoreTypeConcrete::Array(info) => todo!(),
-                    CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::Uint128(_) => 1,
+                dbg!(&ty);
+                let type_size = match registry.get_type(ty).unwrap() {
+                    CoreTypeConcrete::Array(_info) => {
+                        // todo!()
+                        2 // position in memory: start, end
+                    }
+                    CoreTypeConcrete::Felt252(_)
+                    | CoreTypeConcrete::Uint128(_)
+                    | CoreTypeConcrete::Uint64(_)
+                    | CoreTypeConcrete::Uint32(_)
+                    | CoreTypeConcrete::Uint16(_)
+                    | CoreTypeConcrete::Uint8(_)
+                    | CoreTypeConcrete::Sint128(_)
+                    | CoreTypeConcrete::Sint64(_)
+                    | CoreTypeConcrete::Sint32(_)
+                    | CoreTypeConcrete::Sint16(_)
+                    | CoreTypeConcrete::Sint8(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
                             .variants
@@ -356,7 +375,7 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
-                    _ => todo!(),
+                    x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
 
@@ -376,6 +395,15 @@ pub fn compare_outputs(
                 JitValue::Felt252(Felt::from_bytes_le(&values[0].to_le_bytes()))
             }
             CoreTypeConcrete::Uint128(_) => JitValue::Uint128(values[0].to_u128().unwrap()),
+            CoreTypeConcrete::Uint64(_) => JitValue::Uint64(values[0].to_u64().unwrap()),
+            CoreTypeConcrete::Uint32(_) => JitValue::Uint32(values[0].to_u32().unwrap()),
+            CoreTypeConcrete::Uint16(_) => JitValue::Uint16(values[0].to_u16().unwrap()),
+            CoreTypeConcrete::Uint8(_) => JitValue::Uint8(values[0].to_u8().unwrap()),
+            CoreTypeConcrete::Sint128(_) => JitValue::Sint128(values[0].to_i128().unwrap()),
+            CoreTypeConcrete::Sint64(_) => JitValue::Sint64(values[0].to_i64().unwrap()),
+            CoreTypeConcrete::Sint32(_) => JitValue::Sint32(values[0].to_i32().unwrap()),
+            CoreTypeConcrete::Sint16(_) => JitValue::Sint16(values[0].to_i16().unwrap()),
+            CoreTypeConcrete::Sint8(_) => JitValue::Sint8(values[0].to_i8().unwrap()),
             CoreTypeConcrete::Enum(info) => {
                 let enum_size = map_vm_sizes(size_cache, registry, ty);
                 assert_eq!(values.len(), enum_size);
@@ -412,20 +440,41 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
-            _ => todo!(),
+            x => {
+                todo!("vm value not yet implemented: {:?}", x.info())
+            }
         }
     }
 
     let mut size_cache = HashMap::new();
-    let vm_result = map_vm_values(
-        &mut size_cache,
-        &registry,
+    let ty = function.signature.ret_types.last().unwrap();
+    let returns_panic = ty
+        .debug_name
+        .as_ref()
+        .map(|x| x.starts_with("core::panics::PanicResult"))
+        .unwrap_or(false);
+
+    let mut buf = Vec::new();
+
+    let values = if returns_panic {
+        let enum_size = map_vm_sizes(&mut size_cache, &registry, ty);
+        let (tag, payload) = match &vm_result.value {
+            RunResultValue::Success(x) => (0, x), // suponiendo que 0 es el tag de Ok
+            RunResultValue::Panic(x) => (1, x),   // suponiendo que 0 es el tag de Err
+        };
+        buf.push(Felt252::from(tag));
+        buf.extend(repeat_with(|| Felt252::from(0)).take(enum_size - payload.len() - 1));
+        buf.extend(payload.iter().cloned());
+        assert_eq!(buf.len(), enum_size);
+        &buf
+    } else {
         match &vm_result.value {
-            RunResultValue::Success(x) => x.as_slice(),
+            RunResultValue::Success(x) => x,
             RunResultValue::Panic(_) => todo!(),
-        },
-        function.signature.ret_types.last().unwrap(),
-    );
+        }
+    };
+
+    let vm_result = map_vm_values(&mut size_cache, &registry, values, ty);
 
     pretty_assertions_sorted::assert_eq!(native_result.return_value, vm_result);
     Ok(())
