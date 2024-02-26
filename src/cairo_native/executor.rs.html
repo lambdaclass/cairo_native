@@ -746,6 +746,12 @@
 <a href="#745" id="745">745</a>
 <a href="#746" id="746">746</a>
 <a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
@@ -1192,6 +1198,12 @@
                 JitValue::Felt252(value),
             ) =&gt; {
                 <span class="self">self</span>.push_aligned(get_integer_layout(<span class="number">252</span>).align(), <span class="kw-2">&amp;</span>value.to_le_digits());
+            }
+            (CoreTypeConcrete::Bytes31(<span class="kw">_</span>), JitValue::Bytes31(value)) =&gt; {
+                <span class="self">self</span>.push_aligned(
+                    get_integer_layout(<span class="number">248</span>).align(),
+                    <span class="kw-2">&amp;</span>Felt::from_bytes_be_slice(value).to_le_digits(),
+                );
             }
             (CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>), JitValue::Felt252Dict { .. }) =&gt; {
                 <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]

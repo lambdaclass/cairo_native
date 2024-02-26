@@ -738,6 +738,12 @@
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
 <a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -773,6 +779,7 @@
 #[educe(Eq, PartialEq)]
 </span><span class="kw">pub enum </span>JitValue {
     Felt252(Felt),
+    Bytes31([u8; <span class="number">31</span>]),
     <span class="doccomment">/// all elements need to be same type
     </span>Array(Vec&lt;<span class="self">Self</span>&gt;),
     Struct {
@@ -930,6 +937,7 @@
                     ptr.cast::&lt;[u32; <span class="number">8</span>]&gt;().as_mut().copy_from_slice(<span class="kw-2">&amp;</span>data);
                     ptr
                 }
+                <span class="self">Self</span>::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 <span class="self">Self</span>::Array(data) =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Array(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
@@ -1458,7 +1466,11 @@
                 },
                 CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement span from_jit"</span>),
                 CoreTypeConcrete::Snapshot(info) =&gt; <span class="self">Self</span>::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
-                CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement bytes31 from_jit"</span>),
+                CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw-2">*</span>ptr.cast::&lt;[u8; <span class="number">31</span>]&gt;().as_ref();
+                    data.reverse();
+                    <span class="self">Self</span>::Bytes31(data)
+                }
 
                 CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),

@@ -1166,7 +1166,7 @@
 /// with a size in bytes of a power of two has the same alignment as its size.
 </span><span class="kw">pub fn </span>get_integer_layout(width: u32) -&gt; Layout {
     <span class="comment">// TODO: Fix integer layouts properly.
-    </span><span class="kw">if </span>width == <span class="number">252 </span>|| width == <span class="number">256 </span>{
+    </span><span class="kw">if </span>width == <span class="number">248 </span>|| width == <span class="number">252 </span>|| width == <span class="number">256 </span>{
         <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
         </span><span class="kw">return </span>Layout::from_size_align(<span class="number">32</span>, <span class="number">8</span>).unwrap();
         <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
