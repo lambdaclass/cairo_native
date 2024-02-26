@@ -334,8 +334,6 @@ pub fn compare_outputs(
 ) -> Result<(), TestCaseError> {
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program).unwrap();
     let function = registry.get_function(entry_point).unwrap();
-    dbg!(&native_result.return_value);
-    dbg!(&vm_result.value);
 
     fn map_vm_sizes(
         size_cache: &mut HashMap<ConcreteTypeId, usize>,
@@ -345,12 +343,8 @@ pub fn compare_outputs(
         match size_cache.get(ty) {
             Some(&type_size) => type_size,
             None => {
-                dbg!(&ty);
                 let type_size = match registry.get_type(ty).unwrap() {
-                    CoreTypeConcrete::Array(_info) => {
-                        // todo!()
-                        2 // position in memory: start, end
-                    }
+                    CoreTypeConcrete::Array(_info) => 2,
                     CoreTypeConcrete::Felt252(_)
                     | CoreTypeConcrete::Uint128(_)
                     | CoreTypeConcrete::Uint64(_)
@@ -375,6 +369,7 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
+                    CoreTypeConcrete::Nullable(_) => 1,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -387,10 +382,28 @@ pub fn compare_outputs(
     fn map_vm_values(
         size_cache: &mut HashMap<ConcreteTypeId, usize>,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        memory: &[Option<Felt252>],
         mut values: &[Felt252],
         ty: &ConcreteTypeId,
     ) -> JitValue {
-        match registry.get_type(dbg!(ty)).unwrap() {
+        match registry.get_type(ty).unwrap() {
+            CoreTypeConcrete::Array(info) => {
+                assert_eq!(values.len(), 2);
+                let since_ptr = values[0].to_usize().unwrap();
+                let until_ptr = values[1].to_usize().unwrap();
+
+                let total_len = until_ptr - since_ptr;
+                let elem_size = map_vm_sizes(size_cache, registry, &info.ty);
+                assert_eq!(total_len % elem_size, 0);
+
+                JitValue::Array(
+                    memory[since_ptr..until_ptr]
+                        .chunks(elem_size)
+                        .map(|data| data.iter().cloned().map(Option::unwrap).collect::<Vec<_>>())
+                        .map(|data| map_vm_values(size_cache, registry, memory, &data, &info.ty))
+                        .collect(),
+                )
+            }
             CoreTypeConcrete::Felt252(_) => {
                 JitValue::Felt252(Felt::from_bytes_le(&values[0].to_le_bytes()))
             }
@@ -441,7 +454,10 @@ pub fn compare_outputs(
                 let (tag, data);
                 (tag, values) = values.split_first().unwrap();
 
-                let tag = tag.to_usize().unwrap();
+                let mut tag = tag.to_usize().unwrap();
+                if info.variants.len() > 2 {
+                    tag = info.variants.len() - ((tag + 1) >> 1);
+                }
                 assert!(tag <= info.variants.len());
                 data = &values[enum_size - size_cache[&info.variants[tag]] - 1..];
 
@@ -450,6 +466,7 @@ pub fn compare_outputs(
                     value: Box::new(map_vm_values(
                         size_cache,
                         registry,
+                        memory,
                         data,
                         &info.variants[tag],
                     )),
@@ -465,13 +482,33 @@ pub fn compare_outputs(
                         (data, values) =
                             values.split_at(map_vm_sizes(size_cache, registry, member_ty));
 
-                        map_vm_values(size_cache, registry, data, member_ty)
+                        map_vm_values(size_cache, registry, memory, data, member_ty)
                     })
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
-            CoreTypeConcrete::Array(_info) => {
-                todo!("array")
+            CoreTypeConcrete::Nullable(info) => {
+                assert_eq!(values.len(), 1);
+
+                let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
+                match values[0].to_usize().unwrap() {
+                    0 => JitValue::Null,
+                    ptr if ty_size == 0 => {
+                        assert_eq!(ptr, 1);
+                        map_vm_values(size_cache, registry, memory, &[], &info.ty)
+                    }
+                    ptr => map_vm_values(
+                        size_cache,
+                        registry,
+                        memory,
+                        &memory[ptr..ptr + ty_size]
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap)
+                            .collect::<Vec<_>>(),
+                        &info.ty,
+                    ),
+                }
             }
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
@@ -486,14 +523,6 @@ pub fn compare_outputs(
         .as_ref()
         .map(|x| x.starts_with("core::panics::PanicResult"))
         .unwrap_or(false);
-    /*
-       the returned values have their meaning changed based on whether
-       the return type is a panic or not:
-
-       if its a panic the panic case will return the values of the array inside the panic structure.
-       if its a panic the enum tag itself wont be returned as a value.
-       if its not a panic a array will, return the start and end addresses in memory to look up the values.
-    */
 
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) => {
@@ -504,11 +533,17 @@ pub fn compare_outputs(
                 };
                 JitValue::Enum {
                     tag: 0,
-                    value: Box::new(map_vm_values(&mut size_cache, &registry, values, inner_ty)),
+                    value: Box::new(map_vm_values(
+                        &mut size_cache,
+                        &registry,
+                        &vm_result.memory,
+                        values,
+                        inner_ty,
+                    )),
                     debug_name: None,
                 }
             } else {
-                map_vm_values(&mut size_cache, &registry, values, ty)
+                map_vm_values(&mut size_cache, &registry, &vm_result.memory, values, ty)
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
