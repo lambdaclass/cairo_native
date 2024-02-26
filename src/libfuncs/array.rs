@@ -1065,7 +1065,7 @@ pub fn build_slice<'ctx, 'this>(
 
     block_not_oob.append_operation(llvm::call_intrinsic(
         context,
-        StringAttribute::new(context, "llvm.memcpy.inline"),
+        StringAttribute::new(context, "llvm.memcpy"),
         &[new_ptr, elem_ptr, bytes_val, is_volatile],
         &[],
         location,
