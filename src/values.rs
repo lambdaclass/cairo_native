@@ -33,6 +33,7 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 #[educe(Eq, PartialEq)]
 pub enum JitValue {
     Felt252(Felt),
+    Bytes31([u8; 31]),
     /// all elements need to be same type
     Array(Vec<Self>),
     Struct {
@@ -190,6 +191,7 @@ impl JitValue {
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
+                Self::Bytes31(_) => todo!(),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty)?;
@@ -718,7 +720,11 @@ impl JitValue {
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
-                CoreTypeConcrete::Bytes31(_) => todo!("implement bytes31 from_jit"),
+                CoreTypeConcrete::Bytes31(_) => {
+                    let mut data = *ptr.cast::<[u8; 31]>().as_ref();
+                    data.reverse();
+                    Self::Bytes31(data)
+                }
 
                 CoreTypeConcrete::Const(_) => todo!(),
                 CoreTypeConcrete::BoundedInt(_) => todo!(),

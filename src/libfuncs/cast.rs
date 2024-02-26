@@ -1,10 +1,7 @@
 //! # Casting libfuncs
 
 use super::LibfuncHelper;
-use crate::{
-    error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
@@ -56,55 +53,68 @@ pub fn build_downcast<'ctx, 'this>(
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
 
+    let src_width = src_type
+        .integer_width()
+        .expect("casts always happen between numerical types");
+    let dst_width = dst_type
+        .integer_width()
+        .expect("casts always happen between numerical types");
+    assert!(src_width >= dst_width);
+
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
-    let dst_ty = registry.build_type(context, helper, registry, metadata, &info.to_ty)?;
+    let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
 
-    // Sierra compiler wont accept a downcast from the same type to the same type (u128 -> u128).
-    // So we don't need to check for it (because trunci doesn't work for same types).
+    let (is_in_range, result) = if src_ty == dst_ty {
+        let k0 = entry
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
 
-    let k1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(1, src_ty).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+        (k0, entry.argument(1)?.into())
+    } else {
+        let k1 = entry
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(1, src_ty).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
 
-    let n_bits = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                dst_type
-                    .integer_width()
-                    .expect("casts always happen between numerical types") as i64,
-                src_ty,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let max_value_plus_one = entry
-        .append_operation(arith::shli(k1, n_bits, location))
-        .result(0)?
-        .into();
+        let n_bits = entry
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(dst_width as i64, src_ty).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+        let max_value_plus_one = entry
+            .append_operation(arith::shli(k1, n_bits, location))
+            .result(0)?
+            .into();
 
-    let is_in_range = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ult,
-            entry.argument(1)?.into(),
-            max_value_plus_one,
-            location,
-        ))
-        .result(0)?
-        .into();
+        let is_in_range = entry
+            .append_operation(arith::cmpi(
+                context,
+                CmpiPredicate::Ult,
+                entry.argument(1)?.into(),
+                max_value_plus_one,
+                location,
+            ))
+            .result(0)?
+            .into();
+        let result = entry
+            .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
+            .result(0)?
+            .into();
 
-    let result = entry
-        .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
-        .result(0)?
-        .into();
+        (is_in_range, result)
+    };
 
     entry.append_operation(helper.cond_br(
         context,
@@ -157,7 +167,10 @@ pub fn build_upcast<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        values::JitValue,
+    };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
 
@@ -165,13 +178,17 @@ mod test {
         static ref DOWNCAST: (String, Program) = load_cairo! {
             use core::integer::downcast;
 
-            fn run_test(v8: u8, v16: u16, v32: u32, v64: u64, v128: u128) -> (
-                (Option<u8>, Option<u8>, Option<u8>, Option<u8>),
-                (Option<u16>, Option<u16>, Option<u16>),
-                (Option<u32>, Option<u32>),
-                (Option<u64>,)
+            fn run_test(
+                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
+            ) -> (
+                (Option<u8>, Option<u8>, Option<u8>, Option<u8>, Option<u8>),
+                (Option<u16>, Option<u16>, Option<u16>, Option<u16>),
+                (Option<u32>, Option<u32>, Option<u32>),
+                (Option<u64>, Option<u64>),
+                (Option<u128>,),
             ) {
                 (
+                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
                     (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
                     (downcast(v128), downcast(v64), downcast(v32)),
                     (downcast(v128), downcast(v64)),
@@ -182,12 +199,15 @@ mod test {
         static ref UPCAST: (String, Program) = load_cairo! {
             use core::integer::upcast;
 
-            fn run_test(v8: u8, v16: u16, v32: u32, v64: u64, v128: u128) -> (
+            fn run_test(
+                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
+            ) -> (
                 (u8,),
                 (u16, u16),
                 (u32, u32, u32),
                 (u64, u64, u64, u64),
-                (u128, u128, u128, u128, u128)
+                (u128, u128, u128, u128, u128),
+                (bytes31, bytes31, bytes31, bytes31, bytes31, bytes31)
             ) {
                 (
                     (upcast(v8),),
@@ -195,6 +215,7 @@ mod test {
                     (upcast(v8), upcast(v16), upcast(v32)),
                     (upcast(v8), upcast(v16), upcast(v32), upcast(v64)),
                     (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128)),
+                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
                 )
             }
         };
@@ -218,13 +239,20 @@ mod test {
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                ),
+                jit_struct!(
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(1, jit_struct!()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                 ),
-                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!()),),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
                 jit_struct!(jit_enum!(1, jit_struct!())),
             ),
         );
@@ -241,6 +269,7 @@ mod test {
                 u32::MAX.into(),
                 u64::MAX.into(),
                 u128::MAX.into(),
+                JitValue::Bytes31([0xFF; 31]),
             ],
             jit_struct!(
                 jit_struct!(u8::MAX.into()),
@@ -262,6 +291,174 @@ mod test {
                     (u32::MAX as u128).into(),
                     (u64::MAX as u128).into(),
                     u128::MAX.into()
+                ),
+                jit_struct!(
+                    JitValue::Bytes31([
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        u8::MAX
+                    ]),
+                    JitValue::Bytes31([
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        u8::MAX,
+                        u8::MAX
+                    ]),
+                    JitValue::Bytes31([
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX
+                    ]),
+                    JitValue::Bytes31([
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX
+                    ]),
+                    JitValue::Bytes31([
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX,
+                        u8::MAX
+                    ]),
+                    JitValue::Bytes31([u8::MAX; 31]),
                 ),
             ),
         );
