@@ -2684,7 +2684,7 @@
 
     block_not_oob.append_operation(llvm::call_intrinsic(
         context,
-        StringAttribute::new(context, <span class="string">"llvm.memcpy.inline"</span>),
+        StringAttribute::new(context, <span class="string">"llvm.memcpy"</span>),
         <span class="kw-2">&amp;</span>[new_ptr, elem_ptr, bytes_val, is_volatile],
         <span class="kw-2">&amp;</span>[],
         location,
