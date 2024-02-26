@@ -1,6 +1,7 @@
 use crate::common::run_native_starknet_contract;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::{compile_path, ContractClass};
+use cairo_lang_starknet::compile::compile_path;
+use cairo_lang_starknet_classes::contract_class::ContractClass;
 use cairo_native::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
     StarkNetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,

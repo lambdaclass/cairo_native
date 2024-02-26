@@ -183,6 +183,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 WithSelf::new(self_ty, info),
             ),
             Self::Const(_) => todo!(),
+            Self::Coupon(_) => todo!(),
             Self::EcOp(info) => self::ec_op::build(
                 context,
                 module,
@@ -476,6 +477,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
         }
@@ -541,6 +543,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
         }
     }
@@ -559,6 +562,7 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
             CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
@@ -710,6 +714,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 

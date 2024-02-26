@@ -170,7 +170,7 @@ fn calc_metadata(
     let pre_gas_info = if config.linear_gas_solver {
         pre_gas_info_new
     } else {
-        pre_gas_info_old.assert_eq_variables(&pre_gas_info_new);
+        pre_gas_info_old.assert_eq_variables(&pre_gas_info_new, program);
         pre_gas_info_old
     };
 

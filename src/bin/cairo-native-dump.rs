@@ -11,7 +11,7 @@ use cairo_lang_sierra::{
     ProgramParser,
 };
 use cairo_lang_starknet::{
-    contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
+    compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
 use cairo_native::{
