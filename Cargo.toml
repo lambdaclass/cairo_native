@@ -70,7 +70,7 @@ tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
-anyhow = { version = "1.0.80", optional = true }
+anyhow = { version = "1.0", optional = true }
 cairo-lang-test-plugin = { version = "2.5.4", optional = true}
 cairo-lang-runner = { version = "2.5.4", optional = true}
 colored = { version = "2.1.0", optional = true }
