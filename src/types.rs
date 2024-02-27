@@ -722,6 +722,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => Some(128),
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => Some(248),
             CoreTypeConcrete::Const(_) => todo!(),
 
             _ => None,
