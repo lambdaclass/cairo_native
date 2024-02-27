@@ -106,7 +106,7 @@ fn invoke_dynamic(
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
-    gas: Option<u128>,
+    gas: u128,
     syscall_handler: Option<NonNull<()>>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
@@ -172,15 +172,10 @@ fn invoke_dynamic(
 
         // Process gas requirements and syscall handler.
         match type_info {
-            CoreTypeConcrete::GasBuiltin(_) => match gas {
-                Some(gas) => {
-                    invoke_data.push_aligned(
-                        get_integer_layout(128).align(),
-                        &[gas as u64, (gas >> 64) as u64],
-                    );
-                }
-                None => panic!("Gas is required"),
-            },
+            CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
+                get_integer_layout(128).align(),
+                &[gas as u64, (gas >> 64) as u64],
+            ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
                 Some(syscall_handler) => invoke_data.push_aligned(
                     get_integer_layout(64).align(),
@@ -450,6 +445,12 @@ impl<'a> ArgumentMapper<'a> {
             ) => {
                 self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
             }
+            (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
+                self.push_aligned(
+                    get_integer_layout(248).align(),
+                    &Felt::from_bytes_be_slice(value).to_le_digits(),
+                );
+            }
             (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
                 #[cfg(not(feature = "with-runtime"))]
                 unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
@@ -545,8 +546,8 @@ fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     mut return_ptr: Option<NonNull<()>>,
-    #[cfg(target_arch = "x86_64")] ret_registers: [u64; 2],
-    #[cfg(target_arch = "aarch64")] ret_registers: [u64; 4],
+    #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
+    #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
 
@@ -660,7 +661,7 @@ fn parse_result(
             let (_, tag_layout, variant_layouts) =
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
 
-            let (tag, ptr) = if type_info.is_memory_allocated(registry) {
+            let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
 
                 let tag = unsafe {
@@ -674,32 +675,45 @@ fn parse_result(
                     }
                 };
 
-                (tag, unsafe {
-                    NonNull::new_unchecked(
-                        ptr.cast::<u8>()
-                            .as_ptr()
-                            .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
-                    )
-                    .cast()
-                })
+                (
+                    tag,
+                    Ok(unsafe {
+                        NonNull::new_unchecked(
+                            ptr.cast::<u8>()
+                                .as_ptr()
+                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                        )
+                        .cast()
+                    }),
+                )
             } else {
-                // TODO: Shouldn't the pointer be always `None` within this block?
-                match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
-                    0 => (0, return_ptr.unwrap_or_else(NonNull::dangling)),
+                match info.variants.len() {
+                    0 | 1 => (0, Err(0)),
                     _ => (
                         match tag_layout.size() {
-                            0 => 0,
                             1 => ret_registers[0] as u8 as usize,
                             2 => ret_registers[0] as u16 as usize,
                             4 => ret_registers[0] as u32 as usize,
                             8 => ret_registers[0] as usize,
                             _ => unreachable!(),
                         },
-                        return_ptr.unwrap_or_else(NonNull::dangling),
+                        Err(1),
                     ),
                 }
             };
-            let value = Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry));
+
+            let value = match ptr {
+                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Err(offset) => {
+                    ret_registers.copy_within(offset.., 0);
+                    Box::new(parse_result(
+                        &info.variants[tag],
+                        registry,
+                        None,
+                        ret_registers,
+                    ))
+                }
+            };
 
             JitValue::Enum {
                 tag,

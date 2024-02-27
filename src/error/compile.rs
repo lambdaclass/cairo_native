@@ -6,11 +6,13 @@ use cairo_lang_sierra::{
 use std::{fmt, ops::Deref};
 use thiserror::Error;
 
+use crate::metadata::gas::GasMetadataError;
+
 use super::{CoreLibfuncBuilderError, CoreTypeBuilderError};
 
 pub type CompileError = Box<Error>;
 
-#[derive(Error)]
+#[derive(Error, Debug)]
 pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
@@ -52,18 +54,7 @@ where
     }
 }
 
-// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
-// both implement `Debug`, which isn't the case.
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Error")
-            // .field("backtrace", &self.backtrace)
-            .field("source", &self.source)
-            .finish()
-    }
-}
-
-#[derive(Error)]
+#[derive(Error, Debug)]
 pub enum ErrorImpl {
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
@@ -82,30 +73,8 @@ pub enum ErrorImpl {
         libfunc_id: ConcreteLibfuncId,
         error: CoreLibfuncBuilderError,
     },
-}
-
-// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
-// both implement `Debug`, which isn't the case.
-impl fmt::Debug for ErrorImpl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EditStateError(arg0) => f.debug_tuple("EditStateError").field(arg0).finish(),
-            Self::MlirError(arg0) => f.debug_tuple("MlirError").field(arg0).finish(),
-            Self::ProgramRegistryError(arg0) => {
-                f.debug_tuple("ProgramRegistryError").field(arg0).finish()
-            }
-            Self::TypeBuilderError { type_id, error } => f
-                .debug_struct("TypeBuilderError")
-                .field("type_id", type_id)
-                .field("error", error)
-                .finish(),
-            Self::LibfuncBuilderError { libfunc_id, error } => f
-                .debug_struct("LibfuncBuilderError")
-                .field("libfunc_id", libfunc_id)
-                .field("error", error)
-                .finish(),
-        }
-    }
+    #[error("gas metadata error")]
+    GasMetadataError(#[from] GasMetadataError),
 }
 
 pub fn make_type_builder_error(

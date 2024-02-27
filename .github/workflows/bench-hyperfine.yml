@@ -24,7 +24,7 @@ jobs:
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
@@ -44,7 +44,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.72.1
+      - uses: dtolnay/rust-toolchain@1.76
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -73,7 +73,7 @@ jobs:
 
       - name: Find Bench Comment
         continue-on-error: true
-        uses: peter-evans/find-comment@v2
+        uses: peter-evans/find-comment@v3
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -81,7 +81,7 @@ jobs:
           body-includes: Benchmarking
       - name: Create or update bench comment
         continue-on-error: true
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}

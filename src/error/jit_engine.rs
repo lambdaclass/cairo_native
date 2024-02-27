@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub type RunnerError = Box<Error>;
 
-#[derive(Error)]
+#[derive(Error, Debug)]
 pub struct Error {
     // TODO: enable once its stable in rust
     // pub backtrace: Backtrace,
@@ -46,18 +46,7 @@ where
     }
 }
 
-// Manual implementation necessary because `#[derive(Debug)]` requires that `TType` and `TLibfunc`
-// both implement `Debug`, which isn't the case.
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Error")
-            // .field("backtrace", &self.backtrace)
-            .field("source", &self.source)
-            .finish()
-    }
-}
-
-#[derive(Error)]
+#[derive(Error, Debug)]
 pub enum ErrorImpl {
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
@@ -78,36 +67,11 @@ pub enum ErrorImpl {
     #[error("unexpected value, expected value of type '{0}'")]
     UnexpectedValue(String),
 
-    #[error("not enough gas to run, needed '{needed}' had '{have}'")]
-    InsufficientGasError { needed: u128, have: u128 },
+    #[error("not enough gas to run")]
+    InsufficientGasError,
 
     #[error("a syscall handler was expected but was not provided")]
     MissingSyscallHandler,
-}
-
-impl fmt::Debug for ErrorImpl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::LayoutError(arg0) => f.debug_tuple("LayoutError").field(arg0).finish(),
-            Self::MlirError(arg0) => f.debug_tuple("MlirError").field(arg0).finish(),
-            Self::MissingParameter(arg0) => f.debug_tuple("MissingParameter").field(arg0).finish(),
-            Self::ProgramRegistryError(arg0) => {
-                f.debug_tuple("ProgramRegistryError").field(arg0).finish()
-            }
-            Self::TypeBuilderError { type_id, error } => f
-                .debug_struct("TypeBuilderError")
-                .field("type_id", type_id)
-                .field("error", error)
-                .finish(),
-            Self::UnexpectedValue(arg0) => f.debug_tuple("UnexpectedValue").field(arg0).finish(),
-            Self::MissingSyscallHandler => f.debug_struct("MissingSyscallHandler").finish(),
-            Self::InsufficientGasError { needed, have } => f
-                .debug_struct("InsufficientGasError")
-                .field("needed", needed)
-                .field("have", have)
-                .finish(),
-        }
-    }
 }
 
 pub fn make_unexpected_value_error(expected: String) -> Error {
@@ -126,16 +90,12 @@ pub fn make_type_builder_error(
     }
 }
 
-pub fn make_insufficient_gas_error(needed: u128, have: u128) -> Error {
-    ErrorImpl::InsufficientGasError { needed, have }.into()
-}
-
 pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Error {
     ErrorImpl::MissingParameter(
         ty.debug_name
             .as_ref()
             .map(|x| x.to_string())
-            .unwrap_or_else(String::new),
+            .unwrap_or_default(),
     )
     .into()
 }
