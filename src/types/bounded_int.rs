@@ -27,6 +27,7 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<BoundedIntConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // todo: possible optimization, we may be able to use less bits depending on the possible values within the range.
     let bits = info.range.lower.bits().max(info.range.upper.bits()) + 1; // sign bit
     Ok(IntegerType::new(
         context,
