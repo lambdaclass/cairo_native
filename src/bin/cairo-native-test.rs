@@ -411,6 +411,8 @@ fn run_tests(
                 if test.ignored {
                     return Ok((name, None));
                 }
+                tracing::trace!("running test {name:?}");
+
                 let func = find_function(&sierra_program, name.as_str())?;
 
                 let initial_gas = gas_metadata

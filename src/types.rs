@@ -15,6 +15,7 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
     program::GenericArg,
@@ -32,10 +33,12 @@ use melior::{
     },
     Context,
 };
+use num_bigint::BigInt;
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 pub mod bitwise;
+pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
@@ -102,10 +105,12 @@ pub trait TypeBuilder {
     /// a function invocation argument or return value.
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
-    /// If the type is an integer (felt not included) type, return its width in bits.
+    /// If the type is an integer type, return its width in bits.
     ///
     /// TODO: How is it used?
     fn integer_width(&self) -> Option<usize>;
+
+    fn integer_range(&self) -> Option<Range>;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -166,7 +171,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::BoundedInt(_) => todo!(),
+            Self::BoundedInt(info) => self::bounded_int::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Box(info) => self::r#box::build(
                 context,
                 module,
@@ -539,9 +550,29 @@ impl TypeBuilder for CoreTypeConcrete {
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
+        }
+    }
+
+    fn integer_range(&self) -> Option<Range> {
+        match self {
+            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => Some(Range::closed(0, 2i64.pow(252) - 1)),
+            CoreTypeConcrete::Uint8(_) => Some(Range::closed(u8::MIN, u8::MAX)),
+            CoreTypeConcrete::Uint16(_) => Some(Range::closed(u16::MIN, u16::MAX)),
+            CoreTypeConcrete::Uint32(_) => Some(Range::closed(u32::MIN, u32::MAX)),
+            CoreTypeConcrete::Uint64(_) => Some(Range::closed(u64::MIN, u64::MAX)),
+            CoreTypeConcrete::Uint128(_) => Some(Range::closed(u128::MIN, u128::MAX)),
+            CoreTypeConcrete::Sint8(_) => Some(Range::closed(i8::MIN, i8::MAX)),
+            CoreTypeConcrete::Sint16(_) => Some(Range::closed(i16::MIN, i16::MAX)),
+            CoreTypeConcrete::Sint32(_) => Some(Range::closed(i32::MIN, i32::MAX)),
+            CoreTypeConcrete::Sint64(_) => Some(Range::closed(i64::MIN, i64::MAX)),
+            CoreTypeConcrete::Sint128(_) => Some(Range::closed(i128::MIN, i128::MAX)),
+            CoreTypeConcrete::Bytes31(_) => Some(Range::closed(0, 2i64.pow(254) - 1)),
+            CoreTypeConcrete::BoundedInt(info) => Some(info.range.clone()),
+            _ => None,
         }
     }
 
@@ -638,7 +669,11 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
+                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
+                    .try_into()
+                    .expect("should always fit u32"),
+            ),
             CoreTypeConcrete::Const(_) => todo!(),
         })
     }
@@ -708,7 +743,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Bytes31(_) => false,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
         }
     }
@@ -720,8 +755,16 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => Some(32),
             Self::Uint64(_) => Some(64),
             Self::Uint128(_) => Some(128),
+            Self::Felt252(_) => Some(252),
+            Self::Sint8(_) => Some(8),
+            Self::Sint16(_) => Some(16),
+            Self::Sint32(_) => Some(32),
+            Self::Sint64(_) => Some(64),
+            Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(info) => {
+                Some((info.range.lower.bits().max(info.range.upper.bits()) + 1) as usize)
+            }
             CoreTypeConcrete::Bytes31(_) => Some(248),
             CoreTypeConcrete::Const(_) => todo!(),
 

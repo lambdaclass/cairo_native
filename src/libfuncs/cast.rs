@@ -13,9 +13,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
+use num_traits::Signed;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -53,16 +54,26 @@ pub fn build_downcast<'ctx, 'this>(
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
 
+    dbg!(&info.from_ty);
+    dbg!(&info.to_ty);
     let src_width = src_type
         .integer_width()
         .expect("casts always happen between numerical types");
     let dst_width = dst_type
         .integer_width()
         .expect("casts always happen between numerical types");
-    assert!(src_width >= dst_width);
+    dbg!(src_width);
+    dbg!(dst_width);
+    //assert!(src_width >= dst_width);
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
+    let is_signed = info.from_range.lower.is_negative()
+        || info.from_range.upper.is_negative()
+        || info.to_range.lower.is_negative()
+        || info.to_range.upper.is_negative();
+
+    let src_value = entry.argument(1)?.into();
 
     let (is_in_range, result) = if src_ty == dst_ty {
         let k0 = entry
@@ -74,42 +85,103 @@ pub fn build_downcast<'ctx, 'this>(
             .result(0)?
             .into();
 
-        (k0, entry.argument(1)?.into())
+        (k0, src_value)
     } else {
-        let k1 = entry
+        let result = if src_width > dst_width {
+            entry
+                .append_operation(arith::trunci(src_value, dst_ty, location))
+                .result(0)?
+                .into()
+        } else if is_signed {
+            entry
+                .append_operation(arith::extsi(src_value, dst_ty, location))
+                .result(0)?
+                .into()
+        } else {
+            entry
+                .append_operation(arith::extui(src_value, dst_ty, location))
+                .result(0)?
+                .into()
+        };
+
+        let (compare_value, compare_ty) = if src_width > dst_width {
+            (src_value, src_ty)
+        } else {
+            (result, dst_ty)
+        };
+
+        let max_value = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, src_ty).into(),
+                Attribute::parse(
+                    context,
+                    &format!(
+                        "{}: {}",
+                        info.to_range
+                            .upper
+                            .clone()
+                            .min(info.from_range.upper.clone()),
+                        compare_ty
+                    ),
+                )
+                .expect("downcast: failed to make max value attribute"),
                 location,
             ))
             .result(0)?
             .into();
 
-        let n_bits = entry
+        let min_value = entry
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(dst_width as i64, src_ty).into(),
+                Attribute::parse(
+                    context,
+                    &format!(
+                        "{}: {}",
+                        info.to_range
+                            .lower
+                            .clone()
+                            .max(info.from_range.lower.clone()),
+                        compare_ty
+                    ),
+                )
+                .expect("downcast: failed to make min value attribute"),
                 location,
             ))
             .result(0)?
             .into();
-        let max_value_plus_one = entry
-            .append_operation(arith::shli(k1, n_bits, location))
+
+        let is_in_range_upper = entry
+            .append_operation(arith::cmpi(
+                context,
+                if is_signed {
+                    CmpiPredicate::Sle
+                } else {
+                    CmpiPredicate::Ule
+                },
+                compare_value,
+                max_value,
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let is_in_range_lower = entry
+            .append_operation(arith::cmpi(
+                context,
+                if is_signed {
+                    CmpiPredicate::Sge
+                } else {
+                    CmpiPredicate::Uge
+                },
+                compare_value,
+                min_value,
+                location,
+            ))
             .result(0)?
             .into();
 
         let is_in_range = entry
-            .append_operation(arith::cmpi(
-                context,
-                CmpiPredicate::Ult,
-                entry.argument(1)?.into(),
-                max_value_plus_one,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let result = entry
-            .append_operation(arith::trunci(entry.argument(1)?.into(), dst_ty, location))
+            .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
             .result(0)?
             .into();
 
@@ -140,6 +212,8 @@ pub fn build_upcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let dst_ty = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
 
+    dbg!(&info.param_signatures()[0].ty);
+    dbg!(&info.branch_signatures()[0].vars[0].ty);
     let src_width = src_ty
         .integer_width()
         .expect("casts always happen between numerical types");
