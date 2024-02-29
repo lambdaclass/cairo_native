@@ -54,7 +54,7 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
     // TODO: Fix integer layouts properly.
-    if width == 252 || width == 256 {
+    if width == 248 || width == 252 || width == 256 {
         #[cfg(target_arch = "x86_64")]
         return Layout::from_size_align(32, 8).unwrap();
         #[cfg(not(target_arch = "x86_64"))]
@@ -764,7 +764,11 @@ pub mod test {
             .iter()
             .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
         {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
+            let gas_metadata =
+                GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap();
+            metadata.insert(gas_metadata);
+        } else {
+            let gas_metadata = GasMetadata::new(program, None).unwrap();
             metadata.insert(gas_metadata);
         }
 

@@ -55,12 +55,47 @@ impl NativeContext {
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        if has_gas_builtin {
-            let gas_metadata = GasMetadata::new(program, MetadataComputationConfig::default());
-            // Unwrapping here is not necessary since the insertion will only fail if there was
-            // already some metadata of the same type.
-            metadata.insert(gas_metadata);
-        }
+        let gas_metadata = if has_gas_builtin {
+            GasMetadata::new(program, Some(MetadataComputationConfig::default()))
+        } else {
+            GasMetadata::new(program, None)
+        }?;
+        // Unwrapping here is not necessary since the insertion will only fail if there was
+        // already some metadata of the same type.
+        metadata.insert(gas_metadata);
+
+        // Create the Sierra program registry
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
+
+        crate::compile(
+            &self.context,
+            &module,
+            program,
+            &registry,
+            &mut metadata,
+            None,
+        )?;
+
+        run_pass_manager(&self.context, &mut module)?;
+
+        Ok(NativeModule::new(module, registry, metadata))
+    }
+
+    /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
+    /// Returns the corresponding NativeModule struct.
+    pub fn compile_with_metadata(
+        &self,
+        program: &Program,
+        metadata_config: MetadataComputationConfig,
+    ) -> Result<NativeModule, CompileError> {
+        let mut module = Module::new(Location::unknown(&self.context));
+
+        let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default());
+
+        let gas_metadata = GasMetadata::new(program, Some(metadata_config))?;
+        metadata.insert(gas_metadata);
 
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;

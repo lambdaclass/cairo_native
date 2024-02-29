@@ -452,42 +452,31 @@ pub fn build<'ctx>(
     });
 
     let i8_ty = IntegerType::new(context, 8).into();
-    Ok(if layout.size() == 0 {
-        llvm::r#type::array(i8_ty, 0)
-    } else {
-        match info.variants.len() {
-            0 => unreachable!(),
-            1 => llvm::r#type::r#struct(
+    Ok(match info.variants.len() {
+        0 => llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+        1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+        _ if info
+            .variants
+            .iter()
+            .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+        {
+            llvm::r#type::r#struct(
                 context,
                 &[
                     IntegerType::new(context, tag_bits).into(),
-                    registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+                    llvm::r#type::array(i8_ty, 0),
                 ],
                 false,
-            ),
-            _ if info
-                .variants
-                .iter()
-                .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
-            {
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, tag_bits).into(),
-                        llvm::r#type::array(i8_ty, 0),
-                    ],
-                    false,
-                )
-            }
-            _ => llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, (8 * layout.align()) as u32).into(),
-                    llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
-                ],
-                false,
-            ),
+            )
         }
+        _ => llvm::r#type::r#struct(
+            context,
+            &[
+                IntegerType::new(context, (8 * layout.align()) as u32).into(),
+                llvm::r#type::array(i8_ty, (layout.size() - layout.align()) as u32),
+            ],
+            false,
+        ),
     })
 }
 
@@ -548,4 +537,47 @@ pub fn get_type_for_variants<'ctx>(
     }
 
     Ok((layout, (tag_ty, tag_layout), output))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use cairo_lang_sierra::{
+        extensions::core::{CoreLibfunc, CoreType},
+        program_registry::ProgramRegistry,
+    };
+    use melior::{
+        ir::{r#type::IntegerType, Location, Module},
+        Context,
+    };
+
+    #[test]
+    fn enum_type_single_variant_no_i0() {
+        let (_, program) = load_cairo! {
+            enum MyEnum {
+                A: felt252,
+            }
+
+            fn run_program(x: MyEnum) -> MyEnum {
+                x
+            }
+        };
+
+        let context = Context::new();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let module = Module::new(Location::unknown(&context));
+        let mut metadata = MetadataStorage::new();
+
+        let i0_ty = IntegerType::new(&context, 0).into();
+        program
+            .type_declarations
+            .iter()
+            .map(|ty| (&ty.id, registry.get_type(&ty.id).unwrap()))
+            .map(|(id, ty)| {
+                ty.build(&context, &module, &registry, &mut metadata, id)
+                    .unwrap()
+            })
+            .any(|width| width == i0_ty);
+    }
 }

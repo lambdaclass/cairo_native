@@ -24,7 +24,7 @@ pub struct JitNativeExecutor<'m> {
     module: Module<'m>,
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
-    gas_metadata: Option<GasMetadata>,
+    gas_metadata: GasMetadata,
 }
 
 impl std::fmt::Debug for JitNativeExecutor<'_> {
@@ -48,7 +48,7 @@ impl<'m> JitNativeExecutor<'m> {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned(),
+            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
         }
     }
 
@@ -67,17 +67,20 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[JitValue],
-        mut gas: Option<u128>,
+        gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
-        self.process_required_initial_gas(function_id, gas.as_mut());
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
-            gas,
+            available_gas,
             syscall_handler.map(SyscallHandlerMeta::as_ptr),
         ))
     }
@@ -86,10 +89,13 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        mut gas: Option<u128>,
+        gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ContractExecutionResult, RunnerError> {
-        self.process_required_initial_gas(function_id, gas.as_mut());
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
 
         // TODO: Check signature for contract interface.
         Ok(ContractExecutionResult::from_execution_result(
@@ -104,7 +110,7 @@ impl<'m> JitNativeExecutor<'m> {
                     // TODO: Populate `debug_name`.
                     debug_name: None,
                 }],
-                gas,
+                available_gas,
                 syscall_handler.map(SyscallHandlerMeta::as_ptr),
             ),
         )?)
@@ -124,20 +130,5 @@ impl<'m> JitNativeExecutor<'m> {
             .get_function(function_id)
             .unwrap()
             .signature
-    }
-
-    fn process_required_initial_gas(&self, function_id: &FunctionId, gas: Option<&mut u128>) {
-        if let (Some(gas), Some(required_init_gas)) = (
-            gas,
-            self.gas_metadata
-                .as_ref()
-                .and_then(|gas_metadata| gas_metadata.get_initial_required_gas(function_id)),
-        ) {
-            if required_init_gas > *gas {
-                panic!("Not enough gas");
-            }
-
-            *gas -= required_init_gas;
-        }
     }
 }

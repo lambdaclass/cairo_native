@@ -20,6 +20,18 @@ use test_case::test_case;
 #[test_case("tests/cases/generic_fn_loop.cairo")]
 // enums
 // TODO: compare error: Fail(Reason("assertion failed: `(left == right)` \n  left: `0`,\n right: `10` at tests/common.rs:453"))
+#[test_case("tests/cases/enums/enum_init_c_style.cairo")]
+#[test_case("tests/cases/enums/enum_init_empty.cairo")]
+#[test_case("tests/cases/enums/enum_init_multiple.cairo")]
+#[test_case("tests/cases/enums/enum_init_nested_c_style.cairo")]
+#[test_case("tests/cases/enums/enum_init_nested_empty.cairo")]
+// #[test_case("tests/cases/enums/enum_init_nested_multiple.cairo")] // fails, incorrect content (likely incorrect result parsing)
+// #[test_case("tests/cases/enums/enum_init_nested_single_scalar.cairo")] // fails, as above
+// #[test_case("tests/cases/enums/enum_init_nested_single_struct.cairo")] // fails, as above
+// #[test_case("tests/cases/enums/enum_init_nested_single_tuple.cairo")] // fails, as above
+#[test_case("tests/cases/enums/enum_init_single_scalar.cairo")]
+#[test_case("tests/cases/enums/enum_init_single_struct.cairo")]
+#[test_case("tests/cases/enums/enum_init_single_tuple.cairo")]
 #[test_case("tests/cases/enums/enum_init.cairo")]
 #[test_case("tests/cases/enums/single_value.cairo")]
 #[test_case("tests/cases/enums/enum_match.cairo")]

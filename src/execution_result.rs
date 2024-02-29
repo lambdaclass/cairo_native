@@ -91,7 +91,7 @@ impl ContractExecutionResult {
                             .collect();
 
                         let str_error =
-                            String::from_utf8(felt_vec.get(0).unwrap().to_bytes_be().to_vec())
+                            String::from_utf8(felt_vec.first().unwrap().to_bytes_be().to_vec())
                                 .unwrap()
                                 .trim_start_matches('\0')
                                 .to_owned();
