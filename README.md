@@ -129,7 +129,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `replace_class_syscall` (StarkNet)
 1. `revoke_ap_tracking`
 1. `send_message_to_l1_syscall` (StarkNet)
-1. `snapshot_take` (6)
+1. `snapshot_take` (1)
 1. `span_from_tuple`
 1. `storage_address_from_base_and_offset` (StarkNet)
 1. `storage_address_from_base` (StarkNet)
@@ -208,7 +208,7 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-   
+
 1. `const_as_box`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
@@ -225,7 +225,7 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
 Testing libfuncs:
-   
+
 1. `pop_log` (StarkNet, testing)
 1. `redeposit_gas`
 1. `set_account_contract_address` (StarkNet, testing)
@@ -243,11 +243,12 @@ Testing libfuncs:
 </details>
 
 Footnotes on the libfuncs list:
-2. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
-3. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
-4. Not supported by the Cairo to Sierra compiler.
-5. Implemented with a dummy. It doesn't do anything yet.
-6. It is implemented but we're not handling potential issues like lifetimes yet.
+
+1. It is implemented but we're not handling potential issues like lifetimes yet.
+1. It is implemented but we're still debating whether it should be a Rust-like `Box<T>` or if it's fine treating it like another variable.
+1. It is implemented but side-effects are not yet handled (ex. array cloning/dropping).
+1. Not supported by the Cairo to Sierra compiler.
+1. Implemented with a dummy. It doesn't do anything yet.
 
 ## Getting Started
 
@@ -323,6 +324,7 @@ export TABLEGEN_170_PREFIX=/usr/lib/llvm-17
 ```
 
 Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
+
 ```bash
 make deps
 ```
@@ -353,6 +355,7 @@ make build
 ```
 
 Or with your native CPU Architecture for even more performance (usually):
+
 ```bash
 make build-native
 ```
@@ -402,6 +405,7 @@ make runtime
 ## Command Line Interface
 
 `cairo-native-dump`:
+
 ```
 Usage: cairo-native-dump [OPTIONS] <INPUT>
 
@@ -699,6 +703,7 @@ For more examples, check out the `examples/` directory.
 - LLVM 16 with MLIR
 
 You need to setup some environment variables:
+
 ```bash
 $MLIR_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
 $LLVM_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
@@ -716,6 +721,7 @@ The `cairo-run` command should be available in the `$PATH` and ideally compiled 
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
 ## From MLIR to native binary
+
 ```bash
 # to mlir with llvm dialect
 sierra2mlir program.sierra -o program.mlir
@@ -749,6 +755,7 @@ sierra2mlir program.sierra -o program.mlir
 ```
 
 # cairo-native-test cli tool
+
 This tool mimics the `cairo-test` [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) and is identical to it, the only feature it doesn't have is the profiler.
 
 ```bash
