@@ -75,7 +75,7 @@ pub fn build_print<'ctx>(
             context,
             entry.argument(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+            llvm::r#type::opaque_pointer(context),
             location,
         ))
         .result(0)?

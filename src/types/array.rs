@@ -16,7 +16,7 @@
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
 //! [^2]: Both numbers are number of items, **not bytes**.
 
-use super::WithSelf;
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::{libfuncs, types::Result},
     libfuncs::LibfuncHelper,
@@ -47,8 +47,8 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
@@ -63,9 +63,7 @@ pub fn build<'ctx>(
             },
         );
 
-    let elem_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
-
-    let ptr_ty = llvm::r#type::pointer(elem_ty, 0);
+    let ptr_ty = llvm::r#type::opaque_pointer(context);
     let len_ty = IntegerType::new(context, 32).into();
 
     Ok(llvm::r#type::r#struct(
@@ -94,8 +92,8 @@ fn snapshot_take<'ctx, 'this>(
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let (elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
 
     let src_ptr = entry
@@ -103,7 +101,7 @@ fn snapshot_take<'ctx, 'this>(
             context,
             src_value,
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::pointer(elem_ty, 0),
+            llvm::r#type::opaque_pointer(context),
             location,
         ))
         .result(0)?
@@ -159,20 +157,11 @@ fn snapshot_take<'ctx, 'this>(
             .result(0)?
             .into();
 
-        let dst_ptr = entry
+        entry
             .append_operation(ReallocBindingsMeta::realloc(
                 context,
                 dst_ptr,
                 dst_len_bytes,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        entry
-            .append_operation(llvm::bitcast(
-                dst_ptr,
-                llvm::r#type::pointer(elem_ty, 0),
                 location,
             ))
             .result(0)?
@@ -206,6 +195,14 @@ fn snapshot_take<'ctx, 'this>(
         .result(0)?
         .into();
 
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
     let dst_value = entry
         .append_operation(llvm::insert_value(
             context,
@@ -221,7 +218,7 @@ fn snapshot_take<'ctx, 'this>(
             context,
             dst_value,
             DenseI64ArrayAttribute::new(context, &[1]),
-            array_len,
+            k0,
             location,
         ))
         .result(0)?

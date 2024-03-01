@@ -63,7 +63,7 @@ impl RuntimeBindingsMeta {
                         context,
                         &[
                             IntegerType::new(context, 32).into(),
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::opaque_pointer(context),
                             IntegerType::new(context, 32).into(),
                         ],
                         &[IntegerType::new(context, 32).into()],
