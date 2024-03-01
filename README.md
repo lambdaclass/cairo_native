@@ -208,6 +208,7 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
+   
 1. `const_as_box`
 1. `secp256k1_add_syscall` (StarkNet)
 1. `secp256k1_get_point_from_x_syscall` (StarkNet)
@@ -224,6 +225,7 @@ This is a list of the current progress implementing each **libfunc**.
 <details>
 <summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
 Testing libfuncs:
+   
 1. `pop_log` (StarkNet, testing)
 1. `redeposit_gas`
 1. `set_account_contract_address` (StarkNet, testing)
