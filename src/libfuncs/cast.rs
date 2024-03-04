@@ -5,7 +5,7 @@ use std::ops::Shr;
 use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    metadata::{debug_utils::DebugUtils, prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -22,7 +22,10 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, ValueLike},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Type,
+        ValueLike,
+    },
     Context,
 };
 use num_traits::Signed;
@@ -85,13 +88,10 @@ pub fn build_downcast<'ctx, 'this>(
         || dst_type
             .is_integer_signed()
             .expect("casts always happen between numerical types");
-    let is_felt = match src_type {
-        CoreTypeConcrete::Felt252(_) => true,
-        _ => false,
-    };
+    let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
     dbg!(is_signed);
 
-    let mut src_value = entry.argument(1)?.into();
+    let src_value: melior::ir::Value = entry.argument(1)?.into();
 
     let mut block = entry;
 
@@ -107,54 +107,56 @@ pub fn build_downcast<'ctx, 'this>(
 
         (k0, src_value)
     } else {
-        let result = if src_width > dst_width {
-            // fix felt cast > half prime = negative
-            if is_felt {
-                let attr_halfprime_i252 = Attribute::parse(
+        // make unsigned felt into signed felt
+        // felt > half prime = negative
+        let src_value = if is_felt {
+            let attr_halfprime_i252 = Attribute::parse(
+                context,
+                &format!(
+                    "{} : {}",
+                    metadata
+                        .get::<PrimeModuloMeta<Felt>>()
+                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .prime()
+                        .shr(1),
+                    src_ty
+                ),
+            )
+            .ok_or(ErrorImpl::ParseAttributeError)?;
+            let half_prime: melior::ir::Value = block
+                .append_operation(arith::constant(context, attr_halfprime_i252, location))
+                .result(0)?
+                .into();
+
+            let is_felt_neg = block
+                .append_operation(arith::cmpi(
                     context,
-                    &format!(
-                        "{} : {}",
-                        metadata
-                            .get::<PrimeModuloMeta<Felt>>()
-                            .ok_or(ErrorImpl::MissingMetadata)?
-                            .prime()
-                            .shr(1),
-                        src_ty
-                    ),
-                )
-                .ok_or(ErrorImpl::ParseAttributeError)?;
-                let half_prime = block
-                    .append_operation(arith::constant(context, attr_halfprime_i252, location))
-                    .result(0)?
-                    .into();
-
-                let is_felt_neg = block
-                    .append_operation(arith::cmpi(
-                        context,
-                        CmpiPredicate::Ugt,
-                        src_value,
-                        half_prime,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-
-                let is_neg_block = helper.append_block(Block::new(&[]));
-                let is_not_neg_block = helper.append_block(Block::new(&[]));
-                let final_block = helper.append_block(Block::new(&[(dst_ty, location)]));
-
-                block.append_operation(cf::cond_br(
-                    context,
-                    is_felt_neg,
-                    is_neg_block,
-                    is_not_neg_block,
-                    &[],
-                    &[],
+                    CmpiPredicate::Ugt,
+                    src_value,
+                    half_prime,
                     location,
-                ));
+                ))
+                .result(0)?
+                .into();
 
-                let prime = block
+            let is_neg_block = helper.append_block(Block::new(&[]));
+            let is_not_neg_block = helper.append_block(Block::new(&[]));
+            let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
+
+            block.append_operation(cf::cond_br(
+                context,
+                is_felt_neg,
+                is_neg_block,
+                is_not_neg_block,
+                &[],
+                &[],
+                location,
+            ));
+
+            {
+                let prime = is_neg_block
                     .append_operation(arith::constant(
+                        // let prime_ty: Type = IntegerType::new(context, 256).into();
                         context,
                         Attribute::parse(
                             context,
@@ -173,18 +175,14 @@ pub fn build_downcast<'ctx, 'this>(
                     .result(0)?
                     .into();
 
-                src_value = is_neg_block
+                let mut src_value_is_neg: melior::ir::Value = is_neg_block
                     .append_operation(arith::subi(prime, src_value, location))
-                    .result(0)?
-                    .into();
-                src_value = is_neg_block
-                    .append_operation(arith::trunci(src_value, dst_ty, location))
                     .result(0)?
                     .into();
                 let k1 = is_neg_block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(1, src_value.r#type()).into(),
+                        IntegerAttribute::new(1, src_ty).into(),
                         location,
                     ))
                     .result(0)?
@@ -192,29 +190,38 @@ pub fn build_downcast<'ctx, 'this>(
                 let kneg1 = is_neg_block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(-1, src_value.r#type()).into(),
+                        Attribute::parse(context, &format!("-1 : {}", src_ty))
+                            .ok_or(ErrorImpl::ParseAttributeError)?,
                         location,
                     ))
                     .result(0)?
                     .into();
-                src_value = is_neg_block
-                    .append_operation(arith::addi(src_value, k1, location))
+                src_value_is_neg = is_neg_block
+                    .append_operation(arith::subi(src_value_is_neg, k1, location))
                     .result(0)?
                     .into();
-                src_value = is_neg_block
-                    .append_operation(arith::xori(src_value, kneg1, location))
+                src_value_is_neg = is_neg_block
+                    .append_operation(arith::xori(src_value_is_neg, kneg1, location))
                     .result(0)?
                     .into();
 
-                is_neg_block.append_operation(cf::br(final_block, &[src_value], location))
-
-                block = final_block;
-            } else {
-                block
-                    .append_operation(arith::trunci(src_value, dst_ty, location))
-                    .result(0)?
-                    .into()
+                is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
             }
+
+            is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
+
+            block = final_block;
+
+            block.argument(0)?.into()
+        } else {
+            src_value
+        };
+
+        let result = if src_width > dst_width {
+            block
+                .append_operation(arith::trunci(src_value, dst_ty, location))
+                .result(0)?
+                .into()
         } else if is_signed {
             block
                 .append_operation(arith::extsi(src_value, dst_ty, location))
@@ -226,6 +233,16 @@ pub fn build_downcast<'ctx, 'this>(
                 .result(0)?
                 .into()
         };
+
+        {
+            #[cfg(feature = "with-debug-utils")]
+            {
+                metadata
+                    .get_mut::<DebugUtils>()
+                    .unwrap()
+                    .print_felt252(context, helper, block, src_value, location)?;
+            }
+        }
 
         let (compare_value, compare_ty) = if src_width > dst_width {
             (src_value, src_ty)
@@ -243,8 +260,7 @@ pub fn build_downcast<'ctx, 'this>(
                         info.to_range
                             .intersection(&info.from_range)
                             .expect("should always intersect")
-                            .upper
-                            - 1,
+                            .upper,
                         compare_ty
                     ),
                 )
@@ -264,8 +280,7 @@ pub fn build_downcast<'ctx, 'this>(
                         info.to_range
                             .intersection(&info.from_range)
                             .expect("should always intersect")
-                            .lower
-                            - 1,
+                            .lower,
                         compare_ty
                     ),
                 )
@@ -309,6 +324,17 @@ pub fn build_downcast<'ctx, 'this>(
             .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
             .result(0)?
             .into();
+
+        #[cfg(feature = "with-debug-utils")]
+        {
+            metadata.get_mut::<DebugUtils>().unwrap().print_i1(
+                context,
+                helper,
+                block,
+                is_in_range,
+                location,
+            )?;
+        }
 
         (is_in_range, result)
     };
