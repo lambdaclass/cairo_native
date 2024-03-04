@@ -6,7 +6,7 @@ use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
     metadata::{debug_utils::DebugUtils, prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::TypeBuilder,
+    types::{felt252::PRIME, TypeBuilder},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -179,14 +179,7 @@ pub fn build_downcast<'ctx, 'this>(
                     .append_operation(arith::subi(prime, src_value, location))
                     .result(0)?
                     .into();
-                let k1 = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(1, src_ty).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+
                 let kneg1 = is_neg_block
                     .append_operation(arith::constant(
                         context,
@@ -196,12 +189,9 @@ pub fn build_downcast<'ctx, 'this>(
                     ))
                     .result(0)?
                     .into();
+
                 src_value_is_neg = is_neg_block
-                    .append_operation(arith::subi(src_value_is_neg, k1, location))
-                    .result(0)?
-                    .into();
-                src_value_is_neg = is_neg_block
-                    .append_operation(arith::xori(src_value_is_neg, kneg1, location))
+                    .append_operation(arith::muli(src_value_is_neg, kneg1, location))
                     .result(0)?
                     .into();
 
