@@ -6,14 +6,14 @@ use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
     metadata::{debug_utils::DebugUtils, prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::{felt252::PRIME, TypeBuilder},
+    types::TypeBuilder,
 };
 use cairo_lang_sierra::{
     extensions::{
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, ConcreteType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -22,13 +22,9 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Type,
-        ValueLike,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
-use num_traits::Signed;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -347,11 +343,25 @@ pub fn build_upcast<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let dst_ty = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
+    let src_type = dst_ty.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+    let dst_type = dst_ty.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let src_width = src_ty
         .integer_width()
@@ -368,21 +378,128 @@ pub fn build_upcast<'ctx, 'this>(
             .is_integer_signed()
             .expect("casts always happen between numerical types");
 
+    let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+
+    dbg!("upcast");
+    dbg!(src_width);
+    dbg!(dst_width);
+    dbg!(is_signed);
+    dbg!(is_felt);
+
+    let block = entry;
+
     let result = if src_width == dst_width {
-        entry.argument(0)?.into()
+        block.argument(0)?.into()
     } else if is_signed {
-        entry
-            .append_operation(arith::extsi(
-                entry.argument(0)?.into(),
-                IntegerType::new(context, dst_width.try_into()?).into(),
+        if is_felt {
+            let result = block
+                .append_operation(arith::extsi(
+                    block.argument(0)?.into(),
+                    IntegerType::new(context, dst_width.try_into()?).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            let kzero = block
+                .append_operation(arith::constant(
+                    context,
+                    Attribute::parse(context, &format!("0 : {}", src_type))
+                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            let is_neg = block
+                .append_operation(arith::cmpi(
+                    context,
+                    CmpiPredicate::Slt,
+                    result,
+                    kzero,
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            let is_neg_block = helper.append_block(Block::new(&[]));
+            let is_not_neg_block = helper.append_block(Block::new(&[]));
+            let final_block = helper.append_block(Block::new(&[(dst_type, location)]));
+
+            block.append_operation(cf::cond_br(
+                context,
+                is_neg,
+                is_neg_block,
+                is_not_neg_block,
+                &[],
+                &[],
                 location,
-            ))
-            .result(0)?
-            .into()
+            ));
+
+            {
+                let result = is_not_neg_block
+                    .append_operation(arith::extui(
+                        entry.argument(0)?.into(),
+                        IntegerType::new(context, dst_width.try_into()?).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+                is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
+            }
+
+            {
+                let mut result = is_neg_block
+                    .append_operation(arith::extsi(
+                        entry.argument(0)?.into(),
+                        IntegerType::new(context, dst_width.try_into()?).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+                let prime = is_neg_block
+                    .append_operation(arith::constant(
+                        context,
+                        Attribute::parse(
+                            context,
+                            &format!(
+                                "{} : {}",
+                                metadata
+                                    .get::<PrimeModuloMeta<Felt>>()
+                                    .ok_or(ErrorImpl::MissingMetadata)?
+                                    .prime(),
+                                dst_type
+                            ),
+                        )
+                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+                result = is_neg_block
+                    .append_operation(arith::addi(result, prime, location))
+                    .result(0)?
+                    .into();
+                is_neg_block.append_operation(cf::br(final_block, &[result], location));
+            }
+
+            let result = final_block.argument(0)?.into();
+            final_block.append_operation(helper.br(0, &[result], location));
+            return Ok(());
+        } else {
+            block
+                .append_operation(arith::extsi(
+                    entry.argument(0)?.into(),
+                    IntegerType::new(context, dst_width.try_into()?).into(),
+                    location,
+                ))
+                .result(0)?
+                .into()
+        }
     } else {
-        entry
+        block
             .append_operation(arith::extui(
-                entry.argument(0)?.into(),
+                block.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
                 location,
             ))
@@ -390,7 +507,7 @@ pub fn build_upcast<'ctx, 'this>(
             .into()
     };
 
-    entry.append_operation(helper.br(0, &[result], location));
+    block.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
