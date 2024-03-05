@@ -5,7 +5,7 @@ use std::ops::Shr;
 use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
-    metadata::{debug_utils::DebugUtils, prime_modulo::PrimeModuloMeta, MetadataStorage},
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -220,16 +220,6 @@ pub fn build_downcast<'ctx, 'this>(
                 .into()
         };
 
-        {
-            #[cfg(feature = "with-debug-utils")]
-            {
-                metadata
-                    .get_mut::<DebugUtils>()
-                    .unwrap()
-                    .print_felt252(context, helper, block, src_value, location)?;
-            }
-        }
-
         let (compare_value, compare_ty) = if src_width > dst_width {
             (src_value, src_ty)
         } else {
@@ -310,17 +300,6 @@ pub fn build_downcast<'ctx, 'this>(
             .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
             .result(0)?
             .into();
-
-        #[cfg(feature = "with-debug-utils")]
-        {
-            metadata.get_mut::<DebugUtils>().unwrap().print_i1(
-                context,
-                helper,
-                block,
-                is_in_range,
-                location,
-            )?;
-        }
 
         (is_in_range, result)
     };
