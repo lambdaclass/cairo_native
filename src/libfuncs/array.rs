@@ -28,11 +28,9 @@ use melior::{
     ir::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
         },
-        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Value, ValueLike,
+        Block, Location, Value, ValueLike,
     },
     Context,
 };
@@ -268,7 +266,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = handle_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
                 location,
             ))
             .result(0)?
@@ -294,7 +292,7 @@ pub fn build_append<'ctx, 'this>(
             ))
             .result(0)?
             .into();
-        cf::cond_br(
+        handle_block.append_operation(cf::cond_br(
             context,
             has_head_space,
             memmove_block,
@@ -302,7 +300,7 @@ pub fn build_append<'ctx, 'this>(
             &[],
             &[],
             location,
-        );
+        ));
     }
 
     {
@@ -356,15 +354,6 @@ pub fn build_append<'ctx, 'this>(
             .append_operation(arith::subi(array_end, array_start, location))
             .result(0)?
             .into();
-        let array_len = memmove_block
-            .append_operation(arith::extui(
-                array_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-
         let memmove_len = memmove_block
             .append_operation(arith::extui(
                 array_len,
@@ -373,6 +362,7 @@ pub fn build_append<'ctx, 'this>(
             ))
             .result(0)?
             .into();
+
         let memmove_len = memmove_block
             .append_operation(arith::muli(memmove_len, elem_stride, location))
             .result(0)?
@@ -393,7 +383,7 @@ pub fn build_append<'ctx, 'this>(
             location,
         ));
 
-        let k0 = handle_block
+        let k0 = memmove_block
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(0, len_ty).into(),
@@ -1553,23 +1543,40 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // set len
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, len_ty).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
     let array_container = entry
         .append_operation(llvm::insert_value(
             context,
             array_container,
             DenseI64ArrayAttribute::new(context, &[1]),
-            array_len_value,
+            k0,
             location,
         ))
         .result(0)?
         .into();
-    // set capacity
     let array_container = entry
         .append_operation(llvm::insert_value(
             context,
             array_container,
             DenseI64ArrayAttribute::new(context, &[2]),
+            array_len_value,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let array_container = entry
+        .append_operation(llvm::insert_value(
+            context,
+            array_container,
+            DenseI64ArrayAttribute::new(context, &[3]),
             array_len_value,
             location,
         ))
