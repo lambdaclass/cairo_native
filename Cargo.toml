@@ -25,7 +25,15 @@ required-features = ["build-cli"]
 
 [features]
 default = ["build-cli", "with-runtime"]
-build-cli = ["dep:clap", "dep:tracing-subscriber", "dep:anyhow", "dep:cairo-lang-test-plugin", "dep:cairo-lang-runner", "dep:colored", "dep:cairo-felt"]
+build-cli = [
+  "dep:clap",
+  "dep:tracing-subscriber",
+  "dep:anyhow",
+  "dep:cairo-lang-test-plugin",
+  "dep:cairo-lang-runner",
+  "dep:colored",
+  "dep:cairo-felt",
+]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
@@ -72,8 +80,8 @@ tracing-subscriber = { version = "0.3", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0.80", optional = true }
-cairo-lang-test-plugin = { version = "2.6.0-rc.1", optional = true}
-cairo-lang-runner = { version = "2.6.0-rc.1", optional = true}
+cairo-lang-test-plugin = { version = "2.6.0-rc.1", optional = true }
+cairo-lang-runner = { version = "2.6.0-rc.1", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 cairo-felt = { version = "0.9.1", optional = true }
