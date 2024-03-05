@@ -1,5 +1,9 @@
 use cairo_lang_compiler::db::RootDatabase;
-use cairo_lang_defs::{db::DefsGroup, diagnostic_utils::StableLocation, ids::LanguageElementId};
+use cairo_lang_defs::{
+    db::DefsGroup,
+    diagnostic_utils::StableLocation,
+    ids::{LanguageElementId, NamedLanguageElementId},
+};
 use cairo_lang_diagnostics::DiagnosticAdded;
 use cairo_lang_filesystem::db::FilesGroup;
 use cairo_lang_sierra::program::LibfuncDeclaration;

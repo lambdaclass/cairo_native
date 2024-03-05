@@ -728,6 +728,7 @@ impl JitValue {
 
                 CoreTypeConcrete::Const(_) => todo!(),
                 CoreTypeConcrete::BoundedInt(_) => todo!(),
+                CoreTypeConcrete::Coupon(_) => todo!(),
             }
         }
     }

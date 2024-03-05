@@ -213,6 +213,8 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
+            Self::Coupon(_) => todo!(),
+            Self::CouponCall(_) => todo!(),
         }
     }
 

@@ -394,6 +394,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -478,6 +479,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -542,6 +544,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -640,6 +643,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         })
     }
 
@@ -710,6 +714,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 

@@ -144,7 +144,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
@@ -184,20 +184,38 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
     (module_name.to_string(), program, runner)
 }
 
-/// Runs the program using cairo-native JIT.
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[JitValue],
     gas: Option<u128>,
     syscall_handler: Option<&SyscallHandlerMeta>,
+) -> ExecutionResult {
+    run_native_program_with_optlevel(
+        program,
+        entry_point,
+        args,
+        gas,
+        syscall_handler,
+        OptLevel::Default,
+    )
+}
+
+/// Runs the program using cairo-native JIT.
+pub fn run_native_program_with_optlevel(
+    program: &(String, Program, SierraCasmRunner),
+    entry_point: &str,
+    args: &[JitValue],
+    gas: Option<u128>,
+    syscall_handler: Option<&SyscallHandlerMeta>,
+    optlevel: OptLevel,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -254,7 +272,7 @@ pub fn run_native_program(
 
     let native_module = NativeModule::new(module, registry, metadata);
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+    let executor = JitNativeExecutor::from_native_module(native_module, optlevel);
     executor
         .invoke_dynamic(entry_point_id, args, gas, syscall_handler)
         .unwrap()
@@ -282,7 +300,14 @@ pub fn compare_inputless_program(program_path: &str) {
     let program = &program;
 
     let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128), None);
+    let result_native = run_native_program_with_optlevel(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        None,
+        OptLevel::None,
+    );
 
     compare_outputs(
         &program.1,
@@ -290,7 +315,58 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_vm,
         &result_native,
     )
-    .expect("compare error");
+    .expect("compare error with optlevel none");
+
+    let result_native = run_native_program_with_optlevel(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        None,
+        OptLevel::Less,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error with optlevel Less");
+
+    let result_native = run_native_program_with_optlevel(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        None,
+        OptLevel::Default,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error with optlevel Default");
+
+    let result_native = run_native_program_with_optlevel(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        None,
+        OptLevel::Aggressive,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error with optlevel Aggressive");
 }
 
 /// Runs the program using cairo-native JIT.
@@ -809,6 +885,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
 
         Ok(())
