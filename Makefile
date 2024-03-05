@@ -73,7 +73,7 @@ doc: check-llvm
 doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
-bench: build needs-cairo2
+bench: build needs-cairo2 runtime
 	./scripts/bench-hyperfine.sh
 
 bench-ci: check-llvm needs-cairo2 runtime
