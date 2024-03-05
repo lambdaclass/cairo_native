@@ -72,7 +72,7 @@ fn find_statement_locations(
 fn map_sierra_to_pre_sierra_statements<'a>(
     lhs_entry_point: StatementIdx,
     lhs_statements: &[Statement],
-    rhs_statements: &'a [StatementWithLocation],
+    rhs_statements: &'a Vec<StatementWithLocation>,
 ) -> HashMap<StatementIdx, &'a GenStatement<LabelId>> {
     let mut mappings = HashMap::new();
 
