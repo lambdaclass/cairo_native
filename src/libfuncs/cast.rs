@@ -78,6 +78,13 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
+
+    let location = Location::name(
+        context,
+        &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
+        location,
+    );
+
     let is_signed = src_type
         .is_integer_signed()
         .expect("casts always happen between numerical types")
@@ -327,7 +334,7 @@ pub fn build_upcast<'ctx, 'this>(
 ) -> Result<()> {
     let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let dst_ty = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let src_type = dst_ty.build(
+    let src_type = src_ty.build(
         context,
         helper,
         registry,
@@ -341,6 +348,12 @@ pub fn build_upcast<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
+
+    let location = Location::name(
+        context,
+        &format!("upcast<{:?}, {:?}>", src_type, dst_type),
+        location,
+    );
 
     let src_width = src_ty
         .integer_width()
@@ -362,6 +375,8 @@ pub fn build_upcast<'ctx, 'this>(
     dbg!("upcast");
     dbg!(src_width);
     dbg!(dst_width);
+    dbg!(src_type);
+    dbg!(dst_type);
     dbg!(is_signed);
     dbg!(is_felt);
 
@@ -383,7 +398,7 @@ pub fn build_upcast<'ctx, 'this>(
             let kzero = block
                 .append_operation(arith::constant(
                     context,
-                    Attribute::parse(context, &format!("0 : {}", src_type))
+                    Attribute::parse(context, &format!("0 : {}", dst_type))
                         .ok_or(ErrorImpl::ParseAttributeError)?,
                     location,
                 ))

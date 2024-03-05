@@ -182,19 +182,32 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
     let mut felts: Vec<Felt> = Vec::new();
 
     match &result.return_value {
-        JitValue::Enum { tag, value, .. } => {
-            is_success = *tag == 0;
+        outer_value @ JitValue::Enum {
+            tag,
+            value,
+            debug_name,
+        } => {
+            let debug_name = debug_name.as_ref().expect("missing debug name");
 
-            if !is_success {
-                match &**value {
-                    JitValue::Struct { fields, .. } => {
-                        for field in fields {
-                            let felt = jitvalue_to_felt(field);
-                            felts.extend(felt);
+            if debug_name.starts_with("core::panics::PanicResult::") {
+                is_success = *tag == 0;
+
+                if !is_success {
+                    match &**value {
+                        JitValue::Struct { fields, .. } => {
+                            for field in fields {
+                                let felt = jitvalue_to_felt(field);
+                                felts.extend(felt);
+                            }
                         }
+                        _ => bail!("unsuported return value in cairo-native"),
                     }
-                    _ => bail!("unsuported return value in cairo-native"),
+                } else {
+                    felts.extend(jitvalue_to_felt(value));
                 }
+            } else {
+                is_success = true;
+                felts.extend(jitvalue_to_felt(outer_value));
             }
         }
         x => {
@@ -233,7 +246,21 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
             }
             felts
         }
-        JitValue::Enum { .. } => todo!(),
+        JitValue::Enum {
+            value: _,
+            tag,
+            debug_name,
+        } => {
+            if let Some(debug_name) = debug_name {
+                if debug_name == "core::bool" {
+                    vec![(*tag == 1).into()]
+                } else {
+                    todo!()
+                }
+            } else {
+                todo!()
+            }
+        }
         JitValue::Felt252Dict { .. } => todo!(),
         JitValue::Uint8(x) => vec![(*x).into()],
         JitValue::Uint16(x) => vec![(*x).into()],

@@ -30,7 +30,9 @@ struct Args {
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+    /// The output path for the mlir, if none is passed, out.mlir will be the default.
     output_mlir: Option<PathBuf>,
+    /// If a path is passed, a dynamic library will be compiled and saved at that path.
     output_library: Option<PathBuf>,
 }
 
@@ -69,16 +71,6 @@ fn main() -> anyhow::Result<()> {
     let output_mlir = args
         .output_mlir
         .unwrap_or_else(|| PathBuf::from("out.mlir"));
-    let output_library = args.output_library.unwrap_or_else(|| {
-        let ext = if cfg!(target_os = "macos") {
-            "dylib"
-        } else if cfg!(target_os = "windows") {
-            "dll"
-        } else {
-            "so"
-        };
-        PathBuf::from(format!("out.{}", ext))
-    });
 
     std::fs::write(
         output_mlir,
@@ -86,10 +78,12 @@ fn main() -> anyhow::Result<()> {
     )
     .context("Failed to write output.")?;
 
-    let object_data = module_to_object(native_module.module(), opt_level)
-        .context("Failed to convert module to object.")?;
-    object_to_shared_lib(&object_data, &output_library)
-        .context("Failed to write shared library.")?;
+    if let Some(output_library) = &args.output_library {
+        let object_data = module_to_object(native_module.module(), opt_level)
+            .context("Failed to convert module to object.")?;
+        object_to_shared_lib(&object_data, output_library)
+            .context("Failed to write shared library.")?;
+    }
 
     Ok(())
 }
