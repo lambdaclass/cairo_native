@@ -103,7 +103,6 @@ enum DebugBinding {
     BreakpointMarker,
     PrintI1,
     PrintI8,
-    PrintSI64,
     PrintI128,
     PrintPointer,
     PrintFelt252,
@@ -379,44 +378,6 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i64_signed<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
-        if self.active_map.insert(DebugBinding::PrintSI64) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i64_signed_impl"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 64).into()], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
-
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i64_signed_impl"),
-            &[value],
-            &[],
-            location,
-        ));
-
-        Ok(())
-    }
-
     pub fn print_i128<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -514,15 +475,6 @@ impl DebugUtils {
             }
         }
 
-        if self.active_map.contains(&DebugBinding::PrintSI64) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i64_signed_impl",
-                    print_i64_signed_impl as *const fn(u8) -> () as *mut (),
-                );
-            }
-        }
-
         if self.active_map.contains(&DebugBinding::PrintI128) {
             unsafe {
                 engine.register_symbol(
@@ -561,10 +513,6 @@ extern "C" fn print_i1_impl(value: bool) {
 }
 
 extern "C" fn print_i8_impl(value: u8) {
-    println!("[DEBUG] {value}");
-}
-
-extern "C" fn print_i64_signed_impl(value: i64) {
     println!("[DEBUG] {value}");
 }
 
