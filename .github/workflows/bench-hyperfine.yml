@@ -19,7 +19,6 @@ jobs:
     name: Hyperfine
     runs-on: ubuntu-latest
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/release
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
