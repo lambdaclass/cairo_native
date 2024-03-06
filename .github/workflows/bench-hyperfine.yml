@@ -65,7 +65,7 @@ jobs:
       - name: Build project
         run: make build
       - name: Build runtime subproject
-        run: cargo build --release --package=cairo-native-runtime
+        run: make runtime-ci
       - name: Run benchmarks
         run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
       - name: Create markdown file
