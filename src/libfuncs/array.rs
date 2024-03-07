@@ -740,7 +740,15 @@ pub fn build_get<'ctx, 'this>(
         let index = {
             let array_start = valid_block
                 .append_operation(arith::extui(
-                    value,
+                    array_start,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            let index = valid_block
+                .append_operation(arith::extui(
+                    index,
                     IntegerType::new(context, 64).into(),
                     location,
                 ))
@@ -755,7 +763,7 @@ pub fn build_get<'ctx, 'this>(
         let elem_stride = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 32).into())
+                IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into())
                     .into(),
                 location,
             ))
