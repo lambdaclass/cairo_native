@@ -92,7 +92,6 @@ run_bench() {
 
     CAIRO_NATIVE_RUNTIME_LIBDIR="$ROOT_DIR/target/release" hyperfine \
         --warmup 3 \
-        --show-output \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --export-json "$OUTPUT_DIR/$base_name.json" \
         -n "Cairo-vm (Rust, Cairo 1)" "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
