@@ -159,7 +159,6 @@ pub fn build_downcast<'ctx, 'this>(
             {
                 let prime = is_neg_block
                     .append_operation(arith::constant(
-                        // let prime_ty: Type = IntegerType::new(context, 256).into();
                         context,
                         Attribute::parse(
                             context,
@@ -277,9 +276,9 @@ pub fn build_downcast<'ctx, 'this>(
             .append_operation(arith::cmpi(
                 context,
                 if is_signed {
-                    CmpiPredicate::Sle
+                    CmpiPredicate::Slt
                 } else {
-                    CmpiPredicate::Ule
+                    CmpiPredicate::Ult
                 },
                 compare_value,
                 max_value,
