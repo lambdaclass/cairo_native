@@ -53,13 +53,13 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 /// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
+    // // TODO: Fix integer layouts properly.
+    // if width == 248 || width == 252 || width == 256 {
+    //     #[cfg(target_arch = "x86_64")]
+    //     return Layout::from_size_align(32, 8).unwrap();
+    //     #[cfg(not(target_arch = "x86_64"))]
+    //     return Layout::from_size_align(32, 16).unwrap();
+    // }
 
     if width == 0 {
         Layout::new::<()>()
