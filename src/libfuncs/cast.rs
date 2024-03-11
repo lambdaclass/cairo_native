@@ -63,12 +63,12 @@ pub fn build_downcast<'ctx, 'this>(
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
 
-    let src_width = src_type
-        .integer_width()
-        .expect("casts always happen between numerical types");
-    let dst_width = dst_type
-        .integer_width()
-        .expect("casts always happen between numerical types");
+    let src_width = src_type.integer_width().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+    let dst_width = dst_type.integer_width().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
@@ -79,12 +79,11 @@ pub fn build_downcast<'ctx, 'this>(
         location,
     );
 
-    let is_signed = src_type
-        .is_integer_signed()
-        .expect("casts always happen between numerical types")
-        || dst_type
-            .is_integer_signed()
-            .expect("casts always happen between numerical types");
+    let is_signed = src_type.is_integer_signed().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })? || dst_type.is_integer_signed().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
     let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
 
     let src_value: melior::ir::Value = entry.argument(1)?.into();
@@ -234,12 +233,18 @@ pub fn build_downcast<'ctx, 'this>(
                         "{}: {}",
                         info.to_range
                             .intersection(&info.from_range)
-                            .expect("should always intersect")
+                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                                "range should always interesct".to_string()
+                            ))?
                             .upper,
                         compare_ty
                     ),
                 )
-                .expect("downcast: failed to make max value attribute"),
+                .ok_or_else(|| {
+                    ErrorImpl::CompileError(
+                        "downcast: failed to make max value attribute".to_string(),
+                    )
+                })?,
                 location,
             ))
             .result(0)?
@@ -254,12 +259,18 @@ pub fn build_downcast<'ctx, 'this>(
                         "{}: {}",
                         info.to_range
                             .intersection(&info.from_range)
-                            .expect("should always intersect")
+                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                                "range should always interesct".to_string()
+                            ))?
                             .lower,
                         compare_ty
                     ),
                 )
-                .expect("downcast: failed to make min value attribute"),
+                .ok_or_else(|| {
+                    ErrorImpl::CompileError(
+                        "downcast: failed to make min value attribute".to_string(),
+                    )
+                })?,
                 location,
             ))
             .result(0)?
@@ -347,20 +358,19 @@ pub fn build_upcast<'ctx, 'this>(
         location,
     );
 
-    let src_width = src_ty
-        .integer_width()
-        .expect("casts always happen between numerical types");
-    let dst_width = dst_ty
-        .integer_width()
-        .expect("casts always happen between numerical types");
+    let src_width = src_ty.integer_width().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+    let dst_width = dst_ty.integer_width().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
     assert!(src_width <= dst_width);
 
-    let is_signed = src_ty
-        .is_integer_signed()
-        .expect("casts always happen between numerical types")
-        || dst_ty
-            .is_integer_signed()
-            .expect("casts always happen between numerical types");
+    let is_signed = src_ty.is_integer_signed().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })? || dst_ty.is_integer_signed().ok_or_else(|| {
+        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
 
