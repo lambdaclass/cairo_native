@@ -189,33 +189,154 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
+<span class="kw">use </span>cairo_lang_compiler::{
+    db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
 };
-<span class="kw">use </span>cairo_lang_sierra::{ids::FunctionId, program::Program, ProgramParser};
+<span class="kw">use </span>cairo_lang_diagnostics::ToOption;
+<span class="kw">use </span>cairo_lang_runner::{short_string::as_cairo_short_string, RunResultValue};
+<span class="kw">use </span>cairo_lang_sierra::program::{Function, Program};
+<span class="kw">use </span>cairo_lang_sierra_generator::{
+    db::SierraGenGroup,
+    replace_ids::{DebugReplacer, SierraIdReplacer},
+};
+<span class="kw">use </span>cairo_lang_starknet::contract::get_contracts_info;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
+    execution_result::ExecutionResult,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    metadata::gas::{GasMetadata, MetadataComputationConfig},
     values::JitValue,
     OptLevel,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>std::{
-    borrow::Cow,
-    convert::Infallible,
-    ffi::OsStr,
-    fs::{<span class="self">self</span>, File},
-    io::{<span class="self">self</span>, Write},
-    path::{Path, PathBuf},
-};
+<span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-<span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-    <span class="comment">// Parse command-line arguments.
-    </span><span class="kw">let </span>args = CmdLine::parse();
+<span class="attr">#[derive(Clone, Debug, ValueEnum)]
+</span><span class="kw">enum </span>RunMode {
+    Aot,
+    Jit,
+}
 
+<span class="doccomment">/// Command line args parser.
+/// Exits with 1 if the compilation or run fails, otherwise 0.
+</span><span class="attr">#[derive(Parser, Debug)]
+#[clap(version, verbatim_doc_comment)]
+</span><span class="kw">struct </span>Args {
+    <span class="doccomment">/// The Cairo project path to compile and run its tests.
+    </span>path: PathBuf,
+    <span class="doccomment">/// Whether path is a single file.
+    </span><span class="attr">#[arg(short, long)]
+    </span>single_file: bool,
+    <span class="doccomment">/// Allows the compilation to succeed with warnings.
+    </span><span class="attr">#[arg(long)]
+    </span>allow_warnings: bool,
+    <span class="doccomment">/// In cases where gas is available, the amount of provided gas.
+    </span><span class="attr">#[arg(long)]
+    </span>available_gas: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="doccomment">/// Run with JIT or AOT (compiled).
+    </span><span class="attr">#[arg(long, value_enum, default_value_t = RunMode::Jit)]
+    </span>run_mode: RunMode,
+    <span class="doccomment">/// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
+    </span><span class="attr">#[arg(short = <span class="string">'O'</span>, long, default_value_t = <span class="number">0</span>)]
+    </span>opt_level: u8,
+}
+
+<span class="kw">fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
     <span class="comment">// Configure logging and error handling.
     </span>tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
@@ -223,40 +344,39 @@
             .finish(),
     )<span class="question-mark">?</span>;
 
-    <span class="comment">// Load the program.
-    </span><span class="kw">let </span>sierra_program = load_program(Path::new(<span class="kw-2">&amp;</span>args.input))<span class="question-mark">?</span>;
+    <span class="kw">let </span>args = Args::parse();
 
-    <span class="kw">let </span>entry_point = <span class="kw">match </span>sierra_program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name == args.entry_point.debug_name || x.id == args.entry_point)
-    {
-        <span class="prelude-val">Some</span>(x) =&gt; x,
-        <span class="prelude-val">None </span>=&gt; {
-            <span class="comment">// TODO: Use a proper error.
-            </span><span class="macro">eprintln!</span>(<span class="string">"Entry point `{}` not found in program."</span>, args.entry_point);
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        }
-    };
+    <span class="comment">// Check if args.path is a file or a directory.
+    </span>check_compiler_path(args.single_file, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>db = <span class="kw-2">&amp;mut </span>RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>main_crate_ids = setup_project(db, Path::new(<span class="kw-2">&amp;</span>args.path))<span class="question-mark">?</span>;
+
+    <span class="kw">let </span><span class="kw-2">mut </span>reporter = DiagnosticsReporter::stderr();
+    <span class="kw">if </span>args.allow_warnings {
+        reporter = reporter.allow_warnings();
+    }
+    <span class="kw">if </span>reporter.check(db) {
+        <span class="macro">anyhow::bail!</span>(<span class="string">"failed to compile: {}"</span>, args.path.display());
+    }
+
+    <span class="kw">let </span>(sierra_program, _statements_locations) = db
+        .get_sierra_program(main_crate_ids.clone())
+        .to_option()
+        .with_context(|| <span class="string">"Compilation failed without any diagnostics."</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>replacer = DebugReplacer { db };
+    <span class="kw">if </span>args.available_gas.is_none() &amp;&amp; sierra_program.requires_gas_counter() {
+        <span class="macro">anyhow::bail!</span>(<span class="string">"Program requires gas counter, please provide `--available-gas` argument."</span>);
+    }
+
+    <span class="kw">let </span>_contracts_info = get_contracts_info(db, main_crate_ids, <span class="kw-2">&amp;</span>replacer)<span class="question-mark">?</span>;
+    <span class="kw">let </span>sierra_program = replacer.apply(<span class="kw-2">&amp;</span>sierra_program);
 
     <span class="kw">let </span>native_context = NativeContext::new();
 
     <span class="comment">// Compile the sierra program into a MLIR module.
     </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-
-    <span class="comment">// Initialize arguments and return values.
-    </span><span class="kw">let </span>params_input = <span class="kw">match </span>args.inputs {
-        <span class="prelude-val">Some</span>(StdioOrPath::Stdio) =&gt; Cow::Owned(io::read_to_string(io::stdin())<span class="question-mark">?</span>),
-        <span class="prelude-val">Some</span>(StdioOrPath::Path(path)) =&gt; Cow::Owned(fs::read_to_string(path)<span class="question-mark">?</span>),
-        <span class="prelude-val">None </span>=&gt; Cow::Borrowed(<span class="string">""</span>),
-    };
-
-    <span class="kw">let </span>params = params_input
-        .split_whitespace()
-        .map(|x| {
-            JitValue::Felt252(Felt::from_dec_str(x).expect(<span class="string">"input parameter is not a valid Felt"</span>))
-        })
-        .collect_vec();
 
     <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
         <span class="number">0 </span>=&gt; OptLevel::None,
@@ -265,118 +385,180 @@
         <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
     };
 
-    <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.mode {
+    <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; AotNativeExecutor::from_native_module(native_module, opt_level).into(),
         RunMode::Jit =&gt; JitNativeExecutor::from_native_module(native_module, opt_level).into(),
     };
-    <span class="kw">let </span>result = native_executor
-        .invoke_dynamic(<span class="kw-2">&amp;</span>entry_point.id, <span class="kw-2">&amp;</span>params, <span class="prelude-val">Some</span>(u64::MAX.into()), <span class="prelude-val">None</span>)
-        .unwrap();
 
-    <span class="kw">match </span>args.outputs {
-        <span class="prelude-val">Some</span>(StdioOrPath::Stdio) =&gt; {
-            <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, result);
+    <span class="kw">let </span>gas_metadata =
+        GasMetadata::new(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(MetadataComputationConfig::default())).unwrap();
+
+    <span class="kw">let </span>func = find_function(<span class="kw-2">&amp;</span>sierra_program, <span class="string">"::main"</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>initial_gas = gas_metadata
+        .get_initial_available_gas(<span class="kw-2">&amp;</span>func.id, args.available_gas.map(|x| x.try_into().unwrap()))
+        .with_context(|| <span class="string">"not enough gas to run"</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>result = native_executor
+        .invoke_dynamic(<span class="kw-2">&amp;</span>func.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(initial_gas), <span class="prelude-val">None</span>)
+        .with_context(|| <span class="string">"Failed to run the function."</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>run_result = result_to_runresult(<span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>;
+
+    <span class="kw">match </span>run_result {
+        cairo_lang_runner::RunResultValue::Success(values) =&gt; {
+            <span class="macro">println!</span>(<span class="string">"Run completed successfully, returning {values:?}"</span>)
         }
-        <span class="prelude-val">Some</span>(StdioOrPath::Path(path)) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>file = File::create(path)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(file, <span class="string">"{:#?}"</span>, result)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">None </span>=&gt; {
-            <span class="kw">if </span>args.print_outputs {
-                <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, result);
+        cairo_lang_runner::RunResultValue::Panic(values) =&gt; {
+            <span class="macro">print!</span>(<span class="string">"Run panicked with ["</span>);
+            <span class="kw">for </span>value <span class="kw">in </span><span class="kw-2">&amp;</span>values {
+                <span class="kw">match </span>as_cairo_short_string(value) {
+                    <span class="prelude-val">Some</span>(as_string) =&gt; <span class="macro">print!</span>(<span class="string">"{value} ('{as_string}'), "</span>),
+                    <span class="prelude-val">None </span>=&gt; <span class="macro">print!</span>(<span class="string">"{value}, "</span>),
+                }
             }
+            <span class="macro">println!</span>(<span class="string">"]."</span>)
         }
+    }
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(gas) = result.remaining_gas {
+        <span class="macro">println!</span>(<span class="string">"Remaining gas: {gas}"</span>);
     }
 
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>load_program(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;Program, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span>path.extension().and_then(OsStr::to_str) {
-        <span class="prelude-val">Some</span>(<span class="string">"cairo"</span>) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
-            <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, path)<span class="question-mark">?</span>;
-            compile_prepared_db(
-                <span class="kw-2">&amp;mut </span>db,
-                main_crate_ids,
-                CompilerConfig {
-                    replace_ids: <span class="bool-val">true</span>,
-                    ..Default::default()
-                },
-            )<span class="question-mark">?
-        </span>}
-        <span class="prelude-val">Some</span>(<span class="string">"sierra"</span>) =&gt; {
-            <span class="kw">let </span>program_src = fs::read_to_string(path)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>program_parser = ProgramParser::new();
-            program_parser
-                .parse(<span class="kw-2">&amp;</span>program_src)
-                .map_err(|e| e.map_token(|t| t.to_string()))<span class="question-mark">?
-        </span>}
-        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-    })
-}
-
-<span class="attr">#[derive(Clone, Debug, Parser)]
-</span><span class="kw">struct </span>CmdLine {
-    <span class="attr">#[clap(value_parser = parse_input)]
-    </span>input: PathBuf,
-    <span class="attr">#[clap(value_parser = parse_entry_point)]
-    </span>entry_point: FunctionId,
-
-    <span class="attr">#[clap(short, long, default_value = <span class="string">"jit"</span>)]
-    </span>mode: RunMode,
-    <span class="doccomment">/// Note: This is bugged for any non-zero values. See https://github.com/lambdaclass/cairo_native/issues/404.
-    </span><span class="attr">#[clap(short = <span class="string">'O'</span>, long, default_value = <span class="string">"0"</span>)]
-    </span>opt_level: usize,
-
-    <span class="attr">#[clap(short = <span class="string">'i'</span>, long = <span class="string">"inputs"</span>, value_parser = parse_io)]
-    </span>inputs: <span class="prelude-ty">Option</span>&lt;StdioOrPath&gt;,
-    <span class="attr">#[clap(short = <span class="string">'o'</span>, long = <span class="string">"outputs"</span>, value_parser = parse_io)]
-    </span>outputs: <span class="prelude-ty">Option</span>&lt;StdioOrPath&gt;,
-    <span class="attr">#[clap(short = <span class="string">'p'</span>, long = <span class="string">"print-outputs"</span>)]
-    </span>print_outputs: bool,
-}
-
-<span class="attr">#[derive(Clone, Debug, ValueEnum)]
-</span><span class="kw">enum </span>RunMode {
-    Aot,
-    Jit,
-}
-
-<span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">enum </span>StdioOrPath {
-    Stdio,
-    Path(PathBuf),
-}
-
-<span class="kw">fn </span>parse_input(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;PathBuf, String&gt; {
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span>Path::new(input).extension().and_then(OsStr::to_str) {
-        <span class="prelude-val">Some</span>(<span class="string">"cairo" </span>| <span class="string">"sierra"</span>) =&gt; input.into(),
-        <span class="kw">_ </span>=&gt; {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(
-                <span class="string">"Input path expected to have either `cairo` or `sierra` as its extension."
-                    </span>.to_string(),
-            )
+<span class="kw">pub fn </span>check_compiler_path(single_file: bool, path: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;()&gt; {
+    <span class="kw">if </span>path.is_file() {
+        <span class="kw">if </span>!single_file {
+            <span class="macro">anyhow::bail!</span>(<span class="string">"The given path is a file, but --single-file was not supplied."</span>);
         }
-    })
-}
-
-<span class="kw">fn </span>parse_entry_point(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;FunctionId, Infallible&gt; {
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span>input.parse::&lt;u64&gt;() {
-        <span class="prelude-val">Ok</span>(id) =&gt; FunctionId::new(id),
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; FunctionId::from_string(input),
-    })
-}
-
-<span class="kw">fn </span>parse_io(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;StdioOrPath, String&gt; {
-    <span class="prelude-val">Ok</span>(<span class="kw">if </span>input == <span class="string">"-" </span>{
-        StdioOrPath::Stdio
+    } <span class="kw">else if </span>path.is_dir() {
+        <span class="kw">if </span>single_file {
+            <span class="macro">anyhow::bail!</span>(<span class="string">"The given path is a directory, but --single-file was supplied."</span>);
+        }
     } <span class="kw">else </span>{
-        StdioOrPath::Path(<span class="kw">match </span>Path::new(input).extension().and_then(OsStr::to_str) {
-            <span class="prelude-val">Some</span>(<span class="string">"json"</span>) =&gt; input.into(),
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Input path expected to have `json` as its extension."</span>.to_string()),
-        })
+        <span class="macro">anyhow::bail!</span>(<span class="string">"The given path does not exist."</span>);
+    }
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">pub fn </span>find_function&lt;<span class="lifetime">'a</span>&gt;(
+    sierra_program: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Program,
+    name_suffix: <span class="kw-2">&amp;</span>str,
+) -&gt; anyhow::Result&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Function&gt; {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(x) = sierra_program.funcs.iter().find(|f| {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <span class="kw-2">&amp;</span>f.id.debug_name {
+            name.ends_with(name_suffix)
+        } <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
+    }) {
+        <span class="prelude-val">Ok</span>(x)
+    } <span class="kw">else </span>{
+        <span class="macro">bail!</span>(<span class="string">"function {name_suffix} not found"</span>)
+    }
+}
+
+<span class="kw">fn </span>result_to_runresult(result: <span class="kw-2">&amp;</span>ExecutionResult) -&gt; anyhow::Result&lt;RunResultValue&gt; {
+    <span class="kw">let </span>is_success;
+    <span class="kw">let </span><span class="kw-2">mut </span>felts: Vec&lt;Felt&gt; = Vec::new();
+
+    <span class="kw">match </span><span class="kw-2">&amp;</span>result.return_value {
+        outer_value @ JitValue::Enum {
+            tag,
+            value,
+            debug_name,
+        } =&gt; {
+            <span class="kw">let </span>debug_name = debug_name.as_ref().expect(<span class="string">"missing debug name"</span>);
+
+            <span class="kw">if </span>debug_name.starts_with(<span class="string">"core::panics::PanicResult::"</span>) {
+                is_success = <span class="kw-2">*</span>tag == <span class="number">0</span>;
+
+                <span class="kw">if </span>!is_success {
+                    <span class="kw">match </span><span class="kw-2">&amp;**</span>value {
+                        JitValue::Struct { fields, .. } =&gt; {
+                            <span class="kw">for </span>field <span class="kw">in </span>fields {
+                                <span class="kw">let </span>felt = jitvalue_to_felt(field);
+                                felts.extend(felt);
+                            }
+                        }
+                        <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"unsuported return value in cairo-native"</span>),
+                    }
+                } <span class="kw">else </span>{
+                    felts.extend(jitvalue_to_felt(value));
+                }
+            } <span class="kw">else </span>{
+                is_success = <span class="bool-val">true</span>;
+                felts.extend(jitvalue_to_felt(outer_value));
+            }
+        }
+        x =&gt; {
+            is_success = <span class="bool-val">true</span>;
+            felts.extend(jitvalue_to_felt(x));
+        }
+    }
+
+    <span class="kw">let </span>return_values = felts
+        .into_iter()
+        .map(|x| x.to_bigint().into())
+        .collect_vec();
+
+    <span class="prelude-val">Ok</span>(<span class="kw">match </span>is_success {
+        <span class="bool-val">true </span>=&gt; RunResultValue::Success(return_values),
+        <span class="bool-val">false </span>=&gt; RunResultValue::Panic(return_values),
     })
+}
+
+<span class="kw">fn </span>jitvalue_to_felt(value: <span class="kw-2">&amp;</span>JitValue) -&gt; Vec&lt;Felt&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>felts = Vec::new();
+    <span class="kw">match </span>value {
+        JitValue::Felt252(felt) =&gt; <span class="macro">vec!</span>[felt.to_bigint().into()],
+        JitValue::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        JitValue::Array(values) =&gt; {
+            <span class="kw">for </span>value <span class="kw">in </span>values {
+                <span class="kw">let </span>felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+            felts
+        }
+        JitValue::Struct { fields, .. } =&gt; {
+            <span class="kw">for </span>field <span class="kw">in </span>fields {
+                <span class="kw">let </span>felt = jitvalue_to_felt(field);
+                felts.extend(felt);
+            }
+            felts
+        }
+        JitValue::Enum {
+            value: <span class="kw">_</span>,
+            tag,
+            debug_name,
+        } =&gt; {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(debug_name) = debug_name {
+                <span class="kw">if </span>debug_name == <span class="string">"core::bool" </span>{
+                    <span class="macro">vec!</span>[(<span class="kw-2">*</span>tag == <span class="number">1</span>).into()]
+                } <span class="kw">else </span>{
+                    <span class="macro">todo!</span>()
+                }
+            } <span class="kw">else </span>{
+                <span class="macro">todo!</span>()
+            }
+        }
+        JitValue::Felt252Dict { .. } =&gt; <span class="macro">todo!</span>(),
+        JitValue::Uint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Uint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Uint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Uint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Uint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Sint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Sint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Sint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Sint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::Sint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        JitValue::EcPoint(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        JitValue::EcState(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        JitValue::Secp256K1Point { .. } =&gt; <span class="macro">todo!</span>(),
+        JitValue::Secp256R1Point { .. } =&gt; <span class="macro">todo!</span>(),
+        JitValue::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
+    }
 }
 </code></pre></div></section></main></body></html>

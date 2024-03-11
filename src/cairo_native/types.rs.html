@@ -939,6 +939,53 @@
 <a href="#938" id="938">938</a>
 <a href="#939" id="939">939</a>
 <a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -973,10 +1020,12 @@
     },
     Context,
 };
+<span class="kw">use </span>num_traits::Signed;
 <span class="kw">use </span>std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 <span class="kw">pub mod </span>array;
 <span class="kw">pub mod </span>bitwise;
+<span class="kw">pub mod </span>bounded_int;
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>builtin_costs;
 <span class="kw">pub mod </span>bytes31;
@@ -1043,10 +1092,13 @@
     /// a function invocation argument or return value.
     </span><span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
 
-    <span class="doccomment">/// If the type is an integer (felt not included) type, return its width in bits.
+    <span class="doccomment">/// If the type is an integer type, return its width in bits.
     ///
     /// TODO: How is it used?
     </span><span class="kw">fn </span>integer_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt;;
+
+    <span class="doccomment">/// If the type is an integer type, return if its signed.
+    </span><span class="kw">fn </span>is_integer_signed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt;;
 
     <span class="doccomment">/// If the type is a enum type, return all possible variants.
     ///
@@ -1107,7 +1159,13 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            <span class="self">Self</span>::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::BoundedInt(info) =&gt; <span class="self">self</span>::bounded_int::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             <span class="self">Self</span>::Box(info) =&gt; <span class="self">self</span>::r#box::build(
                 context,
                 module,
@@ -1480,7 +1538,7 @@
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
@@ -1579,7 +1637,11 @@
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">248</span>),
 
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::BoundedInt(info) =&gt; get_integer_layout(
+                (info.range.lower.bits().max(info.range.upper.bits()) + <span class="number">1</span>)
+                    .try_into()
+                    .expect(<span class="string">"should always fit u32"</span>),
+            ),
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         })
     }
@@ -1649,7 +1711,7 @@
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
@@ -1661,9 +1723,41 @@
             <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">32</span>),
             <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">64</span>),
             <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">128</span>),
+            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">252</span>),
+            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">8</span>),
+            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">16</span>),
+            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">32</span>),
+            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">64</span>),
+            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">128</span>),
 
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::BoundedInt(info) =&gt; {
+                <span class="prelude-val">Some</span>((info.range.lower.bits().max(info.range.upper.bits()) + <span class="number">1</span>) <span class="kw">as </span>usize)
+            }
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">248</span>),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+
+    <span class="kw">fn </span>is_integer_signed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
+            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+
+            CoreTypeConcrete::BoundedInt(info) =&gt; {
+                <span class="prelude-val">Some</span>(info.range.lower.is_negative() || info.range.upper.is_negative())
+            }
+            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
 
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,

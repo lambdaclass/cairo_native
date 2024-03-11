@@ -497,6 +497,8 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_compiler::{
@@ -910,6 +912,8 @@
                 <span class="kw">if </span>test.ignored {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>((name, <span class="prelude-val">None</span>));
                 }
+                <span class="macro">tracing::trace!</span>(<span class="string">"running test {name:?}"</span>);
+
                 <span class="kw">let </span>func = find_function(<span class="kw-2">&amp;</span>sierra_program, name.as_str())<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>initial_gas = gas_metadata

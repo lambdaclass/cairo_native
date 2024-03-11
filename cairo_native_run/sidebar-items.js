@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode","StdioOrPath"],"fn":["load_program","main","parse_entry_point","parse_input","parse_io"],"struct":["CmdLine"]};
+window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["check_compiler_path","find_function","jitvalue_to_felt","main","result_to_runresult"],"struct":["Args"]};
