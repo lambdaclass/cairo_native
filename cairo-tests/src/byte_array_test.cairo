@@ -17,50 +17,53 @@ fn test_append_byte() {
 }
 
 // TODO: fix, segfaults
-// #[test]
-// fn test_append_word() {
-//     let mut ba = Default::default();
+#[test]
+#[ignore]
+fn test_append_word() {
+    let mut ba = Default::default();
 
-//     ba.append_word(0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e, 30);
-//     compare_byte_array(
-//         @ba, array![].span(), 30, 0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e
-//     );
+    ba.append_word(0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e, 30);
+    compare_byte_array(
+        @ba, array![].span(), 30, 0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e
+    );
 
-//     ba.append_word(0x1f2021, 3);
-//     let expected_data = array![0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f];
-//     compare_byte_array(@ba, expected_data.span(), 2, 0x2021);
+    ba.append_word(0x1f2021, 3);
+    let expected_data = array![0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f];
+    compare_byte_array(@ba, expected_data.span(), 2, 0x2021);
 
-//     ba.append_word(0x2223, 2);
-//     compare_byte_array(@ba, expected_data.span(), 4, 0x20212223);
+    ba.append_word(0x2223, 2);
+    compare_byte_array(@ba, expected_data.span(), 4, 0x20212223);
 
-//     // Length is 0, so nothing is actually appended.
-//     ba.append_word(0xffee, 0);
-//     compare_byte_array(@ba, expected_data.span(), 4, 0x20212223);
+    // Length is 0, so nothing is actually appended.
+    ba.append_word(0xffee, 0);
+    compare_byte_array(@ba, expected_data.span(), 4, 0x20212223);
 
-//     ba.append_word(0x2425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e, 27);
-//     let expected_data = array![
-//         0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f,
-//         0x202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e
-//     ];
-//     compare_byte_array(@ba, expected_data.span(), 0, 0);
+    ba.append_word(0x2425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e, 27);
+    let expected_data = array![
+        0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f,
+        0x202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e
+    ];
+    compare_byte_array(@ba, expected_data.span(), 0, 0);
 
-//     ba.append_word(0x3f, 1);
-//     compare_byte_array(@ba, expected_data.span(), 1, 0x3f);
-// }
+    ba.append_word(0x3f, 1);
+    compare_byte_array(@ba, expected_data.span(), 1, 0x3f);
+}
 
-// #[test]
-// fn test_append() {
-//     let mut ba1 = test_byte_array_32();
-//     let ba2 = test_byte_array_32();
+// TODO: segfaults
+#[test]
+#[ignore]
+fn test_append() {
+    let mut ba1 = test_byte_array_32();
+    let ba2 = test_byte_array_32();
 
-//     ba1.append(@ba2);
+    ba1.append(@ba2);
 
-//     let expected_data = array![
-//         0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f,
-//         0x200102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e
-//     ];
-//     compare_byte_array(@ba1, expected_data.span(), 2, 0x1f20);
-// }
+    let expected_data = array![
+        0x0102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e1f,
+        0x200102030405060708091a0b0c0d0e0f101112131415161718191a1b1c1d1e
+    ];
+    compare_byte_array(@ba1, expected_data.span(), 2, 0x1f20);
+}
 
 // Same as test_append, but with `+=` instead of `append`.
 #[test]
@@ -380,71 +383,72 @@ fn test_equality() {
 }
 
 // TODO: segfault
-// #[test]
-// fn test_reverse() {
-//     // Arrays of length < 16
-//     let ba: ByteArray = "abc";
-//     let ba_rev: ByteArray = "cba";
-//     let palindrome: ByteArray = "rotator";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+#[test]
+#[ignore]
+fn test_reverse() {
+    // Arrays of length < 16
+    let ba: ByteArray = "abc";
+    let ba_rev: ByteArray = "cba";
+    let palindrome: ByteArray = "rotator";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of length 16
-//     let ba: ByteArray = "my length is 16.";
-//     let ba_rev: ByteArray = ".61 si htgnel ym";
-//     let palindrome: ByteArray = "nolemon  nomelon";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+    // Arrays of length 16
+    let ba: ByteArray = "my length is 16.";
+    let ba_rev: ByteArray = ".61 si htgnel ym";
+    let palindrome: ByteArray = "nolemon  nomelon";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of 16 < length < 31
-//     let ba: ByteArray = "I am a medium byte array";
-//     let ba_rev: ByteArray = "yarra etyb muidem a ma I";
-//     let palindrome: ByteArray = "nolemon  nomelon";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+    // Arrays of 16 < length < 31
+    let ba: ByteArray = "I am a medium byte array";
+    let ba_rev: ByteArray = "yarra etyb muidem a ma I";
+    let palindrome: ByteArray = "nolemon  nomelon";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of length 31
-//     let ba: ByteArray = "I didn't find a good palindrome";
-//     let ba_rev: ByteArray = "emordnilap doog a dnif t'ndid I";
-//     let palindrome: ByteArray = "kayak level rotator level kayak";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+    // Arrays of length 31
+    let ba: ByteArray = "I didn't find a good palindrome";
+    let ba_rev: ByteArray = "emordnilap doog a dnif t'ndid I";
+    let palindrome: ByteArray = "kayak level rotator level kayak";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of 31 < length < 47 (31+16)
-//     let ba: ByteArray = "This time I did find a good palindrome!";
-//     let ba_rev: ByteArray = "!emordnilap doog a dnif did I emit sihT";
-//     let palindrome: ByteArray = "noitneverpropagatesifisetagaporprevention";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+    // Arrays of 31 < length < 47 (31+16)
+    let ba: ByteArray = "This time I did find a good palindrome!";
+    let ba_rev: ByteArray = "!emordnilap doog a dnif did I emit sihT";
+    let palindrome: ByteArray = "noitneverpropagatesifisetagaporprevention";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of length 47 (31+16)
-//     let ba: ByteArray = "I have found a palindrome, exactly 47 in length";
-//     let ba_rev: ByteArray = "htgnel ni 74 yltcaxe ,emordnilap a dnuof evah I";
-//     let palindrome: ByteArray = "onacloverifaliveeruptsavastpureevilafirevolcano";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+    // Arrays of length 47 (31+16)
+    let ba: ByteArray = "I have found a palindrome, exactly 47 in length";
+    let ba_rev: ByteArray = "htgnel ni 74 yltcaxe ,emordnilap a dnuof evah I";
+    let palindrome: ByteArray = "onacloverifaliveeruptsavastpureevilafirevolcano";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
 
-//     // Arrays of length > 47 (31+16)
-//     let ba: ByteArray = "This palindrome is not as good, but at least it's long enough";
-//     let ba_rev: ByteArray = "hguone gnol s'ti tsael ta tub ,doog sa ton si emordnilap sihT";
-//     let palindrome: ByteArray = "docnoteidissentafastneverpreventsafatnessidietoncod";
-//     assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
-//     assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
-//     assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
-//     assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
-// }
+    // Arrays of length > 47 (31+16)
+    let ba: ByteArray = "This palindrome is not as good, but at least it's long enough";
+    let ba_rev: ByteArray = "hguone gnol s'ti tsael ta tub ,doog sa ton si emordnilap sihT";
+    let palindrome: ByteArray = "docnoteidissentafastneverpreventsafatnessidietoncod";
+    assert_ne(@ba, @ba.rev(), 'ba == ba.rev()');
+    assert_ne(@ba_rev, @ba_rev.rev(), 'ba_rev == ba_rev.rev()');
+    assert_eq(@ba, @ba_rev.rev(), 'ba != ba_rev.rev()');
+    assert_eq(@palindrome, @palindrome.rev(), 'palindrome is not a palindrome');
+}
 
 #[test]
 fn test_serde() {

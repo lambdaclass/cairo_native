@@ -33,17 +33,18 @@ fn test_array_clone() {
 }
 
 // TODO: fix, triggers a segfault
-// #[test]
-// fn test_span() {
-//     let mut span = array![10, 11, 12].span();
-//     assert_eq(@span.len(), @3, 'Unexpected span length.');
-//     assert_eq(span.get(0).unwrap().unbox(), @10, 'Unexpected element');
-//     assert_eq(span.pop_front().unwrap(), @10, 'Unexpected element');
-//     assert_eq(@span.len(), @2, 'Unexpected span length.');
-//     assert_eq(span[1], @12, 'Unexpected element');
-//     assert_eq(span.pop_back().unwrap(), @12, 'Unexpected element');
-//     assert_eq(@span.len(), @1, 'Unexpected span length.');
-// }
+#[test]
+#[ignore]
+fn test_span() {
+    let mut span = array![10, 11, 12].span();
+    assert_eq(@span.len(), @3, 'Unexpected span length.');
+    assert_eq(span.get(0).unwrap().unbox(), @10, 'Unexpected element');
+    assert_eq(span.pop_front().unwrap(), @10, 'Unexpected element');
+    assert_eq(@span.len(), @2, 'Unexpected span length.');
+    assert_eq(span[1], @12, 'Unexpected element');
+    assert_eq(span.pop_back().unwrap(), @12, 'Unexpected element');
+    assert_eq(@span.len(), @1, 'Unexpected span length.');
+}
 
 #[test]
 fn test_slice() {

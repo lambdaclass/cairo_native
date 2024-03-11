@@ -75,27 +75,28 @@ mod special_casts {
             -0x800000000000011000000000000000000000000000000000000000000000000
         >;
 
-    // TODO: fix and enable
-    // #[test]
-    // fn test_bounded_int_casts() {
-    //     let minus_1 = downcast::<felt252, BoundedInt<-1, -1>>(-1).unwrap();
-    //     assert!(downcast::<OneMinusPToZero, u8>(upcast(minus_1)).is_none());
-    //     let zero = downcast::<felt252, BoundedInt<0, 0>>(0).unwrap();
-    //     assert!(downcast::<OneMinusPToZero, u8>(upcast(zero)) == Option::Some(0));
-    //     let one_minus_p = downcast::<felt252, OneMinusPOnly>(1).unwrap();
-    //     assert!(downcast::<OneMinusPToZero, u8>(upcast(one_minus_p)).is_none());
-    //     let v119 = downcast::<felt252, BoundedInt<119, 119>>(119).unwrap();
-    //     assert!(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v119)).is_none());
-    //     let v120 = downcast::<felt252, BoundedInt<120, 120>>(120).unwrap();
-    //     assert!(
-    //         is_some_of(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v120)), 120)
-    //     );
-    //     let v180 = downcast::<felt252, BoundedInt<180, 180>>(180).unwrap();
-    //     assert!(
-    //         is_some_of(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v180)), 180)
-    //     );
-    //     let v181 = downcast::<felt252, BoundedInt<181, 181>>(181).unwrap();
-    //     assert!(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v181)).is_none());
-    // }
+    // TODO: fix and enable (fails)
+    #[test]
+    #[ignore]
+    fn test_bounded_int_casts() {
+        let minus_1 = downcast::<felt252, BoundedInt<-1, -1>>(-1).unwrap();
+        assert!(downcast::<OneMinusPToZero, u8>(upcast(minus_1)).is_none());
+        let zero = downcast::<felt252, BoundedInt<0, 0>>(0).unwrap();
+        assert!(downcast::<OneMinusPToZero, u8>(upcast(zero)) == Option::Some(0));
+        let one_minus_p = downcast::<felt252, OneMinusPOnly>(1).unwrap();
+        assert!(downcast::<OneMinusPToZero, u8>(upcast(one_minus_p)).is_none());
+        let v119 = downcast::<felt252, BoundedInt<119, 119>>(119).unwrap();
+        assert!(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v119)).is_none());
+        let v120 = downcast::<felt252, BoundedInt<120, 120>>(120).unwrap();
+        assert!(
+            is_some_of(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v120)), 120)
+        );
+        let v180 = downcast::<felt252, BoundedInt<180, 180>>(180).unwrap();
+        assert!(
+            is_some_of(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v180)), 180)
+        );
+        let v181 = downcast::<felt252, BoundedInt<181, 181>>(181).unwrap();
+        assert!(downcast::<BoundedInt<100, 200>, BoundedInt<120, 180>>(upcast(v181)).is_none());
+    }
 
 }
