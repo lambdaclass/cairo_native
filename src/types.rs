@@ -32,10 +32,12 @@ use melior::{
     },
     Context,
 };
+use num_traits::Signed;
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 pub mod bitwise;
+pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
@@ -102,10 +104,13 @@ pub trait TypeBuilder {
     /// a function invocation argument or return value.
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
-    /// If the type is an integer (felt not included) type, return its width in bits.
+    /// If the type is an integer type, return its width in bits.
     ///
     /// TODO: How is it used?
     fn integer_width(&self) -> Option<usize>;
+
+    /// If the type is an integer type, return if its signed.
+    fn is_integer_signed(&self) -> Option<bool>;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -166,7 +171,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::BoundedInt(_) => todo!(),
+            Self::BoundedInt(info) => self::bounded_int::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Box(info) => self::r#box::build(
                 context,
                 module,
@@ -539,7 +550,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
         }
@@ -638,7 +649,11 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
+                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
+                    .try_into()
+                    .expect("should always fit u32"),
+            ),
             CoreTypeConcrete::Const(_) => todo!(),
         })
     }
@@ -708,7 +723,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Bytes31(_) => false,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
         }
     }
@@ -720,9 +735,41 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => Some(32),
             Self::Uint64(_) => Some(64),
             Self::Uint128(_) => Some(128),
+            Self::Felt252(_) => Some(252),
+            Self::Sint8(_) => Some(8),
+            Self::Sint16(_) => Some(16),
+            Self::Sint32(_) => Some(32),
+            Self::Sint64(_) => Some(64),
+            Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(info) => {
+                Some((info.range.lower.bits().max(info.range.upper.bits()) + 1) as usize)
+            }
             CoreTypeConcrete::Bytes31(_) => Some(248),
+            CoreTypeConcrete::Const(_) => todo!(),
+
+            _ => None,
+        }
+    }
+
+    fn is_integer_signed(&self) -> Option<bool> {
+        match self {
+            Self::Uint8(_) => Some(false),
+            Self::Uint16(_) => Some(false),
+            Self::Uint32(_) => Some(false),
+            Self::Uint64(_) => Some(false),
+            Self::Uint128(_) => Some(false),
+            Self::Felt252(_) => Some(true),
+            Self::Sint8(_) => Some(true),
+            Self::Sint16(_) => Some(true),
+            Self::Sint32(_) => Some(true),
+            Self::Sint64(_) => Some(true),
+            Self::Sint128(_) => Some(true),
+
+            CoreTypeConcrete::BoundedInt(info) => {
+                Some(info.range.lower.is_negative() || info.range.upper.is_negative())
+            }
+            CoreTypeConcrete::Bytes31(_) => Some(false),
             CoreTypeConcrete::Const(_) => todo!(),
 
             _ => None,

@@ -185,17 +185,19 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib".into(),
             ];
 
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
-                args.extend([Cow::from(format!("-L{extra_dir}"))]);
-            }
-
             args.extend([
                 Cow::from(file_path),
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
-                "-lcairo_native_runtime".into(),
             ]);
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY") {
+                args.extend([Cow::from(extra_dir)]);
+            } else {
+                args.extend(["libcairo_native_runtime.a".into()]);
+            }
+
             args
         }
         #[cfg(target_os = "linux")]
@@ -208,21 +210,20 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
                 "-L/usr/lib/../lib64".into(),
             ];
 
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBDIR") {
-                args.extend([
-                    Cow::from(format!("-L{extra_dir}")),
-                    format!("-rpath={extra_dir}").into(),
-                    format!("-rpath-link={extra_dir}").into(),
-                ]);
-            }
-
             args.extend([
                 "-o".into(),
                 Cow::from(output_path),
                 "-lc".into(),
-                "-lcairo_native_runtime".into(),
+                //"-lcairo_native_runtime".into(),
                 Cow::from(file_path),
             ]);
+
+            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY") {
+                args.extend([Cow::from(extra_dir)]);
+            } else {
+                args.extend(["libcairo_native_runtime.a".into()]);
+            }
+
             args
         }
         #[cfg(target_os = "windows")]
