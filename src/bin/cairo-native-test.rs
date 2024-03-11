@@ -295,12 +295,12 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
                             let felt = jitvalue_to_felt(field);
                             felts.extend(felt);
                         }
-                    }
-                    _ => bail!("unsuported return value in cairo-native"),
+                    },
+                    _ => bail!("unsuported return value in cairo-native (inside enum): {:#?}", value),
                 }
             }
         }
-        _ => bail!("unsuported return value in cairo-native"),
+        _ => bail!("unsuported return value in cairo-native: {:#?}", result.return_value),
     }
 
     let return_values = felts
