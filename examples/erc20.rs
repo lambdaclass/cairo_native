@@ -1,5 +1,5 @@
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
+use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,

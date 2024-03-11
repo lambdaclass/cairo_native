@@ -808,6 +808,7 @@ pub fn compare_outputs(
             }
             CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
         }
 

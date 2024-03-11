@@ -120,6 +120,8 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Const(_) => todo!(),
+            Self::Coupon(_) => todo!(),
+            Self::CouponCall(_) => todo!(),
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
