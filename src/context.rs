@@ -76,25 +76,7 @@ impl NativeContext {
             None,
         )?;
 
-        std::fs::write(
-            "out-pre.mlir",
-            module
-                .as_operation()
-                .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(false, false))
-                .unwrap(),
-        )
-        .unwrap();
-
         run_pass_manager(&self.context, &mut module)?;
-
-        std::fs::write(
-            "out-post.mlir",
-            module
-                .as_operation()
-                .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(false, false))
-                .unwrap(),
-        )
-        .unwrap();
 
         Ok(NativeModule::new(module, registry, metadata))
     }
