@@ -458,6 +458,7 @@
 <a href="#457" id="457">457</a>
 <a href="#458" id="458">458</a>
 <a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>lazy_static::lazy_static;
@@ -473,23 +474,9 @@
     .unwrap();
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_cairo_short_string(value: <span class="kw-2">&amp;</span>Felt) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>as_string = String::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>is_end = <span class="bool-val">false</span>;
-    <span class="kw">for </span>byte <span class="kw">in </span>value.to_bytes_be() {
-        <span class="kw">if </span>byte == <span class="number">0 </span>{
-            is_end = <span class="bool-val">true</span>;
-        } <span class="kw">else if </span>is_end || !byte.is_ascii() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        } <span class="kw">else </span>{
-            as_string.push(byte <span class="kw">as </span>char);
-        }
-    }
-    <span class="prelude-val">Some</span>(as_string)
-}
 <span class="doccomment">/// Based on `cairo-lang-runner`'s implementation.
 ///
-/// Source: &lt;https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1789-L1800&gt;
+/// Source: &lt;https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1946-L1948&gt;
 ///
 /// # Safety
 ///
@@ -504,27 +491,42 @@
     <span class="kw">let </span><span class="kw-2">mut </span>target = File::from_raw_fd(target_fd);
 
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..len {
-        <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw-2">*</span>data.add(i);
-        data.reverse();
+        <span class="kw">let </span>data = <span class="kw-2">*</span>data.add(i);
 
-        <span class="kw">let </span>value = Felt::from_bytes_be(<span class="kw-2">&amp;</span>data);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(shortstring) = as_cairo_short_string(<span class="kw-2">&amp;</span>value) {
-            <span class="kw">if </span><span class="macro">writeln!</span>(
+        <span class="kw">let </span>value = Felt::from_bytes_le(<span class="kw-2">&amp;</span>data);
+        <span class="kw">if </span><span class="macro">write!</span>(target, <span class="string">"[DEBUG]\t{value:x}"</span>,).is_err() {
+            <span class="kw">return </span><span class="number">1</span>;
+        };
+
+        <span class="kw">if </span>data[..<span class="number">32</span>]
+            .iter()
+            .copied()
+            .all(|ch| ch == <span class="number">0 </span>|| ch.is_ascii_graphic() || ch.is_ascii_whitespace())
+        {
+            <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>; <span class="number">31</span>];
+            <span class="kw">let </span><span class="kw-2">mut </span>len = <span class="number">31</span>;
+            <span class="kw">for </span><span class="kw-2">&amp;</span>ch <span class="kw">in </span>data.iter().take(<span class="number">31</span>) {
+                <span class="kw">if </span>ch != <span class="number">0 </span>{
+                    len -= <span class="number">1</span>;
+                    buf[len] = ch;
+                }
+            }
+
+            <span class="kw">if </span><span class="macro">write!</span>(
                 target,
-                <span class="string">"[DEBUG]\t{shortstring: &lt;31}\t(raw: {})"</span>,
-                value.to_bigint()
+                <span class="string">" ('{}')"</span>,
+                std::str::from_utf8_unchecked(<span class="kw-2">&amp;</span>buf[len..])
             )
             .is_err()
             {
                 <span class="kw">return </span><span class="number">1</span>;
-            };
-        } <span class="kw">else if </span><span class="macro">writeln!</span>(target, <span class="string">"[DEBUG]\t{:&lt;31}\t(raw: {})"</span>, <span class="string">' '</span>, value.to_bigint()).is_err() {
-            <span class="kw">return </span><span class="number">1</span>;
+            }
         }
+
+        <span class="kw">if </span><span class="macro">writeln!</span>(target).is_err() {
+            <span class="kw">return </span><span class="number">1</span>;
+        };
     }
-    <span class="kw">if </span><span class="macro">writeln!</span>(target).is_err() {
-        <span class="kw">return </span><span class="number">1</span>;
-    };
 
     <span class="comment">// Avoid closing `stdout`.
     </span>std::mem::forget(target);
