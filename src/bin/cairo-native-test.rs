@@ -341,7 +341,15 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
             felts
         }
         JitValue::Enum { .. } => todo!(),
-        JitValue::Felt252Dict { .. } => todo!(),
+        JitValue::Felt252Dict { value, .. } => {
+            for (key, value) in value {
+                felts.push(*key);
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+
+            felts
+        }
         JitValue::Uint8(x) => vec![(*x).into()],
         JitValue::Uint16(x) => vec![(*x).into()],
         JitValue::Uint32(x) => vec![(*x).into()],
