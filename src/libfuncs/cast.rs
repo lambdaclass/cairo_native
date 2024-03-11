@@ -63,18 +63,12 @@ pub fn build_downcast<'ctx, 'this>(
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
 
-    dbg!(&info.from_ty);
-    dbg!(&info.to_ty);
     let src_width = src_type
         .integer_width()
         .expect("casts always happen between numerical types");
     let dst_width = dst_type
         .integer_width()
         .expect("casts always happen between numerical types");
-    dbg!(src_width);
-    dbg!(dst_width);
-    dbg!(&info.to_range);
-    dbg!(&info.from_range);
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
@@ -92,7 +86,6 @@ pub fn build_downcast<'ctx, 'this>(
             .is_integer_signed()
             .expect("casts always happen between numerical types");
     let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
-    dbg!(is_signed);
 
     let src_value: melior::ir::Value = entry.argument(1)?.into();
 
@@ -370,14 +363,6 @@ pub fn build_upcast<'ctx, 'this>(
             .expect("casts always happen between numerical types");
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
-
-    dbg!("upcast");
-    dbg!(src_width);
-    dbg!(dst_width);
-    dbg!(src_type);
-    dbg!(dst_type);
-    dbg!(is_signed);
-    dbg!(is_felt);
 
     let block = entry;
 
