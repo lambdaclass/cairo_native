@@ -28,3 +28,4 @@ cairo-*.tar
 *.so
 *.a
 *.mlir
+/*.info
