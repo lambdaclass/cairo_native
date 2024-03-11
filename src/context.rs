@@ -109,11 +109,7 @@ impl NativeContext {
             None,
         )?;
 
-        std::fs::write("out-pre.mlir", module.as_operation().to_string()).unwrap();
-
         run_pass_manager(&self.context, &mut module)?;
-
-        std::fs::write("out-after.mlir", module.as_operation().to_string()).unwrap();
 
         Ok(NativeModule::new(module, registry, metadata))
     }
