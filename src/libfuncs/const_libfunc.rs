@@ -1,7 +1,11 @@
 //! # Const libfuncs
 
 use super::LibfuncHelper;
-use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    error::libfuncs::{ErrorImpl, Result},
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         const_type::{
@@ -9,6 +13,7 @@ use cairo_lang_sierra::{
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
     },
+    program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -16,6 +21,8 @@ use melior::{
     ir::{Attribute, Block, Location},
     Context,
 };
+use num_bigint::ToBigInt;
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -76,16 +83,32 @@ pub fn build_const_as_immediate<'ctx, 'this>(
 
     let value_type =
         registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
-
     // it seems it's only used for simple data types.
+    // If the value is a felt252 need to check if the it is negative and add prime to it
+    let mut value = const_type.inner_data[0].clone();
+    if const_type
+        .inner_ty
+        .debug_name
+        .as_ref()
+        .is_some_and(|name| name == "felt252")
+    {
+        if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
+            if num.sign() == num_bigint::Sign::Minus {
+                let prime = metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(ErrorImpl::MissingMetadata)?
+                    .prime();
+                let value_mod_prime =
+                    num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
+                let generic_arg = GenericArg::Value(value_mod_prime);
+                value = generic_arg;
+            }
+        }
+    }
     let result = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(
-                context,
-                &format!("{} : {}", const_type.inner_data[0], value_type),
-            )
-            .unwrap(),
+            Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
             location,
         ))
         .result(0)?
