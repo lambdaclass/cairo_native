@@ -3,7 +3,10 @@
 use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
+    metadata::{
+        prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
+    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -17,8 +20,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
-    ir::{Attribute, Block, Location},
+    dialect::{
+        arith,
+        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
 use num_bigint::ToBigInt;
@@ -46,15 +52,106 @@ pub fn build<'ctx, 'this>(
 
 /// Generate MLIR operations for the `const_as_box` libfunc.
 pub fn build_const_as_box<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &ConstAsBoxConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConstAsBoxConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+    let inner_type = registry.get_type(&info.const_type)?;
+    let inner_layout = inner_type.layout(registry)?;
+
+    // Create box
+    let value_len = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(
+                inner_layout.pad_to_align().size().try_into()?,
+                IntegerType::new(context, 64).into(),
+            )
+            .into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let ptr = entry
+        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .result(0)?
+        .into();
+    let ptr = entry
+        .append_operation(ReallocBindingsMeta::realloc(
+            context, ptr, value_len, location,
+        ))
+        .result(0)?
+        .into();
+
+    // Create constant
+    let const_type = match &inner_type {
+        CoreTypeConcrete::Const(inner) => inner,
+        _ => unreachable!(),
+    };
+    // const_type.inner_data Should be one of the following:
+    // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
+    //   etc.).
+    // - A list of const types, if the inner type is a struct. The type of each const type must be
+    //   the same as the corresponding struct member type.
+    // - A selector (a single value) followed by a const type, if the inner type is an enum. The
+    //   type of the const type must be the same as the corresponding enum variant type.
+
+    let value_type =
+        registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
+    // it seems it's only used for simple data types.
+    // If the value is a felt252 need to check if the it is negative and add prime to it
+    let mut value = const_type.inner_data[0].clone();
+    if const_type
+        .inner_ty
+        .debug_name
+        .as_ref()
+        .is_some_and(|name| name == "felt252")
+    {
+        if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
+            if num.sign() == num_bigint::Sign::Minus {
+                let prime = metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(ErrorImpl::MissingMetadata)?
+                    .prime();
+                let value_mod_prime =
+                    num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
+                let generic_arg = GenericArg::Value(value_mod_prime);
+                value = generic_arg;
+            }
+        }
+    }
+    let value = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    // Store constant in box
+
+    entry.append_operation(llvm::store(
+        context,
+        value,
+        ptr,
+        location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            inner_layout.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
+
+    entry.append_operation(helper.br(0, &[ptr], location));
+    Ok(())
 }
 
 /// Generate MLIR operations for the `const_as_immediate` libfunc.
