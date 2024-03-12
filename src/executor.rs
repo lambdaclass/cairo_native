@@ -264,12 +264,23 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
-        registry,
-        return_ptr,
-        ret_registers,
-    );
+    let return_value = function_signature
+        .ret_types
+        .last()
+        .map(|ret_type| {
+            parse_result(
+                ret_type,
+                registry,
+                return_ptr,
+                ret_registers,
+                // TODO: Consider returning an Option<JitValue> as return_value instead
+                // As cairo functions can not have a return value
+            )
+        })
+        .unwrap_or_else(|| JitValue::Struct {
+            fields: vec![],
+            debug_name: None,
+        });
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
