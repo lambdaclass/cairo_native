@@ -1,25 +1,19 @@
 //! # Const libfuncs
 
 use super::LibfuncHelper;
-use crate::{
-    error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
-        casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
+    dialect::arith,
+    ir::{Attribute, Block, Location},
     Context,
 };
 
@@ -45,13 +39,13 @@ pub fn build<'ctx, 'this>(
 
 /// Generate MLIR operations for the `const_as_box` libfunc.
 pub fn build_const_as_box<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &ConstAsBoxConcreteLibfunc,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &ConstAsBoxConcreteLibfunc,
 ) -> Result<()> {
     todo!()
 }
