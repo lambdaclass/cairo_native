@@ -642,7 +642,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(const_type) => {
+                registry.get_type(&const_type.inner_ty)?.layout(registry)?
+            }
             CoreTypeConcrete::Coupon(_) => todo!(),
         })
     }
