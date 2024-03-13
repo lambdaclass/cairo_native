@@ -759,6 +759,19 @@ fn parse_result(
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
-        _ => unreachable!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::GasBuiltin(_) => JitValue::Struct {
+            fields: Vec::new(),
+            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+        },
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        _ => todo!(),
     }
 }
