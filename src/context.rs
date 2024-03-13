@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use crate::{
     error::compile::CompileError,
     ffi::{get_data_layout_rep, get_target_triple},
@@ -14,6 +16,7 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
+use llvm_sys::target::{LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets};
 use melior::{
     dialect::DialectRegistry,
     ir::{
@@ -48,6 +51,14 @@ impl NativeContext {
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
+        static INITIALIZED: OnceLock<()> = OnceLock::new();
+        INITIALIZED.get_or_init(|| unsafe {
+            LLVM_InitializeAllTargets();
+            LLVM_InitializeAllTargetInfos();
+            LLVM_InitializeAllTargetMCs();
+            LLVM_InitializeAllAsmPrinters();
+            tracing::debug!("initialized llvm targets");
+        });
         let target_triple = get_target_triple();
 
         let module_region = Region::new();
