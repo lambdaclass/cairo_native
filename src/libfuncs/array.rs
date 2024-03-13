@@ -1262,8 +1262,8 @@ pub fn build_slice<'ctx, 'this>(
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let (elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
 
     let slice_since = entry.argument(2)?.into();
     let slice_length = entry.argument(3)?.into();
@@ -1382,10 +1382,21 @@ pub fn build_slice<'ctx, 'this>(
             .into();
 
         // TODO: Copy data (with clone functions).
-        let src_offset = slice_block
-            .append_operation(arith::muli(slice_since, elem_size, location))
-            .result(0)?
-            .into();
+        let src_offset = {
+            let slice_since = slice_block
+                .append_operation(arith::extui(
+                    slice_since,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            slice_block
+                .append_operation(arith::muli(slice_since, elem_size, location))
+                .result(0)?
+                .into()
+        };
 
         let src_ptr = slice_block
             .append_operation(llvm::extract_value(
@@ -1435,7 +1446,7 @@ pub fn build_slice<'ctx, 'this>(
             .into();
 
         let value = slice_block
-            .append_operation(llvm::undef(elem_ty, location))
+            .append_operation(llvm::undef(array_ty, location))
             .result(0)?
             .into();
         let value = slice_block
@@ -1479,7 +1490,7 @@ pub fn build_slice<'ctx, 'this>(
             .result(0)?
             .into();
 
-        error_block.append_operation(helper.br(0, &[range_check, value], location));
+        slice_block.append_operation(helper.br(0, &[range_check, value], location));
     }
 
     error_block.append_operation(helper.br(1, &[range_check], location));
@@ -2003,5 +2014,187 @@ mod test {
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(jit_struct!())));
+    }
+
+    #[test]
+    fn seq_append1() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::from([1u32]),
+        );
+    }
+
+    #[test]
+    fn seq_append2() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::from([1u32, 2u32]),
+        );
+    }
+
+    #[test]
+    fn seq_append2_popf1() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let _ = data.pop_front();
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::from([2u32]),
+        );
+    }
+
+    #[test]
+    fn seq_append1_popf1_append1() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Array<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                let _ = data.pop_front();
+                data.append(2);
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::from([2u32]),
+        );
+    }
+
+    #[test]
+    fn seq_append1_first() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                *data.at(0)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(1u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn seq_append2_first() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                *data.at(0)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(1u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn seq_append2_popf1_first() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let _ = data.pop_front();
+                *data.at(0)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(2u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn seq_append1_popf1_append1_first() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                let _ = data.pop_front();
+                data.append(2);
+                *data.at(0)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(2u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
     }
 }
