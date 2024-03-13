@@ -1,5 +1,7 @@
 //! # Const libfuncs
 
+use std::str::FromStr;
+
 use super::LibfuncHelper;
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
@@ -27,7 +29,7 @@ use melior::{
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
-use num_bigint::ToBigInt;
+use num_bigint::{BigInt, ToBigInt};
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -106,49 +108,121 @@ pub fn build_const_as_box<'ctx, 'this>(
 
     let value_type =
         registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
-    // it seems it's only used for simple data types.
-    // If the value is a felt252 need to check if the it is negative and add prime to it
-    let mut value = const_type.inner_data[0].clone();
-    if const_type
-        .inner_ty
-        .debug_name
-        .as_ref()
-        .is_some_and(|name| name == "felt252")
-    {
-        if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
-            if num.sign() == num_bigint::Sign::Minus {
-                let prime = metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(ErrorImpl::MissingMetadata)?
-                    .prime();
-                let value_mod_prime =
-                    num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
-                let generic_arg = GenericArg::Value(value_mod_prime);
-                value = generic_arg;
+
+    if const_type.inner_data.len() == 1 {
+        // Simple data types.
+        // If the value is a felt252 need to check if the it is negative and add prime to it
+        let mut value = const_type.inner_data[0].clone();
+        if const_type
+            .inner_ty
+            .debug_name
+            .as_ref()
+            .is_some_and(|name| name == "felt252")
+        {
+            if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
+                if num.sign() == num_bigint::Sign::Minus {
+                    let prime = metadata
+                        .get::<PrimeModuloMeta<Felt>>()
+                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .prime();
+                    let value_mod_prime =
+                        num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
+                    let generic_arg = GenericArg::Value(value_mod_prime);
+                    value = generic_arg;
+                }
             }
         }
-    }
-    let value = entry
-        .append_operation(arith::constant(
+        let value = entry
+            .append_operation(arith::constant(
+                context,
+                Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        // Store constant in box
+        entry.append_operation(llvm::store(
             context,
-            Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
+            value,
+            ptr,
             location,
-        ))
-        .result(0)?
-        .into();
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                inner_layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ));
+    } else if let Some(variants) = registry.get_type(&const_type.inner_ty)?.variants() {
+        use num_traits::cast::ToPrimitive;
+        let tag = match &const_type.inner_data[0] {
+            GenericArg::Value(val) => val.to_usize().unwrap_or_default(),
+            // Enum tag should always be value
+            _ => todo!(),
+        };
+        let mut value = const_type.inner_data[1].clone();
+        let variant_ty = &variants[tag];
+        let variant_type = registry.build_type(context, helper, registry, metadata, variant_ty)?;
+        if let GenericArg::Type(ref t) = value {
+            // In this case we have to fetch the number from the debug name
+            // We get stuff like "Const<felt252, 1234>"
+            let str_val = t
+                .debug_name
+                .as_ref()
+                .unwrap()
+                .split(' ')
+                .last()
+                .unwrap()
+                .trim_end_matches('>');
+            let val = if let Ok(val) = BigInt::from_str(str_val) {
+                val
+            } else {
+                // Unit type enum
+                entry.append_operation(helper.br(0, &[ptr], location));
+                return Ok(())
+            };
+            value = GenericArg::Value(val);
+        }
 
-    // Store constant in box
+        if variant_ty
+            .debug_name
+            .as_ref()
+            .is_some_and(|name| name == "felt252")
+        {
+            if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
+                if num.sign() == num_bigint::Sign::Minus {
+                    let prime = metadata
+                        .get::<PrimeModuloMeta<Felt>>()
+                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .prime();
+                    let value_mod_prime =
+                        num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
+                    let generic_arg = GenericArg::Value(value_mod_prime);
+                    value = generic_arg;
+                }
+            }
+        }
 
-    entry.append_operation(llvm::store(
-        context,
-        value,
-        ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
+        let value = entry
+            .append_operation(arith::constant(
+                context,
+                Attribute::parse(context, &format!("{} : {}", value, variant_type)).unwrap(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        // Store constant in box
+        entry.append_operation(llvm::store(
+            context,
+            value,
+            ptr,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                inner_layout.align() as i64,
+                IntegerType::new(context, 64).into(),
+            ))),
+        ));
+    }
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -202,6 +276,7 @@ pub fn build_const_as_immediate<'ctx, 'this>(
             }
         }
     }
+
     let result = entry
         .append_operation(arith::constant(
             context,
