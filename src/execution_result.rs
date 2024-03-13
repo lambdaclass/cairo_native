@@ -90,11 +90,14 @@ impl ContractExecutionResult {
                             })
                             .collect();
 
-                        let str_error =
-                            String::from_utf8(felt_vec.first().unwrap().to_bytes_be().to_vec())
-                                .unwrap()
-                                .trim_start_matches('\0')
-                                .to_owned();
+                        let bytes_err: Vec<_> = felt_vec
+                            .iter()
+                            .flat_map(|felt| felt.to_bytes_be().to_vec())
+                            // remove null chars
+                            .filter(|b| *b != 0)
+                            .collect();
+                        let str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+
                         error_msg = Some(str_error);
                         felt_vec
                     } else {
