@@ -97,15 +97,6 @@ pub fn build_print<'ctx>(
         .result(0)?
         .into();
 
-    // metadata
-    //     .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-    //     .unwrap()
-    //     .print_i32(context, helper, entry, values_start, location)?;
-    // metadata
-    //     .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-    //     .unwrap()
-    //     .print_i32(context, helper, entry, values_end, location)?;
-
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");

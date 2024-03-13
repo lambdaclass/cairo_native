@@ -545,7 +545,7 @@ impl JitValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    // libc::free(init_data_ptr.as_ptr().cast());
+                    libc::free(init_data_ptr.as_ptr().cast());
 
                     Self::Array(array_value)
                 }
