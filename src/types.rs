@@ -553,6 +553,8 @@ impl TypeBuilder for CoreTypeConcrete {
                     .0
                     .extend(get_integer_layout(32))?
                     .0
+                    .extend(get_integer_layout(32))?
+                    .0
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
