@@ -120,6 +120,8 @@ jobs:
         run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test
         run: make test-ci
+      - name: test-cairo
+        run: make test-cairo
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
@@ -146,6 +148,8 @@ jobs:
         run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
         run: make test-ci
+      - name: test-cairo
+        run: make test-cairo
 
   coverage:
     name: coverage
@@ -205,7 +209,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage_data
-          path: ./lcov.info
+          path: |
+            ./lcov.info
+            ./lcov-test.info
 
   upload-coverage:
     name: Upload Coverage
@@ -222,8 +228,9 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
+          files: ./lcov.info,./lcov-test.info
           fail_ci_if_error: true
+          verbose: true
 
   dockerfile:
     name: dockerfile (linux, amd64)

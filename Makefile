@@ -55,6 +55,9 @@ check: check-llvm
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --all-features
 
+test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+	cargo r --profile ci --bin cairo-native-test -- cairo-tests/
+
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
@@ -66,6 +69,7 @@ proptest-ci: check-llvm needs-cairo2 runtime-ci
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- cairo-tests
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace
