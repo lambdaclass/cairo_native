@@ -1,5 +1,6 @@
 use crate::{
     error::compile::CompileError,
+    ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -15,7 +16,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::DialectRegistry,
-    ir::{Location, Module},
+    ir::{
+        attribute::StringAttribute, operation::OperationBuilder, Block, Identifier, Location,
+        Module, Region,
+    },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
@@ -44,7 +48,29 @@ impl NativeContext {
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
-        let mut module = Module::new(Location::unknown(&self.context));
+        let target_triple = get_target_triple();
+
+        let module_region = Region::new();
+        module_region.append_block(Block::new(&[]));
+
+        let data_layout_ret = &get_data_layout_rep()?;
+
+        let op = OperationBuilder::new("builtin.module", Location::unknown(&self.context))
+            .add_attributes(&[
+                (
+                    Identifier::new(&self.context, "llvm.target_triple"),
+                    StringAttribute::new(&self.context, &target_triple).into(),
+                ),
+                (
+                    Identifier::new(&self.context, "llvm.data_layout"),
+                    StringAttribute::new(&self.context, data_layout_ret).into(),
+                ),
+            ])
+            .add_regions([module_region])
+            .build()?;
+        assert!(op.verify(), "module operation is not valid");
+
+        let mut module = Module::from_operation(op).expect("module failed to create");
 
         let has_gas_builtin = program
             .type_declarations
@@ -77,6 +103,16 @@ impl NativeContext {
         )?;
 
         run_pass_manager(&self.context, &mut module)?;
+
+        // The func to llvm pass has a bug where it sets the data layout string to ""
+        // This works around it by setting it again.
+        {
+            let mut op = module.as_operation_mut();
+            op.set_attribute(
+                "llvm.data_layout",
+                StringAttribute::new(&self.context, data_layout_ret).into(),
+            );
+        }
 
         Ok(NativeModule::new(module, registry, metadata))
     }
