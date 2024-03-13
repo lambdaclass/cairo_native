@@ -76,7 +76,6 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
@@ -121,11 +120,12 @@ jobs:
         run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test
         run: make test-ci
+      - name: test-cairo
+        run: make test-cairo
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: [self-hosted, macOS]
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
@@ -148,12 +148,13 @@ jobs:
         run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
         run: make test-ci
+      - name: test-cairo
+        run: make test-cairo
 
   coverage:
     name: coverage
     runs-on: ubuntu-latest
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/ci
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
@@ -208,7 +209,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage_data
-          path: ./lcov.info
+          path: |
+            ./lcov.info
+            ./lcov-test.info
 
   upload-coverage:
     name: Upload Coverage
@@ -225,8 +228,9 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
+          files: ./lcov.info,./lcov-test.info
           fail_ci_if_error: true
+          verbose: true
 
   dockerfile:
     name: dockerfile (linux, amd64)

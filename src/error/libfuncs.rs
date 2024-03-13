@@ -55,6 +55,10 @@ pub enum ErrorImpl {
     ParseAttributeError,
     #[error("missing metadata")]
     MissingMetadata,
+    #[error("a cairo-native sierra related assert failed: {0}")]
+    SierraAssert(String),
+    #[error("a compiler related error happened: {0}")]
+    CompileError(String),
 }
 
 impl From<super::CoreTypeBuilderError> for ErrorImpl {
