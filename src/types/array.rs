@@ -195,11 +195,26 @@ fn snapshot_take<'ctx, 'this>(
                 .result(0)?
                 .into();
 
+            let src_ptr_offset = {
+                let array_start = entry
+                    .append_operation(arith::extui(
+                        array_start,
+                        IntegerType::new(context, 64).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+
+                entry
+                    .append_operation(arith::muli(array_start, elem_stride, location))
+                    .result(0)?
+                    .into()
+            };
             let src_ptr = entry
                 .append_operation(llvm::get_element_ptr_dynamic(
                     context,
                     src_ptr,
-                    &[array_start],
+                    &[src_ptr_offset],
                     IntegerType::new(context, 8).into(),
                     llvm::r#type::opaque_pointer(context),
                     location,

@@ -1890,6 +1890,8 @@ mod test {
         assert_eq!(result, 4u32.into());
     }
 
+    // TODO: Add test for `snapshot_pop_back`.
+
     #[test]
     fn run_slice() {
         let program = load_cairo!(
