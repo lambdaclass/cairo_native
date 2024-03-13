@@ -1133,7 +1133,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             .result(0)?
             .into();
         let new_end = valid_block
-            .append_operation(arith::subi(array_start, k1, location))
+            .append_operation(arith::subi(array_end, k1, location))
             .result(0)?
             .into();
 
@@ -1901,7 +1901,43 @@ mod test {
         assert_eq!(result, 4u32.into());
     }
 
-    // TODO: Add test for `snapshot_pop_back`.
+    #[test]
+    fn run_pop_back() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (Option<@u32>, Option<@u32>, Option<@u32>, Option<@u32>) {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(4_u32);
+                numbers.append(3_u32);
+                numbers.append(1_u32);
+                let mut numbers = numbers.span();
+                (
+                    numbers.pop_back(),
+                    numbers.pop_back(),
+                    numbers.pop_back(),
+                    numbers.pop_back(),
+                )
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_struct!(
+                jit_enum!(0, 1u32.into()),
+                jit_enum!(0, 3u32.into()),
+                jit_enum!(0, 4u32.into()),
+                jit_enum!(
+                    1,
+                    JitValue::Struct {
+                        fields: Vec::new(),
+                        debug_name: None,
+                    }
+                ),
+            ),
+        );
+    }
 
     #[test]
     fn run_slice() {
