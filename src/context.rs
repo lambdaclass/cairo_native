@@ -16,7 +16,10 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
-use llvm_sys::target::{LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets};
+use llvm_sys::target::{
+    LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
+    LLVM_InitializeAllTargets,
+};
 use melior::{
     dialect::DialectRegistry,
     ir::{

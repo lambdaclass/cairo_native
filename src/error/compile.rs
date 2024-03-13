@@ -76,7 +76,7 @@ pub enum ErrorImpl {
     #[error("gas metadata error")]
     GasMetadataError(#[from] GasMetadataError),
     #[error("llvm error")]
-    LLVMCompileError(String)
+    LLVMCompileError(String),
 }
 
 pub fn make_type_builder_error(
