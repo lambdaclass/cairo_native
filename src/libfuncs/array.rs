@@ -1323,7 +1323,7 @@ pub fn build_slice<'ctx, 'this>(
     let lhs_bound = entry
         .append_operation(arith::cmpi(
             context,
-            CmpiPredicate::Ugt,
+            CmpiPredicate::Uge,
             slice_since,
             array_start,
             location,
