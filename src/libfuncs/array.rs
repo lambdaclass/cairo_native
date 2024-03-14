@@ -2233,4 +2233,26 @@ mod test {
             },
         );
     }
+
+    #[test]
+    fn array_clone() {
+        let program = load_cairo!(
+            fn run_test() -> Array<u32> {
+                let x = ArrayTrait::new();
+                x.clone()
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::Array(vec![])],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
 }
