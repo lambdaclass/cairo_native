@@ -997,7 +997,6 @@ pub fn build_pop_front<'ctx, 'this>(
             .result(0)?
             .into();
 
-        // TODO: Support clone-only types (those that are not copy).
         valid_block.append_operation(llvm::call_intrinsic(
             context,
             StringAttribute::new(context, "llvm.memcpy.inline"),
@@ -1227,7 +1226,6 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             .result(0)?
             .into();
 
-        // TODO: Support clone-only types (those that are not copy).
         valid_block.append_operation(llvm::call_intrinsic(
             context,
             StringAttribute::new(context, "llvm.memcpy.inline"),
@@ -1400,7 +1398,7 @@ pub fn build_slice<'ctx, 'this>(
             .result(0)?
             .into();
 
-        // TODO: Copy data (with clone functions).
+        // TODO: Find out if we need to clone stuff using the snapshot clone meta.
         let src_offset = {
             let slice_since = slice_block
                 .append_operation(arith::extui(

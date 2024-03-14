@@ -34,7 +34,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith,
+        llvm::{self, LoadStoreOptions},
+    },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
         r#type::IntegerType,
@@ -96,6 +99,7 @@ fn snapshot_take<'ctx, 'this>(
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
+    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
 
     let src_ptr = entry
         .append_operation(llvm::extract_value(
@@ -183,40 +187,68 @@ fn snapshot_take<'ctx, 'this>(
             .into()
     };
 
+    let src_ptr_offset = {
+        let array_start = entry
+            .append_operation(arith::extui(
+                array_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        entry
+            .append_operation(arith::muli(array_start, elem_stride, location))
+            .result(0)?
+            .into()
+    };
+    let src_ptr = entry
+        .append_operation(llvm::get_element_ptr_dynamic(
+            context,
+            src_ptr,
+            &[src_ptr_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+
     match elem_snapshot_take {
-        Some(_) => todo!(),
+        Some(elem_snapshot_take) => {
+            let value = entry
+                .append_operation(llvm::load(
+                    context,
+                    src_ptr,
+                    elem_ty,
+                    location,
+                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                        elem_layout.align() as i64,
+                        IntegerType::new(context, 64).into(),
+                    ))),
+                ))
+                .result(0)?
+                .into();
+
+            let value =
+                elem_snapshot_take(context, registry, entry, location, helper, metadata, value)?;
+
+            entry.append_operation(llvm::store(
+                context,
+                value,
+                dst_ptr,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    elem_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ));
+        }
         None => {
             let is_volatile = entry
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-
-            let src_ptr_offset = {
-                let array_start = entry
-                    .append_operation(arith::extui(
-                        array_start,
-                        IntegerType::new(context, 64).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-
-                entry
-                    .append_operation(arith::muli(array_start, elem_stride, location))
-                    .result(0)?
-                    .into()
-            };
-            let src_ptr = entry
-                .append_operation(llvm::get_element_ptr_dynamic(
-                    context,
-                    src_ptr,
-                    &[src_ptr_offset],
-                    IntegerType::new(context, 8).into(),
-                    llvm::r#type::opaque_pointer(context),
                     location,
                 ))
                 .result(0)?
