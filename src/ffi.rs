@@ -30,6 +30,8 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
+use crate::error::compile::{CompileError, ErrorImpl};
+
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
@@ -239,5 +241,56 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     } else {
         let msg = String::from_utf8_lossy(&proc.stderr);
         panic!("error linking:\n{}", msg);
+    }
+}
+
+pub fn get_target_triple() -> String {
+    let target_triple = unsafe {
+        let value = LLVMGetDefaultTargetTriple();
+        CStr::from_ptr(value).to_string_lossy().into_owned()
+    };
+    target_triple
+}
+
+pub fn get_data_layout_rep() -> Result<String, CompileError> {
+    unsafe {
+        let mut null = null_mut();
+        let error_buffer = addr_of_mut!(null);
+
+        let target_triple = LLVMGetDefaultTargetTriple();
+
+        let target_cpu = LLVMGetHostCPUName();
+
+        let target_cpu_features = LLVMGetHostCPUFeatures();
+
+        let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
+
+        if LLVMGetTargetFromTriple(target_triple, target.as_mut_ptr(), error_buffer) != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            tracing::error!("error getting target triple: {}", err);
+            LLVMDisposeMessage(*error_buffer);
+            Err(ErrorImpl::LLVMCompileError(err))?;
+        }
+        if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
+        }
+
+        let target = target.assume_init();
+
+        let machine = LLVMCreateTargetMachine(
+            target,
+            target_triple.cast(),
+            target_cpu.cast(),
+            target_cpu_features.cast(),
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+            LLVMRelocMode::LLVMRelocDynamicNoPic,
+            LLVMCodeModel::LLVMCodeModelDefault,
+        );
+
+        let data_layout = llvm_sys::target_machine::LLVMCreateTargetDataLayout(machine);
+        let data_layout_str =
+            CStr::from_ptr(llvm_sys::target::LLVMCopyStringRepOfTargetData(data_layout));
+        Ok(data_layout_str.to_string_lossy().into_owned())
     }
 }
