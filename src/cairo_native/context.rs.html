@@ -129,8 +129,61 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::OnceLock;
+
+<span class="kw">use crate</span>::{
     error::compile::CompileError,
+    ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -144,9 +197,16 @@
     program::Program,
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>llvm_sys::target::{
+    LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
+    LLVM_InitializeAllTargets,
+};
 <span class="kw">use </span>melior::{
     dialect::DialectRegistry,
-    ir::{Location, Module},
+    ir::{
+        attribute::StringAttribute, operation::OperationBuilder, Block, Identifier, Location,
+        Module, Region,
+    },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
@@ -175,7 +235,37 @@
     <span class="doccomment">/// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     </span><span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, CompileError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
+        <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
+        INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
+            LLVM_InitializeAllTargets();
+            LLVM_InitializeAllTargetInfos();
+            LLVM_InitializeAllTargetMCs();
+            LLVM_InitializeAllAsmPrinters();
+            <span class="macro">tracing::debug!</span>(<span class="string">"initialized llvm targets"</span>);
+        });
+        <span class="kw">let </span>target_triple = get_target_triple();
+
+        <span class="kw">let </span>module_region = Region::new();
+        module_region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+        <span class="kw">let </span>data_layout_ret = <span class="kw-2">&amp;</span>get_data_layout_rep()<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>op = OperationBuilder::new(<span class="string">"builtin.module"</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context))
+            .add_attributes(<span class="kw-2">&amp;</span>[
+                (
+                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"llvm.target_triple"</span>),
+                    StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;</span>target_triple).into(),
+                ),
+                (
+                    Identifier::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"llvm.data_layout"</span>),
+                    StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, data_layout_ret).into(),
+                ),
+            ])
+            .add_regions([module_region])
+            .build()<span class="question-mark">?</span>;
+        <span class="macro">assert!</span>(op.verify(), <span class="string">"module operation is not valid"</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::from_operation(op).expect(<span class="string">"module failed to create"</span>);
 
         <span class="kw">let </span>has_gas_builtin = program
             .type_declarations
@@ -208,6 +298,16 @@
         )<span class="question-mark">?</span>;
 
         run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
+
+        <span class="comment">// The func to llvm pass has a bug where it sets the data layout string to ""
+        // This works around it by setting it again.
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>op = module.as_operation_mut();
+            op.set_attribute(
+                <span class="string">"llvm.data_layout"</span>,
+                StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, data_layout_ret).into(),
+            );
+        }
 
         <span class="prelude-val">Ok</span>(NativeModule::new(module, registry, metadata))
     }
