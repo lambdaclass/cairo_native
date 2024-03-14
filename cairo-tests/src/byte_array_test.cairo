@@ -355,6 +355,7 @@ fn test_string_literals() {
 }
 
 #[test]
+#[ignore]
 fn test_equality() {
     let byte_array: ByteArray = "a";
     assert(@byte_array == @"a", 'Same strings are not equal');

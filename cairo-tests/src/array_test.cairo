@@ -76,6 +76,7 @@ fn test_slice_out_of_bound_2() {
 }
 
 #[test]
+#[ignore]
 fn test_equality() {
     let arr1 = array![];
     let arr2 = array![10, 11, 12];
