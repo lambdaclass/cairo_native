@@ -29,6 +29,7 @@ use melior::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
         },
+        operation::OperationBuilder,
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
     },
@@ -812,7 +813,13 @@ pub fn build_get<'ctx, 'this>(
             ))
             .result(0)?
             .into();
-        // TODO: Assert that `target_ptr != nullptr`.
+        assert_nonnull(
+            context,
+            valid_block,
+            location,
+            target_ptr,
+            "realloc returned nullptr",
+        )?;
 
         let is_volatile = valid_block
             .append_operation(arith::constant(
@@ -973,7 +980,13 @@ pub fn build_pop_front<'ctx, 'this>(
             ))
             .result(0)?
             .into();
-        // TODO: Assert that `target_ptr != nullptr`.
+        assert_nonnull(
+            context,
+            valid_block,
+            location,
+            target_ptr,
+            "realloc returned nullptr",
+        )?;
 
         let is_volatile = valid_block
             .append_operation(arith::constant(
@@ -1197,7 +1210,13 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             ))
             .result(0)?
             .into();
-        // TODO: Assert that `target_ptr != nullptr`.
+        assert_nonnull(
+            context,
+            valid_block,
+            location,
+            target_ptr,
+            "realloc returned nullptr",
+        )?;
 
         let is_volatile = valid_block
             .append_operation(arith::constant(
@@ -1683,6 +1702,46 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     entry.append_operation(helper.br(0, &[array_container], location));
 
+    Ok(())
+}
+
+fn assert_nonnull<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'this>,
+    msg: &str,
+) -> Result<()> {
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let ptr_value = entry
+        .append_operation(
+            OperationBuilder::new("llvm.ptrtoint", location)
+                .add_operands(&[ptr])
+                .add_results(&[IntegerType::new(context, 64).into()])
+                .build()?,
+        )
+        .result(0)?
+        .into();
+
+    let ptr_is_not_null = entry
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Ne,
+            ptr_value,
+            k0,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    entry.append_operation(cf::assert(context, ptr_is_not_null, msg, location));
     Ok(())
 }
 
