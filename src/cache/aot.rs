@@ -16,7 +16,7 @@ where
     K: PartialEq + Eq + Hash,
 {
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor>>,
+    cache: HashMap<K, Rc<AotNativeExecutor<'a>>>,
 }
 
 impl<'a, K> AotProgramCache<'a, K>
@@ -39,8 +39,9 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<AotNativeExecutor> {
+    ) -> Rc<AotNativeExecutor<'a>> {
         let NativeModule {
+            context,
             module,
             registry,
             metadata,
@@ -59,10 +60,15 @@ where
         crate::ffi::object_to_shared_lib(&object_data, &shared_library_path).unwrap();
 
         let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
+        let gas_metadata = metadata.get::<GasMetadata>().cloned().unwrap();
+
         let executor = AotNativeExecutor::new(
-            shared_library,
+            context,
+            module,
             registry,
-            metadata.get::<GasMetadata>().cloned().unwrap(),
+            metadata,
+            shared_library,
+            gas_metadata,
         );
 
         let executor = Rc::new(executor);

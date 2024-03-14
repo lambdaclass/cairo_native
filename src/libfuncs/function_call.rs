@@ -85,7 +85,10 @@ pub fn build<'ctx, 'this>(
         .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
     {
         let (type_id, type_info) = return_types[0];
-        let layout = type_info.layout(registry)?;
+        let layout = crate::ffi::get_mlir_layout(
+            helper,
+            type_info.build(context, helper, registry, metadata, type_id)?,
+        );
 
         let k1 = helper
             .init_block()
@@ -184,7 +187,7 @@ pub fn build<'ctx, 'this>(
 
                 results.push(if type_info.is_memory_allocated(registry) {
                     let ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
-                    let layout = type_info.layout(registry)?;
+                    let layout = crate::ffi::get_mlir_layout(helper, ty);
 
                     let k1 = helper
                         .init_block()
@@ -255,7 +258,10 @@ pub fn build<'ctx, 'this>(
                         let val = arguments[0];
 
                         let offset;
-                        let ret_layout = type_info.layout(registry)?;
+                        let ret_layout = crate::ffi::get_mlir_layout(
+                            helper,
+                            type_info.build(context, helper, registry, metadata, type_id)?,
+                        );
                         (layout, offset) = layout.extend(ret_layout)?;
 
                         let pointer_val = entry
@@ -305,7 +311,7 @@ pub fn build<'ctx, 'this>(
                         results.push(if type_info.is_memory_allocated(registry) {
                             let ty =
                                 type_info.build(context, helper, registry, metadata, type_id)?;
-                            let layout = type_info.layout(registry)?;
+                            let layout = crate::ffi::get_mlir_layout(helper, ty);
 
                             let k1 = helper
                                 .init_block()

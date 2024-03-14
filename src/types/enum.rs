@@ -402,11 +402,7 @@
 //! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
 
 use super::{TypeBuilder, WithSelf};
-use crate::{
-    error::types::Result,
-    metadata::MetadataStorage,
-    utils::{get_integer_layout, ProgramRegistryExt},
-};
+use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -436,11 +432,21 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
-
-    let tag_layout = get_integer_layout(tag_bits);
+    let tag_layout = match tag_bits {
+        x if x <= u8::BITS => Layout::new::<u8>(),
+        x if x <= u16::BITS => Layout::new::<u16>(),
+        x if x <= u32::BITS => Layout::new::<u32>(),
+        x if x <= u64::BITS => Layout::new::<u64>(),
+        _ => unreachable!(),
+    };
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .extend(crate::ffi::get_mlir_layout(
+                module,
+                registry
+                    .build_type(context, module, registry, metadata, id)
+                    .unwrap(),
+            ))
             .unwrap()
             .0;
 
@@ -482,17 +488,29 @@ pub fn build<'ctx>(
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
 pub fn get_layout_for_variants(
+    context: &Context,
+    module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, Layout, Vec<Layout>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
+    let tag_layout = match tag_bits {
+        x if x <= u8::BITS => Layout::new::<u8>(),
+        x if x <= u16::BITS => Layout::new::<u16>(),
+        x if x <= u32::BITS => Layout::new::<u32>(),
+        x if x <= u64::BITS => Layout::new::<u64>(),
+        _ => unreachable!(),
+    };
 
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
         let concrete_payload_ty = registry.get_type(variant)?;
-        let payload_layout = concrete_payload_ty.layout(registry)?;
+        let payload_layout = crate::ffi::get_mlir_layout(
+            module,
+            concrete_payload_ty.build(context, module, registry, metadata, variant)?,
+        );
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(
@@ -518,7 +536,13 @@ pub fn get_type_for_variants<'ctx>(
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
+    let tag_layout = match tag_bits {
+        x if x <= u8::BITS => Layout::new::<u8>(),
+        x if x <= u16::BITS => Layout::new::<u16>(),
+        x if x <= u32::BITS => Layout::new::<u32>(),
+        x if x <= u64::BITS => Layout::new::<u64>(),
+        _ => unreachable!(),
+    };
     let tag_ty: Type = IntegerType::new(context, tag_bits).into();
 
     let mut layout = tag_layout;

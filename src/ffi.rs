@@ -16,8 +16,9 @@ use llvm_sys::{
     },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::MlirOperation;
+use mlir_sys::{MlirModule, MlirOperation, MlirType};
 use std::{
+    alloc::Layout,
     borrow::Cow,
     error::Error,
     ffi::{c_void, CStr},
@@ -35,6 +36,9 @@ use crate::error::compile::{CompileError, ErrorImpl};
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
+    fn DataLayout_getTypePreferredAlignment(module: MlirModule, r#type: MlirType) -> u64;
+    fn DataLayout_getTypeSize(module: MlirModule, r#type: MlirType) -> u64;
+
     /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
     /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
     fn mlirTranslateModuleToLLVMIR(
@@ -49,6 +53,18 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
 
     ty_ptr.ptr = unsafe { LLVMStructType_getFieldTypeAt(ty_ptr.ptr, index as u32) };
     unsafe { Type::from_raw(ty_ptr) }
+}
+
+pub fn get_mlir_layout(module: &Module, r#type: Type) -> Layout {
+    let module = module.to_raw();
+    let r#type = r#type.to_raw();
+
+    unsafe {
+        let size = DataLayout_getTypeSize(module, r#type) as usize;
+        let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
+
+        Layout::from_size_align(size, align).unwrap()
+    }
 }
 
 #[derive(Debug, Clone)]

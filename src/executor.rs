@@ -2,9 +2,9 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    metadata::syscall_handler::SyscallHandlerMeta,
+    metadata::{syscall_handler::SyscallHandlerMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{BYTES31_LAYOUT, FELT252_LAYOUT},
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use melior::{ir::Module, Context};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -48,12 +49,12 @@ extern "C" {
 }
 
 #[derive(Debug, Clone)]
-pub enum NativeExecutor<'m> {
-    Aot(Rc<AotNativeExecutor>),
-    Jit(Rc<JitNativeExecutor<'m>>),
+pub enum NativeExecutor<'ctx> {
+    Aot(Rc<AotNativeExecutor<'ctx>>),
+    Jit(Rc<JitNativeExecutor<'ctx>>),
 }
 
-impl<'a> NativeExecutor<'a> {
+impl<'ctx> NativeExecutor<'ctx> {
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -89,20 +90,24 @@ impl<'a> NativeExecutor<'a> {
     }
 }
 
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
+impl<'ctx> From<AotNativeExecutor<'ctx>> for NativeExecutor<'ctx> {
+    fn from(value: AotNativeExecutor<'ctx>) -> Self {
         Self::Aot(Rc::new(value))
     }
 }
 
-impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
-    fn from(value: JitNativeExecutor<'m>) -> Self {
+impl<'ctx> From<JitNativeExecutor<'ctx>> for NativeExecutor<'ctx> {
+    fn from(value: JitNativeExecutor<'ctx>) -> Self {
         Self::Jit(Rc::new(value))
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn invoke_dynamic(
+    context: &Context,
+    module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
@@ -115,7 +120,7 @@ fn invoke_dynamic(
     let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
-    let mut invoke_data = ArgumentMapper::new(&arena, registry);
+    let mut invoke_data = ArgumentMapper::new(context, module, registry, metadata, &arena);
 
     // Generate return pointer (if necessary).
     //
@@ -146,16 +151,19 @@ fn invoke_dynamic(
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id).unwrap();
             layout
-                .extend(type_info.layout(registry).unwrap())
+                // .extend(type_info.layout(registry).unwrap())
+                .extend(crate::ffi::get_mlir_layout(
+                    module,
+                    type_info
+                        .build(context, module, registry, invoke_data.metadata, id)
+                        .unwrap(),
+                ))
                 .unwrap()
                 .0
         });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        invoke_data.push_aligned(
-            get_integer_layout(64).align(),
-            &[return_ptr.as_ptr() as u64],
-        );
+        invoke_data.push_aligned(Layout::new::<u64>().align(), &[return_ptr.as_ptr() as u64]);
 
         Some(return_ptr)
     } else {
@@ -173,12 +181,12 @@ fn invoke_dynamic(
         // Process gas requirements and syscall handler.
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
-                get_integer_layout(128).align(),
+                Layout::new::<u128>().align(),
                 &[gas as u64, (gas >> 64) as u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
                 Some(syscall_handler) => invoke_data.push_aligned(
-                    get_integer_layout(64).align(),
+                    Layout::new::<u64>().align(),
                     &[syscall_handler.as_ptr() as u64],
                 ),
                 None => panic!("Syscall handler is required"),
@@ -265,8 +273,11 @@ fn invoke_dynamic(
 
     // Parse return values.
     let return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
+        context,
+        module,
         registry,
+        metadata,
+        function_signature.ret_types.last().unwrap(),
         return_ptr,
         ret_registers,
     );
@@ -282,17 +293,29 @@ fn invoke_dynamic(
 }
 
 pub struct ArgumentMapper<'a> {
-    arena: &'a Bump,
+    context: &'a Context,
+    module: &'a Module<'a>,
     registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &'a mut MetadataStorage,
 
+    arena: &'a Bump,
     invoke_data: Vec<u64>,
 }
 
 impl<'a> ArgumentMapper<'a> {
-    pub fn new(arena: &'a Bump, registry: &'a ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
+    pub fn new(
+        context: &'a Context,
+        module: &'a Module,
+        registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+        metadata: &'a mut MetadataStorage,
+        arena: &'a Bump,
+    ) -> Self {
         Self {
-            arena,
+            context,
+            module,
             registry,
+            metadata,
+            arena,
             invoke_data: Vec::new(),
         }
     }
@@ -349,7 +372,19 @@ impl<'a> ArgumentMapper<'a> {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 let type_info = self.registry.get_type(&info.ty)?;
-                let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
+                let type_layout = crate::ffi::get_mlir_layout(
+                    self.module,
+                    type_info
+                        .build(
+                            self.context,
+                            self.module,
+                            self.registry,
+                            self.metadata,
+                            type_id,
+                        )
+                        .unwrap(),
+                )
+                .pad_to_align();
 
                 // This needs to be a heap-allocated pointer because it's the actual array data.
                 let ptr = if values.is_empty() {
@@ -362,7 +397,14 @@ impl<'a> ArgumentMapper<'a> {
                     unsafe {
                         std::ptr::copy_nonoverlapping(
                             value
-                                .to_jit(self.arena, self.registry, &info.ty)
+                                .to_jit(
+                                    self.context,
+                                    self.module,
+                                    self.registry,
+                                    self.metadata,
+                                    self.arena,
+                                    &info.ty,
+                                )
                                 .unwrap()
                                 .cast()
                                 .as_ptr(),
@@ -373,25 +415,28 @@ impl<'a> ArgumentMapper<'a> {
                 }
 
                 self.push_aligned(
-                    get_integer_layout(64).align(),
+                    Layout::new::<u64>().align(),
                     &[ptr as u64, values.len() as u64, values.len() as u64],
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &a.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &b.to_le_digits());
             }
             (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &c.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &d.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &a.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &b.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &c.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &d.to_le_digits());
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
                     let (layout, tag_layout, variant_layouts) =
                         crate::types::r#enum::get_layout_for_variants(
+                            self.context,
+                            self.module,
                             self.registry,
+                            self.metadata,
                             &info.variants,
                         )
                         .unwrap();
@@ -410,7 +455,14 @@ impl<'a> ArgumentMapper<'a> {
 
                     let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
                     let payload_ptr = value
-                        .to_jit(self.arena, self.registry, &info.variants[*tag])
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.registry,
+                            self.metadata,
+                            self.arena,
+                            &info.variants[*tag],
+                        )
                         .unwrap();
                     unsafe {
                         std::ptr::copy_nonoverlapping(
@@ -443,11 +495,11 @@ impl<'a> ArgumentMapper<'a> {
                 ),
                 JitValue::Felt252(value),
             ) => {
-                self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
+                self.push_aligned(FELT252_LAYOUT.align(), &value.to_le_digits());
             }
             (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
                 self.push_aligned(
-                    get_integer_layout(248).align(),
+                    BYTES31_LAYOUT.align(),
                     &Felt::from_bytes_be_slice(value).to_le_digits(),
                 );
             }
@@ -459,7 +511,14 @@ impl<'a> ArgumentMapper<'a> {
 
                 self.invoke_data.push(
                     value
-                        .to_jit(self.arena, self.registry, type_id)
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.registry,
+                            self.metadata,
+                            self.arena,
+                            type_id,
+                        )
                         .unwrap()
                         .as_ptr() as u64,
                 );
@@ -474,38 +533,38 @@ impl<'a> ArgumentMapper<'a> {
                 }
             }
             (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
-                get_integer_layout(128).align(),
+                Layout::new::<u128>().align(),
                 &[*value as u64, (value >> 64) as u64],
             ),
             (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value]);
+                self.push_aligned(Layout::new::<u64>().align(), &[*value]);
             }
             (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
-                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u32>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
-                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u16>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
-                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u8>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
                 self.push_aligned(
-                    get_integer_layout(128).align(),
+                    Layout::new::<u128>().align(),
                     &[*value as u64, (value >> 64) as u64],
                 );
             }
             (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u64>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
-                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u32>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
-                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u16>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
-                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
+                self.push_aligned(Layout::new::<u8>().align(), &[*value as u64]);
             }
             (CoreTypeConcrete::NonZero(info), _) => {
                 // TODO: Check that the value is indeed non-zero.
@@ -523,8 +582,8 @@ impl<'a> ArgumentMapper<'a> {
                 let x_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([x.0, x.1]) };
                 let y_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([y.0, y.1]) };
 
-                self.push_aligned(get_integer_layout(252).align(), &x_data);
-                self.push_aligned(get_integer_layout(252).align(), &y_data);
+                self.push_aligned(FELT252_LAYOUT.align(), &x_data);
+                self.push_aligned(FELT252_LAYOUT.align(), &y_data);
             }
             (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))
@@ -533,7 +592,7 @@ impl<'a> ArgumentMapper<'a> {
             | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value])
+                self.push_aligned(Layout::new::<u64>().align(), &[*value])
             }
             (_, _) => todo!(),
         }
@@ -543,8 +602,11 @@ impl<'a> ArgumentMapper<'a> {
 }
 
 fn parse_result(
-    type_id: &ConcreteTypeId,
+    context: &Context,
+    module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    type_id: &ConcreteTypeId,
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
@@ -553,7 +615,12 @@ fn parse_result(
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = type_info.layout(registry).unwrap();
+        let layout = crate::ffi::get_mlir_layout(
+            module,
+            type_info
+                .build(context, module, registry, metadata, type_id)
+                .unwrap(),
+        );
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -565,15 +632,36 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(
+            context,
+            module,
+            registry,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+        ),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(ptr, &info.ty, registry);
+            let value = JitValue::from_jit(context, module, registry, metadata, ptr, &info.ty);
             libc::free(ptr.cast().as_ptr());
             value
         },
-        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(
+            context,
+            module,
+            registry,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+        ),
+        CoreTypeConcrete::EcState(_) => JitValue::from_jit(
+            context,
+            module,
+            registry,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+        ),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -581,10 +669,19 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => {
+                JitValue::from_jit(context, module, registry, metadata, return_ptr, type_id)
+            }
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                let value = JitValue::from_jit(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                );
 
                 #[cfg(target_arch = "aarch64")]
                 let value =
@@ -640,9 +737,15 @@ fn parse_result(
                 JitValue::Sint128(((ret_registers[1] as i128) << 64) | ret_registers[0] as i128)
             }
         },
-        CoreTypeConcrete::NonZero(info) => {
-            parse_result(&info.ty, registry, return_ptr, ret_registers)
-        }
+        CoreTypeConcrete::NonZero(info) => parse_result(
+            context,
+            module,
+            registry,
+            metadata,
+            &info.ty,
+            return_ptr,
+            ret_registers,
+        ),
         CoreTypeConcrete::Nullable(info) => unsafe {
             let ptr = return_ptr.map_or(ret_registers[0] as *mut (), |x| {
                 *x.cast::<*mut ()>().as_ref()
@@ -651,15 +754,21 @@ fn parse_result(
                 JitValue::Null
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(ptr, &info.ty, registry);
+                let value = JitValue::from_jit(context, module, registry, metadata, ptr, &info.ty);
                 libc::free(ptr.as_ptr().cast());
                 value
             }
         },
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
-            let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+            let (_, tag_layout, variant_layouts) = crate::types::r#enum::get_layout_for_variants(
+                context,
+                module,
+                registry,
+                metadata,
+                &info.variants,
+            )
+            .unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
@@ -703,12 +812,22 @@ fn parse_result(
             };
 
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Ok(ptr) => Box::new(JitValue::from_jit(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    ptr,
+                    &info.variants[tag],
+                )),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
-                        &info.variants[tag],
+                        context,
+                        module,
                         registry,
+                        metadata,
+                        &info.variants[tag],
                         None,
                         ret_registers,
                     ))
@@ -728,19 +847,32 @@ fn parse_result(
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
                 }
             } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                JitValue::from_jit(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                )
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
             Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                registry,
+                metadata,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
-                registry,
             ),
             None => JitValue::from_jit(
+                context,
+                module,
+                registry,
+                metadata,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
-                registry,
             ),
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),

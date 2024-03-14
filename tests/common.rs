@@ -249,7 +249,7 @@ pub fn run_native_program(
     run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
-    let native_module = NativeModule::new(module, registry, metadata);
+    let native_module = NativeModule::new(&context, module, registry, metadata);
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
     executor

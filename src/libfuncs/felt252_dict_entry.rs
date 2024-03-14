@@ -8,7 +8,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{ProgramRegistryExt, FELT252_LAYOUT},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -274,10 +274,19 @@ pub fn build_finalize<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     let value_type = registry.get_type(&info.param_signatures()[1].ty)?;
-    let value_layout = value_type.layout(registry)?;
+    let value_layout = crate::ffi::get_mlir_layout(
+        helper,
+        value_type.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[1].ty,
+        )?,
+    );
 
     let key_ty = IntegerType::new(context, 252).into();
-    let key_layout = get_integer_layout(252);
+    let key_layout = FELT252_LAYOUT;
 
     let entry_value = entry.argument(0)?.into();
     let new_value = entry.argument(1)?.into();

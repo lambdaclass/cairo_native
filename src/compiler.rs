@@ -529,7 +529,8 @@ fn compile_func(
                                                         type_id,
                                                     )
                                                     .unwrap();
-                                                let layout = type_info.layout(registry).unwrap();
+                                                let layout =
+                                                    crate::ffi::get_mlir_layout(module, ty);
 
                                                 block
                                                     .append_operation(llvm::load(
@@ -582,9 +583,12 @@ fn compile_func(
                     match has_return_ptr {
                         Some(true) => {
                             let (ret_type_id, ret_type_info) = return_types[0];
-                            let ret_layout = ret_type_info
-                                .layout(registry)
-                                .map_err(make_type_builder_error(ret_type_id))?;
+                            let ret_layout = crate::ffi::get_mlir_layout(
+                                module,
+                                ret_type_info
+                                    .build(context, module, registry, metadata, ret_type_id)
+                                    .map_err(make_type_builder_error(ret_type_id))?,
+                            );
 
                             let ptr = values.remove(0);
 
@@ -628,9 +632,12 @@ fn compile_func(
                                 values.iter_mut().zip(&return_types)
                             {
                                 if type_info.is_memory_allocated(registry) {
-                                    let layout = type_info
-                                        .layout(registry)
-                                        .map_err(make_type_builder_error(type_id))?;
+                                    let layout = crate::ffi::get_mlir_layout(
+                                        module,
+                                        type_info
+                                            .build(context, module, registry, metadata, type_id)
+                                            .map_err(make_type_builder_error(type_id))?,
+                                    );
 
                                     *value = block
                                         .append_operation(llvm::load(

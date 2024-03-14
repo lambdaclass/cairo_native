@@ -7,7 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     starknet::handler::StarkNetSyscallHandlerCallbacks,
     types::felt252::PRIME,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{ProgramRegistryExt, FELT252_LAYOUT},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -259,7 +259,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -288,7 +288,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -816,7 +816,7 @@ pub fn build_storage_read<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1133,7 +1133,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1161,7 +1161,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2763,7 +2763,7 @@ pub fn build_deploy<'ctx, 'this>(
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) = {
-        let tag_layout = get_integer_layout(1);
+        let tag_layout = Layout::new::<u8>();
         let tag_ty: Type = IntegerType::new(context, 1).into();
 
         let mut layout = tag_layout;
@@ -2870,7 +2870,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(64).align().try_into()?,
+                        Layout::new::<u64>().align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2901,7 +2901,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
+                        FELT252_LAYOUT.align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2930,7 +2930,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3632,7 +3632,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3661,7 +3661,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -4019,7 +4019,7 @@ pub fn build_replace_class<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -4328,7 +4328,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        FELT252_LAYOUT.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),

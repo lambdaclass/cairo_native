@@ -34,6 +34,9 @@ pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
 
+pub(crate) const FELT252_LAYOUT: Layout = Layout::new::<u64>();
+pub(crate) const BYTES31_LAYOUT: Layout = Layout::new::<u64>();
+
 /// Generate a function name.
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
@@ -45,36 +48,6 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
-    }
-}
-
-/// Return the layout for an integer of arbitrary width.
-///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
-/// with a size in bytes of a power of two has the same alignment as its size.
-pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
-
-    if width == 0 {
-        Layout::new::<()>()
-    } else if width <= 8 {
-        Layout::new::<u8>()
-    } else if width <= 16 {
-        Layout::new::<u16>()
-    } else if width <= 32 {
-        Layout::new::<u32>()
-    } else if width <= 64 {
-        Layout::new::<u64>()
-    } else if width <= 128 {
-        Layout::new::<u128>()
-    } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
     }
 }
 
@@ -343,14 +316,6 @@ pub const fn next_multiple_of_usize(lhs: usize, rhs: usize) -> usize {
     }
 }
 
-#[inline]
-pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
 /// Edit: Copied from the std lib.
 ///
 /// Returns the amount of padding we must insert after `layout`
@@ -473,11 +438,9 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
         let concrete_type = registry.get_type(id)?;
+        let r#type = concrete_type.build(context, module, registry, metadata, id)?;
 
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
+        Ok((r#type, crate::ffi::get_mlir_layout(module, r#type)))
     }
 }
 
@@ -786,7 +749,7 @@ pub mod test {
 
         let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
 
-        let native_module = NativeModule::new(module, registry, metadata);
+        let native_module = NativeModule::new(&context, module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
         let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
@@ -808,58 +771,6 @@ pub mod test {
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_value, output);
-    }
-
-    /// Ensures that the host's `u8` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u8() {
-        assert_eq!(get_integer_layout(8).align(), 1);
-    }
-
-    /// Ensures that the host's `u16` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u16() {
-        assert_eq!(get_integer_layout(16).align(), 2);
-    }
-
-    /// Ensures that the host's `u32` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u32() {
-        assert_eq!(get_integer_layout(32).align(), 4);
-    }
-
-    /// Ensures that the host's `u64` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u64() {
-        assert_eq!(get_integer_layout(64).align(), 8);
-    }
-
-    /// Ensures that the host's `u128` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
-        assert_eq!(get_integer_layout(128).align(), 16);
-    }
-
-    /// Ensures that the host's `u256` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_u256() {
-        assert_eq!(get_integer_layout(256).align(), 16);
-    }
-
-    /// Ensures that the host's `u512` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u512() {
-        assert_eq!(get_integer_layout(512).align(), 8);
-    }
-
-    /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
     }
 
     #[derive(Debug)]

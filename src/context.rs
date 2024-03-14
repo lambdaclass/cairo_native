@@ -67,7 +67,7 @@ impl NativeContext {
         let module_region = Region::new();
         module_region.append_block(Block::new(&[]));
 
-        let data_layout_ret = &get_data_layout_rep()?;
+        let data_layout_ret = get_data_layout_rep()?;
 
         let op = OperationBuilder::new("builtin.module", Location::unknown(&self.context))
             .add_attributes(&[
@@ -77,7 +77,7 @@ impl NativeContext {
                 ),
                 (
                     Identifier::new(&self.context, "llvm.data_layout"),
-                    StringAttribute::new(&self.context, data_layout_ret).into(),
+                    StringAttribute::new(&self.context, &data_layout_ret).into(),
                 ),
             ])
             .add_regions([module_region])
@@ -124,11 +124,11 @@ impl NativeContext {
             let mut op = module.as_operation_mut();
             op.set_attribute(
                 "llvm.data_layout",
-                StringAttribute::new(&self.context, data_layout_ret).into(),
+                StringAttribute::new(&self.context, &data_layout_ret).into(),
             );
         }
 
-        Ok(NativeModule::new(module, registry, metadata))
+        Ok(NativeModule::new(&self.context, module, registry, metadata))
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
@@ -161,7 +161,7 @@ impl NativeContext {
 
         run_pass_manager(&self.context, &mut module)?;
 
-        Ok(NativeModule::new(module, registry, metadata))
+        Ok(NativeModule::new(&self.context, module, registry, metadata))
     }
 }
 

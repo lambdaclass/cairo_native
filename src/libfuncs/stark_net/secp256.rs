@@ -1,9 +1,6 @@
 use crate::{
-    error::libfuncs::Result,
-    libfuncs::LibfuncHelper,
-    metadata::MetadataStorage,
-    starknet::handler::StarkNetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    error::libfuncs::Result, libfuncs::LibfuncHelper, metadata::MetadataStorage,
+    starknet::handler::StarkNetSyscallHandlerCallbacks, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -202,7 +199,7 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -233,7 +230,7 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -558,7 +555,7 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -610,7 +607,7 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -947,7 +944,7 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -985,7 +982,7 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1308,7 +1305,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1537,7 +1534,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = get_integer_layout(128);
+        let u128_layout = Layout::new::<u128>();
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -1560,7 +1557,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), get_integer_layout(1));
+        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), Layout::new::<u8>());
 
         (
             tag_layout
@@ -1682,7 +1679,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2034,7 +2031,7 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2065,7 +2062,7 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2390,7 +2387,7 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2442,7 +2439,7 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2779,7 +2776,7 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2817,7 +2814,7 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3140,7 +3137,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3369,7 +3366,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = get_integer_layout(128);
+        let u128_layout = Layout::new::<u128>();
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -3392,7 +3389,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), get_integer_layout(1));
+        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), Layout::new::<u8>());
 
         (
             tag_layout
@@ -3514,7 +3511,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        Layout::new::<u128>().align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),

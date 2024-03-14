@@ -4,8 +4,9 @@
 
 use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
+    utils::{felt252_bigint, layout_repeat, FELT252_LAYOUT},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -17,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
+use melior::{ir::Module, Context};
 use num_bigint::{BigInt, Sign};
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
@@ -176,8 +178,11 @@ impl JitValue {
     /// Allocates the value in the given arena so it can be passed to the JIT engine.
     pub(crate) fn to_jit(
         &self,
-        arena: &Bump,
+        context: &Context,
+        module: &Module,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        metadata: &mut MetadataStorage,
+        arena: &Bump,
         type_id: &ConcreteTypeId,
     ) -> Result<NonNull<()>, RunnerError> {
         let ty = registry.get_type(type_id)?;
@@ -185,7 +190,7 @@ impl JitValue {
         Ok(unsafe {
             match self {
                 Self::Felt252(value) => {
-                    let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
+                    let ptr = arena.alloc_layout(FELT252_LAYOUT).cast();
 
                     let data = felt252_bigint(value.to_bigint());
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
@@ -195,10 +200,13 @@ impl JitValue {
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty)?;
-                        let elem_layout = elem_ty
-                            .layout(registry)
-                            .map_err(make_type_builder_error(type_id))?
-                            .pad_to_align();
+                        let elem_layout = crate::ffi::get_mlir_layout(
+                            module,
+                            elem_ty
+                                .build(context, module, registry, metadata, &info.ty)
+                                .map_err(make_type_builder_error(type_id))?,
+                        )
+                        .pad_to_align();
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
@@ -206,7 +214,8 @@ impl JitValue {
                         let cap: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
-                            let elem = elem.to_jit(arena, registry, &info.ty)?;
+                            let elem =
+                                elem.to_jit(context, module, registry, metadata, arena, &info.ty)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -266,9 +275,12 @@ impl JitValue {
                         let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
-                            let member_layout = member_ty
-                                .layout(registry)
-                                .map_err(make_type_builder_error(type_id))?;
+                            let member_layout = crate::ffi::get_mlir_layout(
+                                module,
+                                member_ty
+                                    .build(context, module, registry, metadata, member_type_id)
+                                    .map_err(make_type_builder_error(type_id))?,
+                            );
 
                             let (new_layout, offset) = match layout {
                                 Some(layout) => layout.extend(member_layout)?,
@@ -276,7 +288,14 @@ impl JitValue {
                             };
                             layout = Some(new_layout);
 
-                            let member_ptr = member.to_jit(arena, registry, member_type_id)?;
+                            let member_ptr = member.to_jit(
+                                context,
+                                module,
+                                registry,
+                                metadata,
+                                arena,
+                                member_type_id,
+                            )?;
                             data.push((
                                 member_layout,
                                 offset,
@@ -326,11 +345,24 @@ impl JitValue {
                         assert!(*tag <= info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload = value.to_jit(arena, registry, payload_type_id)?;
+                        let payload = value.to_jit(
+                            context,
+                            module,
+                            registry,
+                            metadata,
+                            arena,
+                            payload_type_id,
+                        )?;
 
                         let (layout, tag_layout, variant_layouts) =
-                            crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                                .unwrap();
+                            crate::types::r#enum::get_layout_for_variants(
+                                context,
+                                module,
+                                registry,
+                                metadata,
+                                &info.variants,
+                            )
+                            .unwrap();
                         let ptr = arena.alloc_layout(layout).cast::<()>();
 
                         match tag_layout.size() {
@@ -368,7 +400,13 @@ impl JitValue {
                 Self::Felt252Dict { value: map, .. } => {
                     if let CoreTypeConcrete::Felt252Dict(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
-                        let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
+                        let elem_layout = crate::ffi::get_mlir_layout(
+                            module,
+                            elem_ty
+                                .build(context, module, registry, metadata, &info.ty)
+                                .unwrap(),
+                        )
+                        .pad_to_align();
 
                         let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
 
@@ -376,7 +414,8 @@ impl JitValue {
 
                         for (key, value) in map.iter() {
                             let key = key.to_bytes_le();
-                            let value = value.to_jit(arena, registry, &info.ty)?;
+                            let value = value
+                                .to_jit(context, module, registry, metadata, arena, &info.ty)?;
 
                             let value_malloc_ptr =
                                 NonNull::new(libc::malloc(elem_layout.size())).unwrap();
@@ -460,7 +499,7 @@ impl JitValue {
                 }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
+                        .alloc_layout(layout_repeat(&FELT252_LAYOUT, 2).unwrap().0)
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -473,7 +512,7 @@ impl JitValue {
                 }
                 Self::EcState(a, b, c, d) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
+                        .alloc_layout(layout_repeat(&FELT252_LAYOUT, 4).unwrap().0)
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -497,9 +536,12 @@ impl JitValue {
 
     /// From the given pointer acquired from the JIT outputs, convert it to a [`Self`]
     pub(crate) fn from_jit(
+        context: &Context,
+        module: &Module,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        metadata: &mut MetadataStorage,
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Self {
         let ty = registry.get_type(type_id).unwrap();
 
@@ -508,11 +550,16 @@ impl JitValue {
                 CoreTypeConcrete::Array(info) => {
                     let elem_ty = registry.get_type(&info.ty).unwrap();
 
-                    let elem_layout = elem_ty.layout(registry).unwrap();
+                    let elem_layout = crate::ffi::get_mlir_layout(
+                        module,
+                        elem_ty
+                            .build(context, module, registry, metadata, &info.ty)
+                            .unwrap(),
+                    );
                     let elem_stride = elem_layout.pad_to_align().size();
 
                     let ptr_layout = Layout::new::<*mut ()>();
-                    let len_layout = crate::utils::get_integer_layout(32);
+                    let len_layout = Layout::new::<u32>();
 
                     let len_value = *NonNull::new(
                         ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
@@ -531,7 +578,14 @@ impl JitValue {
                         )
                         .unwrap();
 
-                        array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
+                        array_value.push(Self::from_jit(
+                            context,
+                            module,
+                            registry,
+                            metadata,
+                            cur_elem_ptr,
+                            &info.ty,
+                        ));
                     }
 
                     libc::free(data_ptr.as_ptr().cast());
@@ -540,7 +594,8 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Box(info) => {
                     let inner = *ptr.cast::<NonNull<()>>().as_ptr();
-                    let value = Self::from_jit(inner, &info.ty, registry);
+                    let value =
+                        Self::from_jit(context, module, registry, metadata, inner, &info.ty);
                     libc::free(inner.as_ptr().cast());
                     value
                 }
@@ -575,16 +630,21 @@ impl JitValue {
                 CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
                 CoreTypeConcrete::Sint64(_) => Self::Sint64(*ptr.cast::<i64>().as_ref()),
                 CoreTypeConcrete::Sint128(_) => Self::Sint128(*ptr.cast::<i128>().as_ref()),
-                CoreTypeConcrete::NonZero(info) => Self::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::NonZero(info) => {
+                    Self::from_jit(context, module, registry, metadata, ptr, &info.ty)
+                }
                 CoreTypeConcrete::Nullable(info) => {
                     let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
                     if inner_ptr.is_null() {
                         Self::Null
                     } else {
                         let value = Self::from_jit(
+                            context,
+                            module,
+                            registry,
+                            metadata,
                             NonNull::new_unchecked(inner_ptr).cast(),
                             &info.ty,
-                            registry,
                         );
                         libc::free(inner_ptr.cast());
                         value
@@ -594,14 +654,14 @@ impl JitValue {
                     todo!("implement uninit from_jit or ignore the return value")
                 }
                 CoreTypeConcrete::Enum(info) => {
-                    let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
-                        0 | 1 => 0,
-                        num_variants => {
-                            (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
-                                .try_into()
-                                .unwrap()
-                        }
-                    });
+                    let tag_layout = match info.variants.len() {
+                        0 | 1 => Layout::new::<()>(),
+                        x if x < u8::MAX as usize => Layout::new::<u8>(),
+                        x if x < u16::MAX as usize => Layout::new::<u16>(),
+                        x if x < u32::MAX as usize => Layout::new::<u32>(),
+                        x if x < u64::MAX as usize => Layout::new::<u64>(),
+                        _ => panic!(),
+                    };
                     let tag_value = match info.variants.len() {
                         0 => {
                             // An enum without variants is basically the `!` (never) type in Rust.
@@ -618,15 +678,32 @@ impl JitValue {
                     };
 
                     let payload_ty = registry.get_type(&info.variants[tag_value]).unwrap();
-                    let payload_layout = payload_ty.layout(registry).unwrap();
+                    let payload_layout = crate::ffi::get_mlir_layout(
+                        module,
+                        payload_ty
+                            .build(
+                                context,
+                                module,
+                                registry,
+                                metadata,
+                                &info.variants[tag_value],
+                            )
+                            .unwrap(),
+                    );
 
                     let payload_ptr = NonNull::new(
                         ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1)
                             as *mut _,
                     )
                     .unwrap();
-                    let payload =
-                        JitValue::from_jit(payload_ptr, &info.variants[tag_value], registry);
+                    let payload = JitValue::from_jit(
+                        context,
+                        module,
+                        registry,
+                        metadata,
+                        payload_ptr,
+                        &info.variants[tag_value],
+                    );
 
                     JitValue::Enum {
                         tag: tag_value,
@@ -640,7 +717,12 @@ impl JitValue {
 
                     for member_ty in &info.members {
                         let member = registry.get_type(member_ty).unwrap();
-                        let member_layout = member.layout(registry).unwrap();
+                        let member_layout = crate::ffi::get_mlir_layout(
+                            module,
+                            member
+                                .build(context, module, registry, metadata, member_ty)
+                                .unwrap(),
+                        );
 
                         let (new_layout, offset) = match layout {
                             Some(layout) => layout.extend(member_layout).unwrap(),
@@ -649,9 +731,12 @@ impl JitValue {
                         layout = Some(new_layout);
 
                         members.push(Self::from_jit(
+                            context,
+                            module,
+                            registry,
+                            metadata,
                             NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
                             member_ty,
-                            registry,
                         ));
                     }
 
@@ -671,7 +756,17 @@ impl JitValue {
 
                     for (key, val_ptr) in map.iter() {
                         let key = Felt::from_bytes_le(key);
-                        output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        output_map.insert(
+                            key,
+                            Self::from_jit(
+                                context,
+                                module,
+                                registry,
+                                metadata,
+                                val_ptr.cast(),
+                                &info.ty,
+                            ),
+                        );
                     }
 
                     JitValue::Felt252Dict {
@@ -719,7 +814,9 @@ impl JitValue {
                     }
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
-                CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
+                CoreTypeConcrete::Snapshot(info) => {
+                    Self::from_jit(context, module, registry, metadata, ptr, &info.ty)
+                }
                 CoreTypeConcrete::Bytes31(_) => {
                     let mut data = *ptr.cast::<[u8; 31]>().as_ref();
                     data.reverse();

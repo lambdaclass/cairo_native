@@ -5,7 +5,7 @@ use super::LibfuncHelper;
 use crate::{
     error::libfuncs::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{ProgramRegistryExt, FELT252_LAYOUT},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -72,7 +72,7 @@ pub fn build_pedersen<'ctx>(
     )?;
 
     let i256_ty = IntegerType::new(context, 256).into();
-    let layout_i256 = get_integer_layout(256);
+    let layout_i256 = FELT252_LAYOUT;
 
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();

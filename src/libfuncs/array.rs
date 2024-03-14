@@ -546,12 +546,7 @@ pub fn build_pop_front<'ctx, 'this>(
 
     let (elem_ty, elem_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
-
-    let elem_stride = registry
-        .get_type(&info.ty)?
-        .layout(registry)?
-        .pad_to_align()
-        .size();
+    let elem_stride = elem_layout.pad_to_align().size();
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -1126,8 +1121,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     }
 
     let struct_type_info = registry.get_type(&info.ty)?;
-
-    let struct_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let struct_ty = struct_type_info.build(context, helper, registry, metadata, &info.ty)?;
 
     let container: Value = {
         // load box
@@ -1138,7 +1132,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    struct_type_info.layout(registry)?.align() as i64,
+                    crate::ffi::get_mlir_layout(helper, struct_ty).align() as i64,
                     IntegerType::new(context, 64).into(),
                 ))),
             ))

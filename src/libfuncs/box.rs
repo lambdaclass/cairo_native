@@ -70,7 +70,10 @@ pub fn build_into_box<'ctx, 'this>(
     }
 
     let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    let inner_layout = crate::ffi::get_mlir_layout(
+        helper,
+        inner_type.build(context, helper, registry, metadata, &info.ty)?,
+    );
 
     let value_len = entry
         .append_operation(arith::constant(
@@ -149,7 +152,10 @@ pub fn build_unbox<'ctx, 'this>(
 ) -> Result<()> {
     let inner_type = registry.get_type(&info.ty)?;
     let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    let inner_layout = crate::ffi::get_mlir_layout(
+        helper,
+        inner_type.build(context, helper, registry, metadata, &info.ty)?,
+    );
 
     let value = match inner_type.variants() {
         Some(variants)

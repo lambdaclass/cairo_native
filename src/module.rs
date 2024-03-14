@@ -3,25 +3,28 @@ use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
-use melior::ir::Module;
+use melior::{ir::Module, Context};
 use std::{any::Any, fmt::Debug};
 
 /// A MLIR module in the context of Cairo Native.
 /// It is conformed by the MLIR module, the Sierra program registry
 /// and the program metadata.
-pub struct NativeModule<'m> {
-    pub(crate) module: Module<'m>,
+pub struct NativeModule<'ctx> {
+    pub(crate) context: &'ctx Context,
+    pub(crate) module: Module<'ctx>,
     pub(crate) registry: ProgramRegistry<CoreType, CoreLibfunc>,
     pub(crate) metadata: MetadataStorage,
 }
 
-impl<'m> NativeModule<'m> {
+impl<'ctx> NativeModule<'ctx> {
     pub fn new(
-        module: Module<'m>,
+        context: &'ctx Context,
+        module: Module<'ctx>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: MetadataStorage,
     ) -> Self {
         Self {
+            context,
             module,
             registry,
             metadata,
