@@ -16,7 +16,6 @@ fn test_append_byte() {
     compare_byte_array(@ba, expected_data.span(), 2, 0x2021);
 }
 
-// TODO: fix, segfaults
 #[test]
 fn test_append_word() {
     let mut ba = Default::default();
@@ -48,7 +47,6 @@ fn test_append_word() {
     compare_byte_array(@ba, expected_data.span(), 1, 0x3f);
 }
 
-// TODO: segfaults
 #[test]
 fn test_append() {
     let mut ba1 = test_byte_array_32();

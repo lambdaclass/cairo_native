@@ -32,7 +32,6 @@ fn test_array_clone() {
     assert_eq(felt252_snap_array_clone[2], @12, 'array[2] != 12');
 }
 
-// TODO: fix, triggers a segfault
 #[test]
 fn test_span() {
     let mut span = array![10, 11, 12].span();
