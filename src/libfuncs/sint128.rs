@@ -1,9 +1,10 @@
 //! # `i128`-related libfuncs
 use super::LibfuncHelper;
+use std::ops::Shr;
 
 use crate::{
     error::libfuncs::{ErrorImpl, Result},
-    metadata::MetadataStorage,
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -31,6 +32,7 @@ use melior::{
     },
     Context,
 };
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -338,10 +340,119 @@ pub fn build_from_felt252<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let is_ule = entry
+    let const_min = entry
+        .append_operation(arith::constant(
+            context,
+            Attribute::parse(context, &format!("{} : {}", i128::MIN, felt252_ty))
+                .ok_or(ErrorImpl::ParseAttributeError)?,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let mut block = entry;
+
+    // make unsigned felt into signed felt
+    // felt > half prime = negative
+    let value = {
+        let attr_halfprime_i252 = Attribute::parse(
+            context,
+            &format!(
+                "{} : {}",
+                metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(ErrorImpl::MissingMetadata)?
+                    .prime()
+                    .shr(1),
+                felt252_ty
+            ),
+        )
+        .ok_or(ErrorImpl::ParseAttributeError)?;
+        let half_prime: melior::ir::Value = block
+            .append_operation(arith::constant(context, attr_halfprime_i252, location))
+            .result(0)?
+            .into();
+
+        let is_felt_neg = block
+            .append_operation(arith::cmpi(
+                context,
+                CmpiPredicate::Ugt,
+                value,
+                half_prime,
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let is_neg_block = helper.append_block(Block::new(&[]));
+        let is_not_neg_block = helper.append_block(Block::new(&[]));
+        let final_block = helper.append_block(Block::new(&[(felt252_ty, location)]));
+
+        block.append_operation(cf::cond_br(
+            context,
+            is_felt_neg,
+            is_neg_block,
+            is_not_neg_block,
+            &[],
+            &[],
+            location,
+        ));
+
+        {
+            let prime = is_neg_block
+                .append_operation(arith::constant(
+                    context,
+                    Attribute::parse(
+                        context,
+                        &format!(
+                            "{} : {}",
+                            metadata
+                                .get::<PrimeModuloMeta<Felt>>()
+                                .ok_or(ErrorImpl::MissingMetadata)?
+                                .prime(),
+                            felt252_ty
+                        ),
+                    )
+                    .ok_or(ErrorImpl::ParseAttributeError)?,
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            let mut src_value_is_neg: melior::ir::Value = is_neg_block
+                .append_operation(arith::subi(prime, value, location))
+                .result(0)?
+                .into();
+
+            let kneg1 = is_neg_block
+                .append_operation(arith::constant(
+                    context,
+                    Attribute::parse(context, &format!("-1 : {}", felt252_ty))
+                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            src_value_is_neg = is_neg_block
+                .append_operation(arith::muli(src_value_is_neg, kneg1, location))
+                .result(0)?
+                .into();
+
+            is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
+        }
+
+        is_not_neg_block.append_operation(cf::br(final_block, &[value], location));
+
+        block = final_block;
+
+        block.argument(0)?.into()
+    };
+
+    let is_smaller_eq = block
         .append_operation(arith::cmpi(
             context,
-            CmpiPredicate::Ule,
+            CmpiPredicate::Sle,
             value,
             const_max,
             location,
@@ -349,12 +460,28 @@ pub fn build_from_felt252<'ctx, 'this>(
         .result(0)?
         .into();
 
+    let is_bigger_eq = block
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Sge,
+            value,
+            const_min,
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let is_ok = block
+        .append_operation(arith::andi(is_smaller_eq, is_bigger_eq, location))
+        .result(0)?
+        .into();
+
     let block_success = helper.append_block(Block::new(&[]));
     let block_failure = helper.append_block(Block::new(&[]));
 
-    entry.append_operation(cf::cond_br(
+    block.append_operation(cf::cond_br(
         context,
-        is_ule,
+        is_ok,
         block_success,
         block_failure,
         &[],
