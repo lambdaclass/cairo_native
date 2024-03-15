@@ -34,7 +34,6 @@ fn test_array_clone() {
 
 // TODO: fix, triggers a segfault
 #[test]
-#[ignore]
 fn test_span() {
     let mut span = array![10, 11, 12].span();
     assert_eq(@span.len(), @3, 'Unexpected span length.');

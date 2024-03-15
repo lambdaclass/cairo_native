@@ -18,7 +18,6 @@ fn test_append_byte() {
 
 // TODO: fix, segfaults
 #[test]
-#[ignore]
 fn test_append_word() {
     let mut ba = Default::default();
 
@@ -51,7 +50,6 @@ fn test_append_word() {
 
 // TODO: segfaults
 #[test]
-#[ignore]
 fn test_append() {
     let mut ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
