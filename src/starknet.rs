@@ -101,7 +101,7 @@ pub struct Secp256r1Point {
     pub y: U256,
 }
 
-pub trait StarkNetSyscallHandler {
+pub trait StarknetSyscallHandler {
     fn get_block_hash(
         &mut self,
         block_number: u64,
@@ -292,6 +292,193 @@ pub trait StarkNetSyscallHandler {
     }
 }
 
+pub struct DummySyscallHandler;
+
+impl StarknetSyscallHandler for DummySyscallHandler {
+    fn get_block_hash(
+        &mut self,
+        _block_number: u64,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
+
+    fn get_execution_info(&mut self, _remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo> {
+        unimplemented!()
+    }
+
+    fn get_execution_info_v2(
+        &mut self,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<ExecutionInfoV2> {
+        unimplemented!()
+    }
+
+    fn deploy(
+        &mut self,
+        _class_hash: Felt,
+        _contract_address_salt: Felt,
+        _calldata: &[Felt],
+        _deploy_from_zero: bool,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<(Felt, Vec<Felt>)> {
+        unimplemented!()
+    }
+
+    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u128) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn library_call(
+        &mut self,
+        _class_hash: Felt,
+        _function_selector: Felt,
+        _calldata: &[Felt],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
+
+    fn call_contract(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
+
+    fn storage_read(
+        &mut self,
+        _address_domain: u32,
+        _address: Felt,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
+
+    fn storage_write(
+        &mut self,
+        _address_domain: u32,
+        _address: Felt,
+        _value: Felt,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn emit_event(
+        &mut self,
+        _keys: &[Felt],
+        _data: &[Felt],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn send_message_to_l1(
+        &mut self,
+        _to_address: Felt,
+        _payload: &[Felt],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn keccak(&mut self, _input: &[u64], _remaining_gas: &mut u128) -> SyscallResult<U256> {
+        unimplemented!()
+    }
+
+    fn secp256k1_new(
+        &mut self,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256k1_add(
+        &mut self,
+        _p0: Secp256k1Point,
+        _p1: Secp256k1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256k1Point> {
+        unimplemented!()
+    }
+
+    fn secp256k1_mul(
+        &mut self,
+        _p: Secp256k1Point,
+        _m: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256k1Point> {
+        unimplemented!()
+    }
+
+    fn secp256k1_get_point_from_x(
+        &mut self,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256k1_get_xy(
+        &mut self,
+        _p: Secp256k1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<(U256, U256)> {
+        unimplemented!()
+    }
+
+    fn secp256r1_new(
+        &mut self,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256r1_add(
+        &mut self,
+        _p0: Secp256r1Point,
+        _p1: Secp256r1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256r1Point> {
+        unimplemented!()
+    }
+
+    fn secp256r1_mul(
+        &mut self,
+        _p: Secp256r1Point,
+        _m: U256,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Secp256r1Point> {
+        unimplemented!()
+    }
+
+    fn secp256r1_get_point_from_x(
+        &mut self,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256r1_get_xy(
+        &mut self,
+        _p: Secp256r1Point,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<(U256, U256)> {
+        unimplemented!()
+    }
+}
+
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
@@ -395,7 +582,7 @@ pub(crate) mod handler {
 
     #[repr(C)]
     #[derive(Debug)]
-    pub struct StarkNetSyscallHandlerCallbacks<'a, T> {
+    pub struct StarknetSyscallHandlerCallbacks<'a, T> {
         self_ptr: &'a mut T,
 
         get_block_hash: extern "C" fn(
@@ -552,7 +739,7 @@ pub(crate) mod handler {
         ),
     }
 
-    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
+    impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
     where
         T: 'a,
     {
@@ -585,9 +772,9 @@ pub(crate) mod handler {
     }
 
     #[allow(unused_variables)]
-    impl<'a, T> StarkNetSyscallHandlerCallbacks<'a, T>
+    impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
     where
-        T: StarkNetSyscallHandler + 'a,
+        T: StarknetSyscallHandler + 'a,
     {
         pub fn new(handler: &'a mut T) -> Self {
             Self {

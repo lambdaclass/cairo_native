@@ -2,7 +2,7 @@ use crate::{
     error::libfuncs::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
-    starknet::handler::StarkNetSyscallHandlerCallbacks,
+    starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -270,7 +270,7 @@ pub fn build_k1_new<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_NEW.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_NEW.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -647,7 +647,7 @@ pub fn build_k1_add<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_ADD.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_ADD.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1022,7 +1022,7 @@ pub fn build_k1_mul<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_MUL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_MUL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1365,7 +1365,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1718,7 +1718,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_XY.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_GET_XY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2102,7 +2102,7 @@ pub fn build_r1_new<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_NEW.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_NEW.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2479,7 +2479,7 @@ pub fn build_r1_add<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_ADD.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_ADD.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2854,7 +2854,7 @@ pub fn build_r1_mul<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_MUL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_MUL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3197,7 +3197,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_GET_POINT_FROM_X.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_GET_POINT_FROM_X.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3550,7 +3550,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_GET_XY.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_GET_XY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),

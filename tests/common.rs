@@ -28,11 +28,10 @@ use cairo_native::{
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
-        syscall_handler::SyscallHandlerMeta,
         MetadataStorage,
     },
     module::NativeModule,
-    starknet::StarkNetSyscallHandler,
+    starknet::{DummySyscallHandler, StarknetSyscallHandler},
     types::felt252::{HALF_PRIME, PRIME},
     utils::{find_entry_point_by_idx, run_pass_manager},
     values::JitValue,
@@ -194,7 +193,7 @@ pub fn run_native_program(
     entry_point: &str,
     args: &[JitValue],
     gas: Option<u128>,
-    syscall_handler: Option<&SyscallHandlerMeta>,
+    syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
@@ -252,9 +251,12 @@ pub fn run_native_program(
     let native_module = NativeModule::new(module, registry, metadata);
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
-    executor
-        .invoke_dynamic(entry_point_id, args, gas, syscall_handler)
-        .unwrap()
+    match syscall_handler {
+        Some(syscall_handler) => executor
+            .invoke_dynamic_with_syscall_handler(entry_point_id, args, gas, syscall_handler)
+            .unwrap(),
+        None => executor.invoke_dynamic(entry_point_id, args, gas).unwrap(),
+    }
 }
 
 /// Runs the program on the cairo-vm
@@ -279,7 +281,13 @@ pub fn compare_inputless_program(program_path: &str) {
     let program = &program;
 
     let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(program, "main", &[], Some(DEFAULT_GAS as u128), None);
+    let result_native = run_native_program(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
@@ -291,15 +299,12 @@ pub fn compare_inputless_program(program_path: &str) {
 }
 
 /// Runs the program using cairo-native JIT.
-pub fn run_native_starknet_contract<T>(
+pub fn run_native_starknet_contract(
     sierra_program: &Program,
     entry_point_function_idx: usize,
     args: &[Felt],
-    handler: &mut T,
-) -> ContractExecutionResult
-where
-    T: StarkNetSyscallHandler,
-{
+    handler: impl StarknetSyscallHandler,
+) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
     let native_program = native_context.compile(sierra_program).unwrap();
@@ -308,14 +313,8 @@ where
     let entry_point_id = &entry_point_fn.id;
 
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
-
     native_executor
-        .invoke_contract_dynamic(
-            entry_point_id,
-            args,
-            u128::MAX.into(),
-            Some(&SyscallHandlerMeta::new(handler)),
-        )
+        .invoke_contract_dynamic(entry_point_id, args, u128::MAX.into(), handler)
         .expect("failed to execute the given contract")
 }
 

@@ -1,8 +1,9 @@
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
+    metadata::gas::GasMetadata,
     module::NativeModule,
+    starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
     values::JitValue,
     OptLevel,
@@ -68,7 +69,6 @@ impl AotNativeExecutor {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -81,7 +81,29 @@ impl AotNativeExecutor {
             self.extract_signature(function_id),
             args,
             available_gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            Option::<DummySyscallHandler>::None,
+        ))
+    }
+
+    pub fn invoke_dynamic_with_syscall_handler(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ExecutionResult, RunnerError> {
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+
+        Ok(super::invoke_dynamic(
+            &self.registry,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            args,
+            available_gas,
+            Some(syscall_handler),
         ))
     }
 
@@ -90,7 +112,7 @@ impl AotNativeExecutor {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
+        syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -110,7 +132,7 @@ impl AotNativeExecutor {
                     debug_name: None,
                 }],
                 available_gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+                Some(syscall_handler),
             ),
         )?)
     }

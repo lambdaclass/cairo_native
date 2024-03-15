@@ -57,7 +57,7 @@ pub mod range_check;
 pub mod segment_arena;
 pub mod snapshot;
 pub mod squashed_felt252_dict;
-pub mod stark_net;
+pub mod starknet;
 pub mod r#struct;
 pub mod uint128;
 pub mod uint128_mul_guarantee;
@@ -342,7 +342,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::StarkNet(selector) => self::stark_net::build(
+            Self::StarkNet(selector) => self::starknet::build(
                 context,
                 module,
                 registry,
