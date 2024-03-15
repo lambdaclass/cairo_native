@@ -8,7 +8,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, FELT252_LAYOUT},
+    utils::{ProgramRegistryExt, felt252_layout},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -286,7 +286,7 @@ pub fn build_finalize<'ctx, 'this>(
     );
 
     let key_ty = IntegerType::new(context, 252).into();
-    let key_layout = FELT252_LAYOUT;
+    let key_layout = felt252_layout(context, helper);
 
     let entry_value = entry.argument(0)?.into();
     let new_value = entry.argument(1)?.into();

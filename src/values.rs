@@ -6,7 +6,7 @@ use crate::{
     error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, layout_repeat, FELT252_LAYOUT},
+    utils::{felt252_bigint, felt252_layout, llvmptr_layout, ProgramRegistryExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -18,7 +18,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
-use melior::{ir::Module, Context};
+use melior::{
+    ir::{r#type::IntegerType, Module},
+    Context,
+};
 use num_bigint::{BigInt, Sign};
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
@@ -190,7 +193,7 @@ impl JitValue {
         Ok(unsafe {
             match self {
                 Self::Felt252(value) => {
-                    let ptr = arena.alloc_layout(FELT252_LAYOUT).cast();
+                    let ptr = arena.alloc_layout(felt252_layout(context, module)).cast();
 
                     let data = felt252_bigint(value.to_bigint());
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
@@ -233,25 +236,30 @@ impl JitValue {
                             len += 1;
                         }
 
-                        let target = arena.alloc_layout(
-                            Layout::new::<*mut NonNull<()>>()
-                                .extend(Layout::new::<u32>())?
-                                .0
-                                .extend(Layout::new::<u32>())?
-                                .0,
-                        );
+                        let target = arena.alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            registry
+                                .build_type(context, module, registry, metadata, type_id)
+                                .unwrap(),
+                        ));
 
                         *target.cast::<*mut NonNull<()>>().as_mut() = ptr;
 
                         let (layout, offset) =
-                            Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
+                            llvmptr_layout(context, module).extend(crate::ffi::get_mlir_layout(
+                                module,
+                                IntegerType::new(context, 32).into(),
+                            ))?;
 
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
                             .as_mut() = len;
 
-                        let (_, offset) = layout.extend(Layout::new::<u32>())?;
+                        let (_, offset) = layout.extend(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 32).into(),
+                        ))?;
 
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
@@ -438,68 +446,123 @@ impl JitValue {
                     }
                 }
                 Self::Uint8(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 8).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<u8>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Uint16(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<u16>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 16).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<u16>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Uint32(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<u32>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 32).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<u32>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Uint64(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<u64>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 64).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<u64>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Uint128(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<u128>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 128).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<u128>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Sint8(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<i8>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 8).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<i8>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Sint16(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<i16>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 16).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<i16>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Sint32(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<i32>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 32).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<i32>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Sint64(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<i64>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 64).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<i64>().as_mut() = *value;
 
                     ptr
                 }
                 Self::Sint128(value) => {
-                    let ptr = arena.alloc_layout(Layout::new::<i128>()).cast();
+                    let ptr = arena
+                        .alloc_layout(crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, 128).into(),
+                        ))
+                        .cast();
                     *ptr.cast::<i128>().as_mut() = *value;
 
                     ptr
                 }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&FELT252_LAYOUT, 2).unwrap().0)
+                        .alloc_layout(
+                            felt252_layout(context, module)
+                                .extend(felt252_layout(context, module))
+                                .unwrap()
+                                .0,
+                        )
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -512,7 +575,18 @@ impl JitValue {
                 }
                 Self::EcState(a, b, c, d) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&FELT252_LAYOUT, 4).unwrap().0)
+                        .alloc_layout(
+                            felt252_layout(context, module)
+                                .extend(felt252_layout(context, module))
+                                .unwrap()
+                                .0
+                                .extend(felt252_layout(context, module))
+                                .unwrap()
+                                .0
+                                .extend(felt252_layout(context, module))
+                                .unwrap()
+                                .0,
+                        )
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -543,9 +617,11 @@ impl JitValue {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
     ) -> Self {
-        let ty = registry.get_type(type_id).unwrap();
+        let ty = registry.get_type(dbg!(type_id)).unwrap();
 
         unsafe {
+            dbg!(ptr.cast::<[u8; 64]>().as_ref());
+
             match ty {
                 CoreTypeConcrete::Array(info) => {
                     let elem_ty = registry.get_type(&info.ty).unwrap();
@@ -558,8 +634,9 @@ impl JitValue {
                     );
                     let elem_stride = elem_layout.pad_to_align().size();
 
-                    let ptr_layout = Layout::new::<*mut ()>();
-                    let len_layout = Layout::new::<u32>();
+                    let ptr_layout = llvmptr_layout(context, module);
+                    let len_layout =
+                        crate::ffi::get_mlir_layout(module, IntegerType::new(context, 32).into());
 
                     let len_value = *NonNull::new(
                         ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
@@ -655,13 +732,20 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = match info.variants.len() {
-                        0 | 1 => Layout::new::<()>(),
-                        x if x < u8::MAX as usize => Layout::new::<u8>(),
-                        x if x < u16::MAX as usize => Layout::new::<u16>(),
-                        x if x < u32::MAX as usize => Layout::new::<u32>(),
-                        x if x < u64::MAX as usize => Layout::new::<u64>(),
+                        0 | 1 => None,
+                        x if x < u8::MAX as usize => Some(8),
+                        x if x < u16::MAX as usize => Some(16),
+                        x if x < u32::MAX as usize => Some(32),
+                        x if x < u64::MAX as usize => Some(64),
                         _ => panic!(),
-                    };
+                    }
+                    .map(|num_bits| {
+                        crate::ffi::get_mlir_layout(
+                            module,
+                            IntegerType::new(context, num_bits).into(),
+                        )
+                    })
+                    .unwrap_or(Layout::new::<()>());
                     let tag_value = match info.variants.len() {
                         0 => {
                             // An enum without variants is basically the `!` (never) type in Rust.

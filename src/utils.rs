@@ -13,7 +13,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    dialect::llvm,
+    ir::{r#type::IntegerType, Module, Type},
     pass::{self, PassManager},
     Context, Error, ExecutionEngine,
 };
@@ -21,21 +22,35 @@ use num_bigint::{BigInt, BigUint, Sign};
 use std::{
     alloc::Layout,
     borrow::Cow,
-    fmt::{self, Display},
+    fmt,
     ops::Neg,
     path::Path,
     ptr::NonNull,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
-use thiserror::Error;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
 
-pub(crate) const FELT252_LAYOUT: Layout = Layout::new::<u64>();
-pub(crate) const BYTES31_LAYOUT: Layout = Layout::new::<u64>();
+pub fn felt252_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, IntegerType::new(context, 252).into()))
+}
+
+pub fn bytes31_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, IntegerType::new(context, 248).into()))
+}
+
+pub fn llvmptr_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, llvm::r#type::opaque_pointer(context)))
+}
 
 /// Generate a function name.
 ///
@@ -361,40 +376,6 @@ pub const fn padding_needed_for(layout: &Layout, align: usize) -> usize {
     len_rounded_up.wrapping_sub(len)
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Error)]
-pub struct LayoutError;
-
-impl Display for LayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("layout error")
-    }
-}
-
-/// Copied from std.
-///
-/// Creates a layout describing the record for `n` instances of
-/// `self`, with a suitable amount of padding between each to
-/// ensure that each instance is given its requested size and
-/// alignment. On success, returns `(k, offs)` where `k` is the
-/// layout of the array and `offs` is the distance between the start
-/// of each element in the array.
-///
-/// On arithmetic overflow, returns `LayoutError`.
-//#[unstable(feature = "alloc_layout_extra", issue = "55724")]
-#[inline]
-pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), LayoutError> {
-    // This cannot overflow. Quoting from the invariant of Layout:
-    // > `size`, when rounded up to the nearest multiple of `align`,
-    // > must not overflow isize (i.e., the rounded value must be
-    // > less than or equal to `isize::MAX`)
-    let padded_size = layout.size() + padding_needed_for(layout, layout.align());
-    let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
-
-    // The safe constructor is called here to enforce the isize size limit.
-    let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
-    Ok((layout, padded_size))
-}
-
 pub trait ProgramRegistryExt {
     fn build_type<'ctx>(
         &self,
@@ -667,7 +648,7 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or("/home/dev/cairo_native".to_string())).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(

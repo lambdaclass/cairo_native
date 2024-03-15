@@ -199,7 +199,10 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -230,7 +233,10 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -555,7 +561,10 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -607,7 +616,10 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -944,7 +956,10 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -982,7 +997,10 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1305,7 +1323,10 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1534,7 +1555,8 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = Layout::new::<u128>();
+        let u128_layout =
+            crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into());
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -1557,7 +1579,10 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), Layout::new::<u8>());
+        let (tag_ty, tag_layout) = (
+            IntegerType::new(context, 1).into(),
+            crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 8).into()),
+        );
 
         (
             tag_layout
@@ -1679,7 +1704,10 @@ pub fn build_k1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2031,7 +2059,10 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2062,7 +2093,10 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2387,7 +2421,10 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2439,7 +2476,10 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2776,7 +2816,10 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2814,7 +2857,10 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3137,7 +3183,10 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3366,7 +3415,8 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = Layout::new::<u128>();
+        let u128_layout =
+            crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into());
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -3389,7 +3439,10 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), Layout::new::<u8>());
+        let (tag_ty, tag_layout) = (
+            IntegerType::new(context, 1).into(),
+            crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 8).into()),
+        );
 
         (
             tag_layout
@@ -3511,7 +3564,10 @@ pub fn build_r1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        Layout::new::<u128>().align().try_into().unwrap(),
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 128).into())
+                            .align()
+                            .try_into()
+                            .unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),

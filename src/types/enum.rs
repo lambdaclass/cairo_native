@@ -432,13 +432,9 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = match tag_bits {
-        x if x <= u8::BITS => Layout::new::<u8>(),
-        x if x <= u16::BITS => Layout::new::<u16>(),
-        x if x <= u32::BITS => Layout::new::<u32>(),
-        x if x <= u64::BITS => Layout::new::<u64>(),
-        _ => unreachable!(),
-    };
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
+
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
             .extend(crate::ffi::get_mlir_layout(
@@ -495,13 +491,8 @@ pub fn get_layout_for_variants(
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, Layout, Vec<Layout>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = match tag_bits {
-        x if x <= u8::BITS => Layout::new::<u8>(),
-        x if x <= u16::BITS => Layout::new::<u16>(),
-        x if x <= u32::BITS => Layout::new::<u32>(),
-        x if x <= u64::BITS => Layout::new::<u64>(),
-        _ => unreachable!(),
-    };
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
 
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
@@ -536,13 +527,8 @@ pub fn get_type_for_variants<'ctx>(
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = match tag_bits {
-        x if x <= u8::BITS => Layout::new::<u8>(),
-        x if x <= u16::BITS => Layout::new::<u16>(),
-        x if x <= u32::BITS => Layout::new::<u32>(),
-        x if x <= u64::BITS => Layout::new::<u64>(),
-        _ => unreachable!(),
-    };
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
     let tag_ty: Type = IntegerType::new(context, tag_bits).into();
 
     let mut layout = tag_layout;

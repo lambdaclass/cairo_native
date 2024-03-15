@@ -4,7 +4,7 @@ use crate::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     metadata::{syscall_handler::SyscallHandlerMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{BYTES31_LAYOUT, FELT252_LAYOUT},
+    utils::{bytes31_layout, felt252_layout},
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -18,7 +18,10 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
-use melior::{ir::Module, Context};
+use melior::{
+    ir::{r#type::IntegerType, Module},
+    Context,
+};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -163,7 +166,10 @@ fn invoke_dynamic(
         });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        invoke_data.push_aligned(Layout::new::<u64>().align(), &[return_ptr.as_ptr() as u64]);
+        invoke_data.push_aligned(
+            crate::ffi::get_mlir_layout(module, IntegerType::new(context, 64).into()).align(),
+            &[return_ptr.as_ptr() as u64],
+        );
 
         Some(return_ptr)
     } else {
@@ -181,12 +187,13 @@ fn invoke_dynamic(
         // Process gas requirements and syscall handler.
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
-                Layout::new::<u128>().align(),
+                crate::ffi::get_mlir_layout(module, IntegerType::new(context, 128).into()).align(),
                 &[gas as u64, (gas >> 64) as u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
                 Some(syscall_handler) => invoke_data.push_aligned(
-                    Layout::new::<u64>().align(),
+                    crate::ffi::get_mlir_layout(module, IntegerType::new(context, 64).into())
+                        .align(),
                     &[syscall_handler.as_ptr() as u64],
                 ),
                 None => panic!("Syscall handler is required"),
@@ -216,11 +223,8 @@ fn invoke_dynamic(
     }
 
     // Parse final gas.
-    unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
-        let align_offset = ptr
-            .cast::<u8>()
-            .as_ptr()
-            .align_offset(std::mem::align_of::<T>());
+    unsafe fn read_value<T>(elem_layout: Layout, ptr: &mut NonNull<()>) -> &T {
+        let align_offset = ptr.cast::<u8>().as_ptr().align_offset(elem_layout.align());
         let value_ptr = ptr.cast::<u8>().as_ptr().add(align_offset).cast::<T>();
 
         *ptr = NonNull::new_unchecked(value_ptr.add(1)).cast();
@@ -234,7 +238,15 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
+                    Some(return_ptr) => unsafe {
+                        *read_value::<u128>(
+                            crate::ffi::get_mlir_layout(
+                                module,
+                                IntegerType::new(context, 128).into(),
+                            ),
+                            return_ptr,
+                        )
+                    },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
@@ -252,7 +264,15 @@ fn invoke_dynamic(
             _ if is_builtin(type_info) => {
                 if !is_zst(type_info, registry) {
                     let value = match &mut return_ptr {
-                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
+                        Some(return_ptr) => unsafe {
+                            *read_value::<u64>(
+                                crate::ffi::get_mlir_layout(
+                                    module,
+                                    IntegerType::new(context, 64).into(),
+                                ),
+                                return_ptr,
+                            )
+                        },
                         None => ret_registers[0],
                     } as usize;
 
@@ -415,19 +435,41 @@ impl<'a> ArgumentMapper<'a> {
                 }
 
                 self.push_aligned(
-                    Layout::new::<u64>().align(),
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 64).into(),
+                    )
+                    .align(),
                     &[ptr as u64, values.len() as u64, values.len() as u64],
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-                self.push_aligned(FELT252_LAYOUT.align(), &a.to_le_digits());
-                self.push_aligned(FELT252_LAYOUT.align(), &b.to_le_digits());
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &a.to_le_digits(),
+                );
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &b.to_le_digits(),
+                );
             }
             (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-                self.push_aligned(FELT252_LAYOUT.align(), &a.to_le_digits());
-                self.push_aligned(FELT252_LAYOUT.align(), &b.to_le_digits());
-                self.push_aligned(FELT252_LAYOUT.align(), &c.to_le_digits());
-                self.push_aligned(FELT252_LAYOUT.align(), &d.to_le_digits());
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &a.to_le_digits(),
+                );
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &b.to_le_digits(),
+                );
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &c.to_le_digits(),
+                );
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &d.to_le_digits(),
+                );
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
@@ -495,11 +537,14 @@ impl<'a> ArgumentMapper<'a> {
                 ),
                 JitValue::Felt252(value),
             ) => {
-                self.push_aligned(FELT252_LAYOUT.align(), &value.to_le_digits());
+                self.push_aligned(
+                    felt252_layout(self.context, self.module).align(),
+                    &value.to_le_digits(),
+                );
             }
             (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
                 self.push_aligned(
-                    BYTES31_LAYOUT.align(),
+                    bytes31_layout(self.context, self.module).align(),
                     &Felt::from_bytes_be_slice(value).to_le_digits(),
                 );
             }
@@ -533,38 +578,102 @@ impl<'a> ArgumentMapper<'a> {
                 }
             }
             (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
-                Layout::new::<u128>().align(),
+                crate::ffi::get_mlir_layout(
+                    self.module,
+                    IntegerType::new(self.context, 128).into(),
+                )
+                .align(),
                 &[*value as u64, (value >> 64) as u64],
             ),
             (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
-                self.push_aligned(Layout::new::<u64>().align(), &[*value]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 64).into(),
+                    )
+                    .align(),
+                    &[*value],
+                );
             }
             (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
-                self.push_aligned(Layout::new::<u32>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 32).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
-                self.push_aligned(Layout::new::<u16>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 16).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
-                self.push_aligned(Layout::new::<u8>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 8).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
                 self.push_aligned(
-                    Layout::new::<u128>().align(),
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 128).into(),
+                    )
+                    .align(),
                     &[*value as u64, (value >> 64) as u64],
                 );
             }
             (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
-                self.push_aligned(Layout::new::<u64>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 64).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
-                self.push_aligned(Layout::new::<u32>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 32).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
-                self.push_aligned(Layout::new::<u16>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 16).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
-                self.push_aligned(Layout::new::<u8>().align(), &[*value as u64]);
+                self.push_aligned(
+                    crate::ffi::get_mlir_layout(
+                        self.module,
+                        IntegerType::new(self.context, 8).into(),
+                    )
+                    .align(),
+                    &[*value as u64],
+                );
             }
             (CoreTypeConcrete::NonZero(info), _) => {
                 // TODO: Check that the value is indeed non-zero.
@@ -582,8 +691,8 @@ impl<'a> ArgumentMapper<'a> {
                 let x_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([x.0, x.1]) };
                 let y_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([y.0, y.1]) };
 
-                self.push_aligned(FELT252_LAYOUT.align(), &x_data);
-                self.push_aligned(FELT252_LAYOUT.align(), &y_data);
+                self.push_aligned(felt252_layout(self.context, self.module).align(), &x_data);
+                self.push_aligned(felt252_layout(self.context, self.module).align(), &y_data);
             }
             (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))
@@ -591,9 +700,11 @@ impl<'a> ArgumentMapper<'a> {
             | (CoreTypeConcrete::Pedersen(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
-                self.push_aligned(Layout::new::<u64>().align(), &[*value])
-            }
+            | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => self.push_aligned(
+                crate::ffi::get_mlir_layout(self.module, IntegerType::new(self.context, 64).into())
+                    .align(),
+                &[*value],
+            ),
             (_, _) => todo!(),
         }
 
@@ -612,6 +723,12 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
+    dbg!(crate::ffi::get_mlir_layout(
+        module,
+        type_info
+            .build(context, module, registry, metadata, type_id)
+            .unwrap()
+    ));
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {

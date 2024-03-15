@@ -19,9 +19,10 @@ impl SyscallHandlerMeta {
             )
         };
 
-        unsafe {
-            *handler.as_mut() = StarkNetSyscallHandlerCallbacks::new(handler_impl);
-        }
+        // unsafe {
+        //     *handler.as_mut() =
+        //         StarkNetSyscallHandlerCallbacks::new(todo!(), todo!(), handler_impl);
+        // }
 
         Self {
             handler: handler.cast(),

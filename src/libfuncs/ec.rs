@@ -7,7 +7,7 @@ use crate::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     types::felt252::register_prime_modulo_meta,
-    utils::{ProgramRegistryExt, FELT252_LAYOUT},
+    utils::{felt252_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -264,7 +264,9 @@ pub fn build_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper)
+                            .align()
+                            .try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -370,7 +372,7 @@ pub fn build_state_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -387,7 +389,7 @@ pub fn build_state_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -470,7 +472,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -487,7 +489,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -504,7 +506,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -593,7 +595,7 @@ pub fn build_state_finalize<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -610,7 +612,7 @@ pub fn build_state_finalize<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -774,7 +776,7 @@ pub fn build_try_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        FELT252_LAYOUT.align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),

@@ -36,7 +36,7 @@ use crate::error::compile::{CompileError, ErrorImpl};
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
-    fn DataLayout_getTypePreferredAlignment(module: MlirModule, r#type: MlirType) -> u64;
+    fn DataLayout_getTypeABIAlignment(module: MlirModule, r#type: MlirType) -> u64;
     fn DataLayout_getTypeSize(module: MlirModule, r#type: MlirType) -> u64;
 
     /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
@@ -61,7 +61,7 @@ pub fn get_mlir_layout(module: &Module, r#type: Type) -> Layout {
 
     unsafe {
         let size = DataLayout_getTypeSize(module, r#type) as usize;
-        let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
+        let align = DataLayout_getTypeABIAlignment(module, r#type) as usize;
 
         Layout::from_size_align(size, align).unwrap()
     }
