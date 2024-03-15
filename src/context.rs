@@ -128,6 +128,16 @@ impl NativeContext {
             );
         }
 
+        // The func to llvm pass has a bug where it sets the data layout string to ""
+        // This works around it by setting it again.
+        {
+            let mut op = module.as_operation_mut();
+            op.set_attribute(
+                "llvm.data_layout",
+                StringAttribute::new(&self.context, &data_layout_ret).into(),
+            );
+        }
+
         Ok(NativeModule::new(&self.context, module, registry, metadata))
     }
 
