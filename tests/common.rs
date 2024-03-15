@@ -22,21 +22,12 @@ use cairo_lang_sierra::{
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
-    context::NativeContext,
-    execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::JitNativeExecutor,
-    metadata::{
+    context::NativeContext, execution_result::{ContractExecutionResult, ExecutionResult}, executor::JitNativeExecutor, ffi::{get_data_layout_rep, get_target_triple}, metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
         syscall_handler::SyscallHandlerMeta,
         MetadataStorage,
-    },
-    module::NativeModule,
-    starknet::StarkNetSyscallHandler,
-    types::felt252::{HALF_PRIME, PRIME},
-    utils::{find_entry_point_by_idx, run_pass_manager},
-    values::JitValue,
-    OptLevel,
+    }, module::NativeModule, starknet::StarkNetSyscallHandler, types::felt252::{HALF_PRIME, PRIME}, utils::{find_entry_point_by_idx, run_pass_manager}, values::JitValue, OptLevel
 };
 use lambdaworks_math::{
     field::{
@@ -46,7 +37,7 @@ use lambdaworks_math::{
 };
 use melior::{
     dialect::DialectRegistry,
-    ir::{Location, Module},
+    ir::{attribute::StringAttribute, operation::OperationBuilder, Identifier, Location, Module, Region},
     utility::{register_all_dialects, register_all_passes},
     Context,
 };
@@ -218,7 +209,25 @@ pub fn run_native_program(
     context.load_all_available_dialects();
     register_all_passes();
 
-    let mut module = Module::new(Location::unknown(&context));
+    let target_triple = get_target_triple();
+    let data_layout = get_data_layout_rep().unwrap();
+    let mut module = Module::from_operation(
+        OperationBuilder::new("builtin.module", Location::unknown(&context))
+            .add_attributes(&[
+                (
+                    Identifier::new(&context, "llvm.target_triple"),
+                    StringAttribute::new(&context, &target_triple).into(),
+                ),
+                (
+                    Identifier::new(&context, "llvm.data_layout"),
+                    StringAttribute::new(&context, &data_layout).into(),
+                ),
+            ])
+            .add_regions([Region::new()])
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
     let mut metadata = MetadataStorage::new();
 
     // Make the runtime library available.

@@ -551,13 +551,13 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{ffi::{get_data_layout_rep, get_target_triple}, metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
     };
     use melior::{
-        ir::{r#type::IntegerType, Location, Module},
+        ir::{attribute::StringAttribute, operation::OperationBuilder, r#type::IntegerType, Identifier, Location, Module, Region},
         Context,
     };
 
@@ -576,7 +576,25 @@ mod test {
         let context = Context::new();
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let module = Module::new(Location::unknown(&context));
+        let target_triple = get_target_triple();
+        let data_layout = get_data_layout_rep().unwrap();
+        let module = Module::from_operation(
+            OperationBuilder::new("builtin.module", Location::unknown(&context))
+                .add_attributes(&[
+                    (
+                        Identifier::new(&context, "llvm.target_triple"),
+                        StringAttribute::new(&context, &target_triple).into(),
+                    ),
+                    (
+                        Identifier::new(&context, "llvm.data_layout"),
+                        StringAttribute::new(&context, &data_layout).into(),
+                    ),
+                ])
+                .add_regions([Region::new()])
+                .build()
+                .unwrap(),
+        )
+        .unwrap();
         let mut metadata = MetadataStorage::new();
 
         let i0_ty = IntegerType::new(&context, 0).into();

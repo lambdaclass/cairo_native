@@ -3,10 +3,10 @@ use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
-use cairo_native::metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage};
+use cairo_native::{ffi::{get_data_layout_rep, get_target_triple}, metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage}};
 use melior::{
     dialect::DialectRegistry,
-    ir::{Location, Module},
+    ir::{attribute::StringAttribute, operation::OperationBuilder, Identifier, Location, Module, Region},
     pass::{self, PassManager},
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,
@@ -35,7 +35,25 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     register_all_llvm_translations(&context);
 
     // Compile the program.
-    let mut module = Module::new(Location::unknown(&context));
+    let target_triple = get_target_triple();
+    let data_layout = get_data_layout_rep().unwrap();
+    let mut module = Module::from_operation(
+        OperationBuilder::new("builtin.module", Location::unknown(&context))
+            .add_attributes(&[
+                (
+                    Identifier::new(&context, "llvm.target_triple"),
+                    StringAttribute::new(&context, &target_triple).into(),
+                ),
+                (
+                    Identifier::new(&context, "llvm.data_layout"),
+                    StringAttribute::new(&context, &data_layout).into(),
+                ),
+            ])
+            .add_regions([Region::new()])
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
     let mut metadata = MetadataStorage::new();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program.1)?;
 

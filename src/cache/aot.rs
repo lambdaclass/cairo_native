@@ -1,6 +1,10 @@
 use crate::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
+    context::NativeContext,
+    executor::AotNativeExecutor,
+    metadata::{gas::GasMetadata, MetadataStorage},
+    module::NativeModule,
+    utils::SHARED_LIBRARY_EXT,
+    OptLevel,
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
@@ -38,6 +42,7 @@ where
         &mut self,
         key: K,
         program: &Program,
+        metadata: MetadataStorage,
         opt_level: OptLevel,
     ) -> Rc<AotNativeExecutor<'a>> {
         let NativeModule {
@@ -45,7 +50,10 @@ where
             module,
             registry,
             metadata,
-        } = self.context.compile(program).expect("should compile");
+        } = self
+            .context
+            .compile(program, metadata)
+            .expect("should compile");
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();

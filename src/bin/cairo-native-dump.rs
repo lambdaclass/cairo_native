@@ -15,13 +15,12 @@ use cairo_lang_starknet::{
     plugin::StarkNetPlugin,
 };
 use cairo_native::{
-    debug_info::{DebugInfo, DebugLocations},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    debug_info::{DebugInfo, DebugLocations}, ffi::{get_data_layout_rep, get_target_triple}, metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage}
 };
 use clap::Parser;
 use melior::{
     dialect::DialectRegistry,
-    ir::{operation::OperationPrintingFlags, Location, Module},
+    ir::{attribute::StringAttribute, operation::{OperationBuilder, OperationPrintingFlags}, Identifier, Location, Module, Region},
     utility::register_all_dialects,
     Context,
 };
@@ -58,7 +57,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.load_all_available_dialects();
 
     // Compile the program.
-    let module = Module::new(Location::unknown(&context));
+    let target_triple = get_target_triple();
+    let data_layout = get_data_layout_rep().unwrap();
+    let module = Module::from_operation(
+        OperationBuilder::new("builtin.module", Location::unknown(&context))
+            .add_attributes(&[
+                (
+                    Identifier
+                    ::new(&context, "llvm.target_triple"),
+                    StringAttribute::new(&context, &target_triple).into(),
+                ),
+                (
+                    Identifier::new(&context, "llvm.data_layout"),
+                    StringAttribute::new(&context, &data_layout).into(),
+                ),
+            ])
+            .add_regions([Region::new()])
+            .build()
+            .unwrap(),
+    )
+    .unwrap();
     let mut metadata = MetadataStorage::new();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
 

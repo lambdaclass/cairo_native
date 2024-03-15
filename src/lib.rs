@@ -79,7 +79,7 @@ pub mod debug_info;
 pub mod error;
 pub mod execution_result;
 pub mod executor;
-mod ffi;
+pub mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;

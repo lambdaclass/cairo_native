@@ -551,6 +551,7 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use crate::{
+        context::NativeContext,
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
         metadata::{
@@ -559,7 +560,6 @@ pub mod test {
             syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
-        module::NativeModule,
         starknet::{
             BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
@@ -576,12 +576,6 @@ pub mod test {
         extensions::core::{CoreLibfunc, CoreType},
         program::Program,
         program_registry::ProgramRegistry,
-    };
-    use melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        utility::{register_all_dialects, register_all_passes},
-        Context,
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
@@ -648,7 +642,8 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or("/home/dev/cairo_native".to_string())).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or("/home/dev/cairo_native".to_string()))
+                .join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(
@@ -677,7 +672,6 @@ pub mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
             .expect("Could not create the test program registry.");
-
         let entry_point_id = &program
             .funcs
             .iter()
@@ -685,16 +679,7 @@ pub mod test {
             .expect("Test program entry point not found.")
             .id;
 
-        let context = Context::new();
-        context.append_dialect_registry(&{
-            let registry = DialectRegistry::new();
-            register_all_dialects(&registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
-
-        let mut module = Module::new(Location::unknown(&context));
+        let context = NativeContext::new();
         let mut metadata = MetadataStorage::new();
 
         // Make the runtime library and syscall handler available.
@@ -716,30 +701,18 @@ pub mod test {
             metadata.insert(gas_metadata);
         }
 
-        crate::compile(&context, &module, program, &registry, &mut metadata, None)
-            .expect("Could not compile test program to MLIR.");
-
+        let module = context.compile(program, metadata).unwrap();
         assert!(
-            module.as_operation().verify(),
+            module.module().as_operation().verify(),
             "Test program generated invalid MLIR:\n{}",
-            module.as_operation()
+            module.module().as_operation()
         );
 
-        run_pass_manager(&context, &mut module)
-            .expect("Could not apply passes to the compiled test program.");
+        let syscall_handler = module.get_metadata::<SyscallHandlerMeta>();
 
-        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
-
-        let native_module = NativeModule::new(&context, module, registry, metadata);
-        // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
-            .invoke_dynamic(
-                entry_point_id,
-                args,
-                Some(u128::MAX),
-                syscall_handler.as_ref(),
-            )
+            .invoke_dynamic(entry_point_id, args, Some(u128::MAX), syscall_handler)
             .unwrap()
     }
 
