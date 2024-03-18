@@ -744,6 +744,17 @@
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
 <a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -948,8 +959,7 @@
 
                         <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>NonNull&lt;()&gt; =
                             libc::malloc(elem_layout.size() * data.len()).cast();
-                        <span class="kw">let </span><span class="kw-2">mut </span>len: u32 = <span class="number">0</span>;
-                        <span class="kw">let </span>cap: u32 = data.len().try_into().unwrap();
+                        <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
 
                         <span class="kw">for </span>elem <span class="kw">in </span>data {
                             <span class="kw">let </span>elem = elem.to_jit(arena, registry, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
@@ -966,8 +976,6 @@
                                 .as_ptr(),
                                 elem_layout.size(),
                             );
-
-                            len += <span class="number">1</span>;
                         }
 
                         <span class="kw">let </span>target = arena.alloc_layout(
@@ -982,18 +990,22 @@
 
                         <span class="kw">let </span>(layout, offset) =
                             Layout::new::&lt;<span class="kw-2">*mut </span>NonNull&lt;()&gt;&gt;().extend(Layout::new::&lt;u32&gt;())<span class="question-mark">?</span>;
+                        <span class="kw-2">*</span>NonNull::new(((target.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>u32)
+                            .unwrap()
+                            .cast()
+                            .as_mut() = <span class="number">0</span>;
 
+                        <span class="kw">let </span>(layout, offset) = layout.extend(Layout::new::&lt;u32&gt;())<span class="question-mark">?</span>;
                         <span class="kw-2">*</span>NonNull::new(((target.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>u32)
                             .unwrap()
                             .cast()
                             .as_mut() = len;
 
                         <span class="kw">let </span>(<span class="kw">_</span>, offset) = layout.extend(Layout::new::&lt;u32&gt;())<span class="question-mark">?</span>;
-
                         <span class="kw-2">*</span>NonNull::new(((target.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>u32)
                             .unwrap()
                             .cast()
-                            .as_mut() = cap;
+                            .as_mut() = len;
                         target.cast()
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
@@ -1260,18 +1272,28 @@
                     <span class="kw">let </span>ptr_layout = Layout::new::&lt;<span class="kw-2">*mut </span>()&gt;();
                     <span class="kw">let </span>len_layout = <span class="kw">crate</span>::utils::get_integer_layout(<span class="number">32</span>);
 
-                    <span class="kw">let </span>len_value = <span class="kw-2">*</span>NonNull::new(
-                        ((ptr.as_ptr() <span class="kw">as </span>usize) + ptr_layout.extend(len_layout).unwrap().<span class="number">1</span>)
-                            <span class="kw">as </span><span class="kw-2">*mut </span>(),
-                    )
-                    .unwrap()
-                    .cast::&lt;u32&gt;()
-                    .as_ref();
+                    <span class="kw">let </span>(ptr_layout, offset) = ptr_layout.extend(len_layout).unwrap();
+                    <span class="kw">let </span>offset_value = <span class="kw-2">*</span>NonNull::new(((ptr.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>())
+                        .unwrap()
+                        .cast::&lt;u32&gt;()
+                        .as_ref();
+                    <span class="kw">let </span>(<span class="kw">_</span>, offset) = ptr_layout.extend(len_layout).unwrap();
+                    <span class="kw">let </span>length_value = <span class="kw-2">*</span>NonNull::new(((ptr.as_ptr() <span class="kw">as </span>usize) + offset) <span class="kw">as </span><span class="kw-2">*mut </span>())
+                        .unwrap()
+                        .cast::&lt;u32&gt;()
+                        .as_ref();
 
-                    <span class="kw">let </span>data_ptr = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref();
-                    <span class="kw">let </span><span class="kw-2">mut </span>array_value = Vec::new();
+                    <span class="kw">let </span>init_data_ptr = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref();
+                    <span class="kw">let </span>data_ptr = NonNull::new_unchecked(
+                        init_data_ptr
+                            .as_ptr()
+                            .byte_add(elem_stride * offset_value <span class="kw">as </span>usize),
+                    );
 
-                    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(len_value <span class="kw">as </span>usize) {
+                    <span class="macro">assert!</span>(length_value &gt;= offset_value);
+                    <span class="kw">let </span>num_elems = (length_value - offset_value) <span class="kw">as </span>usize;
+                    <span class="kw">let </span><span class="kw-2">mut </span>array_value = Vec::with_capacity(num_elems);
+                    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
                         <span class="kw">let </span>cur_elem_ptr = NonNull::new(
                             ((data_ptr.as_ptr() <span class="kw">as </span>usize) + elem_stride * i) <span class="kw">as </span><span class="kw-2">*mut </span>(),
                         )
@@ -1280,7 +1302,7 @@
                         array_value.push(<span class="self">Self</span>::from_jit(cur_elem_ptr, <span class="kw-2">&amp;</span>info.ty, registry));
                     }
 
-                    libc::free(data_ptr.as_ptr().cast());
+                    libc::free(init_data_ptr.as_ptr().cast());
 
                     <span class="self">Self</span>::Array(array_value)
                 }

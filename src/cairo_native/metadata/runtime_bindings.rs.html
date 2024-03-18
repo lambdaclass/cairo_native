@@ -733,7 +733,7 @@
                         context,
                         <span class="kw-2">&amp;</span>[
                             IntegerType::new(context, <span class="number">32</span>).into(),
-                            llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                            llvm::r#type::opaque_pointer(context),
                             IntegerType::new(context, <span class="number">32</span>).into(),
                         ],
                         <span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">32</span>).into()],

@@ -125,6 +125,44 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug libfuncs
 
 </span><span class="comment">// Printable: 9-13, 27, 32, 33-126
@@ -184,10 +222,6 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>runtime_bindings = metadata
-        .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
-
     <span class="kw">let </span>stdout_fd = entry
         .append_operation(arith::constant(
             context,
@@ -202,12 +236,12 @@
             context,
             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
             DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-            llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+            llvm::r#type::opaque_pointer(context),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
-    <span class="kw">let </span>values_len = entry
+    <span class="kw">let </span>values_start = entry
         .append_operation(llvm::extract_value(
             context,
             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -217,6 +251,48 @@
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
+    <span class="kw">let </span>values_end = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">2</span>]),
+            IntegerType::new(context, <span class="number">32</span>).into(),
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="kw">let </span>runtime_bindings = metadata
+        .get_mut::&lt;RuntimeBindingsMeta&gt;()
+        .expect(<span class="string">"Runtime library not available."</span>);
+
+    <span class="kw">let </span>values_len = entry
+        .append_operation(arith::subi(values_end, values_start, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="kw">let </span>values_ptr = {
+        <span class="kw">let </span>values_start = entry
+            .append_operation(arith::extui(
+                values_start,
+                IntegerType::new(context, <span class="number">64</span>).into(),
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+
+        entry
+            .append_operation(llvm::get_element_ptr_dynamic(
+                context,
+                values_ptr,
+                <span class="kw-2">&amp;</span>[values_start],
+                IntegerType::new(context, <span class="number">252</span>).into(),
+                llvm::r#type::opaque_pointer(context),
+                location,
+            ))
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into()
+    };
 
     <span class="kw">let </span>return_code = runtime_bindings.libfunc_debug_print(
         context, helper, entry, stdout_fd, values_ptr, values_len, location,

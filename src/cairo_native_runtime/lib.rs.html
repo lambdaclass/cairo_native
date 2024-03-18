@@ -486,11 +486,11 @@
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__libfunc__debug__print(
     target_fd: i32,
     data: <span class="kw-2">*const </span>[u8; <span class="number">32</span>],
-    len: usize,
+    len: u32,
 ) -&gt; i32 {
     <span class="kw">let </span><span class="kw-2">mut </span>target = File::from_raw_fd(target_fd);
 
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..len {
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..len <span class="kw">as </span>usize {
         <span class="kw">let </span>data = <span class="kw-2">*</span>data.add(i);
 
         <span class="kw">let </span>value = Felt::from_bytes_le(<span class="kw-2">&amp;</span>data);

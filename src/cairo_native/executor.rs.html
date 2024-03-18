@@ -1128,7 +1128,7 @@
 
                 <span class="self">self</span>.push_aligned(
                     get_integer_layout(<span class="number">64</span>).align(),
-                    <span class="kw-2">&amp;</span>[ptr <span class="kw">as </span>u64, values.len() <span class="kw">as </span>u64, values.len() <span class="kw">as </span>u64],
+                    <span class="kw-2">&amp;</span>[ptr <span class="kw">as </span>u64, <span class="number">0</span>, values.len() <span class="kw">as </span>u64, values.len() <span class="kw">as </span>u64],
                 );
             }
             (CoreTypeConcrete::EcPoint(<span class="kw">_</span>), JitValue::EcPoint(a, b)) =&gt; {
