@@ -25,11 +25,11 @@ lazy_static! {
 pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     target_fd: i32,
     data: *const [u8; 32],
-    len: usize,
+    len: u32,
 ) -> i32 {
     let mut target = File::from_raw_fd(target_fd);
 
-    for i in 0..len {
+    for i in 0..len as usize {
         let data = *data.add(i);
 
         let value = Felt::from_bytes_le(&data);
