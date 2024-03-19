@@ -11,11 +11,12 @@ use cairo_lang_filesystem::{db::FilesGroup, ids::FileLongId};
 use cairo_lang_lowering::ids::LocationId;
 use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId},
-    program::{Program, StatementIdx},
+    program::{Program, StatementIdx}
 };
+use cairo_lang_sierra::ProgramParser;
 use melior::{ir::Location, Context};
 use std::collections::HashMap;
-
+use cairo_lang_syntax::node::ids::SyntaxStablePtrId;
 mod funcs;
 mod libfunc_declarations;
 mod statements;
@@ -155,4 +156,42 @@ fn extract_location_from_stable_loc<'c>(
         .unwrap();
 
     Location::new(context, &path.to_string_lossy(), pos.line, pos.col)
+}
+
+#[test]
+fn test_extract_names() {
+    let db = RootDatabase::builder().build();
+    let data = DebugInfo::extract(&db.unwrap(),
+    &ProgramParser::new()
+        .parse("type u128 = u128;\n\
+                type GasBuiltin = GasBuiltin;\n\
+                type NonZeroInt = NonZero<u128>;\n\
+                libfunc rename_u128 = rename<u128>;\n\
+                libfunc rename_gb = rename<GasBuiltin>;\n\
+                Func1@1(a: u128, gb: GasBuiltin) -> (GasBuiltin);\n\
+                Func2@6() -> ();")
+        .unwrap(),
+    );
+
+    assert_eq!(data,
+        DebugInfo {
+            type_declarations:HashMap::from([
+                ("u128".into(), StableLocation::new()),
+                ("GasBuiltin".into(), StableLocation::new()),
+                ("NonZeroInt".into(), StableLocation::new())
+            ]),
+            libfunc_declarations: HashMap::from([
+                ("rename_u128".into(), "rename_u128".into()),
+                ("rename_gb".into(), "rename_gb".into())
+            ]),
+            // statements: HashMap::from([
+            //     (1, 1),
+            //     (6, 6)
+            // ]),
+            funcs: HashMap::from([
+                ("Func1".into(), StableLocation::new()),
+                ("Func2".into(), StableLocation::new())
+            ])
+        }
+    );
 }
