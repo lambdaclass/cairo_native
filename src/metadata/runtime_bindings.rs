@@ -3,7 +3,7 @@
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-use crate::error::libfuncs::Result;
+use crate::error::Result;
 use melior::{
     dialect::{func, llvm},
     ir::{

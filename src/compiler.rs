@@ -46,10 +46,7 @@
 
 use crate::{
     debug_info::DebugLocations,
-    error::{
-        compile::{make_libfunc_builder_error, make_type_builder_error},
-        CompileError,
-    },
+    error::Error,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -119,7 +116,7 @@ pub fn compile(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), CompileError> {
+) -> Result<(), Error> {
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(
@@ -151,7 +148,7 @@ fn compile_func(
     statements: &[Statement],
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
-) -> Result<(), CompileError> {
+) -> Result<(), Error> {
     let region = Region::new();
     let blocks_arena = Bump::new();
 
@@ -254,9 +251,7 @@ fn compile_func(
                 if type_info.is_builtin() && type_info.is_zst(registry) {
                     pre_entry_block
                         .append_operation(llvm::undef(
-                            type_info
-                                .build(context, module, registry, metadata, &param.ty)
-                                .map_err(make_type_builder_error(&param.ty))?,
+                            type_info.build(context, module, registry, metadata, &param.ty)?,
                             Location::unknown(context),
                         ))
                         .result(0)?
@@ -286,7 +281,7 @@ fn compile_func(
     ));
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
-    foreach_statement_in_function::<_, CompileError>(
+    foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
         (initial_state, BTreeMap::<usize, usize>::new()),
@@ -310,7 +305,7 @@ fn compile_func(
                         .sorted_by_key(|x| x.id)
                         .enumerate()
                         .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
-                        .collect::<Result<Vec<_>, CompileError>>()?
+                        .collect::<Result<Vec<_>, Error>>()?
                         .into_iter(),
                 )?;
 
@@ -399,20 +394,18 @@ fn compile_func(
                         }
                     }
 
-                    concrete_libfunc
-                        .build(
-                            context,
-                            registry,
-                            block,
-                            debug_info
-                                .and_then(|debug_info| {
-                                    debug_info.statements.get(&statement_idx).copied()
-                                })
-                                .unwrap_or_else(|| Location::unknown(context)),
-                            &helper,
-                            metadata,
-                        )
-                        .map_err(make_libfunc_builder_error(&invocation.libfunc_id))?;
+                    concrete_libfunc.build(
+                        context,
+                        registry,
+                        block,
+                        debug_info
+                            .and_then(|debug_info| {
+                                debug_info.statements.get(&statement_idx).copied()
+                            })
+                            .unwrap_or_else(|| Location::unknown(context)),
+                        &helper,
+                        metadata,
+                    )?;
                     assert!(block.terminator().is_some());
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
@@ -444,7 +437,7 @@ fn compile_func(
                                 tailrec_state.clone(),
                             ))
                         })
-                        .collect::<Result<_, CompileError>>()?
+                        .collect::<Result<_, Error>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
@@ -581,10 +574,8 @@ fn compile_func(
 
                     match has_return_ptr {
                         Some(true) => {
-                            let (ret_type_id, ret_type_info) = return_types[0];
-                            let ret_layout = ret_type_info
-                                .layout(registry)
-                                .map_err(make_type_builder_error(ret_type_id))?;
+                            let (_ret_type_id, ret_type_info) = return_types[0];
+                            let ret_layout = ret_type_info.layout(registry)?;
 
                             let ptr = values.remove(0);
 
@@ -628,17 +619,15 @@ fn compile_func(
                                 values.iter_mut().zip(&return_types)
                             {
                                 if type_info.is_memory_allocated(registry) {
-                                    let layout = type_info
-                                        .layout(registry)
-                                        .map_err(make_type_builder_error(type_id))?;
+                                    let layout = type_info.layout(registry)?;
 
                                     *value = block
                                         .append_operation(llvm::load(
                                             context,
                                             *value,
-                                            type_info
-                                                .build(context, module, registry, metadata, type_id)
-                                                .map_err(make_type_builder_error(type_id))?,
+                                            type_info.build(
+                                                context, module, registry, metadata, type_id,
+                                            )?,
                                             Location::unknown(context),
                                             LoadStoreOptions::new().align(Some(
                                                 IntegerAttribute::new(
@@ -671,7 +660,7 @@ fn compile_func(
                     .argument((has_return_ptr == Some(true)) as usize + i)?
                     .into())
             })
-            .collect::<Result<Vec<_>, CompileError>>()?,
+            .collect::<Result<Vec<_>, Error>>()?,
         Location::unknown(context),
     ));
 
@@ -708,7 +697,7 @@ fn generate_function_structure<'c, 'a>(
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), CompileError> {
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
     let initial_state = edit_state::put_results::<(Type, bool)>(
         HashMap::new(),
         function
@@ -720,21 +709,19 @@ fn generate_function_structure<'c, 'a>(
                 Ok((
                     &param.id,
                     (
-                        type_info
-                            .build(context, module, registry, metadata_storage, ty)
-                            .map_err(make_type_builder_error(ty))?,
+                        type_info.build(context, module, registry, metadata_storage, ty)?,
                         type_info.is_memory_allocated(registry),
                     ),
                 ))
             })
-            .collect::<Result<Vec<_>, CompileError>>()?
+            .collect::<Result<Vec<_>, Error>>()?
             .into_iter(),
     )?;
 
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
-    foreach_statement_in_function::<_, CompileError>(
+    foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
         initial_state,
@@ -784,21 +771,17 @@ fn generate_function_structure<'c, 'a>(
                                     branch_signature
                                         .vars
                                         .iter()
-                                        .map(|var_info| -> Result<_, CompileError> {
+                                        .map(|var_info| -> Result<_, Error> {
                                             let type_info = registry.get_type(&var_info.ty)?;
 
                                             Ok((
-                                                type_info
-                                                    .build(
-                                                        context,
-                                                        module,
-                                                        registry,
-                                                        metadata_storage,
-                                                        &var_info.ty,
-                                                    )
-                                                    .map_err(make_type_builder_error(
-                                                        &var_info.ty,
-                                                    ))?,
+                                                type_info.build(
+                                                    context,
+                                                    module,
+                                                    registry,
+                                                    metadata_storage,
+                                                    &var_info.ty,
+                                                )?,
                                                 type_info.is_memory_allocated(registry),
                                             ))
                                         })
@@ -816,7 +799,7 @@ fn generate_function_structure<'c, 'a>(
 
                             Ok(state)
                         })
-                        .collect::<Result<_, CompileError>>()?
+                        .collect::<Result<_, Error>>()?
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!(
@@ -856,7 +839,7 @@ fn generate_function_structure<'c, 'a>(
             metadata_storage,
         )
         .map(|ty| Ok((ty?, Location::unknown(context))))
-        .collect::<Result<Vec<_>, CompileError>>()?;
+        .collect::<Result<Vec<_>, Error>>()?;
 
         for (type_info, (ty, _)) in function
             .signature
@@ -955,7 +938,7 @@ fn extract_types<'c: 'a, 'a>(
     type_ids: &'a [ConcreteTypeId],
     registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
     metadata_storage: &'a mut MetadataStorage,
-) -> impl 'a + Iterator<Item = Result<Type<'c>, CompileError>> {
+) -> impl 'a + Iterator<Item = Result<Type<'c>, Error>> {
     type_ids.iter().filter_map(|id| {
         let type_info = match registry.get_type(id) {
             Ok(x) => x,
@@ -965,11 +948,7 @@ fn extract_types<'c: 'a, 'a>(
         if type_info.is_builtin() && type_info.is_zst(registry) {
             None
         } else {
-            Some(
-                type_info
-                    .build(context, module, registry, metadata_storage, id)
-                    .map_err(make_type_builder_error(id)),
-            )
+            Some(type_info.build(context, module, registry, metadata_storage, id))
         }
     })
 }

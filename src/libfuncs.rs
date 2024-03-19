@@ -2,7 +2,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{error::CoreLibfuncBuilderError, metadata::MetadataStorage};
+use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -492,7 +492,7 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
-) -> crate::error::libfuncs::Result<Value<'ctx, 'a>> {
+) -> crate::error::Result<Value<'ctx, 'a>> {
     let k1 = block
         .append_operation(arith::constant(
             context,

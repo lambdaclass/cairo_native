@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{ErrorImpl, Result},
     metadata::MetadataStorage,
     utils::ProgramRegistryExt,
 };

@@ -1,5 +1,5 @@
 use crate::{
-    error::{jit_engine::ErrorImpl, JitRunnerError},
+    error::{Error, ErrorImpl},
     values::JitValue,
 };
 use starknet_types_core::felt::Felt;
@@ -36,7 +36,7 @@ pub struct ContractExecutionResult {
 
 impl ContractExecutionResult {
     /// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
-    pub fn from_execution_result(result: ExecutionResult) -> Result<Self, JitRunnerError> {
+    pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
         let failure_flag;
 
@@ -60,19 +60,19 @@ impl ContractExecutionResult {
                                     .collect();
                                 felt_vec
                             } else {
-                                Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                                Err(Error::from(ErrorImpl::UnexpectedValue(format!(
                                     "wrong type, expect: array, value: {:?}",
                                     value
                                 ))))?
                             }
                         } else {
-                            Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                            Err(Error::from(ErrorImpl::UnexpectedValue(format!(
                                 "wrong type, expect: struct, value: {:?}",
                                 value
                             ))))?
                         }
                     } else {
-                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::from(ErrorImpl::UnexpectedValue(format!(
                             "wrong type, expect: struct, value: {:?}",
                             value
                         ))))?
@@ -101,13 +101,13 @@ impl ContractExecutionResult {
                         error_msg = Some(str_error);
                         felt_vec
                     } else {
-                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::from(ErrorImpl::UnexpectedValue(format!(
                             "wrong type, expect: array, value: {:?}",
                             value
                         ))))?
                     }
                 } else {
-                    Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                    Err(Error::from(ErrorImpl::UnexpectedValue(format!(
                         "wrong type, expect: struct, value: {:?}",
                         value
                     ))))?
@@ -115,7 +115,7 @@ impl ContractExecutionResult {
             }
             _ => {
                 failure_flag = true;
-                Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(
+                Err(Error::from(ErrorImpl::UnexpectedValue(
                     "wrong return value type expected a enum".to_string(),
                 )))?
             }

@@ -1,5 +1,5 @@
 use crate::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
     module::NativeModule,
@@ -69,11 +69,11 @@ impl AotNativeExecutor {
         args: &[JitValue],
         gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+            .map_err(|_| crate::error::ErrorImpl::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
             &self.registry,
@@ -91,28 +91,26 @@ impl AotNativeExecutor {
         args: &[Felt],
         gas: Option<u128>,
         syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+    ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+            .map_err(|_| crate::error::ErrorImpl::InsufficientGasError)?;
 
-        Ok(ContractExecutionResult::from_execution_result(
-            super::invoke_dynamic(
-                &self.registry,
-                self.find_function_ptr(function_id),
-                self.extract_signature(function_id),
-                &[JitValue::Struct {
-                    fields: vec![JitValue::Array(
-                        args.iter().cloned().map(JitValue::Felt252).collect(),
-                    )],
-                    // TODO: Populate `debug_name`.
-                    debug_name: None,
-                }],
-                available_gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
-            ),
-        )?)
+        ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            &self.registry,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            &[JitValue::Struct {
+                fields: vec![JitValue::Array(
+                    args.iter().cloned().map(JitValue::Felt252).collect(),
+                )],
+                // TODO: Populate `debug_name`.
+                debug_name: None,
+            }],
+            available_gas,
+            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+        ))
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {

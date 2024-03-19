@@ -22,7 +22,7 @@
 // TODO: Maybe the types used here can be i251 instead of i252.
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

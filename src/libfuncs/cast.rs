@@ -4,7 +4,7 @@ use std::ops::Shr;
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{ErrorImpl, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -241,9 +241,7 @@ pub fn build_downcast<'ctx, 'this>(
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        "downcast: failed to make max value attribute".to_string(),
-                    )
+                    ErrorImpl::Error("downcast: failed to make max value attribute".to_string())
                 })?,
                 location,
             ))
@@ -267,9 +265,7 @@ pub fn build_downcast<'ctx, 'this>(
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        "downcast: failed to make min value attribute".to_string(),
-                    )
+                    ErrorImpl::Error("downcast: failed to make min value attribute".to_string())
                 })?,
                 location,
             ))

@@ -13,7 +13,7 @@
 //! ```
 
 use super::WithSelf;
-use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

@@ -438,7 +438,7 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error>;
+    ) -> Result<Type<'ctx>, super::error::Error>;
 
     fn build_type_with_layout<'ctx>(
         &self,
@@ -447,7 +447,7 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error>;
+    ) -> Result<(Type<'ctx>, Layout), super::error::Error>;
 }
 
 impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
@@ -458,7 +458,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error> {
+    ) -> Result<Type<'ctx>, super::error::Error> {
         registry
             .get_type(id)?
             .build(context, module, registry, metadata, id)
@@ -471,7 +471,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
+    ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
         let concrete_type = registry.get_type(id)?;
 
         Ok((

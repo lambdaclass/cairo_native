@@ -7,7 +7,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{libfuncs, types::Result},
+    error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -69,7 +69,7 @@ fn snapshot_take<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>> {
+) -> Result<Value<'ctx, 'this>> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }

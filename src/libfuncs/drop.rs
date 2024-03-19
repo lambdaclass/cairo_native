@@ -6,7 +6,7 @@
 //! However, types like an array need manual dropping.
 
 use super::LibfuncHelper;
-use crate::{error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder};
+use crate::{error::Result, metadata::MetadataStorage, types::TypeBuilder};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

@@ -6,7 +6,7 @@
 
 use super::WithSelf;
 use crate::{
-    error::types::Result,
+    error::Result,
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{

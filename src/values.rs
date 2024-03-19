@@ -3,7 +3,7 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    error::{Error, ErrorImpl},
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
 };
@@ -179,7 +179,7 @@ impl JitValue {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-    ) -> Result<NonNull<()>, RunnerError> {
+    ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
         Ok(unsafe {
@@ -195,10 +195,7 @@ impl JitValue {
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty)?;
-                        let elem_layout = elem_ty
-                            .layout(registry)
-                            .map_err(make_type_builder_error(type_id))?
-                            .pad_to_align();
+                        let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
@@ -267,9 +264,7 @@ impl JitValue {
                         let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
-                            let member_layout = member_ty
-                                .layout(registry)
-                                .map_err(make_type_builder_error(type_id))?;
+                            let member_layout = member_ty.layout(registry)?;
 
                             let (new_layout, offset) = match layout {
                                 Some(layout) => layout.extend(member_layout)?,

@@ -3,7 +3,7 @@ use super::LibfuncHelper;
 use std::ops::Shr;
 
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{ErrorImpl, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };

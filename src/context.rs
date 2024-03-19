@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 
 use crate::{
-    error::compile::CompileError,
+    error::Error,
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -53,7 +53,7 @@ impl NativeContext {
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
+    pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -137,7 +137,7 @@ impl NativeContext {
         &self,
         program: &Program,
         metadata_config: MetadataComputationConfig,
-    ) -> Result<NativeModule, CompileError> {
+    ) -> Result<NativeModule, Error> {
         let mut module = Module::new(Location::unknown(&self.context));
 
         let mut metadata = MetadataStorage::new();

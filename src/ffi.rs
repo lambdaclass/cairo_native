@@ -30,7 +30,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-use crate::error::compile::{CompileError, ErrorImpl};
+use crate::error::{Error as CompileError, ErrorImpl};
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
