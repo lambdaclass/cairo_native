@@ -10,7 +10,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
+        casts::{CastConcreteLibfunc, CastType, DowncastConcreteLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
@@ -22,7 +22,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, ValueLike},
     Context,
 };
 use starknet_types_core::felt::Felt;
@@ -86,233 +86,330 @@ pub fn build_downcast<'ctx, 'this>(
     })?;
     let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
 
-    let src_value: melior::ir::Value = entry.argument(1)?.into();
+    let mut value: melior::ir::Value = entry.argument(1)?.into();
 
     let mut block = entry;
 
-    let (is_in_range, result) = if src_ty == dst_ty {
-        let k0 = block
+    let (is_in_range, result) = if info.from_range.is_full_felt252_range() {
+        let range_size = info.to_range.size();
+        let minus_range_lower = info.to_range.lower.clone();
+
+        // https://github.com/starkware-libs/cairo/blob/v2.5.4/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs
+
+        let compare_ty = IntegerType::new(
+            context,
+            (minus_range_lower.bits().max(range_size.bits()) + 1)
+                .max(252)
+                .try_into()
+                .unwrap(),
+        )
+        .into();
+
+        if compare_ty != src_ty {
+            value = block
+                .append_operation(arith::extui(value, compare_ty, location))
+                .result(0)?
+                .into();
+        }
+
+        let const_minus_range_lower = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                Attribute::parse(context, &format!("{} : {}", minus_range_lower, compare_ty))
+                    .unwrap(),
                 location,
             ))
             .result(0)?
             .into();
 
-        (k0, src_value)
+        dbg!(&range_size);
+        let const_range_size = block
+            .append_operation(arith::constant(
+                context,
+                Attribute::parse(context, &format!("{} : {}", range_size, compare_ty)).unwrap(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let canonical_value = block
+            .append_operation(arith::addi(value, const_minus_range_lower, location))
+            .result(0)?
+            .into();
+
+        let in_range = block
+            .append_operation(arith::cmpi(
+                context,
+                CmpiPredicate::Slt,
+                canonical_value,
+                const_range_size,
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        let trunc_value = if canonical_value.r#type() != dst_ty {
+            block
+                .append_operation(arith::trunci(canonical_value, dst_ty, location))
+                .result(0)?
+                .into()
+        } else {
+            canonical_value
+        };
+
+        (in_range, trunc_value)
     } else {
-        // make unsigned felt into signed felt
-        // felt > half prime = negative
-        let src_value = if is_felt {
-            let attr_halfprime_i252 = Attribute::parse(
-                context,
-                &format!(
-                    "{} : {}",
-                    metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(ErrorImpl::MissingMetadata)?
-                        .prime()
-                        .shr(1),
-                    src_ty
-                ),
-            )
-            .ok_or(ErrorImpl::ParseAttributeError)?;
-            let half_prime: melior::ir::Value = block
-                .append_operation(arith::constant(context, attr_halfprime_i252, location))
-                .result(0)?
-                .into();
-
-            let is_felt_neg = block
-                .append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Ugt,
-                    src_value,
-                    half_prime,
-                    location,
-                ))
-                .result(0)?
-                .into();
-
-            let is_neg_block = helper.append_block(Block::new(&[]));
-            let is_not_neg_block = helper.append_block(Block::new(&[]));
-            let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
-
-            block.append_operation(cf::cond_br(
-                context,
-                is_felt_neg,
-                is_neg_block,
-                is_not_neg_block,
-                &[],
-                &[],
-                location,
-            ));
-
-            {
-                let prime = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        Attribute::parse(
-                            context,
-                            &format!(
-                                "{} : {}",
-                                metadata
-                                    .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(ErrorImpl::MissingMetadata)?
-                                    .prime(),
-                                src_ty
-                            ),
-                        )
-                        .ok_or(ErrorImpl::ParseAttributeError)?,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-
-                let mut src_value_is_neg: melior::ir::Value = is_neg_block
-                    .append_operation(arith::subi(prime, src_value, location))
-                    .result(0)?
-                    .into();
-
-                let kneg1 = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        Attribute::parse(context, &format!("-1 : {}", src_ty))
-                            .ok_or(ErrorImpl::ParseAttributeError)?,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-
-                src_value_is_neg = is_neg_block
-                    .append_operation(arith::muli(src_value_is_neg, kneg1, location))
-                    .result(0)?
-                    .into();
-
-                is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
+        match info.cast_type() {
+            CastType {
+                overflow_above: false,
+                overflow_below: false,
+            } => {
+                todo!("cast no overflow")
             }
-
-            is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
-
-            block = final_block;
-
-            block.argument(0)?.into()
-        } else {
-            src_value
-        };
-
-        let result = if src_width > dst_width {
-            block
-                .append_operation(arith::trunci(src_value, dst_ty, location))
-                .result(0)?
-                .into()
-        } else if is_signed {
-            block
-                .append_operation(arith::extsi(src_value, dst_ty, location))
-                .result(0)?
-                .into()
-        } else {
-            block
-                .append_operation(arith::extui(src_value, dst_ty, location))
-                .result(0)?
-                .into()
-        };
-
-        let (compare_value, compare_ty) = if src_width > dst_width {
-            (src_value, src_ty)
-        } else {
-            (result, dst_ty)
-        };
-
-        let max_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .upper,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        "downcast: failed to make max value attribute".to_string(),
-                    )
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let min_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .lower,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        "downcast: failed to make min value attribute".to_string(),
-                    )
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let is_in_range_upper = block
-            .append_operation(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Slt
-                } else {
-                    CmpiPredicate::Ult
-                },
-                compare_value,
-                max_value,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let is_in_range_lower = block
-            .append_operation(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Sge
-                } else {
-                    CmpiPredicate::Uge
-                },
-                compare_value,
-                min_value,
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let is_in_range = block
-            .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
-            .result(0)?
-            .into();
-
-        (is_in_range, result)
+            CastType {
+                overflow_above: true,
+                overflow_below: false,
+            } => {
+                todo!("cast above overflow")
+            }
+            CastType {
+                overflow_above: false,
+                overflow_below: true,
+            } => {
+                todo!("cast below overflow")
+            }
+            CastType {
+                overflow_above: true,
+                overflow_below: true,
+            } => {
+                todo!("cast both overflow")
+            }
+        }
     };
+
+    // let (is_in_range, result) = if src_ty == dst_ty {
+    //     let k0 = block
+    //         .append_operation(arith::constant(
+    //             context,
+    //             IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+    //             location,
+    //         ))
+    //         .result(0)?
+    //         .into();
+
+    //     (k0, src_value)
+    // } else {
+    //     // make unsigned felt into signed felt
+    //     // felt > half prime = negative
+    //     let src_value = if is_felt {
+    //         let attr_halfprime_i252 = Attribute::parse(
+    //             context,
+    //             &format!(
+    //                 "{} : {}",
+    //                 metadata
+    //                     .get::<PrimeModuloMeta<Felt>>()
+    //                     .ok_or(ErrorImpl::MissingMetadata)?
+    //                     .prime()
+    //                     .shr(1),
+    //                 src_ty
+    //             ),
+    //         )
+    //         .ok_or(ErrorImpl::ParseAttributeError)?;
+    //         let half_prime: melior::ir::Value = block
+    //             .append_operation(arith::constant(context, attr_halfprime_i252, location))
+    //             .result(0)?
+    //             .into();
+
+    //         let is_felt_neg = block
+    //             .append_operation(arith::cmpi(
+    //                 context,
+    //                 CmpiPredicate::Ugt,
+    //                 src_value,
+    //                 half_prime,
+    //                 location,
+    //             ))
+    //             .result(0)?
+    //             .into();
+
+    //         let is_neg_block = helper.append_block(Block::new(&[]));
+    //         let is_not_neg_block = helper.append_block(Block::new(&[]));
+    //         let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
+
+    //         block.append_operation(cf::cond_br(
+    //             context,
+    //             is_felt_neg,
+    //             is_neg_block,
+    //             is_not_neg_block,
+    //             &[],
+    //             &[],
+    //             location,
+    //         ));
+
+    //         {
+    //             let prime = is_neg_block
+    //                 .append_operation(arith::constant(
+    //                     context,
+    //                     Attribute::parse(
+    //                         context,
+    //                         &format!(
+    //                             "{} : {}",
+    //                             metadata
+    //                                 .get::<PrimeModuloMeta<Felt>>()
+    //                                 .ok_or(ErrorImpl::MissingMetadata)?
+    //                                 .prime(),
+    //                             src_ty
+    //                         ),
+    //                     )
+    //                     .ok_or(ErrorImpl::ParseAttributeError)?,
+    //                     location,
+    //                 ))
+    //                 .result(0)?
+    //                 .into();
+
+    //             let mut src_value_is_neg: melior::ir::Value = is_neg_block
+    //                 .append_operation(arith::subi(prime, src_value, location))
+    //                 .result(0)?
+    //                 .into();
+
+    //             let kneg1 = is_neg_block
+    //                 .append_operation(arith::constant(
+    //                     context,
+    //                     Attribute::parse(context, &format!("-1 : {}", src_ty))
+    //                         .ok_or(ErrorImpl::ParseAttributeError)?,
+    //                     location,
+    //                 ))
+    //                 .result(0)?
+    //                 .into();
+
+    //             src_value_is_neg = is_neg_block
+    //                 .append_operation(arith::muli(src_value_is_neg, kneg1, location))
+    //                 .result(0)?
+    //                 .into();
+
+    //             is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
+    //         }
+
+    //         is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
+
+    //         block = final_block;
+
+    //         block.argument(0)?.into()
+    //     } else {
+    //         src_value
+    //     };
+
+    //     let result = if src_width > dst_width {
+    //         block
+    //             .append_operation(arith::trunci(src_value, dst_ty, location))
+    //             .result(0)?
+    //             .into()
+    //     } else if is_signed {
+    //         block
+    //             .append_operation(arith::extsi(src_value, dst_ty, location))
+    //             .result(0)?
+    //             .into()
+    //     } else {
+    //         block
+    //             .append_operation(arith::extui(src_value, dst_ty, location))
+    //             .result(0)?
+    //             .into()
+    //     };
+
+    //     let (compare_value, compare_ty) = if src_width > dst_width {
+    //         (src_value, src_ty)
+    //     } else {
+    //         (result, dst_ty)
+    //     };
+
+    //     let max_value = block
+    //         .append_operation(arith::constant(
+    //             context,
+    //             Attribute::parse(
+    //                 context,
+    //                 &format!(
+    //                     "{}: {}",
+    //                     info.to_range
+    //                         .intersection(&info.from_range)
+    //                         .ok_or_else(|| ErrorImpl::SierraAssert(
+    //                             "range should always interesct".to_string()
+    //                         ))?
+    //                         .upper,
+    //                     compare_ty
+    //                 ),
+    //             )
+    //             .ok_or_else(|| {
+    //                 ErrorImpl::CompileError(
+    //                     "downcast: failed to make max value attribute".to_string(),
+    //                 )
+    //             })?,
+    //             location,
+    //         ))
+    //         .result(0)?
+    //         .into();
+
+    //     let min_value = block
+    //         .append_operation(arith::constant(
+    //             context,
+    //             Attribute::parse(
+    //                 context,
+    //                 &format!(
+    //                     "{}: {}",
+    //                     info.to_range
+    //                         .intersection(&info.from_range)
+    //                         .ok_or_else(|| ErrorImpl::SierraAssert(
+    //                             "range should always interesct".to_string()
+    //                         ))?
+    //                         .lower,
+    //                     compare_ty
+    //                 ),
+    //             )
+    //             .ok_or_else(|| {
+    //                 ErrorImpl::CompileError(
+    //                     "downcast: failed to make min value attribute".to_string(),
+    //                 )
+    //             })?,
+    //             location,
+    //         ))
+    //         .result(0)?
+    //         .into();
+
+    //     let is_in_range_upper = block
+    //         .append_operation(arith::cmpi(
+    //             context,
+    //             if is_signed {
+    //                 CmpiPredicate::Slt
+    //             } else {
+    //                 CmpiPredicate::Ult
+    //             },
+    //             compare_value,
+    //             max_value,
+    //             location,
+    //         ))
+    //         .result(0)?
+    //         .into();
+
+    //     let is_in_range_lower = block
+    //         .append_operation(arith::cmpi(
+    //             context,
+    //             if is_signed {
+    //                 CmpiPredicate::Sge
+    //             } else {
+    //                 CmpiPredicate::Uge
+    //             },
+    //             compare_value,
+    //             min_value,
+    //             location,
+    //         ))
+    //         .result(0)?
+    //         .into();
+
+    //     let is_in_range = block
+    //         .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
+    //         .result(0)?
+    //         .into();
+
+    //     (is_in_range, result)
+    // };
 
     block.append_operation(helper.cond_br(
         context,
