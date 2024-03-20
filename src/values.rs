@@ -213,8 +213,7 @@ impl JitValue {
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
-                        let mut len: u32 = 0;
-                        let cap: u32 = data.len().try_into().unwrap();
+                        let len: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
                             let elem =
@@ -232,8 +231,6 @@ impl JitValue {
                                 .as_ptr(),
                                 elem_layout.size(),
                             );
-
-                            len += 1;
                         }
 
                         let target = arena.alloc_layout(crate::ffi::get_mlir_layout(
@@ -251,6 +248,7 @@ impl JitValue {
                                 IntegerType::new(context, 32).into(),
                             ))?;
 
+                        let (layout, offset) = layout.extend(Layout::new::<u32>())?;
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
@@ -264,7 +262,7 @@ impl JitValue {
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
-                            .as_mut() = cap;
+                            .as_mut() = len;
                         target.cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
@@ -638,18 +636,28 @@ impl JitValue {
                     let len_layout =
                         crate::ffi::get_mlir_layout(module, IntegerType::new(context, 32).into());
 
-                    let len_value = *NonNull::new(
-                        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
-                            as *mut (),
-                    )
-                    .unwrap()
-                    .cast::<u32>()
-                    .as_ref();
+                    let (ptr_layout, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let offset_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
+                    let (_, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let length_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
 
-                    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let mut array_value = Vec::new();
+                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
+                    let data_ptr = NonNull::new_unchecked(
+                        init_data_ptr
+                            .as_ptr()
+                            .byte_add(elem_stride * offset_value as usize),
+                    );
 
-                    for i in 0..(len_value as usize) {
+                    assert!(length_value >= offset_value);
+                    let num_elems = (length_value - offset_value) as usize;
+                    let mut array_value = Vec::with_capacity(num_elems);
+                    for i in 0..num_elems {
                         let cur_elem_ptr = NonNull::new(
                             ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
                         )
@@ -665,7 +673,7 @@ impl JitValue {
                         ));
                     }
 
-                    libc::free(data_ptr.as_ptr().cast());
+                    libc::free(init_data_ptr.as_ptr().cast());
 
                     Self::Array(array_value)
                 }

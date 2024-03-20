@@ -139,7 +139,6 @@ fn test_panic_macro_basic_string() {
     panic!("basic")
 }
 
-// TODO: fix segfault
 #[test]
 #[ignore]
 #[should_panic(expected: "some_format(1)")]

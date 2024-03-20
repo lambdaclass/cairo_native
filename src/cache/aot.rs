@@ -42,14 +42,13 @@ where
         &mut self,
         key: K,
         program: &Program,
-        metadata: MetadataStorage,
+        metadata: &mut MetadataStorage,
         opt_level: OptLevel,
     ) -> Rc<AotNativeExecutor<'a>> {
         let NativeModule {
             context,
             module,
             registry,
-            metadata,
         } = self
             .context
             .compile(program, metadata)
@@ -74,7 +73,6 @@ where
             context,
             module,
             registry,
-            metadata,
             shared_library,
             gas_metadata,
         );

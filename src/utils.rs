@@ -557,11 +557,10 @@ pub mod test {
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
         },
         utils::*,
@@ -684,9 +683,6 @@ pub mod test {
 
         // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-        metadata
-            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
-            .unwrap();
 
         if program
             .type_declarations
@@ -701,18 +697,21 @@ pub mod test {
             metadata.insert(gas_metadata);
         }
 
-        let module = context.compile(program, metadata).unwrap();
+        let module = context.compile(program, &mut metadata).unwrap();
         assert!(
             module.module().as_operation().verify(),
             "Test program generated invalid MLIR:\n{}",
             module.module().as_operation()
         );
 
-        let syscall_handler = module.get_metadata::<SyscallHandlerMeta>();
-
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
-            .invoke_dynamic(entry_point_id, args, Some(u128::MAX), syscall_handler)
+            .invoke_dynamic_with_syscall_handler(
+                entry_point_id,
+                args,
+                Some(u128::MAX),
+                TestSyscallHandler,
+            )
             .unwrap()
     }
 
@@ -730,7 +729,7 @@ pub mod test {
     #[derive(Debug)]
     struct TestSyscallHandler;
 
-    impl StarkNetSyscallHandler for TestSyscallHandler {
+    impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
             Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
         }

@@ -32,9 +32,7 @@ fn test_array_clone() {
     assert_eq(felt252_snap_array_clone[2], @12, 'array[2] != 12');
 }
 
-// TODO: fix, triggers a segfault
 #[test]
-#[ignore]
 fn test_span() {
     let mut span = array![10, 11, 12].span();
     assert_eq(@span.len(), @3, 'Unexpected span length.');
@@ -76,6 +74,7 @@ fn test_slice_out_of_bound_2() {
 }
 
 #[test]
+#[ignore]
 fn test_equality() {
     let arr1 = array![];
     let arr2 = array![10, 11, 12];

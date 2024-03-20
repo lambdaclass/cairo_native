@@ -47,7 +47,7 @@ pub mod sint32;
 pub mod sint64;
 pub mod sint8;
 pub mod snapshot_take;
-pub mod stark_net;
+pub mod starknet;
 pub mod r#struct;
 pub mod uint128;
 pub mod uint16;
@@ -180,7 +180,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::StarkNet(selector) => self::stark_net::build(
+            Self::StarkNet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Struct(selector) => self::r#struct::build(

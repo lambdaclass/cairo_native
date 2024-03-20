@@ -21,10 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, r#type::opaque_pointer},
-    },
+    dialect::{arith, llvm},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -57,7 +54,7 @@ pub mod range_check;
 pub mod segment_arena;
 pub mod snapshot;
 pub mod squashed_felt252_dict;
-pub mod stark_net;
+pub mod starknet;
 pub mod r#struct;
 pub mod uint128;
 pub mod uint128_mul_guarantee;
@@ -334,7 +331,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::StarkNet(selector) => self::stark_net::build(
+            Self::StarkNet(selector) => self::starknet::build(
                 context,
                 module,
                 registry,
@@ -818,11 +815,6 @@ impl TypeBuilder for CoreTypeConcrete {
                     location,
                 ));
                 let ptr: Value = op.result(0)?.into();
-
-                let ptr = entry
-                    .append_operation(llvm::bitcast(ptr, opaque_pointer(context), location))
-                    .result(0)?
-                    .into();
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }

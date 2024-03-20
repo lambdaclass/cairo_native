@@ -63,7 +63,7 @@ cairo-lang-sierra-ap-change = "2.5.4"
 cairo-lang-sierra-gas = "2.5.4"
 cairo-lang-starknet = "2.5.4"
 cairo-lang-utils = "2.5.4"
-cairo-native-runtime = { path = "runtime", optional = true }
+cairo-native-runtime = { version = "0.1.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.1"
 tracing-subscriber = { version = "0.3", features = [

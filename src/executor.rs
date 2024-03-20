@@ -2,7 +2,8 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    metadata::{syscall_handler::SyscallHandlerMeta, MetadataStorage},
+    metadata::MetadataStorage,
+    starknet::StarknetSyscallHandler,
     types::TypeBuilder,
     utils::{bytes31_layout, felt252_layout},
     values::JitValue,
@@ -63,15 +64,33 @@ impl<'ctx> NativeExecutor<'ctx> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
         match self {
-            NativeExecutor::Aot(executor) => {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) => {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
+            NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
+            NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
+        }
+    }
+
+    pub fn invoke_dynamic_with_syscall_handler(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ExecutionResult, RunnerError> {
+        match self {
+            NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
+            NativeExecutor::Jit(executor) => executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
         }
     }
 
@@ -80,7 +99,7 @@ impl<'ctx> NativeExecutor<'ctx> {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
+        syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, RunnerError> {
         match self {
             NativeExecutor::Aot(executor) => {
@@ -115,7 +134,7 @@ fn invoke_dynamic(
     function_signature: &FunctionSignature,
     args: &[JitValue],
     gas: u128,
-    syscall_handler: Option<NonNull<()>>,
+    mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
@@ -190,14 +209,16 @@ fn invoke_dynamic(
                 crate::ffi::get_mlir_layout(module, IntegerType::new(context, 128).into()).align(),
                 &[gas as u64, (gas >> 64) as u64],
             ),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
-                Some(syscall_handler) => invoke_data.push_aligned(
-                    crate::ffi::get_mlir_layout(module, IntegerType::new(context, 64).into())
-                        .align(),
-                    &[syscall_handler.as_ptr() as u64],
-                ),
-                None => panic!("Syscall handler is required"),
-            },
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                match syscall_handler.as_mut() {
+                    Some(syscall_handler) => invoke_data.push_aligned(
+                        crate::ffi::get_mlir_layout(module, IntegerType::new(context, 64).into())
+                            .align(),
+                        &[syscall_handler as *mut _ as u64],
+                    ),
+                    None => panic!("Syscall handler is required"),
+                }
+            }
             _ if is_builtin(type_info) => invoke_data
                 .push(type_id, type_info, &JitValue::Uint64(0))
                 .unwrap(),

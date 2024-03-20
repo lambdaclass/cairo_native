@@ -30,6 +30,12 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [API usage example](#api--usage-example)
 - [From MLIR to native binary](#from-mlir-to-native-binary)
 
+## ⚠️ Disclaimer
+
+🚧 `cairo-native` is still being built therefore API breaking changes might happen often so use it at your own risk. 🚧
+
+For versions under `1.0` `cargo` doesn't comply with [semver](https://semver.org/), so we advise to pin the version the version you use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
+
 ## Implemented Library Functions
 
 Cairo Native works by leveraging the intermediate representation of Cairo called Sierra.
@@ -758,6 +764,8 @@ sierra2mlir program.sierra -o program.mlir
 
 This tool mimics the `cairo-test` [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) and is identical to it, the only feature it doesn't have is the profiler.
 
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
 ```bash
 $ cairo-native-test --help
 Compiles a Cairo project and runs all the functions marked as `#[test]`.
@@ -780,3 +788,16 @@ Options:
   -h, --help                   Print help
   -V, --version                Print version
 ```
+
+For single files, you can use the `-s, --single-file` option.
+
+For a project, it needs to have a `cairo_project.toml` specifying the crate_roots. You can find an
+example under the `cairo-tests/` folder, which is a cairo project that works with this tool.
+
+```
+cairo-native-test -s myfile.cairo
+
+cairo-native-test ./cairo-tests/
+```
+
+This will run all the tests (functions marked with the `#[test]` attribute).

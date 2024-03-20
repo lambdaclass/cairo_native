@@ -45,12 +45,12 @@ where
         &mut self,
         key: K,
         program: &Program,
-        metadata: MetadataStorage,
+        // metadata: MetadataStorage,
         opt_level: OptLevel,
     ) -> Rc<JitNativeExecutor<'a>> {
         let module = self
             .context
-            .compile(program, metadata)
+            .compile(program, &mut MetadataStorage::default())
             .expect("should compile");
         let executor = JitNativeExecutor::from_native_module(module, opt_level);
 
@@ -94,12 +94,7 @@ mod test {
         let mut cache: JitProgramCache<&'static str> = JitProgramCache::new(&context);
 
         let start = Instant::now();
-        cache.compile_and_insert(
-            "program1",
-            &program1,
-            Default::default(),
-            Default::default(),
-        );
+        cache.compile_and_insert("program1", &program1, Default::default());
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();
@@ -109,12 +104,7 @@ mod test {
         assert!(diff_2 < diff_1);
 
         let start = Instant::now();
-        cache.compile_and_insert(
-            "program2",
-            &program2,
-            Default::default(),
-            Default::default(),
-        );
+        cache.compile_and_insert("program2", &program2, Default::default());
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();

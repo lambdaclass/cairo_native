@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use crate::{
     error::compile::CompileError,
     ffi::{get_data_layout_rep, get_target_triple},
@@ -29,6 +27,7 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use std::sync::OnceLock;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -51,12 +50,16 @@ impl NativeContext {
         Self { context }
     }
 
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     pub fn compile(
         &self,
         program: &Program,
-        mut metadata: MetadataStorage,
+        metadata: &mut MetadataStorage,
     ) -> Result<NativeModule, CompileError> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
@@ -110,14 +113,7 @@ impl NativeContext {
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
-        crate::compile(
-            &self.context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )?;
+        crate::compile(&self.context, &module, program, &registry, metadata, None)?;
 
         run_pass_manager(&self.context, &mut module)?;
 
@@ -131,7 +127,7 @@ impl NativeContext {
             );
         }
 
-        Ok(NativeModule::new(&self.context, module, registry, metadata))
+        Ok(NativeModule::new(&self.context, module, registry))
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
@@ -164,7 +160,7 @@ impl NativeContext {
 
         run_pass_manager(&self.context, &mut module)?;
 
-        Ok(NativeModule::new(&self.context, module, registry, metadata))
+        Ok(NativeModule::new(&self.context, module, registry))
     }
 }
 

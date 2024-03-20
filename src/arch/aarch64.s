@@ -32,7 +32,7 @@ _aot_trampoline:
     ldr     x3,     [x10, #-8]!             // Decrement pointer, then load the value.
     str     x3,     [x4, #-8]!              // Reserve stack memory, then write the value.
 
-    cmp     x2,     8                       // Check if there are more than 8 arguments.
+    cmp     x2,     8                       // Check if there are more than 8 arguments.
     bgt     1b                              // If there still are, loop back and repeat.
 
     mov     sp,     x4

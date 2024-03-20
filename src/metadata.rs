@@ -21,7 +21,6 @@ pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod snapshot_clones;
-pub mod syscall_handler;
 pub mod tail_recursion;
 
 /// Metadata container.

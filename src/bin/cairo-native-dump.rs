@@ -4,32 +4,17 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_defs::plugin::NamedPlugin;
 use cairo_lang_semantic::plugin::PluginSuite;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
-    program_registry::ProgramRegistry,
-    ProgramParser,
-};
+use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{
     contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
 use cairo_native::{
+    context::NativeContext,
     debug_info::{DebugInfo, DebugLocations},
-    ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use clap::Parser;
-use melior::{
-    dialect::DialectRegistry,
-    ir::{
-        attribute::StringAttribute,
-        operation::{OperationBuilder, OperationPrintingFlags},
-        Identifier, Location, Module, Region,
-    },
-    utility::register_all_dialects,
-    Context,
-};
+use melior::{ir::operation::OperationPrintingFlags, Context};
 use std::{
     ffi::OsStr,
     fs,
@@ -50,55 +35,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Load the program.
-    let context = Context::new();
-    let (program, debug_info) =
-        load_program(Path::new(&args.input), Some(&context), args.starknet)?;
-
-    // Initialize MLIR.
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
+    let context = NativeContext::new();
+    // TODO: Reconnect debug information.
+    let (program, _debug_info) = load_program(
+        Path::new(&args.input),
+        Some(context.context()),
+        args.starknet,
+    )?;
 
     // Compile the program.
-    let target_triple = get_target_triple();
-    let data_layout = get_data_layout_rep().unwrap();
-    let module = Module::from_operation(
-        OperationBuilder::new("builtin.module", Location::unknown(&context))
-            .add_attributes(&[
-                (
-                    Identifier::new(&context, "llvm.target_triple"),
-                    StringAttribute::new(&context, &target_triple).into(),
-                ),
-                (
-                    Identifier::new(&context, "llvm.data_layout"),
-                    StringAttribute::new(&context, &data_layout).into(),
-                ),
-            ])
-            .add_regions([Region::new()])
-            .build()
-            .unwrap(),
-    )
-    .unwrap();
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    cairo_native::compile(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        debug_info.as_ref(),
-    )?;
+    let module = context.compile(&program)?;
 
     // Write the output.
     let output_str = module
+        .module()
         .as_operation()
         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))?;
     match args.output {
