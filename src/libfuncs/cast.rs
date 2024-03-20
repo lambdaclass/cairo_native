@@ -4,7 +4,7 @@ use std::ops::Shr;
 
 use super::LibfuncHelper;
 use crate::{
-    error::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -64,10 +64,10 @@ pub fn build_downcast<'ctx, 'this>(
     let dst_type = registry.get_type(&info.to_ty)?;
 
     let src_width = src_type.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
     let dst_width = dst_type.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
@@ -80,9 +80,9 @@ pub fn build_downcast<'ctx, 'this>(
     );
 
     let is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })? || dst_type.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
     let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
 
@@ -111,13 +111,13 @@ pub fn build_downcast<'ctx, 'this>(
                     "{} : {}",
                     metadata
                         .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .ok_or(Error::MissingMetadata)?
                         .prime()
                         .shr(1),
                     src_ty
                 ),
             )
-            .ok_or(ErrorImpl::ParseAttributeError)?;
+            .ok_or(Error::ParseAttributeError)?;
             let half_prime: melior::ir::Value = block
                 .append_operation(arith::constant(context, attr_halfprime_i252, location))
                 .result(0)?
@@ -158,12 +158,12 @@ pub fn build_downcast<'ctx, 'this>(
                                 "{} : {}",
                                 metadata
                                     .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(ErrorImpl::MissingMetadata)?
+                                    .ok_or(Error::MissingMetadata)?
                                     .prime(),
                                 src_ty
                             ),
                         )
-                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                        .ok_or(Error::ParseAttributeError)?,
                         location,
                     ))
                     .result(0)?
@@ -178,7 +178,7 @@ pub fn build_downcast<'ctx, 'this>(
                     .append_operation(arith::constant(
                         context,
                         Attribute::parse(context, &format!("-1 : {}", src_ty))
-                            .ok_or(ErrorImpl::ParseAttributeError)?,
+                            .ok_or(Error::ParseAttributeError)?,
                         location,
                     ))
                     .result(0)?
@@ -233,7 +233,7 @@ pub fn build_downcast<'ctx, 'this>(
                         "{}: {}",
                         info.to_range
                             .intersection(&info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                            .ok_or_else(|| Error::SierraAssert(
                                 "range should always interesct".to_string()
                             ))?
                             .upper,
@@ -241,7 +241,7 @@ pub fn build_downcast<'ctx, 'this>(
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::Error("downcast: failed to make max value attribute".to_string())
+                    Error::Error("downcast: failed to make max value attribute".to_string())
                 })?,
                 location,
             ))
@@ -257,7 +257,7 @@ pub fn build_downcast<'ctx, 'this>(
                         "{}: {}",
                         info.to_range
                             .intersection(&info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                            .ok_or_else(|| Error::SierraAssert(
                                 "range should always interesct".to_string()
                             ))?
                             .lower,
@@ -265,7 +265,7 @@ pub fn build_downcast<'ctx, 'this>(
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::Error("downcast: failed to make min value attribute".to_string())
+                    Error::Error("downcast: failed to make min value attribute".to_string())
                 })?,
                 location,
             ))
@@ -355,17 +355,17 @@ pub fn build_upcast<'ctx, 'this>(
     );
 
     let src_width = src_ty.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
     let dst_width = dst_ty.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
     assert!(src_width <= dst_width);
 
     let is_signed = src_ty.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })? || dst_ty.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert("casts always happen between numerical types".to_string())
+        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
@@ -389,7 +389,7 @@ pub fn build_upcast<'ctx, 'this>(
                 .append_operation(arith::constant(
                     context,
                     Attribute::parse(context, &format!("0 : {}", dst_type))
-                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                        .ok_or(Error::ParseAttributeError)?,
                     location,
                 ))
                 .result(0)?
@@ -450,12 +450,12 @@ pub fn build_upcast<'ctx, 'this>(
                                 "{} : {}",
                                 metadata
                                     .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(ErrorImpl::MissingMetadata)?
+                                    .ok_or(Error::MissingMetadata)?
                                     .prime(),
                                 dst_type
                             ),
                         )
-                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                        .ok_or(Error::ParseAttributeError)?,
                         location,
                     ))
                     .result(0)?

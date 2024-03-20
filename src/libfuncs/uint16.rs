@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::MetadataStorage,
     utils::ProgramRegistryExt,
 };
@@ -96,7 +96,7 @@ pub fn build_const<'ctx, 'this>(
     let op0 = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, &format!("{value} : {value_ty}"))
-            .ok_or(ErrorImpl::ParseAttributeError)?,
+            .ok_or(Error::ParseAttributeError)?,
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
@@ -612,7 +612,7 @@ pub fn build_from_felt252<'ctx, 'this>(
     let op = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, &format!("{} : {}", u16::MAX, felt252_ty))
-            .ok_or(ErrorImpl::ParseAttributeError)?,
+            .ok_or(Error::ParseAttributeError)?,
         location,
     ));
     let const_max = op.result(0)?.into();

@@ -3,7 +3,7 @@ use super::LibfuncHelper;
 use std::ops::Shr;
 
 use crate::{
-    error::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -89,7 +89,7 @@ pub fn build_const<'ctx, 'this>(
     let op0 = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, &format!("{value} : {value_ty}"))
-            .ok_or(ErrorImpl::ParseAttributeError)?,
+            .ok_or(Error::ParseAttributeError)?,
         location,
     ));
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
@@ -334,7 +334,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", i128::MAX, felt252_ty))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -344,7 +344,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", i128::MIN, felt252_ty))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -361,13 +361,13 @@ pub fn build_from_felt252<'ctx, 'this>(
                 "{} : {}",
                 metadata
                     .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(ErrorImpl::MissingMetadata)?
+                    .ok_or(Error::MissingMetadata)?
                     .prime()
                     .shr(1),
                 felt252_ty
             ),
         )
-        .ok_or(ErrorImpl::ParseAttributeError)?;
+        .ok_or(Error::ParseAttributeError)?;
         let half_prime: melior::ir::Value = block
             .append_operation(arith::constant(context, attr_halfprime_i252, location))
             .result(0)?
@@ -408,12 +408,12 @@ pub fn build_from_felt252<'ctx, 'this>(
                             "{} : {}",
                             metadata
                                 .get::<PrimeModuloMeta<Felt>>()
-                                .ok_or(ErrorImpl::MissingMetadata)?
+                                .ok_or(Error::MissingMetadata)?
                                 .prime(),
                             felt252_ty
                         ),
                     )
-                    .ok_or(ErrorImpl::ParseAttributeError)?,
+                    .ok_or(Error::ParseAttributeError)?,
                     location,
                 ))
                 .result(0)?
@@ -428,7 +428,7 @@ pub fn build_from_felt252<'ctx, 'this>(
                 .append_operation(arith::constant(
                     context,
                     Attribute::parse(context, &format!("-1 : {}", felt252_ty))
-                        .ok_or(ErrorImpl::ParseAttributeError)?,
+                        .ok_or(Error::ParseAttributeError)?,
                     location,
                 ))
                 .result(0)?

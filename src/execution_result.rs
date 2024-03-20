@@ -1,7 +1,4 @@
-use crate::{
-    error::{Error, ErrorImpl},
-    values::JitValue,
-};
+use crate::{error::Error, values::JitValue};
 use starknet_types_core::felt::Felt;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -60,22 +57,22 @@ impl ContractExecutionResult {
                                     .collect();
                                 felt_vec
                             } else {
-                                Err(Error::from(ErrorImpl::UnexpectedValue(format!(
+                                Err(Error::UnexpectedValue(format!(
                                     "wrong type, expect: array, value: {:?}",
                                     value
-                                ))))?
+                                )))?
                             }
                         } else {
-                            Err(Error::from(ErrorImpl::UnexpectedValue(format!(
+                            Err(Error::UnexpectedValue(format!(
                                 "wrong type, expect: struct, value: {:?}",
                                 value
-                            ))))?
+                            )))?
                         }
                     } else {
-                        Err(Error::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: struct, value: {:?}",
                             value
-                        ))))?
+                        )))?
                     }
                 } else if let JitValue::Struct { fields, .. } = &**value {
                     if let JitValue::Array(data) = &fields[1] {
@@ -101,23 +98,23 @@ impl ContractExecutionResult {
                         error_msg = Some(str_error);
                         felt_vec
                     } else {
-                        Err(Error::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: array, value: {:?}",
                             value
-                        ))))?
+                        )))?
                     }
                 } else {
-                    Err(Error::from(ErrorImpl::UnexpectedValue(format!(
+                    Err(Error::UnexpectedValue(format!(
                         "wrong type, expect: struct, value: {:?}",
                         value
-                    ))))?
+                    )))?
                 }
             }
             _ => {
                 failure_flag = true;
-                Err(Error::from(ErrorImpl::UnexpectedValue(
+                Err(Error::UnexpectedValue(
                     "wrong return value type expected a enum".to_string(),
-                )))?
+                ))?
             }
         };
 

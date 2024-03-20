@@ -54,7 +54,7 @@ starknet-types-core = { version = "0.0.9", default-features = false, features = 
   "serde",
 ] }
 tempfile = "3.6"
-thiserror = "1.0"
+thiserror = "1.0.58"
 tracing = "0.1"
 
 

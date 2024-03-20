@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::MetadataStorage,
     utils::{mlir_asm, ProgramRegistryExt},
 };
@@ -135,7 +135,7 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
-        .ok_or(ErrorImpl::ParseAttributeError)?;
+        .ok_or(Error::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty

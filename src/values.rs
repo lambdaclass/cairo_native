@@ -3,7 +3,7 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
-    error::{Error, ErrorImpl},
+    error::Error,
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
 };
@@ -248,7 +248,7 @@ impl JitValue {
                             .as_mut() = len;
                         target.cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an array",
                             type_id.debug_name
                         )))?
@@ -311,7 +311,7 @@ impl JitValue {
                             ptr
                         }
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a struct",
                             type_id.debug_name
                         )))?
@@ -355,7 +355,7 @@ impl JitValue {
                             .unwrap()
                             .cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",
                             type_id.debug_name
                         )))?
@@ -388,7 +388,7 @@ impl JitValue {
 
                         NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
                             type_id.debug_name
                         )))?

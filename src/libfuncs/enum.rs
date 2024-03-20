@@ -4,7 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -414,7 +414,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
     // This libfunc's implementation is identical to `enum_match` aside from fetching the snapshotted enum's variants from the metadata:
     let variants_ids = metadata
         .get::<EnumSnapshotVariantsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .get_variants(&info.param_signatures()[0].ty)
         .expect("enum should always have variants")
         .clone();

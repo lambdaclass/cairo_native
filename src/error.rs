@@ -3,20 +3,15 @@ use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
 
-use std::{alloc::LayoutError, fmt, num::TryFromIntError, ops::Deref};
+use std::{alloc::LayoutError, num::TryFromIntError};
 use thiserror::Error;
 
 use crate::metadata::gas::GasMetadataError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Error)]
-pub struct Error {
-    pub source: Box<ErrorImpl>,
-}
-
 #[derive(Error, Debug)]
-pub enum ErrorImpl {
+pub enum Error {
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
 
@@ -37,9 +32,6 @@ pub enum ErrorImpl {
 
     #[error(transparent)]
     LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
-
-    #[error(transparent)]
-    ProgramRegistryError(#[from] ProgramRegistryError),
 
     #[error(transparent)]
     ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
@@ -69,50 +61,15 @@ pub enum ErrorImpl {
     LLVMCompileError(String),
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.source, f)
-    }
-}
-
-impl Deref for Error {
-    type Target = ErrorImpl;
-
-    fn deref(&self) -> &Self::Target {
-        &self.source
-    }
-}
-
-impl<E> From<E> for Error
-where
-    ErrorImpl: From<E>,
-{
-    fn from(error: E) -> Self {
-        Self {
-            source: Box::new(error.into()),
-        }
-    }
-}
-
-impl<E> From<E> for Box<Error>
-where
-    ErrorImpl: From<E>,
-{
-    fn from(error: E) -> Self {
-        Self::new(Error::from(error))
-    }
-}
-
 pub fn make_unexpected_value_error(expected: String) -> Error {
-    ErrorImpl::UnexpectedValue(expected).into()
+    Error::UnexpectedValue(expected)
 }
 
 pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Error {
-    ErrorImpl::MissingParameter(
+    Error::MissingParameter(
         ty.debug_name
             .as_ref()
             .map(|x| x.to_string())
             .unwrap_or_default(),
     )
-    .into()
 }
