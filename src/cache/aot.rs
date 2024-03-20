@@ -1,13 +1,7 @@
 use crate::{
-    context::NativeContext,
-    executor::AotNativeExecutor,
-    metadata::{gas::GasMetadata, MetadataStorage},
-    module::NativeModule,
-    utils::SHARED_LIBRARY_EXT,
-    OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, metadata::MetadataStorage, OptLevel,
 };
 use cairo_lang_sierra::program::Program;
-use libloading::Library;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -45,37 +39,11 @@ where
         metadata: &mut MetadataStorage,
         opt_level: OptLevel,
     ) -> Rc<AotNativeExecutor<'a>> {
-        let NativeModule {
-            context,
-            module,
-            registry,
-        } = self
+        let module = self
             .context
             .compile(program, metadata)
             .expect("should compile");
-
-        // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();
-
-        // Compile object into a shared library.
-        let shared_library_path = tempfile::Builder::new()
-            .prefix("lib")
-            .suffix(SHARED_LIBRARY_EXT)
-            .tempfile()
-            .unwrap()
-            .into_temp_path();
-        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path).unwrap();
-
-        let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
-        let gas_metadata = metadata.get::<GasMetadata>().cloned().unwrap();
-
-        let executor = AotNativeExecutor::new(
-            context,
-            module,
-            registry,
-            shared_library,
-            gas_metadata,
-        );
+        let executor = AotNativeExecutor::from_native_module(module, opt_level);
 
         let executor = Rc::new(executor);
         self.cache.insert(key, executor.clone());

@@ -402,7 +402,10 @@
 //! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
 
 use super::{TypeBuilder, WithSelf};
-use crate::{error::types::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    error::types::Result, executor::ExecutorBase, metadata::MetadataStorage,
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -486,8 +489,7 @@ pub fn build<'ctx>(
 pub fn get_layout_for_variants(
     context: &Context,
     module: &Module,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    executor_base: &ExecutorBase,
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, Layout, Vec<Layout>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
@@ -497,11 +499,7 @@ pub fn get_layout_for_variants(
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant)?;
-        let payload_layout = crate::ffi::get_mlir_layout(
-            module,
-            concrete_payload_ty.build(context, module, registry, metadata, variant)?,
-        );
+        let payload_layout = *executor_base.type_layouts.get(variant).unwrap();
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(

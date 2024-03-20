@@ -935,7 +935,7 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: unsafe {
-                            let mut execution_info_ptr =
+                            let execution_info_ptr =
                                 NonNull::new(libc::malloc(size_of::<ExecutionInfoV2Abi>())
                                     as *mut ExecutionInfoV2Abi)
                                 .unwrap();

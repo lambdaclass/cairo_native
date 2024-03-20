@@ -1,5 +1,7 @@
+use crate::metadata::gas::GasMetadata;
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
+    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
 use melior::{ir::Module, Context};
@@ -12,6 +14,8 @@ pub struct NativeModule<'ctx> {
     pub(crate) context: &'ctx Context,
     pub(crate) module: Module<'ctx>,
     pub(crate) registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    pub(crate) function_ids: Vec<FunctionId>,
+    pub(crate) gas_metadata: GasMetadata,
 }
 
 impl<'ctx> NativeModule<'ctx> {
@@ -19,11 +23,15 @@ impl<'ctx> NativeModule<'ctx> {
         context: &'ctx Context,
         module: Module<'ctx>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
+        function_ids: impl Into<Vec<FunctionId>>,
+        gas_metadata: GasMetadata,
     ) -> Self {
         Self {
             context,
             module,
             registry,
+            function_ids: function_ids.into(),
+            gas_metadata,
         }
     }
 
@@ -33,6 +41,10 @@ impl<'ctx> NativeModule<'ctx> {
 
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
+    }
+
+    pub fn function_ids(&self) -> &[FunctionId] {
+        &self.function_ids
     }
 }
 

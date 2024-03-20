@@ -127,7 +127,17 @@ impl NativeContext {
             );
         }
 
-        Ok(NativeModule::new(&self.context, module, registry))
+        Ok(NativeModule::new(
+            &self.context,
+            module,
+            registry,
+            program
+                .funcs
+                .iter()
+                .map(|x| x.id.clone())
+                .collect::<Vec<_>>(),
+            metadata.remove::<GasMetadata>().unwrap(),
+        ))
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
@@ -160,7 +170,17 @@ impl NativeContext {
 
         run_pass_manager(&self.context, &mut module)?;
 
-        Ok(NativeModule::new(&self.context, module, registry))
+        Ok(NativeModule::new(
+            &self.context,
+            module,
+            registry,
+            program
+                .funcs
+                .iter()
+                .map(|x| x.id.clone())
+                .collect::<Vec<_>>(),
+            metadata.remove::<GasMetadata>().unwrap(),
+        ))
     }
 }
 

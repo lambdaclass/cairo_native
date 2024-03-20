@@ -2,7 +2,6 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    metadata::MetadataStorage,
     starknet::StarknetSyscallHandler,
     types::TypeBuilder,
     utils::{bytes31_layout, felt252_layout},
@@ -27,6 +26,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
+    collections::HashMap,
     ptr::{null_mut, NonNull},
     rc::Rc,
 };
@@ -50,6 +50,21 @@ extern "C" {
         args_len: usize,
         ret_ptr: *mut u64,
     );
+}
+
+#[derive(Clone, Debug)]
+pub struct ExecutorBase {
+    /// Layouts for types present in function signatures.
+    pub type_layouts: HashMap<ConcreteTypeId, Layout>,
+}
+
+impl ExecutorBase {
+    pub fn new(
+        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        _function_ids: &[FunctionId],
+    ) -> Self {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -129,7 +144,7 @@ fn invoke_dynamic(
     context: &Context,
     module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    executor_base: &ExecutorBase,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
@@ -142,7 +157,7 @@ fn invoke_dynamic(
     let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
-    let mut invoke_data = ArgumentMapper::new(context, module, registry, metadata, &arena);
+    let mut invoke_data = ArgumentMapper::new(context, module, registry, executor_base, &arena);
 
     // Generate return pointer (if necessary).
     //
@@ -171,15 +186,8 @@ fn invoke_dynamic(
             .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
     {
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
-            let type_info = registry.get_type(id).unwrap();
             layout
-                // .extend(type_info.layout(registry).unwrap())
-                .extend(crate::ffi::get_mlir_layout(
-                    module,
-                    type_info
-                        .build(context, module, registry, invoke_data.metadata, id)
-                        .unwrap(),
-                ))
+                .extend(*executor_base.type_layouts.get(id).unwrap())
                 .unwrap()
                 .0
         });
@@ -317,7 +325,7 @@ fn invoke_dynamic(
         context,
         module,
         registry,
-        metadata,
+        executor_base,
         function_signature.ret_types.last().unwrap(),
         return_ptr,
         ret_registers,
@@ -337,7 +345,7 @@ pub struct ArgumentMapper<'a> {
     context: &'a Context,
     module: &'a Module<'a>,
     registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &'a mut MetadataStorage,
+    executor_base: &'a ExecutorBase,
 
     arena: &'a Bump,
     invoke_data: Vec<u64>,
@@ -348,14 +356,14 @@ impl<'a> ArgumentMapper<'a> {
         context: &'a Context,
         module: &'a Module,
         registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &'a mut MetadataStorage,
+        executor_base: &'a ExecutorBase,
         arena: &'a Bump,
     ) -> Self {
         Self {
             context,
             module,
             registry,
-            metadata,
+            executor_base,
             arena,
             invoke_data: Vec::new(),
         }
@@ -412,20 +420,12 @@ impl<'a> ArgumentMapper<'a> {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                let type_info = self.registry.get_type(&info.ty)?;
-                let type_layout = crate::ffi::get_mlir_layout(
-                    self.module,
-                    type_info
-                        .build(
-                            self.context,
-                            self.module,
-                            self.registry,
-                            self.metadata,
-                            type_id,
-                        )
-                        .unwrap(),
-                )
-                .pad_to_align();
+                let type_layout = self
+                    .executor_base
+                    .type_layouts
+                    .get(type_id)
+                    .unwrap()
+                    .pad_to_align();
 
                 // This needs to be a heap-allocated pointer because it's the actual array data.
                 let ptr = if values.is_empty() {
@@ -442,7 +442,7 @@ impl<'a> ArgumentMapper<'a> {
                                     self.context,
                                     self.module,
                                     self.registry,
-                                    self.metadata,
+                                    self.executor_base,
                                     self.arena,
                                     &info.ty,
                                 )
@@ -498,8 +498,7 @@ impl<'a> ArgumentMapper<'a> {
                         crate::types::r#enum::get_layout_for_variants(
                             self.context,
                             self.module,
-                            self.registry,
-                            self.metadata,
+                            self.executor_base,
                             &info.variants,
                         )
                         .unwrap();
@@ -522,7 +521,7 @@ impl<'a> ArgumentMapper<'a> {
                             self.context,
                             self.module,
                             self.registry,
-                            self.metadata,
+                            self.executor_base,
                             self.arena,
                             &info.variants[*tag],
                         )
@@ -581,7 +580,7 @@ impl<'a> ArgumentMapper<'a> {
                             self.context,
                             self.module,
                             self.registry,
-                            self.metadata,
+                            self.executor_base,
                             self.arena,
                             type_id,
                         )
@@ -737,28 +736,17 @@ fn parse_result(
     context: &Context,
     module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    executor_base: &ExecutorBase,
     type_id: &ConcreteTypeId,
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> JitValue {
     let type_info = registry.get_type(type_id).unwrap();
-    dbg!(crate::ffi::get_mlir_layout(
-        module,
-        type_info
-            .build(context, module, registry, metadata, type_id)
-            .unwrap()
-    ));
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = crate::ffi::get_mlir_layout(
-            module,
-            type_info
-                .build(context, module, registry, metadata, type_id)
-                .unwrap(),
-        );
+        let layout = *executor_base.type_layouts.get(type_id).unwrap();
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -774,13 +762,13 @@ fn parse_result(
             context,
             module,
             registry,
-            metadata,
+            executor_base,
             return_ptr.unwrap(),
             type_id,
         ),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(context, module, registry, metadata, ptr, &info.ty);
+            let value = JitValue::from_jit(context, module, registry, executor_base, ptr, &info.ty);
             libc::free(ptr.cast().as_ptr());
             value
         },
@@ -788,7 +776,7 @@ fn parse_result(
             context,
             module,
             registry,
-            metadata,
+            executor_base,
             return_ptr.unwrap(),
             type_id,
         ),
@@ -796,7 +784,7 @@ fn parse_result(
             context,
             module,
             registry,
-            metadata,
+            executor_base,
             return_ptr.unwrap(),
             type_id,
         ),
@@ -807,16 +795,21 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => {
-                JitValue::from_jit(context, module, registry, metadata, return_ptr, type_id)
-            }
+            Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                registry,
+                executor_base,
+                return_ptr,
+                type_id,
+            ),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 let value = JitValue::from_jit(
                     context,
                     module,
                     registry,
-                    metadata,
+                    executor_base,
                     return_ptr.unwrap(),
                     type_id,
                 );
@@ -879,7 +872,7 @@ fn parse_result(
             context,
             module,
             registry,
-            metadata,
+            executor_base,
             &info.ty,
             return_ptr,
             ret_registers,
@@ -892,7 +885,8 @@ fn parse_result(
                 JitValue::Null
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(context, module, registry, metadata, ptr, &info.ty);
+                let value =
+                    JitValue::from_jit(context, module, registry, executor_base, ptr, &info.ty);
                 libc::free(ptr.as_ptr().cast());
                 value
             }
@@ -902,8 +896,7 @@ fn parse_result(
             let (_, tag_layout, variant_layouts) = crate::types::r#enum::get_layout_for_variants(
                 context,
                 module,
-                registry,
-                metadata,
+                executor_base,
                 &info.variants,
             )
             .unwrap();
@@ -954,7 +947,7 @@ fn parse_result(
                     context,
                     module,
                     registry,
-                    metadata,
+                    executor_base,
                     ptr,
                     &info.variants[tag],
                 )),
@@ -964,7 +957,7 @@ fn parse_result(
                         context,
                         module,
                         registry,
-                        metadata,
+                        executor_base,
                         &info.variants[tag],
                         None,
                         ret_registers,
@@ -989,7 +982,7 @@ fn parse_result(
                     context,
                     module,
                     registry,
-                    metadata,
+                    executor_base,
                     return_ptr.unwrap(),
                     type_id,
                 )
@@ -1000,7 +993,7 @@ fn parse_result(
                 context,
                 module,
                 registry,
-                metadata,
+                executor_base,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
             ),
@@ -1008,7 +1001,7 @@ fn parse_result(
                 context,
                 module,
                 registry,
-                metadata,
+                executor_base,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
             ),

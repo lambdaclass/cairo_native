@@ -171,11 +171,7 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(
-    module: &Module,
-    _metadata: &MetadataStorage,
-    opt_level: OptLevel,
-) -> ExecutionEngine {
+pub fn create_engine(module: &Module, opt_level: OptLevel) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(
         module,
@@ -192,11 +188,11 @@ pub fn create_engine(
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
+    // #[cfg(feature = "with-debug-utils")]
+    // _metadata
+    //     .get::<crate::metadata::debug_utils::DebugUtils>()
+    //     .unwrap()
+    //     .register_impls(&engine);
 
     engine
 }
@@ -571,11 +567,7 @@ pub mod test {
         project::setup_project, CompilerConfig,
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
-    use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
-        program::Program,
-        program_registry::ProgramRegistry,
-    };
+    use cairo_lang_sierra::program::Program;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::{env::var, fs, path::Path};
@@ -669,8 +661,6 @@ pub mod test {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-            .expect("Could not create the test program registry.");
         let entry_point_id = &program
             .funcs
             .iter()

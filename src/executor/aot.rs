@@ -1,3 +1,4 @@
+use super::ExecutorBase;
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -24,6 +25,8 @@ use tempfile::NamedTempFile;
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct AotNativeExecutor<'ctx> {
+    base: ExecutorBase,
+
     context: &'ctx Context,
     module: Module<'ctx>,
     #[educe(Debug(ignore))]
@@ -36,32 +39,14 @@ pub struct AotNativeExecutor<'ctx> {
 }
 
 impl<'ctx> AotNativeExecutor<'ctx> {
-    pub fn new(
-        context: &'ctx Context,
-        module: Module<'ctx>,
-        registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        library: Library,
-        gas_metadata: GasMetadata,
-    ) -> Self {
-        Self {
-            context,
-            module,
-            registry,
-            library,
-            gas_metadata,
-        }
-    }
-
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    pub fn from_native_module(
-        module: NativeModule<'ctx>,
-        gas_metadata: GasMetadata,
-        opt_level: OptLevel,
-    ) -> Self {
+    pub fn from_native_module(module: NativeModule<'ctx>, opt_level: OptLevel) -> Self {
         let NativeModule {
             context,
             module,
             registry,
+            function_ids,
+            gas_metadata,
         } = module;
 
         let library_path = NamedTempFile::new().unwrap().into_temp_path();
@@ -70,6 +55,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
         crate::object_to_shared_lib(&object_data, &library_path).unwrap();
 
         Self {
+            base: ExecutorBase::new(&registry, &function_ids),
             context,
             module,
             registry,
@@ -93,6 +79,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
             self.context,
             &self.module,
             &self.registry,
+            &self.base,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -117,7 +104,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
             self.context,
             &self.module,
             &self.registry,
-            &mut self.metadata.borrow_mut(),
+            &self.base,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -143,7 +130,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
                 self.context,
                 &self.module,
                 &self.registry,
-                &mut self.metadata.borrow_mut(),
+                &self.base,
                 self.find_function_ptr(function_id),
                 self.extract_signature(function_id),
                 &[JitValue::Struct {
