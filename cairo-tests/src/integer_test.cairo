@@ -1293,9 +1293,7 @@ fn test_u128_byte_reverse() {
     );
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn test_i8_operators() {
     assert_eq(@1_i8, @1_i8, '1 == 1');
     assert_ne(@1_i8, @2_i8, '1 != 2');
