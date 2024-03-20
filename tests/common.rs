@@ -369,6 +369,9 @@ pub fn compare_outputs(
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
                     CoreTypeConcrete::Nullable(_) => 1,
+                    CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
+                    CoreTypeConcrete::EcPoint(_) => 2,
+                    CoreTypeConcrete::EcState(_) => 4,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -508,6 +511,27 @@ pub fn compare_outputs(
                         &info.ty,
                     ),
                 }
+            }
+            CoreTypeConcrete::NonZero(info) => {
+                map_vm_values(size_cache, registry, memory, values, &info.ty)
+            }
+            CoreTypeConcrete::EcPoint(_) => {
+                assert_eq!(values.len(), 2);
+
+                JitValue::EcPoint(
+                    Felt::from_bytes_le(&values[0].to_le_bytes()),
+                    Felt::from_bytes_le(&values[1].to_le_bytes()),
+                )
+            }
+            CoreTypeConcrete::EcState(_) => {
+                assert_eq!(values.len(), 4);
+
+                JitValue::EcState(
+                    Felt::from_bytes_le(&values[0].to_le_bytes()),
+                    Felt::from_bytes_le(&values[1].to_le_bytes()),
+                    Felt::from_bytes_le(&values[2].to_le_bytes()),
+                    Felt::from_bytes_le(&values[3].to_le_bytes()),
+                )
             }
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())

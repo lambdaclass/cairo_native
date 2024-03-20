@@ -398,7 +398,7 @@ impl<'a> ArgumentMapper<'a> {
 
                 self.push_aligned(
                     get_integer_layout(64).align(),
-                    &[ptr as u64, values.len() as u64, values.len() as u64],
+                    &[ptr as u64, 0, values.len() as u64, values.len() as u64],
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {

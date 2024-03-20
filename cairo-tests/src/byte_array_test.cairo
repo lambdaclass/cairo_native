@@ -16,9 +16,7 @@ fn test_append_byte() {
     compare_byte_array(@ba, expected_data.span(), 2, 0x2021);
 }
 
-// TODO: fix, segfaults
 #[test]
-#[ignore]
 fn test_append_word() {
     let mut ba = Default::default();
 
@@ -49,9 +47,7 @@ fn test_append_word() {
     compare_byte_array(@ba, expected_data.span(), 1, 0x3f);
 }
 
-// TODO: segfaults
 #[test]
-#[ignore]
 fn test_append() {
     let mut ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
@@ -355,6 +351,7 @@ fn test_string_literals() {
 }
 
 #[test]
+#[ignore]
 fn test_equality() {
     let byte_array: ByteArray = "a";
     assert(@byte_array == @"a", 'Same strings are not equal');

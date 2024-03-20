@@ -1,5 +1,4 @@
-use crate::common::{compare_outputs, run_native_program, run_vm_program};
-use common::load_cairo;
+use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program};
 
 #[test]
 fn enum_init() {

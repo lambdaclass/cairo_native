@@ -1,15 +1,15 @@
-use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
+use crate::common::{
+    any_felt, compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS,
+};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::values::JitValue;
-use common::{compare_outputs, DEFAULT_GAS};
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 use std::str::FromStr;
-
 
 lazy_static! {
     static ref EC_POINT_TRY_NEW: (String, Program, SierraCasmRunner) = load_cairo! {

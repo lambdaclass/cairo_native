@@ -21,10 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, r#type::opaque_pointer},
-    },
+    dialect::{arith, llvm},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -567,6 +564,8 @@ impl TypeBuilder for CoreTypeConcrete {
                     .0
                     .extend(get_integer_layout(32))?
                     .0
+                    .extend(get_integer_layout(32))?
+                    .0
             }
             CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
@@ -928,11 +927,6 @@ impl TypeBuilder for CoreTypeConcrete {
                     location,
                 ));
                 let ptr: Value = op.result(0)?.into();
-
-                let ptr = entry
-                    .append_operation(llvm::bitcast(ptr, opaque_pointer(context), location))
-                    .result(0)?
-                    .into();
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }

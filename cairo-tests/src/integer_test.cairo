@@ -1398,9 +1398,7 @@ fn test_i8_mul_overflow_3() {
     2_i8 * 0x40_i8;
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn test_i16_operators() {
     assert_eq(@1_i16, @1_i16, '1 == 1');
     assert_ne(@1_i16, @2_i16, '1 != 2');
@@ -1503,9 +1501,7 @@ fn test_i16_mul_overflow_3() {
     2_i16 * 0x4000_i16;
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn test_i32_operators() {
     assert_eq(@1_i32, @1_i32, '1 == 1');
     assert_ne(@1_i32, @2_i32, '1 != 2');
@@ -1608,9 +1604,7 @@ fn test_i32_mul_overflow_3() {
     2_i32 * 0x40000000_i32;
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn test_i64_operators() {
     assert_eq(@1_i64, @1_i64, '1 == 1');
     assert_ne(@1_i64, @2_i64, '1 != 2');
@@ -1721,9 +1715,7 @@ fn test_i64_mul_overflow_3() {
     2_i64 * 0x4000000000000000_i64;
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn test_i128_operators() {
     assert_eq(@1_i128, @1_i128, '1 == 1');
     assert_ne(@1_i128, @2_i128, '1 != 2');
