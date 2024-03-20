@@ -551,13 +551,21 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{ffi::{get_data_layout_rep, get_target_triple}, metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{
+        ffi::{get_data_layout_rep, get_target_triple},
+        metadata::MetadataStorage,
+        types::TypeBuilder,
+        utils::test::load_cairo,
+    };
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
     };
     use melior::{
-        ir::{attribute::StringAttribute, operation::OperationBuilder, r#type::IntegerType, Identifier, Location, Module, Region},
+        ir::{
+            attribute::StringAttribute, operation::OperationBuilder, r#type::IntegerType,
+            Identifier, Location, Module, Region,
+        },
         Context,
     };
 

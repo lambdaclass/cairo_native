@@ -8,7 +8,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, felt252_layout},
+    utils::{felt252_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

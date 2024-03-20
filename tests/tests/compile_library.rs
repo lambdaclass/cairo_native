@@ -3,10 +3,16 @@ use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     program_registry::ProgramRegistry,
 };
-use cairo_native::{ffi::{get_data_layout_rep, get_target_triple}, metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage}};
+use cairo_native::{
+    ffi::{get_data_layout_rep, get_target_triple},
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+};
 use melior::{
     dialect::DialectRegistry,
-    ir::{attribute::StringAttribute, operation::OperationBuilder, Identifier, Location, Module, Region},
+    ir::{
+        attribute::StringAttribute, operation::OperationBuilder, Identifier, Location, Module,
+        Region,
+    },
     pass::{self, PassManager},
     utility::{register_all_dialects, register_all_llvm_translations},
     Context,

@@ -264,9 +264,7 @@ pub fn build_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        felt252_layout(context, helper)
-                            .align()
-                            .try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
