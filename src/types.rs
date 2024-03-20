@@ -758,7 +758,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => Some(false),
             Self::Uint64(_) => Some(false),
             Self::Uint128(_) => Some(false),
-            Self::Felt252(_) => Some(true),
+            Self::Felt252(_) => Some(false),
             Self::Sint8(_) => Some(true),
             Self::Sint16(_) => Some(true),
             Self::Sint32(_) => Some(true),
