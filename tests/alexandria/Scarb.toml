@@ -1,11 +1,11 @@
 [package]
 name = "alexandria"
 version = "0.1.0"
-edition = "2023_10"
+cairo-version = "2.6.3"
 
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-alexandria_math = { rev = "e7b69575f92076e96a83a76efa6bed3c32a15f9f", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_data_structures = { rev = "e7b69575f92076e96a83a76efa6bed3c32a15f9f", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_encoding = { rev = "e7b69575f92076e96a83a76efa6bed3c32a15f9f", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_math = { rev = "bbc010b922d9ca6f807ef01b0b255e34331b5eac", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_data_structures = { rev = "bbc010b922d9ca6f807ef01b0b255e34331b5eac", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_encoding = { rev = "bbc010b922d9ca6f807ef01b0b255e34331b5eac", git = "https://github.com/keep-starknet-strange/alexandria.git" }

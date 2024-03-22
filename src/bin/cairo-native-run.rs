@@ -79,10 +79,12 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("failed to compile: {}", args.path.display());
     }
 
-    let (sierra_program, _statements_locations) = db
+    let sierra_program = db
         .get_sierra_program(main_crate_ids.clone())
         .to_option()
-        .with_context(|| "Compilation failed without any diagnostics.")?;
+        .with_context(|| "Compilation failed without any diagnostics.")?
+        .program
+        .clone();
     let replacer = DebugReplacer { db };
     if args.available_gas.is_none() && sierra_program.requires_gas_counter() {
         anyhow::bail!("Program requires gas counter, please provide `--available-gas` argument.");

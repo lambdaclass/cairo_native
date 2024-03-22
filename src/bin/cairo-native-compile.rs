@@ -2,6 +2,7 @@ use anyhow::Context;
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
 use cairo_native::{context::NativeContext, module_to_object, object_to_shared_lib, OptLevel};
 use clap::{Parser, ValueEnum};
+
 use std::path::{Path, PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
