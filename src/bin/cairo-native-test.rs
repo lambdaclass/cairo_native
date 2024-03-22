@@ -296,11 +296,18 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
                             felts.extend(felt);
                         }
                     }
-                    _ => bail!("unsuported return value in cairo-native"),
+                    _ => bail!(
+                        "unsuported return value in cairo-native (inside enum): {:#?}",
+                        value
+                    ),
                 }
             }
         }
-        _ => bail!("unsuported return value in cairo-native"),
+        value => {
+            is_success = true;
+            let felt = jitvalue_to_felt(value);
+            felts.extend(felt);
+        }
     }
 
     let return_values = felts
@@ -334,7 +341,15 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
             felts
         }
         JitValue::Enum { .. } => todo!(),
-        JitValue::Felt252Dict { .. } => todo!(),
+        JitValue::Felt252Dict { value, .. } => {
+            for (key, value) in value {
+                felts.push(*key);
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+
+            felts
+        }
         JitValue::Uint8(x) => vec![(*x).into()],
         JitValue::Uint16(x) => vec![(*x).into()],
         JitValue::Uint32(x) => vec![(*x).into()],
@@ -411,6 +426,8 @@ fn run_tests(
                 if test.ignored {
                     return Ok((name, None));
                 }
+                tracing::trace!("running test {name:?}");
+
                 let func = find_function(&sierra_program, name.as_str())?;
 
                 let initial_gas = gas_metadata

@@ -202,8 +202,7 @@ impl JitValue {
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
-                        let mut len: u32 = 0;
-                        let cap: u32 = data.len().try_into().unwrap();
+                        let len: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
                             let elem = elem.to_jit(arena, registry, &info.ty)?;
@@ -220,8 +219,6 @@ impl JitValue {
                                 .as_ptr(),
                                 elem_layout.size(),
                             );
-
-                            len += 1;
                         }
 
                         let target = arena.alloc_layout(
@@ -236,18 +233,22 @@ impl JitValue {
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
+                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                            .unwrap()
+                            .cast()
+                            .as_mut() = 0;
 
+                        let (layout, offset) = layout.extend(Layout::new::<u32>())?;
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
                             .as_mut() = len;
 
                         let (_, offset) = layout.extend(Layout::new::<u32>())?;
-
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
-                            .as_mut() = cap;
+                            .as_mut() = len;
                         target.cast()
                     } else {
                         Err(ErrorImpl::UnexpectedValue(format!(
@@ -514,18 +515,28 @@ impl JitValue {
                     let ptr_layout = Layout::new::<*mut ()>();
                     let len_layout = crate::utils::get_integer_layout(32);
 
-                    let len_value = *NonNull::new(
-                        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
-                            as *mut (),
-                    )
-                    .unwrap()
-                    .cast::<u32>()
-                    .as_ref();
+                    let (ptr_layout, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let offset_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
+                    let (_, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let length_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
 
-                    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let mut array_value = Vec::new();
+                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
+                    let data_ptr = NonNull::new_unchecked(
+                        init_data_ptr
+                            .as_ptr()
+                            .byte_add(elem_stride * offset_value as usize),
+                    );
 
-                    for i in 0..(len_value as usize) {
+                    assert!(length_value >= offset_value);
+                    let num_elems = (length_value - offset_value) as usize;
+                    let mut array_value = Vec::with_capacity(num_elems);
+                    for i in 0..num_elems {
                         let cur_elem_ptr = NonNull::new(
                             ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
                         )
@@ -534,7 +545,7 @@ impl JitValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    libc::free(data_ptr.as_ptr().cast());
+                    libc::free(init_data_ptr.as_ptr().cast());
 
                     Self::Array(array_value)
                 }

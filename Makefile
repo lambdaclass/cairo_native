@@ -39,10 +39,10 @@ usage:
 	@echo "    install:      Invokes cargo to install cairo-native."
 	@echo "    clean:        Cleans the built artifacts."
 
-build: check-llvm
+build: check-llvm runtime
 	cargo build --release --all-features
 
-build-native: check-llvm
+build-native: check-llvm runtime
 	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
 
 build-dev: check-llvm
@@ -52,20 +52,24 @@ check: check-llvm
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-test: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile optimized-dev --all-features
-
-proptest: check-llvm needs-cairo2
-	cargo test --profile optimized-dev --all-features proptest
-
-test-ci: check-llvm needs-cairo2 build-alexandria
+test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --all-features
 
-proptest-ci: check-llvm needs-cairo2
+test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+	cargo r --profile ci --bin cairo-native-test -- cairo-tests/
+
+proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
-coverage: check-llvm needs-cairo2 build-alexandria
+test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
+	cargo test --profile ci --all-features
+
+proptest-ci: check-llvm needs-cairo2 runtime-ci
+	cargo test --profile ci --all-features proptest
+
+coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- cairo-tests
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace
@@ -73,10 +77,10 @@ doc: check-llvm
 doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
-bench: build needs-cairo2
+bench: build needs-cairo2 runtime
 	./scripts/bench-hyperfine.sh
 
-bench-ci: check-llvm needs-cairo2
+bench-ci: check-llvm needs-cairo2 runtime
 	cargo criterion --all-features
 
 install: check-llvm
@@ -135,10 +139,7 @@ build-alexandria:
 	cd tests/alexandria; scarb build
 
 runtime:
-	cargo b --release -p cairo-native-runtime
-ifeq ($(UNAME), Linux)
-	cp target/release/libcairo_native_runtime.so .
-endif
-ifeq ($(UNAME), Darwin)
-	cp target/release/libcairo_native_runtime.dylib .
-endif
+	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+
+runtime-ci:
+	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .

@@ -178,7 +178,7 @@ pub fn build_const_as_box<'ctx, 'this>(
             } else {
                 // Unit type enum
                 entry.append_operation(helper.br(0, &[ptr], location));
-                return Ok(())
+                return Ok(());
             };
             value = GenericArg::Value(val);
         }

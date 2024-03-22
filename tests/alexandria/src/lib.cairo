@@ -1,7 +1,8 @@
 mod alexandria {
     // Alexandria Math
 
-    fn fib() -> felt252 {
+    use core::option::OptionTrait;
+fn fib() -> felt252 {
         alexandria_math::fibonacci::fib(16, 10, 1)
     }
 
