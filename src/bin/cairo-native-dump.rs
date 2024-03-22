@@ -12,6 +12,7 @@ use cairo_lang_starknet::{
 use cairo_native::{
     context::NativeContext,
     debug_info::{DebugInfo, DebugLocations},
+    metadata::MetadataStorage,
 };
 use clap::Parser;
 use melior::{ir::operation::OperationPrintingFlags, Context};
@@ -44,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Compile the program.
-    let module = context.compile(&program)?;
+    let module = context.compile(&program, MetadataStorage::default())?;
 
     // Write the output.
     let output_str = module

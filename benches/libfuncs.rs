@@ -1,5 +1,7 @@
 use cairo_lang_runner::StarknetState;
-use cairo_native::{context::NativeContext, executor::JitNativeExecutor};
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, metadata::MetadataStorage,
+};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use util::{create_vm_runner, prepare_programs};
 
@@ -50,7 +52,9 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 |b, program| {
                     let native_context = NativeContext::new();
                     b.iter(|| {
-                        let module = native_context.compile(program).unwrap();
+                        let module = native_context
+                            .compile(program, MetadataStorage::default())
+                            .unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
                             JitNativeExecutor::from_native_module(module, Default::default());
@@ -69,7 +73,9 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 program,
                 |b, program| {
                     let native_context = NativeContext::new();
-                    let module = native_context.compile(program).unwrap();
+                    let module = native_context
+                        .compile(program, MetadataStorage::default())
+                        .unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
                         JitNativeExecutor::from_native_module(module, Default::default());

@@ -7,11 +7,12 @@ use crate::{
     error::libfuncs::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
         boxing::BoxConcreteLibfunc,
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{
             BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
             SignatureOnlyConcreteLibfunc,
@@ -152,10 +153,22 @@ pub fn build_unbox<'ctx, 'this>(
 ) -> Result<()> {
     let inner_type = registry.get_type(&info.ty)?;
     let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
-    let inner_layout = crate::ffi::get_mlir_layout(
+    let mut inner_layout = crate::ffi::get_mlir_layout(
         helper,
         inner_type.build(context, helper, registry, metadata, &info.ty)?,
     );
+
+    // Workaround for enum alignments.
+    if let CoreTypeConcrete::Enum(info) = inner_type {
+        for variant_id in &info.variants {
+            let variant_ty = registry
+                .build_type(context, helper, registry, metadata, variant_id)
+                .unwrap();
+            let variant_layout = crate::ffi::get_mlir_layout(helper, variant_ty);
+
+            inner_layout = inner_layout.align_to(variant_layout.align()).unwrap();
+        }
+    }
 
     let value = match inner_type.variants() {
         Some(variants)

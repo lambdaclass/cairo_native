@@ -687,7 +687,7 @@ pub mod test {
             metadata.insert(gas_metadata);
         }
 
-        let module = context.compile(program, &mut metadata).unwrap();
+        let module = context.compile(program, metadata).unwrap();
         assert!(
             module.module().as_operation().verify(),
             "Test program generated invalid MLIR:\n{}",

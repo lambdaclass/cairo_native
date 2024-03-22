@@ -566,10 +566,7 @@ pub fn build_append<'ctx, 'this>(
             entry.argument(1)?.into(),
             ptr,
             location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                elem_layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
+            LoadStoreOptions::new(),
         ));
 
         let array_len = append_block
@@ -1541,10 +1538,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 entry.argument(0)?.into(),
                 struct_ty,
                 location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    crate::ffi::get_mlir_layout(helper, struct_ty).align() as i64,
-                    IntegerType::new(context, 64).into(),
-                ))),
+                LoadStoreOptions::new(),
             ))
             .result(0)?
             .into()

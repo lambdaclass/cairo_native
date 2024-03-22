@@ -3,6 +3,7 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
+    metadata::MetadataStorage,
     starknet::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
@@ -296,7 +297,9 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();

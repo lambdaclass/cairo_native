@@ -3,6 +3,7 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
+    metadata::MetadataStorage,
     starknet::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
@@ -293,7 +294,9 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 

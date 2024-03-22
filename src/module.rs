@@ -1,4 +1,7 @@
-use crate::metadata::gas::GasMetadata;
+use crate::{
+    executor::ExecutorBase,
+    metadata::{gas::GasMetadata, MetadataStorage},
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::FunctionId,
@@ -14,7 +17,7 @@ pub struct NativeModule<'ctx> {
     pub(crate) context: &'ctx Context,
     pub(crate) module: Module<'ctx>,
     pub(crate) registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    pub(crate) function_ids: Vec<FunctionId>,
+    pub(crate) executor_base: ExecutorBase,
     pub(crate) gas_metadata: GasMetadata,
 }
 
@@ -23,15 +26,18 @@ impl<'ctx> NativeModule<'ctx> {
         context: &'ctx Context,
         module: Module<'ctx>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        function_ids: impl Into<Vec<FunctionId>>,
-        gas_metadata: GasMetadata,
+        function_ids: &[FunctionId],
+        mut metadata: MetadataStorage,
     ) -> Self {
+        let executor_base =
+            ExecutorBase::new(context, &module, &registry, &mut metadata, function_ids);
+
         Self {
             context,
             module,
             registry,
-            function_ids: function_ids.into(),
-            gas_metadata,
+            executor_base,
+            gas_metadata: metadata.remove::<GasMetadata>().unwrap(),
         }
     }
 
@@ -41,10 +47,6 @@ impl<'ctx> NativeModule<'ctx> {
 
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
-    }
-
-    pub fn function_ids(&self) -> &[FunctionId] {
-        &self.function_ids
     }
 }
 

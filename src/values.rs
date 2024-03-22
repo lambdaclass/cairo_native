@@ -240,13 +240,22 @@ impl JitValue {
                             arena.alloc_layout(*executor_base.type_layouts.get(type_id).unwrap());
                         *target.cast::<*mut NonNull<()>>().as_mut() = ptr;
 
-                        let (layout, _) =
-                            llvmptr_layout(context, module).extend(crate::ffi::get_mlir_layout(
+                        let (layout, offset) = llvmptr_layout(context, module)
+                            .extend(crate::ffi::get_mlir_layout(
+                                module,
+                                IntegerType::new(context, 32).into(),
+                            ))?
+                            .0
+                            .extend(crate::ffi::get_mlir_layout(
+                                module,
+                                IntegerType::new(context, 32).into(),
+                            ))?
+                            .0
+                            .extend(crate::ffi::get_mlir_layout(
                                 module,
                                 IntegerType::new(context, 32).into(),
                             ))?;
 
-                        let (layout, offset) = layout.extend(Layout::new::<u32>())?;
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
@@ -611,11 +620,9 @@ impl JitValue {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
     ) -> Self {
-        let ty = registry.get_type(dbg!(type_id)).unwrap();
+        let ty = registry.get_type(type_id).unwrap();
 
         unsafe {
-            dbg!(ptr.cast::<[u8; 64]>().as_ref());
-
             match ty {
                 CoreTypeConcrete::Array(info) => {
                     let elem_layout = *executor_base.type_layouts.get(&info.ty).unwrap();

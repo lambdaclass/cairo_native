@@ -45,7 +45,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
             context,
             module,
             registry,
-            function_ids,
+            executor_base,
             gas_metadata,
         } = module;
 
@@ -55,7 +55,7 @@ impl<'ctx> AotNativeExecutor<'ctx> {
         crate::object_to_shared_lib(&object_data, &library_path).unwrap();
 
         Self {
-            base: ExecutorBase::new(&registry, &function_ids),
+            base: executor_base,
             context,
             module,
             registry,

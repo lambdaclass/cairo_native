@@ -380,7 +380,7 @@ fn run_tests(
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile_with_metadata(
+        .compile_with_config(
             &sierra_program,
             MetadataComputationConfig {
                 function_set_costs: function_set_costs.clone(),

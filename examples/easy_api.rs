@@ -1,4 +1,7 @@
-use cairo_native::{context::NativeContext, executor::JitNativeExecutor, values::JitValue};
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, metadata::MetadataStorage,
+    values::JitValue,
+};
 use starknet_types_core::felt::Felt;
 use std::path::Path;
 
@@ -12,7 +15,9 @@ fn main() {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     // The parameters of the entry point.
     let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];

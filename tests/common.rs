@@ -270,7 +270,17 @@ pub fn run_native_program(
     run_pass_manager(&context, &mut module)
         .expect("Could not apply passes to the compiled test program.");
 
-    let native_module = NativeModule::new(&context, module, registry, metadata);
+    let native_module = NativeModule::new(
+        &context,
+        module,
+        registry,
+        &program
+            .funcs
+            .iter()
+            .map(|x| x.id.clone())
+            .collect::<Vec<_>>(),
+        metadata,
+    );
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
     match syscall_handler {
@@ -329,7 +339,9 @@ pub fn run_native_starknet_contract(
 ) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(sierra_program).unwrap();
+    let native_program = native_context
+        .compile(sierra_program, MetadataStorage::default())
+        .unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;

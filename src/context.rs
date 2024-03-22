@@ -59,7 +59,7 @@ impl NativeContext {
     pub fn compile(
         &self,
         program: &Program,
-        metadata: &mut MetadataStorage,
+        mut metadata: MetadataStorage,
     ) -> Result<NativeModule, CompileError> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
@@ -113,7 +113,14 @@ impl NativeContext {
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
-        crate::compile(&self.context, &module, program, &registry, metadata, None)?;
+        crate::compile(
+            &self.context,
+            &module,
+            program,
+            &registry,
+            &mut metadata,
+            None,
+        )?;
 
         run_pass_manager(&self.context, &mut module)?;
 
@@ -131,18 +138,18 @@ impl NativeContext {
             &self.context,
             module,
             registry,
-            program
+            &program
                 .funcs
                 .iter()
                 .map(|x| x.id.clone())
                 .collect::<Vec<_>>(),
-            metadata.remove::<GasMetadata>().unwrap(),
+            metadata,
         ))
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile_with_metadata(
+    pub fn compile_with_config(
         &self,
         program: &Program,
         metadata_config: MetadataComputationConfig,
@@ -174,12 +181,12 @@ impl NativeContext {
             &self.context,
             module,
             registry,
-            program
+            &program
                 .funcs
                 .iter()
                 .map(|x| x.id.clone())
                 .collect::<Vec<_>>(),
-            metadata.remove::<GasMetadata>().unwrap(),
+            metadata,
         ))
     }
 }

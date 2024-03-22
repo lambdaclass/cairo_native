@@ -2,6 +2,7 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    metadata::MetadataStorage,
     starknet::StarknetSyscallHandler,
     types::TypeBuilder,
     utils::{bytes31_layout, felt252_layout},
@@ -26,7 +27,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
     ptr::{null_mut, NonNull},
     rc::Rc,
 };
@@ -60,10 +61,69 @@ pub struct ExecutorBase {
 
 impl ExecutorBase {
     pub fn new(
-        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        _function_ids: &[FunctionId],
+        context: &Context,
+        module: &Module,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        metadata: &mut MetadataStorage,
+        function_ids: &[FunctionId],
     ) -> Self {
-        todo!()
+        fn extract_type(
+            memory: &mut HashMap<ConcreteTypeId, Layout>,
+            context: &Context,
+            module: &Module,
+            registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+            metadata: &mut MetadataStorage,
+            type_id: &ConcreteTypeId,
+        ) {
+            if let Entry::Vacant(entry) = memory.entry(type_id.clone()) {
+                let concrete_ty = registry.get_type(type_id).unwrap();
+                let layout = crate::ffi::get_mlir_layout(
+                    module,
+                    concrete_ty
+                        .build(context, module, registry, metadata, type_id)
+                        .unwrap(),
+                );
+                entry.insert(layout);
+
+                match concrete_ty {
+                    CoreTypeConcrete::Enum(info) => {
+                        // Enum variants are needed for converting `JitValue`s.
+                        for variant_ty in &info.variants {
+                            extract_type(memory, context, module, registry, metadata, variant_ty);
+                        }
+                    }
+                    // CoreTypeConcrete::Struct(info) => {
+                    //     for member_ty in &info.members {
+                    //         extract_type(memory, context, module, registry, metadata, member_ty);
+                    //     }
+                    // }
+                    _ => (),
+                }
+            }
+        }
+
+        let mut type_layouts = HashMap::new();
+        for function_id in function_ids {
+            let function = registry.get_function(function_id).unwrap();
+            for type_id in function
+                .signature
+                .param_types
+                .iter()
+                .chain(&function.signature.ret_types)
+            {
+                extract_type(
+                    &mut type_layouts,
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    type_id,
+                );
+            }
+        }
+
+        dbg!(&type_layouts);
+        Self { type_layouts }
     }
 }
 

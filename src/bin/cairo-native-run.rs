@@ -14,7 +14,10 @@ use cairo_native::{
     context::NativeContext,
     execution_result::ExecutionResult,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::{
+        gas::{GasMetadata, MetadataComputationConfig},
+        MetadataStorage,
+    },
     values::JitValue,
     OptLevel,
 };
@@ -94,7 +97,9 @@ fn main() -> anyhow::Result<()> {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     let opt_level = match args.opt_level {
         0 => OptLevel::None,

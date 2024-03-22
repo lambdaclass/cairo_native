@@ -46,12 +46,12 @@ impl<'ctx> JitNativeExecutor<'ctx> {
             context,
             module,
             registry,
-            function_ids,
+            executor_base,
             gas_metadata,
         } = native_module;
 
         Self {
-            base: ExecutorBase::new(&registry, &function_ids),
+            base: executor_base,
             engine: create_engine(&module, opt_level),
             context,
             module,

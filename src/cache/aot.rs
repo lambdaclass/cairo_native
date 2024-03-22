@@ -36,7 +36,7 @@ where
         &mut self,
         key: K,
         program: &Program,
-        metadata: &mut MetadataStorage,
+        metadata: MetadataStorage,
         opt_level: OptLevel,
     ) -> Rc<AotNativeExecutor<'a>> {
         let module = self
