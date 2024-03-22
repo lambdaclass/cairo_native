@@ -612,12 +612,11 @@ pub mod test {
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         module::NativeModule,
         starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
         },
         utils::*,
@@ -755,9 +754,6 @@ pub mod test {
 
         // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-        metadata
-            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
-            .unwrap();
 
         if program
             .type_declarations
@@ -784,17 +780,15 @@ pub mod test {
         run_pass_manager(&context, &mut module)
             .expect("Could not apply passes to the compiled test program.");
 
-        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
-
         let native_module = NativeModule::new(module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
         let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
-            .invoke_dynamic(
+            .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
                 args,
                 Some(u128::MAX),
-                syscall_handler.as_ref(),
+                TestSyscallHandler,
             )
             .unwrap()
     }
@@ -865,7 +859,7 @@ pub mod test {
     #[derive(Debug)]
     struct TestSyscallHandler;
 
-    impl StarkNetSyscallHandler for TestSyscallHandler {
+    impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
             Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
         }

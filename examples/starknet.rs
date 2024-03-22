@@ -3,10 +3,9 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
-    metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
-        StarkNetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
     },
     utils::find_entry_point_by_idx,
 };
@@ -17,7 +16,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 #[derive(Debug)]
 struct SyscallHandler;
 
-impl StarkNetSyscallHandler for SyscallHandler {
+impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
         Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
@@ -306,12 +305,7 @@ fn main() {
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
-        .invoke_contract_dynamic(
-            fn_id,
-            &[Felt::from(1)],
-            Some(u128::MAX),
-            Some(&SyscallHandlerMeta::new(&mut SyscallHandler)),
-        )
+        .invoke_contract_dynamic(fn_id, &[Felt::from(1)], Some(u128::MAX), SyscallHandler)
         .expect("failed to execute the given contract");
 
     println!();

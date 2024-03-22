@@ -51,6 +51,10 @@ impl NativeContext {
         Self { context }
     }
 
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
     pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {

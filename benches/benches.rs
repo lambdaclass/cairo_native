@@ -37,27 +37,23 @@ fn criterion_benchmark(c: &mut Criterion) {
         find_function_id(&logistic_map, "logistic_map::logistic_map::main");
 
     c.bench_function("Cached JIT factorial_2M", |b| {
-        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX), None));
+        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached JIT fib_2M", |b| {
-        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX), None));
+        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached JIT logistic_map", |b| {
-        b.iter(|| {
-            jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX), None)
-        });
+        b.iter(|| jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
     });
 
     c.bench_function("Cached AOT factorial_2M", |b| {
-        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX), None));
+        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached AOT fib_2M", |b| {
-        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX), None));
+        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached AOT logistic_map", |b| {
-        b.iter(|| {
-            aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX), None)
-        });
+        b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
     });
 
     #[cfg(target_arch = "x86_64")]
