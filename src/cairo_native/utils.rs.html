@@ -1104,12 +1104,6 @@
 <a href="#1103" id="1103">1103</a>
 <a href="#1104" id="1104">1104</a>
 <a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1724,12 +1718,11 @@
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         module::NativeModule,
         starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
         },
         utils::<span class="kw-2">*</span>,
@@ -1867,9 +1860,6 @@
 
         <span class="comment">// Make the runtime library and syscall handler available.
         </span>metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-        metadata
-            .insert(SyscallHandlerMeta::new(<span class="kw-2">&amp;mut </span>TestSyscallHandler))
-            .unwrap();
 
         <span class="kw">if </span>program
             .type_declarations
@@ -1896,17 +1886,15 @@
         run_pass_manager(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;mut </span>module)
             .expect(<span class="string">"Could not apply passes to the compiled test program."</span>);
 
-        <span class="kw">let </span>syscall_handler = metadata.remove::&lt;SyscallHandlerMeta&gt;();
-
         <span class="kw">let </span>native_module = NativeModule::new(module, registry, metadata);
         <span class="comment">// FIXME: There are some bugs with non-zero LLVM optimization levels.
         </span><span class="kw">let </span>executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
-            .invoke_dynamic(
+            .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
                 args,
                 <span class="prelude-val">Some</span>(u128::MAX),
-                syscall_handler.as_ref(),
+                TestSyscallHandler,
             )
             .unwrap()
     }
@@ -1977,7 +1965,7 @@
     <span class="attr">#[derive(Debug)]
     </span><span class="kw">struct </span>TestSyscallHandler;
 
-    <span class="kw">impl </span>StarkNetSyscallHandler <span class="kw">for </span>TestSyscallHandler {
+    <span class="kw">impl </span>StarknetSyscallHandler <span class="kw">for </span>TestSyscallHandler {
         <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;Felt&gt; {
             <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b"get_block_hash ok"</span>))
         }

@@ -86,8 +86,6 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
@@ -134,13 +132,11 @@
 //!
 //! // Execute the program.
 //! let result = native_executor
-//!     .invoke_dynamic(entry_point_id, params, None, None)
+//!     .invoke_dynamic(entry_point_id, params, None)
 //!     .unwrap();
 //!
 //! println!("Cairo program was compiled and executed successfully.");
 //! println!("{:?}", result);
-//!
-//!
 //! ```
 //!
 //! ## Common definitions

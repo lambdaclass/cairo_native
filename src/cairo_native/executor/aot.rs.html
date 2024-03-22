@@ -134,11 +134,34 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
+    metadata::gas::GasMetadata,
     module::NativeModule,
+    starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
     values::JitValue,
     OptLevel,
@@ -204,7 +227,6 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-        syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
@@ -217,7 +239,29 @@
             <span class="self">self</span>.extract_signature(function_id),
             args,
             available_gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
+        ))
+    }
+
+    <span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        function_id: <span class="kw-2">&amp;</span>FunctionId,
+        args: <span class="kw-2">&amp;</span>[JitValue],
+        gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+        <span class="kw">let </span>available_gas = <span class="self">self
+            </span>.gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
+            <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.extract_signature(function_id),
+            args,
+            available_gas,
+            <span class="prelude-val">Some</span>(syscall_handler),
         ))
     }
 
@@ -226,7 +270,7 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-        syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
+        syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, RunnerError&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
@@ -246,7 +290,7 @@
                     </span>debug_name: <span class="prelude-val">None</span>,
                 }],
                 available_gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+                <span class="prelude-val">Some</span>(syscall_handler),
             ),
         )<span class="question-mark">?</span>)
     }

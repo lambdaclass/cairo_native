@@ -557,7 +557,7 @@
 <span class="kw">pub mod </span>sint64;
 <span class="kw">pub mod </span>sint8;
 <span class="kw">pub mod </span>snapshot_take;
-<span class="kw">pub mod </span>stark_net;
+<span class="kw">pub mod </span>starknet;
 <span class="kw">pub mod </span>r#struct;
 <span class="kw">pub mod </span>uint128;
 <span class="kw">pub mod </span>uint16;
@@ -690,7 +690,7 @@
             <span class="self">Self</span>::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::stark_net::build(
+            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Struct(selector) =&gt; <span class="self">self</span>::r#struct::build(

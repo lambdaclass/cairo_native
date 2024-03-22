@@ -191,60 +191,23 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_defs::plugin::NamedPlugin;
 <span class="kw">use </span>cairo_lang_semantic::plugin::PluginSuite;
-<span class="kw">use </span>cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
-    program_registry::ProgramRegistry,
-    ProgramParser,
-};
+<span class="kw">use </span>cairo_lang_sierra::{program::Program, ProgramParser};
 <span class="kw">use </span>cairo_lang_starknet::{
     contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
 <span class="kw">use </span>cairo_native::{
+    context::NativeContext,
     debug_info::{DebugInfo, DebugLocations},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 <span class="kw">use </span>clap::Parser;
-<span class="kw">use </span>melior::{
-    dialect::DialectRegistry,
-    ir::{operation::OperationPrintingFlags, Location, Module},
-    utility::register_all_dialects,
-    Context,
-};
+<span class="kw">use </span>melior::{ir::operation::OperationPrintingFlags, Context};
 <span class="kw">use </span>std::{
     ffi::OsStr,
     fs,
@@ -265,37 +228,20 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Load the program.
-    </span><span class="kw">let </span>context = Context::new();
-    <span class="kw">let </span>(program, debug_info) =
-        load_program(Path::new(<span class="kw-2">&amp;</span>args.input), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>context), args.starknet)<span class="question-mark">?</span>;
-
-    <span class="comment">// Initialize MLIR.
-    </span>context.append_dialect_registry(<span class="kw-2">&amp;</span>{
-        <span class="kw">let </span>registry = DialectRegistry::new();
-        register_all_dialects(<span class="kw-2">&amp;</span>registry);
-        registry
-    });
-    context.load_all_available_dialects();
+    </span><span class="kw">let </span>context = NativeContext::new();
+    <span class="comment">// TODO: Reconnect debug information.
+    </span><span class="kw">let </span>(program, _debug_info) = load_program(
+        Path::new(<span class="kw-2">&amp;</span>args.input),
+        <span class="prelude-val">Some</span>(context.context()),
+        args.starknet,
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Compile the program.
-    </span><span class="kw">let </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span>context));
-    <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
-    <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program)<span class="question-mark">?</span>;
-
-    <span class="comment">// Make the runtime library available.
-    </span>metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    cairo_native::compile(
-        <span class="kw-2">&amp;</span>context,
-        <span class="kw-2">&amp;</span>module,
-        <span class="kw-2">&amp;</span>program,
-        <span class="kw-2">&amp;</span>registry,
-        <span class="kw-2">&amp;mut </span>metadata,
-        debug_info.as_ref(),
-    )<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program)<span class="question-mark">?</span>;
 
     <span class="comment">// Write the output.
     </span><span class="kw">let </span>output_str = module
+        .module()
         .as_operation()
         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>))<span class="question-mark">?</span>;
     <span class="kw">match </span>args.output {

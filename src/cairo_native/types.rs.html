@@ -1036,7 +1036,7 @@
 <span class="kw">pub mod </span>segment_arena;
 <span class="kw">pub mod </span>snapshot;
 <span class="kw">pub mod </span>squashed_felt252_dict;
-<span class="kw">pub mod </span>stark_net;
+<span class="kw">pub mod </span>starknet;
 <span class="kw">pub mod </span>r#struct;
 <span class="kw">pub mod </span>uint128;
 <span class="kw">pub mod </span>uint128_mul_guarantee;
@@ -1321,7 +1321,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::stark_net::build(
+            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::starknet::build(
                 context,
                 module,
                 registry,

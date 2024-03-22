@@ -752,11 +752,35 @@
 <a href="#751" id="751">751</a>
 <a href="#752" id="752">752</a>
 <a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::jit_engine::RunnerError,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::get_integer_layout,
     values::JitValue,
@@ -813,15 +837,33 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-        syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            NativeExecutor::Aot(executor) =&gt; {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) =&gt; {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
+            NativeExecutor::Aot(executor) =&gt; executor.invoke_dynamic(function_id, args, gas),
+            NativeExecutor::Jit(executor) =&gt; executor.invoke_dynamic(function_id, args, gas),
+        }
+    }
+
+    <span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        function_id: <span class="kw-2">&amp;</span>FunctionId,
+        args: <span class="kw-2">&amp;</span>[JitValue],
+        gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            NativeExecutor::Aot(executor) =&gt; executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
+            NativeExecutor::Jit(executor) =&gt; executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
         }
     }
 
@@ -830,7 +872,7 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-        syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SyscallHandlerMeta&gt;,
+        syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, RunnerError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             NativeExecutor::Aot(executor) =&gt; {
@@ -861,7 +903,7 @@
     function_signature: <span class="kw-2">&amp;</span>FunctionSignature,
     args: <span class="kw-2">&amp;</span>[JitValue],
     gas: u128,
-    syscall_handler: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
+    <span class="kw-2">mut </span>syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>StarknetSyscallHandler&gt;,
 ) -&gt; ExecutionResult {
     <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
 
@@ -930,13 +972,19 @@
                 get_integer_layout(<span class="number">128</span>).align(),
                 <span class="kw-2">&amp;</span>[gas <span class="kw">as </span>u64, (gas &gt;&gt; <span class="number">64</span>) <span class="kw">as </span>u64],
             ),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; <span class="kw">match </span>syscall_handler {
-                <span class="prelude-val">Some</span>(syscall_handler) =&gt; invoke_data.push_aligned(
-                    get_integer_layout(<span class="number">64</span>).align(),
-                    <span class="kw-2">&amp;</span>[syscall_handler.as_ptr() <span class="kw">as </span>u64],
-                ),
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Syscall handler is required"</span>),
-            },
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+                <span class="kw">match </span>syscall_handler.as_mut() {
+                    <span class="prelude-val">Some</span>(syscall_handler) =&gt; {
+                        <span class="kw">let </span>syscall_handler =
+                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
+                        invoke_data.push_aligned(
+                            get_integer_layout(<span class="number">64</span>).align(),
+                            <span class="kw-2">&amp;</span>[syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span>u64],
+                        )
+                    }
+                    <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Syscall handler is required"</span>),
+                }
+            }
             <span class="kw">_ if </span>is_builtin(type_info) =&gt; invoke_data
                 .push(type_id, type_info, <span class="kw-2">&amp;</span>JitValue::Uint64(<span class="number">0</span>))
                 .unwrap(),
