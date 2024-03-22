@@ -1,38 +1,9 @@
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
-use cairo_lang_defs::plugin::NamedPlugin;
-use cairo_lang_semantic::plugin::PluginSuite;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
-    program_registry::ProgramRegistry,
-    ProgramParser,
-};
-use cairo_lang_starknet::{
-    compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
-    plugin::StarkNetPlugin,
-};
-use cairo_native::{
-    debug_info::{DebugInfo, DebugLocations},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::run_pass_manager,
-    OptLevel,
-};
-use clap::Parser;
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    utility::{register_all_dialects, register_all_llvm_translations},
-    Context,
-};
-use std::{
-    ffi::OsStr,
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use anyhow::Context;
+use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+use cairo_native::{context::NativeContext, module_to_object, object_to_shared_lib, OptLevel};
+use clap::{Parser, ValueEnum};
+
+use std::path::{Path, PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Clone, Debug, ValueEnum)]

@@ -11,9 +11,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "alexandria_bytes"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
+dependencies = [
+ "alexandria_data_structures",
+ "alexandria_math",
+]
+
+[[package]]
 name = "alexandria_data_structures"
 version = "0.2.0"
-source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=e7b69575f92076e96a83a76efa6bed3c32a15f9f#e7b69575f92076e96a83a76efa6bed3c32a15f9f"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
 dependencies = [
  "alexandria_encoding",
 ]
@@ -21,8 +30,9 @@ dependencies = [
 [[package]]
 name = "alexandria_encoding"
 version = "0.1.0"
-source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=e7b69575f92076e96a83a76efa6bed3c32a15f9f#e7b69575f92076e96a83a76efa6bed3c32a15f9f"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
 dependencies = [
+ "alexandria_bytes",
  "alexandria_math",
  "alexandria_numeric",
 ]
@@ -30,7 +40,7 @@ dependencies = [
 [[package]]
 name = "alexandria_math"
 version = "0.2.0"
-source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=e7b69575f92076e96a83a76efa6bed3c32a15f9f#e7b69575f92076e96a83a76efa6bed3c32a15f9f"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
 dependencies = [
  "alexandria_data_structures",
 ]
@@ -38,7 +48,16 @@ dependencies = [
 [[package]]
 name = "alexandria_numeric"
 version = "0.1.0"
-source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=e7b69575f92076e96a83a76efa6bed3c32a15f9f#e7b69575f92076e96a83a76efa6bed3c32a15f9f"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
 dependencies = [
  "alexandria_math",
+ "alexandria_searching",
+]
+
+[[package]]
+name = "alexandria_searching"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=bbc010b922d9ca6f807ef01b0b255e34331b5eac#bbc010b922d9ca6f807ef01b0b255e34331b5eac"
+dependencies = [
+ "alexandria_data_structures",
 ]

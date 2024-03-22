@@ -610,13 +610,13 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
-            x => {
-                todo!("vm value not yet implemented: {:?}", x.info())
-            }
             CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
+            x => {
+                todo!("vm value not yet implemented: {:?}", x.info())
+            }
         }
     }
 
