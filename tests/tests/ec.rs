@@ -4,7 +4,7 @@ use crate::common::{
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JitValue;
+use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -41,8 +41,13 @@ lazy_static! {
 fn ec_point_zero() {
     let program = &EC_POINT_ZERO;
     let result_vm = run_vm_program(program, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native =
-        run_native_program(program, "run_test", &[], Some(DEFAULT_GAS as u128), None);
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
@@ -74,7 +79,7 @@ fn ec_point_from_x_big() {
         "run_test",
         &[JitValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -102,7 +107,7 @@ fn ec_point_from_x_small() {
         "run_test",
         &[JitValue::Felt252(Felt::from_bytes_be(&x.to_be_bytes()))],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -130,7 +135,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(
@@ -156,7 +161,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a)],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(

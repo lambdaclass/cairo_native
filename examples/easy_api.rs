@@ -26,7 +26,7 @@ fn main() {
 
     // Execute the program.
     let result = native_executor
-        .invoke_dynamic(entry_point_id, params, None, None)
+        .invoke_dynamic(entry_point_id, params, None)
         .unwrap();
 
     println!("Cairo program was compiled and executed successfully.");

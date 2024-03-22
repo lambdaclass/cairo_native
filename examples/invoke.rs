@@ -30,7 +30,7 @@ fn main() {
 
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
-    let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None, None);
+    let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

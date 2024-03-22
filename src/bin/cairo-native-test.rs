@@ -438,7 +438,7 @@ fn run_tests(
                     .with_context(|| "not enough gas to run")?;
 
                 let result = native_executor
-                    .invoke_dynamic(&func.id, &[], Some(initial_gas), None)
+                    .invoke_dynamic(&func.id, &[], Some(initial_gas))
                     .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
 
                 let run_result = result_to_runresult(&result)?;
