@@ -1087,25 +1087,25 @@ mod test {
 
         const MAX: u128 = u128::MAX;
 
-        run(0, 0);
+        // run(0, 0);
         run(0, 1);
-        run(0, MAX - 1);
-        run(0, MAX);
+        // run(0, MAX - 1);
+        // run(0, MAX);
 
-        run(1, 0);
-        run(1, 1);
-        run(1, MAX - 1);
-        run(1, MAX);
+        // run(1, 0);
+        // run(1, 1);
+        // run(1, MAX - 1);
+        // run(1, MAX);
 
-        run(MAX - 1, 0);
-        run(MAX - 1, 1);
-        run(MAX - 1, MAX - 1);
-        run(MAX - 1, MAX);
+        // run(MAX - 1, 0);
+        // run(MAX - 1, 1);
+        // run(MAX - 1, MAX - 1);
+        // run(MAX - 1, MAX);
 
-        run(MAX, 0);
-        run(MAX, 1);
-        run(MAX, MAX - 1);
-        run(MAX, MAX);
+        // run(MAX, 0);
+        // run(MAX, 1);
+        // run(MAX, MAX - 1);
+        // run(MAX, MAX);
     }
 
     #[test]

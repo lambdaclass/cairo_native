@@ -1,8 +1,10 @@
+use super::ExecutorBase;
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
+    metadata::gas::GasMetadata,
     module::NativeModule,
+    starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
     values::JitValue,
     OptLevel,
@@ -16,39 +18,35 @@ use cairo_lang_sierra::{
 use educe::Educe;
 use libc::c_void;
 use libloading::Library;
+use melior::{ir::Module, Context};
 use starknet_types_core::felt::Felt;
 use tempfile::NamedTempFile;
 
 #[derive(Educe)]
 #[educe(Debug)]
-pub struct AotNativeExecutor {
-    #[educe(Debug(ignore))]
-    library: Library,
+pub struct AotNativeExecutor<'ctx> {
+    base: ExecutorBase,
+
+    context: &'ctx Context,
+    module: Module<'ctx>,
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
+
+    #[educe(Debug(ignore))]
+    library: Library,
 
     gas_metadata: GasMetadata,
 }
 
-impl AotNativeExecutor {
-    pub fn new(
-        library: Library,
-        registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        gas_metadata: GasMetadata,
-    ) -> Self {
-        Self {
-            library,
-            registry,
-            gas_metadata,
-        }
-    }
-
+impl<'ctx> AotNativeExecutor<'ctx> {
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(module: NativeModule<'ctx>, opt_level: OptLevel) -> Self {
         let NativeModule {
+            context,
             module,
             registry,
-            mut metadata,
+            executor_base,
+            gas_metadata,
         } = module;
 
         let library_path = NamedTempFile::new().unwrap().into_temp_path();
@@ -57,9 +55,12 @@ impl AotNativeExecutor {
         crate::object_to_shared_lib(&object_data, &library_path).unwrap();
 
         Self {
-            library: unsafe { Library::new(library_path).unwrap() },
+            base: executor_base,
+            context,
+            module,
             registry,
-            gas_metadata: metadata.remove().unwrap(),
+            library: unsafe { Library::new(library_path).unwrap() },
+            gas_metadata,
         }
     }
 
@@ -68,7 +69,6 @@ impl AotNativeExecutor {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -76,12 +76,40 @@ impl AotNativeExecutor {
             .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
+            &self.module,
             &self.registry,
+            &self.base,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            Option::<DummySyscallHandler>::None,
+        ))
+    }
+
+    pub fn invoke_dynamic_with_syscall_handler(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ExecutionResult, RunnerError> {
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+
+        Ok(super::invoke_dynamic(
+            self.context,
+            &self.module,
+            &self.registry,
+            &self.base,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            args,
+            available_gas,
+            Some(syscall_handler),
         ))
     }
 
@@ -90,7 +118,7 @@ impl AotNativeExecutor {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
+        syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -99,7 +127,10 @@ impl AotNativeExecutor {
 
         Ok(ContractExecutionResult::from_execution_result(
             super::invoke_dynamic(
+                self.context,
+                &self.module,
                 &self.registry,
+                &self.base,
                 self.find_function_ptr(function_id),
                 self.extract_signature(function_id),
                 &[JitValue::Struct {
@@ -110,7 +141,7 @@ impl AotNativeExecutor {
                     debug_name: None,
                 }],
                 available_gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+                Some(syscall_handler),
             ),
         )?)
     }

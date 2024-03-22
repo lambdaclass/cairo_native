@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use crate::{
     error::compile::CompileError,
     ffi::{get_data_layout_rep, get_target_triple},
@@ -29,6 +27,7 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use std::sync::OnceLock;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -51,9 +50,17 @@ impl NativeContext {
         Self { context }
     }
 
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, CompileError> {
+    pub fn compile(
+        &self,
+        program: &Program,
+        mut metadata: MetadataStorage,
+    ) -> Result<NativeModule, CompileError> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -67,7 +74,7 @@ impl NativeContext {
         let module_region = Region::new();
         module_region.append_block(Block::new(&[]));
 
-        let data_layout_ret = &get_data_layout_rep()?;
+        let data_layout_ret = get_data_layout_rep()?;
 
         let op = OperationBuilder::new("builtin.module", Location::unknown(&self.context))
             .add_attributes(&[
@@ -77,7 +84,7 @@ impl NativeContext {
                 ),
                 (
                     Identifier::new(&self.context, "llvm.data_layout"),
-                    StringAttribute::new(&self.context, data_layout_ret).into(),
+                    StringAttribute::new(&self.context, &data_layout_ret).into(),
                 ),
             ])
             .add_regions([module_region])
@@ -91,18 +98,17 @@ impl NativeContext {
             .iter()
             .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
 
-        let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
+        metadata.get_or_insert_with(RuntimeBindingsMeta::default);
+
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = if has_gas_builtin {
-            GasMetadata::new(program, Some(MetadataComputationConfig::default()))
-        } else {
-            GasMetadata::new(program, None)
-        }?;
-        // Unwrapping here is not necessary since the insertion will only fail if there was
-        // already some metadata of the same type.
-        metadata.insert(gas_metadata);
+        metadata.get_or_insert_with(|| {
+            if has_gas_builtin {
+                GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap()
+            } else {
+                GasMetadata::new(program, None).unwrap()
+            }
+        });
 
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
@@ -124,16 +130,26 @@ impl NativeContext {
             let mut op = module.as_operation_mut();
             op.set_attribute(
                 "llvm.data_layout",
-                StringAttribute::new(&self.context, data_layout_ret).into(),
+                StringAttribute::new(&self.context, &data_layout_ret).into(),
             );
         }
 
-        Ok(NativeModule::new(module, registry, metadata))
+        Ok(NativeModule::new(
+            &self.context,
+            module,
+            registry,
+            &program
+                .funcs
+                .iter()
+                .map(|x| x.id.clone())
+                .collect::<Vec<_>>(),
+            metadata,
+        ))
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile_with_metadata(
+    pub fn compile_with_config(
         &self,
         program: &Program,
         metadata_config: MetadataComputationConfig,
@@ -161,7 +177,17 @@ impl NativeContext {
 
         run_pass_manager(&self.context, &mut module)?;
 
-        Ok(NativeModule::new(module, registry, metadata))
+        Ok(NativeModule::new(
+            &self.context,
+            module,
+            registry,
+            &program
+                .funcs
+                .iter()
+                .map(|x| x.id.clone())
+                .collect::<Vec<_>>(),
+            metadata,
+        ))
     }
 }
 

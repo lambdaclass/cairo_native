@@ -11,13 +11,13 @@
 //! | ----- | -------------- | ------------------------ |
 //! |   0   | `!llvm.ptr<T>` | Pointer to the data[^1]. |
 //! |   1   | `i32`          | Array start offset[^2].  |
-//! |   1   | `i32`          | Array end offset[^2].    |
-//! |   2   | `i32`          | Allocated capacity[^2].  |
+//! |   2   | `i32`          | Array end offset[^2].    |
+//! |   3   | `i32`          | Allocated capacity[^2].  |
 //!
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
 //! [^2]: Those numbers are number of items, **not bytes**.
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
     error::{libfuncs, types::Result},
     libfuncs::LibfuncHelper,
@@ -96,10 +96,9 @@ fn snapshot_take<'ctx, 'this>(
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let (elem_ty, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
     let elem_stride = elem_layout.pad_to_align().size();
-    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
 
     let src_ptr = entry
         .append_operation(llvm::extract_value(

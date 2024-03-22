@@ -3,6 +3,7 @@ use crate::common::{compare_outputs, DEFAULT_GAS};
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
+use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::values::JitValue;
 use lazy_static::lazy_static;
 use num_traits::Num;
@@ -90,7 +91,7 @@ fn fib() {
         "run_test",
         &[JitValue::Felt252(10.into())],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -116,7 +117,7 @@ fn logistic_map() {
         "run_test",
         &[JitValue::Felt252(1000.into())],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -164,7 +165,7 @@ fn pedersen() {
             ),
         ],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -190,7 +191,7 @@ fn factorial() {
         "run_test",
         &[JitValue::Felt252(13.into())],
         Some(DEFAULT_GAS as u128),
-        None,
+        Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
@@ -217,7 +218,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(
@@ -242,7 +243,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(
@@ -267,7 +268,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(
@@ -293,7 +294,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(
@@ -321,7 +322,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(

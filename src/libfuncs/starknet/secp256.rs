@@ -1,9 +1,6 @@
 use crate::{
-    error::libfuncs::Result,
-    libfuncs::LibfuncHelper,
-    metadata::MetadataStorage,
-    starknet::handler::StarkNetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    error::libfuncs::Result, libfuncs::LibfuncHelper, metadata::MetadataStorage,
+    starknet::handler::StarknetSyscallHandlerCallbacks, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -189,6 +186,7 @@ pub fn build_k1_new<'ctx, 'this>(
     ));
 
     let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
 
     // Allocate `x` argument and write the value.
     let x_arg_ptr_ty = llvm::r#type::pointer(
@@ -202,7 +200,7 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -233,7 +231,7 @@ pub fn build_k1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -270,7 +268,7 @@ pub fn build_k1_new<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_NEW.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_NEW.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -425,6 +423,9 @@ pub fn build_k1_add<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -558,7 +559,7 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -610,7 +611,7 @@ pub fn build_k1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -647,7 +648,7 @@ pub fn build_k1_add<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_ADD.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_ADD.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -814,6 +815,9 @@ pub fn build_k1_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -947,7 +951,7 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -985,7 +989,7 @@ pub fn build_k1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1022,7 +1026,7 @@ pub fn build_k1_mul<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_MUL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_MUL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1189,6 +1193,9 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -1308,7 +1315,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1365,7 +1372,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1520,6 +1527,9 @@ pub fn build_k1_get_xy<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -1537,7 +1547,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = get_integer_layout(128);
+        let u128_layout = i128_layout;
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -1560,7 +1570,8 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), get_integer_layout(1));
+        let tag_ty = IntegerType::new(context, 1).into();
+        let tag_layout = crate::ffi::get_mlir_layout(helper, tag_ty);
 
         (
             tag_layout
@@ -1682,7 +1693,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1718,7 +1729,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256K1_GET_XY.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256K1_GET_XY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2021,6 +2032,7 @@ pub fn build_r1_new<'ctx, 'this>(
     ));
 
     let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
 
     // Allocate `x` argument and write the value.
     let x_arg_ptr_ty = llvm::r#type::pointer(
@@ -2034,7 +2046,7 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2065,7 +2077,7 @@ pub fn build_r1_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2102,7 +2114,7 @@ pub fn build_r1_new<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_NEW.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_NEW.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2257,6 +2269,9 @@ pub fn build_r1_add<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -2390,7 +2405,7 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2442,7 +2457,7 @@ pub fn build_r1_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2479,7 +2494,7 @@ pub fn build_r1_add<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_ADD.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_ADD.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2646,6 +2661,9 @@ pub fn build_r1_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -2779,7 +2797,7 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2817,7 +2835,7 @@ pub fn build_r1_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2854,7 +2872,7 @@ pub fn build_r1_mul<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_MUL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_MUL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3021,6 +3039,9 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -3140,7 +3161,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3197,7 +3218,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_GET_POINT_FROM_X.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_GET_POINT_FROM_X.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3352,6 +3373,9 @@ pub fn build_r1_get_xy<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let i128_ty = IntegerType::new(context, 128).into();
+    let i128_layout = crate::ffi::get_mlir_layout(helper, i128_ty);
+
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
@@ -3369,7 +3393,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         // Note: This libfunc has multiple return values when successful, therefore the method used
         //   for the other libfuncs cannot be reused here.
 
-        let u128_layout = get_integer_layout(128);
+        let u128_layout = i128_layout;
         let u256_layout = u128_layout.extend(u128_layout)?.0;
         let u256_ty = llvm::r#type::r#struct(
             context,
@@ -3392,7 +3416,8 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             &info.branch_signatures()[1].vars[2].ty,
         )?;
 
-        let (tag_ty, tag_layout) = (IntegerType::new(context, 1).into(), get_integer_layout(1));
+        let tag_ty = IntegerType::new(context, 1).into();
+        let tag_layout = crate::ffi::get_mlir_layout(helper, tag_ty);
 
         (
             tag_layout
@@ -3514,7 +3539,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(128).align().try_into().unwrap(),
+                        i128_layout.align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3550,7 +3575,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SECP256R1_GET_XY.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SECP256R1_GET_XY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),

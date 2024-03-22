@@ -1,13 +1,13 @@
-//! # StarkNet libfuncs
+//! # Starknet libfuncs
 
 use super::LibfuncHelper;
 use crate::{
     error::libfuncs::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
-    starknet::handler::StarkNetSyscallHandlerCallbacks,
+    starknet::handler::StarknetSyscallHandlerCallbacks,
     types::felt252::PRIME,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{felt252_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -259,7 +259,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -288,7 +288,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -365,7 +365,7 @@ pub fn build_call_contract<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -816,7 +816,7 @@ pub fn build_storage_read<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -853,7 +853,7 @@ pub fn build_storage_read<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1133,7 +1133,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1161,7 +1161,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -1199,7 +1199,7 @@ pub fn build_storage_write<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -1747,7 +1747,7 @@ pub fn build_emit_event<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2031,7 +2031,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2313,7 +2313,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2589,7 +2589,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -2763,7 +2763,7 @@ pub fn build_deploy<'ctx, 'this>(
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) = {
-        let tag_layout = get_integer_layout(1);
+        let tag_layout = crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 8).into());
         let tag_ty: Type = IntegerType::new(context, 1).into();
 
         let mut layout = tag_layout;
@@ -2870,7 +2870,9 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(64).align().try_into()?,
+                        crate::ffi::get_mlir_layout(helper, IntegerType::new(context, 64).into())
+                            .align()
+                            .try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2901,7 +2903,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
+                        felt252_layout(context, helper).align().try_into()?,
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -2930,7 +2932,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3008,7 +3010,7 @@ pub fn build_deploy<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3363,7 +3365,7 @@ pub fn build_keccak<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -3632,7 +3634,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3661,7 +3663,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -3738,7 +3740,7 @@ pub fn build_library_call<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -4019,7 +4021,7 @@ pub fn build_replace_class<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -4055,7 +4057,7 @@ pub fn build_replace_class<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
@@ -4328,7 +4330,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into().unwrap(),
+                        felt252_layout(context, helper).align().try_into().unwrap(),
                         IntegerType::new(context, 64).into(),
                     )
                     .into(),
@@ -4404,7 +4406,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarkNetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?],
             ),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),

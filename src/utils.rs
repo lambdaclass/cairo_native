@@ -13,7 +13,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    dialect::llvm,
+    ir::{r#type::IntegerType, Module, Type},
     pass::{self, PassManager},
     Context, Error, ExecutionEngine,
 };
@@ -21,18 +22,35 @@ use num_bigint::{BigInt, BigUint, Sign};
 use std::{
     alloc::Layout,
     borrow::Cow,
-    fmt::{self, Display},
+    fmt,
     ops::Neg,
     path::Path,
     ptr::NonNull,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
-use thiserror::Error;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
+
+pub fn felt252_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, IntegerType::new(context, 252).into()))
+}
+
+pub fn bytes31_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, IntegerType::new(context, 248).into()))
+}
+
+pub fn llvmptr_layout(context: &Context, module: &Module) -> Layout {
+    static LAYOUT: OnceLock<Layout> = OnceLock::new();
+    *LAYOUT
+        .get_or_init(|| crate::ffi::get_mlir_layout(module, llvm::r#type::opaque_pointer(context)))
+}
 
 /// Generate a function name.
 ///
@@ -45,36 +63,6 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
-    }
-}
-
-/// Return the layout for an integer of arbitrary width.
-///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
-/// with a size in bytes of a power of two has the same alignment as its size.
-pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
-
-    if width == 0 {
-        Layout::new::<()>()
-    } else if width <= 8 {
-        Layout::new::<u8>()
-    } else if width <= 16 {
-        Layout::new::<u16>()
-    } else if width <= 32 {
-        Layout::new::<u32>()
-    } else if width <= 64 {
-        Layout::new::<u64>()
-    } else if width <= 128 {
-        Layout::new::<u128>()
-    } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
     }
 }
 
@@ -183,11 +171,7 @@ pub fn felt252_short_str(value: &str) -> [u32; 8] {
 }
 
 /// Creates the execution engine, with all symbols registered.
-pub fn create_engine(
-    module: &Module,
-    _metadata: &MetadataStorage,
-    opt_level: OptLevel,
-) -> ExecutionEngine {
+pub fn create_engine(module: &Module, opt_level: OptLevel) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(
         module,
@@ -204,11 +188,11 @@ pub fn create_engine(
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
 
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
+    // #[cfg(feature = "with-debug-utils")]
+    // _metadata
+    //     .get::<crate::metadata::debug_utils::DebugUtils>()
+    //     .unwrap()
+    //     .register_impls(&engine);
 
     engine
 }
@@ -343,14 +327,6 @@ pub const fn next_multiple_of_usize(lhs: usize, rhs: usize) -> usize {
     }
 }
 
-#[inline]
-pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
 /// Edit: Copied from the std lib.
 ///
 /// Returns the amount of padding we must insert after `layout`
@@ -396,40 +372,6 @@ pub const fn padding_needed_for(layout: &Layout, align: usize) -> usize {
     len_rounded_up.wrapping_sub(len)
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Error)]
-pub struct LayoutError;
-
-impl Display for LayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("layout error")
-    }
-}
-
-/// Copied from std.
-///
-/// Creates a layout describing the record for `n` instances of
-/// `self`, with a suitable amount of padding between each to
-/// ensure that each instance is given its requested size and
-/// alignment. On success, returns `(k, offs)` where `k` is the
-/// layout of the array and `offs` is the distance between the start
-/// of each element in the array.
-///
-/// On arithmetic overflow, returns `LayoutError`.
-//#[unstable(feature = "alloc_layout_extra", issue = "55724")]
-#[inline]
-pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), LayoutError> {
-    // This cannot overflow. Quoting from the invariant of Layout:
-    // > `size`, when rounded up to the nearest multiple of `align`,
-    // > must not overflow isize (i.e., the rounded value must be
-    // > less than or equal to `isize::MAX`)
-    let padded_size = layout.size() + padding_needed_for(layout, layout.align());
-    let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
-
-    // The safe constructor is called here to enforce the isize size limit.
-    let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
-    Ok((layout, padded_size))
-}
-
 pub trait ProgramRegistryExt {
     fn build_type<'ctx>(
         &self,
@@ -473,11 +415,9 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
         let concrete_type = registry.get_type(id)?;
+        let r#type = concrete_type.build(context, module, registry, metadata, id)?;
 
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
+        Ok((r#type, crate::ffi::get_mlir_layout(module, r#type)))
     }
 }
 
@@ -607,17 +547,16 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use crate::{
+        context::NativeContext,
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
-        module::NativeModule,
         starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
         },
         utils::*,
@@ -628,17 +567,7 @@ pub mod test {
         project::setup_project, CompilerConfig,
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
-    use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
-        program::Program,
-        program_registry::ProgramRegistry,
-    };
-    use melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        utility::{register_all_dialects, register_all_passes},
-        Context,
-    };
+    use cairo_lang_sierra::program::Program;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::{env::var, fs, path::Path};
@@ -704,7 +633,8 @@ pub mod test {
         let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap_or("/home/dev/cairo_native".to_string()))
+                .join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let program = compile_prepared_db(
@@ -731,9 +661,6 @@ pub mod test {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-            .expect("Could not create the test program registry.");
-
         let entry_point_id = &program
             .funcs
             .iter()
@@ -741,23 +668,11 @@ pub mod test {
             .expect("Test program entry point not found.")
             .id;
 
-        let context = Context::new();
-        context.append_dialect_registry(&{
-            let registry = DialectRegistry::new();
-            register_all_dialects(&registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
-
-        let mut module = Module::new(Location::unknown(&context));
+        let context = NativeContext::new();
         let mut metadata = MetadataStorage::new();
 
         // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-        metadata
-            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
-            .unwrap();
 
         if program
             .type_declarations
@@ -772,29 +687,20 @@ pub mod test {
             metadata.insert(gas_metadata);
         }
 
-        crate::compile(&context, &module, program, &registry, &mut metadata, None)
-            .expect("Could not compile test program to MLIR.");
-
+        let module = context.compile(program, metadata).unwrap();
         assert!(
-            module.as_operation().verify(),
+            module.module().as_operation().verify(),
             "Test program generated invalid MLIR:\n{}",
-            module.as_operation()
+            module.module().as_operation()
         );
 
-        run_pass_manager(&context, &mut module)
-            .expect("Could not apply passes to the compiled test program.");
-
-        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
-
-        let native_module = NativeModule::new(module, registry, metadata);
-        // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
-            .invoke_dynamic(
+            .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
                 args,
                 Some(u128::MAX),
-                syscall_handler.as_ref(),
+                TestSyscallHandler,
             )
             .unwrap()
     }
@@ -810,62 +716,10 @@ pub mod test {
         assert_eq!(result.return_value, output);
     }
 
-    /// Ensures that the host's `u8` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u8() {
-        assert_eq!(get_integer_layout(8).align(), 1);
-    }
-
-    /// Ensures that the host's `u16` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u16() {
-        assert_eq!(get_integer_layout(16).align(), 2);
-    }
-
-    /// Ensures that the host's `u32` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u32() {
-        assert_eq!(get_integer_layout(32).align(), 4);
-    }
-
-    /// Ensures that the host's `u64` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u64() {
-        assert_eq!(get_integer_layout(64).align(), 8);
-    }
-
-    /// Ensures that the host's `u128` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
-        assert_eq!(get_integer_layout(128).align(), 16);
-    }
-
-    /// Ensures that the host's `u256` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_u256() {
-        assert_eq!(get_integer_layout(256).align(), 16);
-    }
-
-    /// Ensures that the host's `u512` is compatible with its compiled counterpart.
-    #[test]
-    fn test_alignment_compatibility_u512() {
-        assert_eq!(get_integer_layout(512).align(), 8);
-    }
-
-    /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
-    #[test]
-    #[ignore]
-    fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
-    }
-
     #[derive(Debug)]
     struct TestSyscallHandler;
 
-    impl StarkNetSyscallHandler for TestSyscallHandler {
+    impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
             Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
         }

@@ -82,7 +82,11 @@ pub fn build_construct<'ctx, 'this>(
                     type_info.build(context, helper, registry, metadata, &param_sig.ty)?,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        type_info.layout(registry)?.align() as i64,
+                        crate::ffi::get_mlir_layout(
+                            helper,
+                            type_info.build(context, helper, registry, metadata, &param_sig.ty)?,
+                        )
+                        .align() as i64,
                         IntegerType::new(context, 64).into(),
                     ))),
                 ))
@@ -174,7 +178,7 @@ pub fn build_deconstruct<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    type_info.layout(registry)?.align() as i64,
+                    crate::ffi::get_mlir_layout(helper, struct_ty).align() as i64,
                     IntegerType::new(context, 64).into(),
                 ))),
             ))
@@ -201,7 +205,7 @@ pub fn build_deconstruct<'ctx, 'this>(
             .into();
 
         fields.push(if type_info.is_memory_allocated(registry) {
-            let layout = type_info.layout(registry)?;
+            let layout = crate::ffi::get_mlir_layout(helper, field_ty);
 
             let k1 = helper
                 .init_block()

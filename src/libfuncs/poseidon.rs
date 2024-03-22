@@ -5,7 +5,7 @@ use super::LibfuncHelper;
 use crate::{
     error::libfuncs::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{felt252_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -71,7 +71,7 @@ pub fn build_hades_permutation<'ctx>(
     )?;
 
     let i256_ty = IntegerType::new(context, 256).into();
-    let layout_i256 = get_integer_layout(256);
+    let layout_i256 = felt252_layout(context, helper);
 
     let op0 = entry.argument(1)?.into();
     let op1 = entry.argument(2)?.into();

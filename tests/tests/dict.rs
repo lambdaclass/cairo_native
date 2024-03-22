@@ -4,7 +4,7 @@ use crate::common::{
 use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::values::JitValue;
+use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
@@ -38,7 +38,7 @@ proptest! {
             "run_test",
             &[JitValue::Felt252(a), JitValue::Felt252(b)],
             Some(DEFAULT_GAS as u128),
-            None,
+            Option::<DummySyscallHandler>::None,
         );
 
         compare_outputs(

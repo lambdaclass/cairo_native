@@ -1,65 +1,44 @@
-use crate::metadata::MetadataStorage;
+use crate::{
+    executor::ExecutorBase,
+    metadata::{gas::GasMetadata, MetadataStorage},
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
+    ids::FunctionId,
     program_registry::ProgramRegistry,
 };
-use melior::ir::Module;
-use std::{any::Any, fmt::Debug};
+use melior::{ir::Module, Context};
+use std::fmt::Debug;
 
 /// A MLIR module in the context of Cairo Native.
 /// It is conformed by the MLIR module, the Sierra program registry
 /// and the program metadata.
-pub struct NativeModule<'m> {
-    pub(crate) module: Module<'m>,
+pub struct NativeModule<'ctx> {
+    pub(crate) context: &'ctx Context,
+    pub(crate) module: Module<'ctx>,
     pub(crate) registry: ProgramRegistry<CoreType, CoreLibfunc>,
-    pub(crate) metadata: MetadataStorage,
+    pub(crate) executor_base: ExecutorBase,
+    pub(crate) gas_metadata: GasMetadata,
 }
 
-impl<'m> NativeModule<'m> {
+impl<'ctx> NativeModule<'ctx> {
     pub fn new(
-        module: Module<'m>,
+        context: &'ctx Context,
+        module: Module<'ctx>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: MetadataStorage,
+        function_ids: &[FunctionId],
+        mut metadata: MetadataStorage,
     ) -> Self {
+        let executor_base =
+            ExecutorBase::new(context, &module, &registry, &mut metadata, function_ids);
+
         Self {
+            context,
             module,
             registry,
-            metadata,
+            executor_base,
+            gas_metadata: metadata.remove::<GasMetadata>().unwrap(),
         }
-    }
-
-    /// Insert some metadata for the program execution and return a mutable reference to it.
-    ///
-    /// The insertion will fail, if there is already some metadata with the same type, in which case
-    /// it'll return `None`.
-    pub fn insert_metadata<T>(&mut self, meta: T) -> Option<&mut T>
-    where
-        T: Any,
-    {
-        self.metadata.insert(meta)
-    }
-
-    /// Removes metadata
-    pub fn remove_metadata<T>(&mut self) -> Option<T>
-    where
-        T: Any,
-    {
-        self.metadata.remove()
-    }
-
-    /// Retrieve a reference to some stored metadata.
-    ///
-    /// The retrieval will fail if there is no metadata with the requested type, in which case it'll
-    /// return `None`.
-    pub fn get_metadata<T>(&self) -> Option<&T>
-    where
-        T: Any,
-    {
-        self.metadata.get::<T>()
-    }
-
-    pub fn metadata(&self) -> &MetadataStorage {
-        &self.metadata
     }
 
     pub fn module(&self) -> &Module {

@@ -2,8 +2,7 @@ use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{Secp256k1Point, Secp256r1Point, StarkNetSyscallHandler, SyscallResult, U256},
+    starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
     values::JitValue,
 };
 use lazy_static::lazy_static;
@@ -32,7 +31,7 @@ struct SyscallHandler {
     secp256r1_get_xy: (VecDeque<Secp256r1Point>, VecDeque<(U256, U256)>),
 }
 
-impl StarkNetSyscallHandler for SyscallHandler {
+impl StarknetSyscallHandler for &mut SyscallHandler {
     fn get_block_hash(
         &mut self,
         _block_number: u64,
@@ -295,7 +294,7 @@ fn secp256k1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -327,7 +326,7 @@ fn secp256k1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -359,7 +358,7 @@ fn secp256k1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -455,7 +454,7 @@ fn secp256k1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -483,7 +482,7 @@ fn secp256k1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -511,7 +510,7 @@ fn secp256k1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -636,7 +635,7 @@ fn secp256k1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -664,7 +663,7 @@ fn secp256k1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -692,7 +691,7 @@ fn secp256k1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -807,7 +806,7 @@ fn secp256k1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -843,7 +842,7 @@ fn secp256k1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -879,7 +878,7 @@ fn secp256k1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -915,7 +914,7 @@ fn secp256k1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1013,7 +1012,7 @@ fn secp256k1_get_xy() {
             y: (0, 0),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1044,7 +1043,7 @@ fn secp256k1_get_xy() {
             y: (u128::MAX, 0),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1075,7 +1074,7 @@ fn secp256k1_get_xy() {
             y: (0, u128::MAX),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1106,7 +1105,7 @@ fn secp256k1_get_xy() {
             y: (u128::MAX, u128::MAX),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1211,7 +1210,7 @@ fn secp256r1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1243,7 +1242,7 @@ fn secp256r1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1275,7 +1274,7 @@ fn secp256r1_new() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1371,7 +1370,7 @@ fn secp256r1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1399,7 +1398,7 @@ fn secp256r1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1427,7 +1426,7 @@ fn secp256r1_add() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1552,7 +1551,7 @@ fn secp256r1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1580,7 +1579,7 @@ fn secp256r1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1608,7 +1607,7 @@ fn secp256r1_mul() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1723,7 +1722,7 @@ fn secp256r1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1759,7 +1758,7 @@ fn secp256r1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1795,7 +1794,7 @@ fn secp256r1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1831,7 +1830,7 @@ fn secp256r1_get_point_from_x() {
             },
         ],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1929,7 +1928,7 @@ fn secp256r1_get_xy() {
             y: (0, 0),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1960,7 +1959,7 @@ fn secp256r1_get_xy() {
             y: (u128::MAX, 0),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -1991,7 +1990,7 @@ fn secp256r1_get_xy() {
             y: (0, u128::MAX),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
@@ -2022,7 +2021,7 @@ fn secp256r1_get_xy() {
             y: (u128::MAX, u128::MAX),
         }],
         Some(u128::MAX),
-        Some(&SyscallHandlerMeta::new(&mut syscall_handler)),
+        Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,

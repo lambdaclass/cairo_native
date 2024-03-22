@@ -8,11 +8,11 @@ use crate::{
     error::libfuncs::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         function_call::FunctionCallConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
@@ -85,7 +85,22 @@ pub fn build<'ctx, 'this>(
         .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
     {
         let (type_id, type_info) = return_types[0];
-        let layout = type_info.layout(registry)?;
+        let mut layout = crate::ffi::get_mlir_layout(
+            helper,
+            type_info.build(context, helper, registry, metadata, type_id)?,
+        );
+
+        // Workaround for enum alignments.
+        if let CoreTypeConcrete::Enum(info) = type_info {
+            for variant_id in &info.variants {
+                let variant_ty = registry
+                    .build_type(context, helper, registry, metadata, variant_id)
+                    .unwrap();
+                let variant_layout = crate::ffi::get_mlir_layout(helper, variant_ty);
+
+                layout = layout.align_to(variant_layout.align()).unwrap();
+            }
+        }
 
         let k1 = helper
             .init_block()
@@ -184,7 +199,19 @@ pub fn build<'ctx, 'this>(
 
                 results.push(if type_info.is_memory_allocated(registry) {
                     let ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
-                    let layout = type_info.layout(registry)?;
+                    let mut layout = crate::ffi::get_mlir_layout(helper, ty);
+
+                    // Workaround for enum alignments.
+                    if let CoreTypeConcrete::Enum(info) = type_info {
+                        for variant_id in &info.variants {
+                            let variant_ty = registry
+                                .build_type(context, helper, registry, metadata, variant_id)
+                                .unwrap();
+                            let variant_layout = crate::ffi::get_mlir_layout(helper, variant_ty);
+
+                            layout = layout.align_to(variant_layout.align()).unwrap();
+                        }
+                    }
 
                     let k1 = helper
                         .init_block()
@@ -255,8 +282,24 @@ pub fn build<'ctx, 'this>(
                         let val = arguments[0];
 
                         let offset;
-                        let ret_layout = type_info.layout(registry)?;
+                        let ret_layout = crate::ffi::get_mlir_layout(
+                            helper,
+                            type_info.build(context, helper, registry, metadata, type_id)?,
+                        );
                         (layout, offset) = layout.extend(ret_layout)?;
+
+                        // Workaround for enum alignments.
+                        if let CoreTypeConcrete::Enum(info) = type_info {
+                            for variant_id in &info.variants {
+                                let variant_ty = registry
+                                    .build_type(context, helper, registry, metadata, variant_id)
+                                    .unwrap();
+                                let variant_layout =
+                                    crate::ffi::get_mlir_layout(helper, variant_ty);
+
+                                layout = layout.align_to(variant_layout.align()).unwrap();
+                            }
+                        }
 
                         let pointer_val = entry
                             .append_operation(llvm::get_element_ptr(
@@ -280,7 +323,10 @@ pub fn build<'ctx, 'this>(
                                     type_info
                                         .build(context, helper, registry, metadata, type_id)?,
                                     location,
-                                    LoadStoreOptions::new(),
+                                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                                        ret_layout.align() as i64,
+                                        IntegerType::new(context, 64).into(),
+                                    ))),
                                 ))
                                 .result(0)?
                                 .into()
@@ -305,7 +351,20 @@ pub fn build<'ctx, 'this>(
                         results.push(if type_info.is_memory_allocated(registry) {
                             let ty =
                                 type_info.build(context, helper, registry, metadata, type_id)?;
-                            let layout = type_info.layout(registry)?;
+                            let mut layout = crate::ffi::get_mlir_layout(helper, ty);
+
+                            // Workaround for enum alignments.
+                            if let CoreTypeConcrete::Enum(info) = type_info {
+                                for variant_id in &info.variants {
+                                    let variant_ty = registry
+                                        .build_type(context, helper, registry, metadata, variant_id)
+                                        .unwrap();
+                                    let variant_layout =
+                                        crate::ffi::get_mlir_layout(helper, variant_ty);
+
+                                    layout = layout.align_to(variant_layout.align()).unwrap();
+                                }
+                            }
 
                             let k1 = helper
                                 .init_block()

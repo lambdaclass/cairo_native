@@ -1,6 +1,9 @@
 use anyhow::Context;
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
-use cairo_native::{context::NativeContext, module_to_object, object_to_shared_lib, OptLevel};
+use cairo_native::{
+    context::NativeContext, metadata::MetadataStorage, module_to_object, object_to_shared_lib,
+    OptLevel,
+};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -59,7 +62,9 @@ fn main() -> anyhow::Result<()> {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     let opt_level = match args.opt_level {
         0 => OptLevel::None,

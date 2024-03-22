@@ -44,13 +44,11 @@
 //!
 //! // Execute the program.
 //! let result = native_executor
-//!     .invoke_dynamic(entry_point_id, params, None, None)
+//!     .invoke_dynamic(entry_point_id, params, None)
 //!     .unwrap();
 //!
 //! println!("Cairo program was compiled and executed successfully.");
 //! println!("{:?}", result);
-//!
-//!
 //! ```
 //!
 //! ## Common definitions
@@ -79,7 +77,7 @@ pub mod debug_info;
 pub mod error;
 pub mod execution_result;
 pub mod executor;
-mod ffi;
+pub mod ffi;
 pub mod libfuncs;
 pub mod metadata;
 pub mod module;

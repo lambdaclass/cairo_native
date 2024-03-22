@@ -403,9 +403,8 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::Result,
-    metadata::MetadataStorage,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    error::types::Result, executor::ExecutorBase, metadata::MetadataStorage,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -436,11 +435,17 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
 
-    let tag_layout = get_integer_layout(tag_bits);
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .extend(crate::ffi::get_mlir_layout(
+                module,
+                registry
+                    .build_type(context, module, registry, metadata, id)
+                    .unwrap(),
+            ))
             .unwrap()
             .0;
 
@@ -482,17 +487,19 @@ pub fn build<'ctx>(
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
 pub fn get_layout_for_variants(
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    context: &Context,
+    module: &Module,
+    executor_base: &ExecutorBase,
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, Layout, Vec<Layout>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
 
     let mut layout = tag_layout;
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant)?;
-        let payload_layout = concrete_payload_ty.layout(registry)?;
+        let payload_layout = *executor_base.type_layouts.get(variant).unwrap();
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(
@@ -518,7 +525,8 @@ pub fn get_type_for_variants<'ctx>(
     variants: &[ConcreteTypeId],
 ) -> Result<(Layout, TypeLayout<'ctx>, Vec<TypeLayout<'ctx>>)> {
     let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
+    let tag_layout =
+        crate::ffi::get_mlir_layout(module, IntegerType::new(context, tag_bits).into());
     let tag_ty: Type = IntegerType::new(context, tag_bits).into();
 
     let mut layout = tag_layout;
@@ -541,13 +549,21 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{
+        ffi::{get_data_layout_rep, get_target_triple},
+        metadata::MetadataStorage,
+        types::TypeBuilder,
+        utils::test::load_cairo,
+    };
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
     };
     use melior::{
-        ir::{r#type::IntegerType, Location, Module},
+        ir::{
+            attribute::StringAttribute, operation::OperationBuilder, r#type::IntegerType,
+            Identifier, Location, Module, Region,
+        },
         Context,
     };
 
@@ -566,7 +582,25 @@ mod test {
         let context = Context::new();
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let module = Module::new(Location::unknown(&context));
+        let target_triple = get_target_triple();
+        let data_layout = get_data_layout_rep().unwrap();
+        let module = Module::from_operation(
+            OperationBuilder::new("builtin.module", Location::unknown(&context))
+                .add_attributes(&[
+                    (
+                        Identifier::new(&context, "llvm.target_triple"),
+                        StringAttribute::new(&context, &target_triple).into(),
+                    ),
+                    (
+                        Identifier::new(&context, "llvm.data_layout"),
+                        StringAttribute::new(&context, &data_layout).into(),
+                    ),
+                ])
+                .add_regions([Region::new()])
+                .build()
+                .unwrap(),
+        )
+        .unwrap();
         let mut metadata = MetadataStorage::new();
 
         let i0_ty = IntegerType::new(&context, 0).into();

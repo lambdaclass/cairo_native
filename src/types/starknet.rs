@@ -1,4 +1,4 @@
-//! # StarkNet types
+//! # Starknet types
 //!
 //! ## ClassHash
 //! Type for Starknet class hash, a value in the range [0, 2 ** 251).

@@ -74,11 +74,15 @@ fn snapshot_take<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
+    // TODO: Why was this commented?
     // let elem_snapshot_take = metadata
     //     .get::<SnapshotClonesMeta<TType, TLibfunc>>()
     //     .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
+    let elem_ty = registry
+        .get_type(&info.ty)?
+        .build(context, helper, registry, metadata, &info.ty)?;
+    let elem_layout = crate::ffi::get_mlir_layout(helper, elem_ty);
 
     let k0 = entry
         .append_operation(arith::constant(

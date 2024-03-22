@@ -380,7 +380,7 @@ fn run_tests(
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile_with_metadata(
+        .compile_with_config(
             &sierra_program,
             MetadataComputationConfig {
                 function_set_costs: function_set_costs.clone(),
@@ -438,7 +438,7 @@ fn run_tests(
                     .with_context(|| "not enough gas to run")?;
 
                 let result = native_executor
-                    .invoke_dynamic(&func.id, &[], Some(initial_gas), None)
+                    .invoke_dynamic(&func.id, &[], Some(initial_gas))
                     .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
 
                 let run_result = result_to_runresult(&result)?;

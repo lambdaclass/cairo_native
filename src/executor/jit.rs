@@ -1,8 +1,10 @@
+use super::ExecutorBase;
 use crate::{
     error::jit_engine::RunnerError,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{gas::GasMetadata, syscall_handler::SyscallHandlerMeta},
+    metadata::gas::GasMetadata,
     module::NativeModule,
+    starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
     values::JitValue,
     OptLevel,
@@ -14,14 +16,16 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use melior::{ir::Module, ExecutionEngine};
+use melior::{ir::Module, Context, ExecutionEngine};
 use starknet_types_core::felt::Felt;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
-pub struct JitNativeExecutor<'m> {
+pub struct JitNativeExecutor<'ctx> {
+    base: ExecutorBase,
     engine: ExecutionEngine,
 
-    module: Module<'m>,
+    context: &'ctx Context,
+    module: Module<'ctx>,
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
     gas_metadata: GasMetadata,
@@ -36,19 +40,23 @@ impl std::fmt::Debug for JitNativeExecutor<'_> {
     }
 }
 
-impl<'m> JitNativeExecutor<'m> {
-    pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
+impl<'ctx> JitNativeExecutor<'ctx> {
+    pub fn from_native_module(native_module: NativeModule<'ctx>, opt_level: OptLevel) -> Self {
         let NativeModule {
+            context,
             module,
             registry,
-            metadata,
+            executor_base,
+            gas_metadata,
         } = native_module;
 
         Self {
-            engine: create_engine(&module, &metadata, opt_level),
+            base: executor_base,
+            engine: create_engine(&module, opt_level),
+            context,
             module,
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
+            gas_metadata,
         }
     }
 
@@ -56,7 +64,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self.registry
     }
 
-    pub fn module(&self) -> &Module<'m> {
+    pub fn module(&self) -> &Module<'ctx> {
         &self.module
     }
 
@@ -68,7 +76,6 @@ impl<'m> JitNativeExecutor<'m> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
     ) -> Result<ExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -76,12 +83,43 @@ impl<'m> JitNativeExecutor<'m> {
             .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
+            &self.module,
             &self.registry,
+            &self.base,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
-            syscall_handler.map(SyscallHandlerMeta::as_ptr),
+            Option::<DummySyscallHandler>::None,
+        ))
+    }
+
+    /// Execute a program with the given params.
+    ///
+    /// See [`cairo_native::jit_runner::execute`]
+    pub fn invoke_dynamic_with_syscall_handler(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ExecutionResult, RunnerError> {
+        let available_gas = self
+            .gas_metadata
+            .get_initial_available_gas(function_id, gas)
+            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+
+        Ok(super::invoke_dynamic(
+            self.context,
+            &self.module,
+            &self.registry,
+            &self.base,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            args,
+            available_gas,
+            Some(syscall_handler),
         ))
     }
 
@@ -90,7 +128,7 @@ impl<'m> JitNativeExecutor<'m> {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
+        syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, RunnerError> {
         let available_gas = self
             .gas_metadata
@@ -100,7 +138,10 @@ impl<'m> JitNativeExecutor<'m> {
         // TODO: Check signature for contract interface.
         Ok(ContractExecutionResult::from_execution_result(
             super::invoke_dynamic(
+                self.context,
+                &self.module,
                 &self.registry,
+                &self.base,
                 self.find_function_ptr(function_id),
                 self.extract_signature(function_id),
                 &[JitValue::Struct {
@@ -111,7 +152,7 @@ impl<'m> JitNativeExecutor<'m> {
                     debug_name: None,
                 }],
                 available_gas,
-                syscall_handler.map(SyscallHandlerMeta::as_ptr),
+                Some(syscall_handler),
             ),
         )?)
     }

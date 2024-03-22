@@ -1,5 +1,6 @@
 use cairo_native::{
-    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, values::JitValue,
+    context::NativeContext, executor::JitNativeExecutor, metadata::MetadataStorage,
+    utils::find_entry_point, values::JitValue,
 };
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -20,7 +21,9 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, MetadataStorage::default())
+        .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 
@@ -30,7 +33,7 @@ fn main() {
 
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
-    let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None, None);
+    let output = native_executor.invoke_dynamic(fn_id, &[JitValue::Felt252(1.into())], None);
 
     println!();
     println!("Cairo program was compiled and executed successfully.");

@@ -42,8 +42,6 @@ pub enum ErrorImpl {
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
     #[error(transparent)]
-    LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
-    #[error(transparent)]
     MlirError(#[from] melior::Error),
     #[error(transparent)]
     ProgramRegistryError(#[from] ProgramRegistryError),
@@ -67,7 +65,6 @@ impl From<super::CoreTypeBuilderError> for ErrorImpl {
             super::types::ErrorImpl::LayoutError(e) => Self::LayoutError(e),
             super::types::ErrorImpl::ProgramRegistryError(e) => Self::ProgramRegistryError(e),
             super::types::ErrorImpl::TryFromIntError(e) => Self::TryFromIntError(e),
-            super::types::ErrorImpl::LayoutErrorPolyfill(e) => Self::LayoutErrorPolyfill(e),
             super::types::ErrorImpl::MlirError(e) => Self::MlirError(e),
             super::types::ErrorImpl::LibFuncError(e) => *e.source,
             super::types::ErrorImpl::ProgramRegistryErrorBoxed(e) => {

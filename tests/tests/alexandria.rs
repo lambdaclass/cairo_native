@@ -1,6 +1,7 @@
 use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
+use cairo_native::starknet::DummySyscallHandler;
 use std::{fs::File, io::BufReader};
 use test_case::test_case;
 
@@ -24,8 +25,13 @@ fn compare_inputless_function(function_name: &str) {
 
     let result_vm =
         run_vm_program(program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native =
-        run_native_program(program, function_name, &[], Some(DEFAULT_GAS as u128), None);
+    let result_native = run_native_program(
+        program,
+        function_name,
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
