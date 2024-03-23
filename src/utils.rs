@@ -643,7 +643,7 @@ pub mod test {
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use tracing::Subscriber;
-    use std::{env::var, fs, ops::Deref, path::Path};
+    use std::{env::var, fmt::Formatter, fs, ops::Deref, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -1102,6 +1102,43 @@ pub mod test {
         let value = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         let result = felt252_short_str(value);
         assert_eq!(result, [4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4095]);
+    }
+
+    // ==============================
+    // == TESTS: debug_with
+    // ==============================
+    #[test]
+    fn test_debug_with_empty_closure() {
+        let closure = |f: &mut Formatter| -> fmt::Result {
+            Ok(())
+        };
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "");
+    }
+
+    #[test]
+    fn test_debug_with_error_closure() {
+        let closure = |f: &mut Formatter| -> fmt::Result {
+            Err(fmt::Error)
+        };
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "<formatting error>");
+    }
+
+    #[test]
+    fn test_debug_with_simple_closure() {
+        let closure = |f: &mut fmt::Formatter| write!(f, "Hello, world!");
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "Hello, world!");
+    }
+
+    #[test]
+    fn test_debug_with_complex_closure() {
+        let closure = |f: &mut fmt::Formatter| {
+            write!(f, "Name: {}, Age: {}", "William", 28)
+        };
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
 
     #[derive(Debug)]
