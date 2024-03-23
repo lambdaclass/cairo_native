@@ -640,7 +640,8 @@ pub mod test {
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
-    use std::{env::var, fs, path::Path};
+    use tracing::Subscriber;
+    use std::{env::var, fs, ops::Deref, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -804,6 +805,9 @@ pub mod test {
         assert_eq!(result.return_value, output);
     }
 
+    // ==============================
+    // == TESTS: get_integer_layout
+    // ==============================
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u8() {
@@ -854,6 +858,47 @@ pub mod test {
     #[ignore]
     fn test_alignment_compatibility_felt() {
         assert_eq!(get_integer_layout(252).align(), 8);
+    }
+
+    // ==============================
+    // == TESTS: cairo_to_sierra
+    // ==============================
+    #[test]
+    fn test_cairo_to_sierra_missing_file() {
+        let program = Path::new("missing_file.cairo");
+        let result = cairo_to_sierra(program);
+        assert!(Arc::strong_count(&result) == 0);
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_no_cairo_extension() {
+        let program = Path::new("test.txt");
+        let result = cairo_to_sierra(program);
+        assert!(Arc::strong_count(&result) == 0);
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_cairo_extension_lowercase() {
+        let program = Path::new("test.cairo");
+        let result = cairo_to_sierra(program);
+        assert!(Arc::strong_count(&result) > 0);
+        assert!(Arc::downcast::<Program>(result).is_ok());
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_cairo_extension_uppercase() {
+        let program = Path::new("test.CAIRO");
+        let result = cairo_to_sierra(program);
+        assert!(Arc::strong_count(&result) > 0);
+        assert!(Arc::downcast::<Program>(result).is_ok());
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_valid_compile_sierra_file() {
+        let program = Path::new("test.sierra");
+        let result = cairo_to_sierra(program);
+        assert!(Arc::strong_count(&result) > 0);
+        assert!(Arc::downcast::<Program>(result).is_ok());
     }
 
     #[derive(Debug)]
