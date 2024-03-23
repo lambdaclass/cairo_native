@@ -631,6 +631,8 @@ pub mod test {
         extensions::core::{CoreLibfunc, CoreType},
         program::Program,
         program_registry::ProgramRegistry,
+        ids::FunctionId,
+        program::{GenFunction, FunctionSignature, StatementIdx},
     };
     use melior::{
         dialect::DialectRegistry,
@@ -899,6 +901,72 @@ pub mod test {
         let result = cairo_to_sierra(program);
         assert!(Arc::strong_count(&result) > 0);
         assert!(Arc::downcast::<Program>(result).is_ok());
+    }
+
+    // ==============================
+    // == TESTS: find_entry_point
+    // ==============================
+    #[test]
+    fn test_empty_program() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_not_found() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![
+                GenFunction {
+                    id: FunctionId {
+                        id: 0,
+                        debug_name :  Some("not_entry_point".into()),
+                    },
+                    signature: FunctionSignature {
+                        ret_types: vec![],
+                        param_types: vec![],
+                    },
+                    params: vec![],
+                    entry_point: StatementIdx(0),
+                }
+            ],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_found() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![
+                GenFunction {
+                    id: FunctionId {
+                        id: 0,
+                        debug_name :  Some("entry_point".into()),
+                    },
+                    signature: FunctionSignature {
+                        ret_types: vec![],
+                        param_types: vec![],
+                    },
+                    params: vec![],
+                    entry_point: StatementIdx(0),
+                }
+            ],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_some());
+        assert_eq!(entry_point.unwrap().id.id, 0);
     }
 
     #[derive(Debug)]
