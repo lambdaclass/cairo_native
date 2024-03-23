@@ -1073,6 +1073,37 @@ pub mod test {
         assert_eq!(result, [4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4095]);
     }
 
+    // ==============================
+    // == TESTS: felt252_short_str
+    // ==============================
+    #[test]
+    fn test_felt252_short_str_empty_string() {
+        let value = "";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_invalid_input() {
+        let value = "h€llø";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [104, 108, 108, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_using_short_string_as_value() {
+        let value = "hello";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [1751477356, 1818587447, 1684632489, 1818586464, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_maximum_value() {
+        let value = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4095]);
+    }
+
     #[derive(Debug)]
     struct TestSyscallHandler;
 
