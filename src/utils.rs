@@ -642,8 +642,7 @@ pub mod test {
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
-    use tracing::Subscriber;
-    use std::{env::var, fmt::Formatter, fs, ops::Deref, path::Path};
+    use std::{env::var, fmt::Formatter, fs, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -1109,7 +1108,7 @@ pub mod test {
     // ==============================
     #[test]
     fn test_debug_with_empty_closure() {
-        let closure = |f: &mut Formatter| -> fmt::Result {
+        let closure = |_f: &mut Formatter| -> fmt::Result {
             Ok(())
         };
         let debug_wrapper = debug_with(closure);
@@ -1118,7 +1117,7 @@ pub mod test {
 
     #[test]
     fn test_debug_with_error_closure() {
-        let closure = |f: &mut Formatter| -> fmt::Result {
+        let closure = |_f: &mut Formatter| -> fmt::Result {
             Err(fmt::Error)
         };
         let debug_wrapper = debug_with(closure);
