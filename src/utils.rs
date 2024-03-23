@@ -1035,6 +1035,44 @@ pub mod test {
         assert_eq!(entry_point.unwrap().id.id, 15);
     }
 
+    // ==============================
+    // == TESTS: felt252_str
+    // ==============================
+    #[test]
+    #[should_panic(expected = "value must be a digit number")]
+    fn test_felt252_str_invalid_input() {
+        let value = "not_a_number";
+        felt252_str(value);
+    }
+
+    #[test]
+    fn test_felt252_str_positive_number() {
+        let value = "123456789";
+        let result = felt252_str(value);
+        assert_eq!(result, [123456789, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_str_negative_number() {
+        let value = "-123456789";
+        let result = felt252_str(value);
+        assert_eq!(result, [4294840507, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_str_zero() {
+        let value = "0";
+        let result = felt252_str(value);
+        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_str_maximum_value() {
+        let value = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+        let result = felt252_str(value);
+        assert_eq!(result, [4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4095]);
+    }
+
     #[derive(Debug)]
     struct TestSyscallHandler;
 
