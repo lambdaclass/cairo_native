@@ -2167,6 +2167,27 @@ mod test {
     }
 
     #[test]
+    fn seq_append2_popb1() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let mut data = data.span();
+                let _ = data.pop_back();
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_struct!([1u32].into())
+        );
+    }
+
+    #[test]
     fn seq_append1_popf1_append1() {
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -2265,6 +2286,35 @@ mod test {
     }
 
     #[test]
+    fn seq_append2_popb1_last() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let mut data_span = data.span();
+                let _ = data_span.pop_back();
+                let last = data_span.len() - 1;
+                *data_span.at(last)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(1u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            }
+        );
+    }
+
+    #[test]
     fn seq_append1_popf1_append1_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -2311,5 +2361,25 @@ mod test {
                 debug_name: None,
             },
         );
+    }
+    #[test]
+    fn array_pop_back_state() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(1_u32);
+                numbers.append(2_u32);
+                numbers.append(3_u32);
+                let mut numbers = numbers.span();
+                let _ = numbers.pop_back();
+                numbers
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(result, jit_struct!([1u32, 2u32].into()));
     }
 }
