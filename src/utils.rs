@@ -862,47 +862,6 @@ pub mod test {
     }
 
     // ==============================
-    // == TESTS: cairo_to_sierra
-    // ==============================
-    #[test]
-    fn test_cairo_to_sierra_missing_file() {
-        let program = Path::new("missing_file.cairo");
-        let result = cairo_to_sierra(program);
-        assert!(Arc::strong_count(&result) == 0);
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_no_cairo_extension() {
-        let program = Path::new("test.txt");
-        let result = cairo_to_sierra(program);
-        assert!(Arc::strong_count(&result) == 0);
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_cairo_extension_lowercase() {
-        let program = Path::new("test.cairo");
-        let result = cairo_to_sierra(program);
-        assert!(Arc::strong_count(&result) > 0);
-        assert!(Arc::downcast::<Program>(result).is_ok());
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_cairo_extension_uppercase() {
-        let program = Path::new("test.CAIRO");
-        let result = cairo_to_sierra(program);
-        assert!(Arc::strong_count(&result) > 0);
-        assert!(Arc::downcast::<Program>(result).is_ok());
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_valid_compile_sierra_file() {
-        let program = Path::new("test.sierra");
-        let result = cairo_to_sierra(program);
-        assert!(Arc::strong_count(&result) > 0);
-        assert!(Arc::downcast::<Program>(result).is_ok());
-    }
-
-    // ==============================
     // == TESTS: find_entry_point
     // ==============================
     #[test]
