@@ -1,8 +1,8 @@
 .text
 
 
-.global aot_trampoline
-aot_trampoline:
+.global _invoke_trampoline
+_invoke_trampoline:
     # rdi <- fn_ptr: extern "C" fn()
     # rsi <- args_ptr: *const u64
     # rdx <- args_len: usize
