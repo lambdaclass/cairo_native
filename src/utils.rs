@@ -629,10 +629,10 @@ pub mod test {
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
-        program::Program,
-        program_registry::ProgramRegistry,
         ids::FunctionId,
-        program::{GenFunction, FunctionSignature, StatementIdx},
+        program::Program,
+        program::{FunctionSignature, GenFunction, StatementIdx},
+        program_registry::ProgramRegistry,
     };
     use melior::{
         dialect::DialectRegistry,
@@ -882,20 +882,18 @@ pub mod test {
             type_declarations: vec![],
             libfunc_declarations: vec![],
             statements: vec![],
-            funcs: vec![
-                GenFunction {
-                    id: FunctionId {
-                        id: 0,
-                        debug_name :  Some("not_entry_point".into()),
-                    },
-                    signature: FunctionSignature {
-                        ret_types: vec![],
-                        param_types: vec![],
-                    },
-                    params: vec![],
-                    entry_point: StatementIdx(0),
-                }
-            ],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("not_entry_point".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
         };
         let entry_point = find_entry_point(&program, "entry_point");
         assert!(entry_point.is_none());
@@ -907,20 +905,18 @@ pub mod test {
             type_declarations: vec![],
             libfunc_declarations: vec![],
             statements: vec![],
-            funcs: vec![
-                GenFunction {
-                    id: FunctionId {
-                        id: 0,
-                        debug_name :  Some("entry_point".into()),
-                    },
-                    signature: FunctionSignature {
-                        ret_types: vec![],
-                        param_types: vec![],
-                    },
-                    params: vec![],
-                    entry_point: StatementIdx(0),
-                }
-            ],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("entry_point".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
         };
         let entry_point = find_entry_point(&program, "entry_point");
         assert!(entry_point.is_some());
@@ -948,20 +944,18 @@ pub mod test {
             type_declarations: vec![],
             libfunc_declarations: vec![],
             statements: vec![],
-            funcs: vec![
-                GenFunction {
-                    id: FunctionId {
-                        id: 0,
-                        debug_name :  Some("some_name".into()),
-                    },
-                    signature: FunctionSignature {
-                        ret_types: vec![],
-                        param_types: vec![],
-                    },
-                    params: vec![],
-                    entry_point: StatementIdx(0),
-                }
-            ],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("some_name".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
         };
         let entry_point = find_entry_point_by_idx(&program, 1);
         assert!(entry_point.is_none());
@@ -973,20 +967,18 @@ pub mod test {
             type_declarations: vec![],
             libfunc_declarations: vec![],
             statements: vec![],
-            funcs: vec![
-                GenFunction {
-                    id: FunctionId {
-                        id: 15,
-                        debug_name :  Some("some_name".into()),
-                    },
-                    signature: FunctionSignature {
-                        ret_types: vec![],
-                        param_types: vec![],
-                    },
-                    params: vec![],
-                    entry_point: StatementIdx(0),
-                }
-            ],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 15,
+                    debug_name: Some("some_name".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
         };
         let entry_point = find_entry_point_by_idx(&program, 15);
         assert!(entry_point.is_some());
@@ -1014,7 +1006,13 @@ pub mod test {
     fn test_felt252_str_negative_number() {
         let value = "-123";
         let result = felt252_str(value);
-        assert_eq!(result, [4294967174, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 16, 134217728]);
+        assert_eq!(
+            result,
+            [
+                4294967174, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 16,
+                134217728
+            ]
+        );
     }
 
     #[test]
@@ -1045,7 +1043,13 @@ pub mod test {
     fn test_felt252_short_str_long_numeric_string() {
         let value = "1234567890123456789012345678901234567890";
         let result = felt252_short_str(value);
-        assert_eq!(result, [926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510, 959459634]);
+        assert_eq!(
+            result,
+            [
+                926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510,
+                959459634
+            ]
+        );
     }
 
     #[test]
@@ -1067,9 +1071,7 @@ pub mod test {
     // ==============================
     #[test]
     fn test_debug_with_empty_closure() {
-        let closure = |_f: &mut Formatter| -> fmt::Result {
-            Ok(())
-        };
+        let closure = |_f: &mut Formatter| -> fmt::Result { Ok(()) };
         let debug_wrapper = debug_with(closure);
         assert_eq!(format!("{:?}", debug_wrapper), "");
     }
@@ -1077,9 +1079,7 @@ pub mod test {
     #[test]
     #[should_panic]
     fn test_debug_with_error_closure() {
-        let closure = |_f: &mut Formatter| -> Result<(), fmt::Error> {
-            Err(fmt::Error)
-        };
+        let closure = |_f: &mut Formatter| -> Result<(), fmt::Error> { Err(fmt::Error) };
         let debug_wrapper = debug_with(closure);
         let _ = format!("{:?}", debug_wrapper);
     }
@@ -1093,9 +1093,7 @@ pub mod test {
 
     #[test]
     fn test_debug_with_complex_closure() {
-        let closure = |f: &mut fmt::Formatter| {
-            write!(f, "Name: {}, Age: {}", "William", 28)
-        };
+        let closure = |f: &mut fmt::Formatter| write!(f, "Name: {}, Age: {}", "William", 28);
         let debug_wrapper = debug_with(closure);
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
