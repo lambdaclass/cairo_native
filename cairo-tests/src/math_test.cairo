@@ -1,9 +1,15 @@
 use core::option::OptionTrait;
 use core::math;
+use core::fmt::{Display, Debug};
 
 /// Helper for making a non-zero value.
-fn nz<N, +TryInto<N, NonZero<N>>>(n: N) -> NonZero<N> {
-    n.try_into().unwrap()
+fn nz<N, +TryInto<N, NonZero<N>>, +Display<N>, +Copy<N>, +Drop<N>, +Debug<N>>(n: N) -> NonZero<N>{
+    let nz_value: NonZero<N> = match n.try_into() {
+        Option::Some(nz2) => nz2,
+        Option::None => { panic!("Failed to create NonZero") },
+    };
+
+    nz_value
 }
 
 #[test]
@@ -55,9 +61,7 @@ fn test_inv_mod() {
     assert(math::inv_mod(nz(7), nz(1)) == Option::Some(0_usize), 'inv_mov(7, 1) != 0');
 }
 
-// TODO: Panicked with 0x36202f203220213d203320283729 ('6 / 2 != 3 (7)').
 #[test]
-#[ignore]
 fn test_u256_div_mod_n() {
     assert(math::u256_div_mod_n(6, 2, nz(7)) == Option::Some(3), '6 / 2 != 3 (7)');
     assert(math::u256_div_mod_n(5, 1, nz(7)) == Option::Some(5), '5 / 1 != 5 (7)');
