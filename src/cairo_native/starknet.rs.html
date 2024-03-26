@@ -1568,14 +1568,62 @@
 <a href="#1567" id="1567">1567</a>
 <a href="#1568" id="1568">1568</a>
 <a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
+<a href="#1573" id="1573">1573</a>
+<a href="#1574" id="1574">1574</a>
+<a href="#1575" id="1575">1575</a>
+<a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
+<a href="#1580" id="1580">1580</a>
+<a href="#1581" id="1581">1581</a>
+<a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
+<a href="#1611" id="1611">1611</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
-
-</span><span class="attr">#![allow(clippy::type_complexity)]
-#![allow(dead_code)]
 
 </span><span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="kw">pub type </span>SyscallResult&lt;T&gt; = std::result::Result&lt;T, Vec&lt;Felt&gt;&gt;;
+
+<span class="attr">#[repr(C)]
+#[derive(Debug)]
+</span><span class="kw">pub struct </span>ArrayAbi&lt;T&gt; {
+    <span class="kw">pub </span>ptr: <span class="kw-2">*mut </span>T,
+    <span class="kw">pub </span>since: u32,
+    <span class="kw">pub </span>until: u32,
+    <span class="kw">pub </span>capacity: u32,
+}
 
 <span class="doccomment">/// Binary representation of a `Felt` (in MLIR).
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -2056,7 +2104,7 @@
         alloc::Layout,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
-        ptr::NonNull,
+        ptr::{null_mut, NonNull},
     };
 
     <span class="macro">macro_rules! </span>field_offset {
@@ -2086,7 +2134,7 @@
     #[derive(Debug)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyscallResultAbiErr {
         <span class="kw">pub </span>tag: u8,
-        <span class="kw">pub </span>payload: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+        <span class="kw">pub </span>payload: ArrayAbi&lt;Felt252Abi&gt;,
     }
 
     <span class="attr">#[repr(C)]
@@ -2112,16 +2160,16 @@
         version: Felt252Abi,
         account_contract_address: Felt252Abi,
         max_fee: u128,
-        signature: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+        signature: ArrayAbi&lt;Felt252Abi&gt;,
         transaction_hash: Felt252Abi,
         chain_id: Felt252Abi,
         nonce: Felt252Abi,
-        resource_bounds: (NonNull&lt;ResourceBoundsAbi&gt;, u32, u32),
+        resource_bounds: ArrayAbi&lt;ResourceBoundsAbi&gt;,
         tip: u128,
-        paymaster_data: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+        paymaster_data: ArrayAbi&lt;Felt252Abi&gt;,
         nonce_data_availability_mode: u32,
         fee_data_availability_mode: u32,
-        account_deployment_data: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+        account_deployment_data: ArrayAbi&lt;Felt252Abi&gt;,
     }
 
     <span class="attr">#[repr(C)]
@@ -2144,7 +2192,7 @@
         version: Felt252Abi,
         account_contract_address: Felt252Abi,
         max_fee: u128,
-        signature: (NonNull&lt;Felt252Abi&gt;, u32, u32),
+        signature: ArrayAbi&lt;Felt252Abi&gt;,
         transaction_hash: Felt252Abi,
         chain_id: Felt252Abi,
         nonce: Felt252Abi,
@@ -2172,12 +2220,12 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
         ),
         deploy: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, (NonNull&lt;Felt252Abi&gt;, u32, u32))&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, ArrayAbi&lt;Felt252Abi&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
             contract_address_salt: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
             deploy_from_zero: bool,
         ),
         replace_class: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
@@ -2187,20 +2235,20 @@
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
         ),
         library_call: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;ArrayAbi&lt;Felt252Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
             function_selector: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ),
         call_contract: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;ArrayAbi&lt;Felt252Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             address: <span class="kw-2">&amp;</span>Felt252Abi,
             entry_point_selector: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ),
         storage_read: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
@@ -2221,21 +2269,21 @@
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            keys: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
-            data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            keys: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
+            data: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ),
         send_message_to_l1: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             to_address: <span class="kw-2">&amp;</span>Felt252Abi,
-            data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            data: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ),
         keccak: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;U256&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            input: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>u64, u32, u32),
+            input: <span class="kw-2">&amp;</span>ArrayAbi&lt;u64&gt;,
         ),
 
         secp256k1_new: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
@@ -2374,15 +2422,31 @@
             }
         }
 
-        <span class="kw">unsafe fn </span>alloc_mlir_array&lt;E: Clone&gt;(data: <span class="kw-2">&amp;</span>[E]) -&gt; (NonNull&lt;E&gt;, u32, u32) {
-            <span class="kw">let </span>ptr = libc::malloc(Layout::array::&lt;E&gt;(data.len()).unwrap().size()) <span class="kw">as </span><span class="kw-2">*mut </span>E;
+        <span class="kw">unsafe fn </span>alloc_mlir_array&lt;E: Clone&gt;(data: <span class="kw-2">&amp;</span>[E]) -&gt; ArrayAbi&lt;E&gt; {
+            <span class="kw">match </span>data.len() {
+                <span class="number">0 </span>=&gt; ArrayAbi {
+                    ptr: null_mut(),
+                    since: <span class="number">0</span>,
+                    until: <span class="number">0</span>,
+                    capacity: <span class="number">0</span>,
+                },
+                <span class="kw">_ </span>=&gt; {
+                    <span class="kw">let </span>ptr =
+                        libc::malloc(Layout::array::&lt;E&gt;(data.len()).unwrap().size()) <span class="kw">as </span><span class="kw-2">*mut </span>E;
 
-            <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
-            <span class="kw">for </span>(i, val) <span class="kw">in </span>data.iter().enumerate() {
-                ptr.add(i).write(val.clone());
+                    <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
+                    <span class="kw">for </span>(i, val) <span class="kw">in </span>data.iter().enumerate() {
+                        ptr.add(i).write(val.clone());
+                    }
+
+                    ArrayAbi {
+                        ptr,
+                        since: len,
+                        until: len,
+                        capacity: len,
+                    }
+                }
             }
-
-            (NonNull::new(ptr).unwrap(), len, len)
         }
 
         <span class="kw">fn </span>wrap_error&lt;E&gt;(e: <span class="kw-2">&amp;</span>[Felt]) -&gt; SyscallResultAbi&lt;E&gt; {
@@ -2578,12 +2642,12 @@
         <span class="comment">// TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
         </span><span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_deploy(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, (NonNull&lt;Felt252Abi&gt;, u32, u32))&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, ArrayAbi&lt;Felt252Abi&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
             contract_address_salt: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
             deploy_from_zero: bool,
         ) {
             <span class="kw">let </span>class_hash = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
@@ -2598,8 +2662,11 @@
             });
 
             <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>calldata).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>calldata).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2659,12 +2726,12 @@
         }
 
         <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_library_call(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;ArrayAbi&lt;Felt252Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             class_hash: <span class="kw-2">&amp;</span>Felt252Abi,
             function_selector: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
             <span class="kw">let </span>class_hash = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = class_hash.<span class="number">0</span>;
@@ -2678,8 +2745,11 @@
             });
 
             <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>calldata).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>calldata).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2709,12 +2779,12 @@
         }
 
         <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_call_contract(
-            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(NonNull&lt;Felt252Abi&gt;, u32, u32)&gt;,
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;ArrayAbi&lt;Felt252Abi&gt;&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             address: <span class="kw-2">&amp;</span>Felt252Abi,
             entry_point_selector: <span class="kw-2">&amp;</span>Felt252Abi,
-            calldata: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            calldata: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
             <span class="kw">let </span>address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = address.<span class="number">0</span>;
@@ -2728,8 +2798,11 @@
             });
 
             <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>calldata).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>calldata).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2818,12 +2891,15 @@
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;()&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            keys: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
-            data: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            keys: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
+            data: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
             <span class="kw">let </span>keys: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>keys).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>keys).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = keys.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = keys.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(keys.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2836,8 +2912,11 @@
             .collect();
 
             <span class="kw">let </span>data: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>data).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>data).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = data.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = data.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(data.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2867,7 +2946,7 @@
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
             to_address: <span class="kw-2">&amp;</span>Felt252Abi,
-            payload: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>Felt252Abi, u32, u32),
+            payload: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
             <span class="kw">let </span>to_address = Felt::from_bytes_be(<span class="kw-2">&amp;</span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data = to_address.<span class="number">0</span>;
@@ -2875,8 +2954,11 @@
                 data
             });
             <span class="kw">let </span>payload: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>payload).<span class="number">1 </span><span class="kw">as </span>usize;
-                std::slice::from_raw_parts((<span class="kw-2">*</span>payload).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = payload.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = payload.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(payload.ptr.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -2905,12 +2987,14 @@
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;U256&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            input: <span class="kw-2">*const </span>(<span class="kw-2">*const </span>u64, u32, u32),
+            input: <span class="kw-2">&amp;</span>ArrayAbi&lt;u64&gt;,
         ) {
             <span class="kw">let </span>input = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>len = (<span class="kw-2">*</span>input).<span class="number">1 </span><span class="kw">as </span>usize;
-
-                std::slice::from_raw_parts((<span class="kw-2">*</span>input).<span class="number">0</span>, len)
+                <span class="kw">let </span>since_offset = input.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = input.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
             };
 
             <span class="kw">let </span>result = ptr.keccak(input, gas);
