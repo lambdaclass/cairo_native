@@ -1093,7 +1093,7 @@ pub mod test {
 
     #[test]
     fn test_debug_with_complex_closure() {
-        let closure = |f: &mut fmt::Formatter| write!(f, "Name: {}, Age: {}", "William", 28);
+        let closure = |f: &mut fmt::Formatter| write!(f, "Name: William, Age: {}", 28);
         let debug_wrapper = debug_with(closure);
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
