@@ -516,7 +516,7 @@ pub(crate) mod handler {
     #[derive(Debug)]
     pub(crate) struct SyscallResultAbiErr {
         pub tag: u8,
-        pub payload: (NonNull<Felt252Abi>, u32, u32),
+        pub payload: (NonNull<Felt252Abi>, u32, u32, u32),
     }
 
     #[repr(C)]
@@ -542,16 +542,16 @@ pub(crate) mod handler {
         version: Felt252Abi,
         account_contract_address: Felt252Abi,
         max_fee: u128,
-        signature: (NonNull<Felt252Abi>, u32, u32),
+        signature: (NonNull<Felt252Abi>, u32, u32, u32),
         transaction_hash: Felt252Abi,
         chain_id: Felt252Abi,
         nonce: Felt252Abi,
-        resource_bounds: (NonNull<ResourceBoundsAbi>, u32, u32),
+        resource_bounds: (NonNull<ResourceBoundsAbi>, u32, u32, u32),
         tip: u128,
-        paymaster_data: (NonNull<Felt252Abi>, u32, u32),
+        paymaster_data: (NonNull<Felt252Abi>, u32, u32, u32),
         nonce_data_availability_mode: u32,
         fee_data_availability_mode: u32,
-        account_deployment_data: (NonNull<Felt252Abi>, u32, u32),
+        account_deployment_data: (NonNull<Felt252Abi>, u32, u32, u32),
     }
 
     #[repr(C)]
@@ -574,7 +574,7 @@ pub(crate) mod handler {
         version: Felt252Abi,
         account_contract_address: Felt252Abi,
         max_fee: u128,
-        signature: (NonNull<Felt252Abi>, u32, u32),
+        signature: (NonNull<Felt252Abi>, u32, u32, u32),
         transaction_hash: Felt252Abi,
         chain_id: Felt252Abi,
         nonce: Felt252Abi,
@@ -602,12 +602,12 @@ pub(crate) mod handler {
             gas: &mut u128,
         ),
         deploy: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32, u32))>,
             ptr: &mut T,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
             deploy_from_zero: bool,
         ),
         replace_class: extern "C" fn(
@@ -617,20 +617,20 @@ pub(crate) mod handler {
             class_hash: &Felt252Abi,
         ),
         library_call: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32, u32)>,
             ptr: &mut T,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             function_selector: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
         ),
         call_contract: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32, u32)>,
             ptr: &mut T,
             gas: &mut u128,
             address: &Felt252Abi,
             entry_point_selector: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
         ),
         storage_read: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
@@ -651,21 +651,21 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            keys: *const (*const Felt252Abi, u32, u32),
-            data: *const (*const Felt252Abi, u32, u32),
+            keys: &(*const Felt252Abi, u32, u32, u32),
+            data: &(*const Felt252Abi, u32, u32, u32),
         ),
         send_message_to_l1: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
             to_address: &Felt252Abi,
-            data: *const (*const Felt252Abi, u32, u32),
+            data: &(*const Felt252Abi, u32, u32, u32),
         ),
         keccak: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<U256>,
             ptr: &mut T,
             gas: &mut u128,
-            input: *const (*const u64, u32, u32),
+            input: &(*const u64, u32, u32, u32),
         ),
 
         secp256k1_new: extern "C" fn(
@@ -804,7 +804,7 @@ pub(crate) mod handler {
             }
         }
 
-        unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32) {
+        unsafe fn alloc_mlir_array<E: Clone>(data: &[E]) -> (NonNull<E>, u32, u32, u32) {
             let ptr = libc::malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
 
             let len: u32 = data.len().try_into().unwrap();
@@ -812,7 +812,7 @@ pub(crate) mod handler {
                 ptr.add(i).write(val.clone());
             }
 
-            (NonNull::new(ptr).unwrap(), len, len)
+            (NonNull::new(ptr).unwrap(), len, len, len)
         }
 
         fn wrap_error<E>(e: &[Felt]) -> SyscallResultAbi<E> {
@@ -1008,12 +1008,12 @@ pub(crate) mod handler {
         // TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
         extern "C" fn wrap_deploy(
-            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32))>,
+            result_ptr: &mut SyscallResultAbi<(Felt252Abi, (NonNull<Felt252Abi>, u32, u32, u32))>,
             ptr: &mut T,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             contract_address_salt: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
             deploy_from_zero: bool,
         ) {
             let class_hash = Felt::from_bytes_be(&{
@@ -1028,8 +1028,11 @@ pub(crate) mod handler {
             });
 
             let calldata: Vec<_> = unsafe {
-                let len = (*calldata).1 as usize;
-                std::slice::from_raw_parts((*calldata).0, len)
+                let since_offset = calldata.1 as usize;
+                let until_offset = calldata.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1089,12 +1092,12 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_library_call(
-            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32, u32)>,
             ptr: &mut T,
             gas: &mut u128,
             class_hash: &Felt252Abi,
             function_selector: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
         ) {
             let class_hash = Felt::from_bytes_be(&{
                 let mut data = class_hash.0;
@@ -1108,8 +1111,11 @@ pub(crate) mod handler {
             });
 
             let calldata: Vec<_> = unsafe {
-                let len = (*calldata).1 as usize;
-                std::slice::from_raw_parts((*calldata).0, len)
+                let since_offset = calldata.1 as usize;
+                let until_offset = calldata.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1139,12 +1145,12 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_call_contract(
-            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32)>,
+            result_ptr: &mut SyscallResultAbi<(NonNull<Felt252Abi>, u32, u32, u32)>,
             ptr: &mut T,
             gas: &mut u128,
             address: &Felt252Abi,
             entry_point_selector: &Felt252Abi,
-            calldata: *const (*const Felt252Abi, u32, u32),
+            calldata: &(*const Felt252Abi, u32, u32, u32),
         ) {
             let address = Felt::from_bytes_be(&{
                 let mut data = address.0;
@@ -1158,8 +1164,11 @@ pub(crate) mod handler {
             });
 
             let calldata: Vec<_> = unsafe {
-                let len = (*calldata).1 as usize;
-                std::slice::from_raw_parts((*calldata).0, len)
+                let since_offset = calldata.1 as usize;
+                let until_offset = calldata.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(calldata.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1248,12 +1257,15 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            keys: *const (*const Felt252Abi, u32, u32),
-            data: *const (*const Felt252Abi, u32, u32),
+            keys: &(*const Felt252Abi, u32, u32, u32),
+            data: &(*const Felt252Abi, u32, u32, u32),
         ) {
             let keys: Vec<_> = unsafe {
-                let len = (*keys).1 as usize;
-                std::slice::from_raw_parts((*keys).0, len)
+                let since_offset = keys.1 as usize;
+                let until_offset = keys.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(keys.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1266,8 +1278,11 @@ pub(crate) mod handler {
             .collect();
 
             let data: Vec<_> = unsafe {
-                let len = (*data).1 as usize;
-                std::slice::from_raw_parts((*data).0, len)
+                let since_offset = data.1 as usize;
+                let until_offset = data.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(data.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1297,7 +1312,7 @@ pub(crate) mod handler {
             ptr: &mut T,
             gas: &mut u128,
             to_address: &Felt252Abi,
-            payload: *const (*const Felt252Abi, u32, u32),
+            payload: &(*const Felt252Abi, u32, u32, u32),
         ) {
             let to_address = Felt::from_bytes_be(&{
                 let mut data = to_address.0;
@@ -1305,8 +1320,11 @@ pub(crate) mod handler {
                 data
             });
             let payload: Vec<_> = unsafe {
-                let len = (*payload).1 as usize;
-                std::slice::from_raw_parts((*payload).0, len)
+                let since_offset = payload.1 as usize;
+                let until_offset = payload.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(payload.0.add(since_offset), len)
             }
             .iter()
             .map(|x| {
@@ -1335,12 +1353,14 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<U256>,
             ptr: &mut T,
             gas: &mut u128,
-            input: *const (*const u64, u32, u32),
+            input: &(*const u64, u32, u32, u32),
         ) {
             let input = unsafe {
-                let len = (*input).1 as usize;
-
-                std::slice::from_raw_parts((*input).0, len)
+                let since_offset = input.1 as usize;
+                let until_offset = input.2 as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(input.0.add(since_offset), len)
             };
 
             let result = ptr.keccak(input, gas);
