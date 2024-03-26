@@ -1,6 +1,6 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
@@ -59,7 +59,7 @@ impl<'a> NativeExecutor<'a> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
             NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
@@ -72,7 +72,7 @@ impl<'a> NativeExecutor<'a> {
         args: &[JitValue],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
                 function_id,
@@ -95,7 +95,7 @@ impl<'a> NativeExecutor<'a> {
         args: &[Felt],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+    ) -> Result<ContractExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => {
                 executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)

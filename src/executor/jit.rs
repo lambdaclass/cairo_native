@@ -1,5 +1,5 @@
 use crate::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -69,11 +69,11 @@ impl<'m> JitNativeExecutor<'m> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+            .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
             &self.registry,
@@ -94,11 +94,11 @@ impl<'m> JitNativeExecutor<'m> {
         args: &[JitValue],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
+            .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
             &self.registry,
@@ -116,29 +116,26 @@ impl<'m> JitNativeExecutor<'m> {
         args: &[Felt],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+    ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::jit_engine::ErrorImpl::InsufficientGasError)?;
-
+            .map_err(|_| crate::error::Error::InsufficientGasError)?;
         // TODO: Check signature for contract interface.
-        Ok(ContractExecutionResult::from_execution_result(
-            super::invoke_dynamic(
-                &self.registry,
-                self.find_function_ptr(function_id),
-                self.extract_signature(function_id),
-                &[JitValue::Struct {
-                    fields: vec![JitValue::Array(
-                        args.iter().cloned().map(JitValue::Felt252).collect(),
-                    )],
-                    // TODO: Populate `debug_name`.
-                    debug_name: None,
-                }],
-                available_gas,
-                Some(syscall_handler),
-            ),
-        )?)
+        ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            &self.registry,
+            self.find_function_ptr(function_id),
+            self.extract_signature(function_id),
+            &[JitValue::Struct {
+                fields: vec![JitValue::Array(
+                    args.iter().cloned().map(JitValue::Felt252).collect(),
+                )],
+                // TODO: Populate `debug_name`.
+                debug_name: None,
+            }],
+            available_gas,
+            Some(syscall_handler),
+        ))
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {

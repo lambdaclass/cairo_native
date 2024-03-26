@@ -16,8 +16,7 @@
 //! # };
 //! # use cairo_native::{
 //! #     error::{
-//! #         libfuncs::{Error, Result},
-//! #         CoreTypeBuilderError,
+//! #         Error, Result,
 //! #     },
 //! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
 //! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
@@ -84,7 +83,7 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::error::libfuncs::Result;
+use crate::error::Result;
 use melior::{
     dialect::{arith, func, llvm},
     ir::{

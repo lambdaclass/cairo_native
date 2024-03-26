@@ -30,7 +30,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-use crate::error::compile::{CompileError, ErrorImpl};
+use crate::error::Error as CompileError;
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -270,7 +270,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
             let err = error.to_string_lossy().to_string();
             tracing::error!("error getting target triple: {}", err);
             LLVMDisposeMessage(*error_buffer);
-            Err(ErrorImpl::LLVMCompileError(err))?;
+            Err(CompileError::LLVMCompileError(err))?;
         }
         if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);

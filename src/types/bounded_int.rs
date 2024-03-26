@@ -2,7 +2,7 @@
 //!
 //! A `BoundedInt` is a int with a lower and high bound.
 
-use crate::{error::types::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::BoundedIntConcreteType,

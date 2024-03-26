@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -179,7 +179,7 @@ pub fn build_neg<'ctx, 'this>(
                     }
                 ),
             )
-            .ok_or(ErrorImpl::ParseAttributeError)?,
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -300,7 +300,7 @@ pub fn build_point_from_x<'ctx, 'this>(
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)?
         .result(0)?
         .into();
@@ -416,7 +416,7 @@ pub fn build_state_add<'ctx, 'this>(
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)?;
 
     let state = entry
@@ -540,7 +540,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .libfunc_ec_state_add_mul(
             context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
         )?;
@@ -632,7 +632,7 @@ pub fn build_state_finalize<'ctx, 'this>(
 
     let is_zero = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .libfunc_ec_state_try_finalize_nz(context, helper, entry, point_ptr, state_ptr, location)?
         .result(0)?
         .into();
@@ -681,7 +681,7 @@ pub fn build_state_init<'ctx, 'this>(
     let x = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").ok_or(ErrorImpl::ParseAttributeError)?,
+            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -689,7 +689,7 @@ pub fn build_state_init<'ctx, 'this>(
     let y = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").ok_or(ErrorImpl::ParseAttributeError)?,
+            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -820,7 +820,7 @@ pub fn build_try_new<'ctx, 'this>(
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(ErrorImpl::MissingMetadata)?
+        .ok_or(Error::MissingMetadata)?
         .libfunc_ec_point_try_new_nz(context, helper, entry, point_ptr, location)?
         .result(0)?
         .into();
