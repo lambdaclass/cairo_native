@@ -185,7 +185,7 @@
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
-    error::{libfuncs, types::Result},
+    error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -247,7 +247,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
     src_value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-) -&gt; libfuncs::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
     <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }

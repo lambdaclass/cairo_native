@@ -750,17 +750,12 @@
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
 <a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
 
 </span><span class="kw">use crate</span>::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    error::Error,
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
 };
@@ -936,7 +931,7 @@
         arena: <span class="kw-2">&amp;</span>Bump,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NonNull&lt;()&gt;, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NonNull&lt;()&gt;, Error&gt; {
         <span class="kw">let </span>ty = registry.get_type(type_id)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{
@@ -952,10 +947,7 @@
                 <span class="self">Self</span>::Array(data) =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Array(info) = <span class="self">Self</span>::resolve_type(ty, registry) {
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>elem_layout = elem_ty
-                            .layout(registry)
-                            .map_err(make_type_builder_error(type_id))<span class="question-mark">?
-                            </span>.pad_to_align();
+                        <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
                         <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>NonNull&lt;()&gt; =
                             libc::malloc(elem_layout.size() * data.len()).cast();
@@ -1008,7 +1000,7 @@
                             .as_mut() = len;
                         target.cast()
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"expected value of type {:?} but got an array"</span>,
                             type_id.debug_name
                         )))<span class="question-mark">?
@@ -1024,9 +1016,7 @@
                         <span class="kw">let </span><span class="kw-2">mut </span>is_memory_allocated = <span class="bool-val">false</span>;
                         <span class="kw">for </span>(member_type_id, member) <span class="kw">in </span>info.members.iter().zip(members) {
                             <span class="kw">let </span>member_ty = registry.get_type(member_type_id)<span class="question-mark">?</span>;
-                            <span class="kw">let </span>member_layout = member_ty
-                                .layout(registry)
-                                .map_err(make_type_builder_error(type_id))<span class="question-mark">?</span>;
+                            <span class="kw">let </span>member_layout = member_ty.layout(registry)<span class="question-mark">?</span>;
 
                             <span class="kw">let </span>(new_layout, offset) = <span class="kw">match </span>layout {
                                 <span class="prelude-val">Some</span>(layout) =&gt; layout.extend(member_layout)<span class="question-mark">?</span>,
@@ -1073,7 +1063,7 @@
                             ptr
                         }
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"expected value of type {:?} but got a struct"</span>,
                             type_id.debug_name
                         )))<span class="question-mark">?
@@ -1117,7 +1107,7 @@
                             .unwrap()
                             .cast()
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"expected value of type {:?} but got an enum value"</span>,
                             type_id.debug_name
                         )))<span class="question-mark">?
@@ -1150,7 +1140,7 @@
 
                         NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"expected value of type {:?} but got a felt dict"</span>,
                             type_id.debug_name
                         )))<span class="question-mark">?

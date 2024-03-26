@@ -590,7 +590,6 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
@@ -609,8 +608,7 @@
 //! # };
 //! # use cairo_native::{
 //! #     error::{
-//! #         libfuncs::{Error, Result},
-//! #         CoreTypeBuilderError,
+//! #         Error, Result,
 //! #     },
 //! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
 //! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
@@ -677,7 +675,7 @@
 
 </span><span class="attr">#![cfg(feature = <span class="string">"with-debug-utils"</span>)]
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::libfuncs::Result;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::Result;
 <span class="kw">use </span>melior::{
     dialect::{arith, func, llvm},
     ir::{

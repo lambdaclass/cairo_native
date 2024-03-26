@@ -512,7 +512,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-</span><span class="kw">use crate</span>::{error::CoreLibfuncBuilderError, metadata::MetadataStorage};
+</span><span class="kw">use crate</span>::{error::Error <span class="kw">as </span>CoreLibfuncBuilderError, metadata::MetadataStorage};
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -1002,7 +1002,7 @@
     block: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
-) -&gt; <span class="kw">crate</span>::error::libfuncs::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
+) -&gt; <span class="kw">crate</span>::error::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
     <span class="kw">let </span>k1 = block
         .append_operation(arith::constant(
             context,

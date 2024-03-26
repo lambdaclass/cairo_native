@@ -1786,7 +1786,7 @@
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;, <span class="kw">super</span>::error::types::Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;, <span class="kw">super</span>::error::Error&gt;;
 
     <span class="kw">fn </span>build_type_with_layout&lt;<span class="lifetime">'ctx</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -1795,7 +1795,7 @@
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">'ctx</span>&gt;, Layout), <span class="kw">super</span>::error::types::Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">'ctx</span>&gt;, Layout), <span class="kw">super</span>::error::Error&gt;;
 }
 
 <span class="kw">impl </span>ProgramRegistryExt <span class="kw">for </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
@@ -1806,7 +1806,7 @@
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;, <span class="kw">super</span>::error::types::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;, <span class="kw">super</span>::error::Error&gt; {
         registry
             .get_type(id)<span class="question-mark">?
             </span>.build(context, module, registry, metadata, id)
@@ -1819,7 +1819,7 @@
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
         id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">'ctx</span>&gt;, Layout), <span class="kw">super</span>::error::types::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type&lt;<span class="lifetime">'ctx</span>&gt;, Layout), <span class="kw">super</span>::error::Error&gt; {
         <span class="kw">let </span>concrete_type = registry.get_type(id)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((

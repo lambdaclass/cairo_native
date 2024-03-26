@@ -70,7 +70,7 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::MetadataStorage;
-<span class="kw">use crate</span>::{error::libfuncs, libfuncs::LibfuncHelper, types::WithSelf};
+<span class="kw">use crate</span>::{error::Result, libfuncs::LibfuncHelper, types::WithSelf};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
@@ -91,7 +91,7 @@
     <span class="kw-2">&amp;mut </span>MetadataStorage,
     WithSelf&lt;P&gt;,
     Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-) -&gt; libfuncs::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;;
+) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;;
 
 <span class="kw">type </span>CloneFnWrapper = Arc&lt;
     <span class="kw">dyn for</span>&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; Fn(
@@ -102,7 +102,7 @@
         <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         <span class="kw-2">&amp;mut </span>MetadataStorage,
         Value&lt;<span class="lifetime">'this</span>, <span class="lifetime">'ctx</span>&gt;,
-    ) -&gt; libfuncs::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;,
 &gt;;
 
 <span class="attr">#[derive(Default)]

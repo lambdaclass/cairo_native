@@ -636,7 +636,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::libfuncs::{ErrorImpl, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -1046,7 +1046,7 @@
     <span class="comment">// This libfunc's implementation is identical to `enum_match` aside from fetching the snapshotted enum's variants from the metadata:
     </span><span class="kw">let </span>variants_ids = metadata
         .get::&lt;EnumSnapshotVariantsMeta&gt;()
-        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
         </span>.get_variants(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)
         .expect(<span class="string">"enum should always have variants"</span>)
         .clone();

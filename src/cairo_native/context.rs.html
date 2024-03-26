@@ -186,7 +186,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::OnceLock;
 
 <span class="kw">use crate</span>::{
-    error::compile::CompileError,
+    error::Error,
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -242,7 +242,7 @@
 
     <span class="doccomment">/// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    </span><span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, CompileError&gt; {
+    </span><span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
         <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
         INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
             LLVM_InitializeAllTargets();
@@ -326,7 +326,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         program: <span class="kw-2">&amp;</span>Program,
         metadata_config: MetadataComputationConfig,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, CompileError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
 
         <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();

@@ -1181,7 +1181,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::libfuncs::{ErrorImpl, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
     utils::{mlir_asm, ProgramRegistryExt},
 };
@@ -1314,7 +1314,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {u128_ty}"</span>))
-        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
         ; k0 = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; u128_ty

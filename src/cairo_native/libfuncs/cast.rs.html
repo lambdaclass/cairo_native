@@ -795,17 +795,13 @@
 <a href="#794" id="794">794</a>
 <a href="#795" id="795">795</a>
 <a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span>std::ops::Shr;
 
 <span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::libfuncs::{ErrorImpl, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -865,10 +861,10 @@
     <span class="kw">let </span>dst_type = registry.get_type(<span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>src_width = src_type.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_width = dst_type.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
 
     <span class="kw">let </span>src_ty = src_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
@@ -881,9 +877,9 @@
     );
 
     <span class="kw">let </span>is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">? </span>|| dst_type.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
     <span class="kw">let </span>is_felt = <span class="macro">matches!</span>(src_type, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
 
@@ -912,13 +908,13 @@
                     <span class="string">"{} : {}"</span>,
                     metadata
                         .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                        .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                        .ok_or(Error::MissingMetadata)<span class="question-mark">?
                         </span>.prime()
                         .shr(<span class="number">1</span>),
                     src_ty
                 ),
             )
-            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
+            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
             <span class="kw">let </span>half_prime: melior::ir::Value = block
                 .append_operation(arith::constant(context, attr_halfprime_i252, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -959,12 +955,12 @@
                                 <span class="string">"{} : {}"</span>,
                                 metadata
                                     .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                                    .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
                                     </span>.prime(),
                                 src_ty
                             ),
                         )
-                        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?
@@ -979,7 +975,7 @@
                     .append_operation(arith::constant(
                         context,
                         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"-1 : {}"</span>, src_ty))
-                            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1034,7 +1030,7 @@
                         <span class="string">"{}: {}"</span>,
                         info.to_range
                             .intersection(<span class="kw-2">&amp;</span>info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                            .ok_or_else(|| Error::SierraAssert(
                                 <span class="string">"range should always interesct"</span>.to_string()
                             ))<span class="question-mark">?
                             </span>.upper,
@@ -1042,9 +1038,7 @@
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        <span class="string">"downcast: failed to make max value attribute"</span>.to_string(),
-                    )
+                    Error::Error(<span class="string">"downcast: failed to make max value attribute"</span>.to_string())
                 })<span class="question-mark">?</span>,
                 location,
             ))
@@ -1060,7 +1054,7 @@
                         <span class="string">"{}: {}"</span>,
                         info.to_range
                             .intersection(<span class="kw-2">&amp;</span>info.from_range)
-                            .ok_or_else(|| ErrorImpl::SierraAssert(
+                            .ok_or_else(|| Error::SierraAssert(
                                 <span class="string">"range should always interesct"</span>.to_string()
                             ))<span class="question-mark">?
                             </span>.lower,
@@ -1068,9 +1062,7 @@
                     ),
                 )
                 .ok_or_else(|| {
-                    ErrorImpl::CompileError(
-                        <span class="string">"downcast: failed to make min value attribute"</span>.to_string(),
-                    )
+                    Error::Error(<span class="string">"downcast: failed to make min value attribute"</span>.to_string())
                 })<span class="question-mark">?</span>,
                 location,
             ))
@@ -1160,17 +1152,17 @@
     );
 
     <span class="kw">let </span>src_width = src_ty.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_width = dst_ty.integer_width().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
     <span class="macro">assert!</span>(src_width &lt;= dst_width);
 
     <span class="kw">let </span>is_signed = src_ty.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">? </span>|| dst_ty.is_integer_signed().ok_or_else(|| {
-        ErrorImpl::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_felt = <span class="macro">matches!</span>(dst_ty, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
@@ -1194,7 +1186,7 @@
                 .append_operation(arith::constant(
                     context,
                     Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"0 : {}"</span>, dst_type))
-                        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1255,12 +1247,12 @@
                                 <span class="string">"{} : {}"</span>,
                                 metadata
                                     .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                                    .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
                                     </span>.prime(),
                                 dst_type
                             ),
                         )
-                        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?

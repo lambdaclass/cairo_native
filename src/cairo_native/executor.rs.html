@@ -778,7 +778,7 @@
 <a href="#777" id="777">777</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
@@ -837,7 +837,7 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             NativeExecutor::Aot(executor) =&gt; executor.invoke_dynamic(function_id, args, gas),
             NativeExecutor::Jit(executor) =&gt; executor.invoke_dynamic(function_id, args, gas),
@@ -850,7 +850,7 @@
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             NativeExecutor::Aot(executor) =&gt; executor.invoke_dynamic_with_syscall_handler(
                 function_id,
@@ -873,7 +873,7 @@
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             NativeExecutor::Aot(executor) =&gt; {
                 executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)

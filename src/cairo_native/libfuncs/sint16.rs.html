@@ -930,7 +930,7 @@
 <span class="kw">use </span>std::ops::Shr;
 
 <span class="kw">use crate</span>::{
-    error::libfuncs::{ErrorImpl, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -1017,7 +1017,7 @@
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {value_ty}"</span>))
-            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
@@ -1300,7 +1300,7 @@
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, i16::MAX, felt252_ty))
-                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1310,7 +1310,7 @@
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, i16::MIN, felt252_ty))
-                .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1327,13 +1327,13 @@
                 <span class="string">"{} : {}"</span>,
                 metadata
                     .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                    .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
                     </span>.prime()
                     .shr(<span class="number">1</span>),
                 felt252_ty
             ),
         )
-        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>;
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
         <span class="kw">let </span>half_prime: melior::ir::Value = block
             .append_operation(arith::constant(context, attr_halfprime_i252, location))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1374,12 +1374,12 @@
                             <span class="string">"{} : {}"</span>,
                             metadata
                                 .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                                .ok_or(ErrorImpl::MissingMetadata)<span class="question-mark">?
+                                .ok_or(Error::MissingMetadata)<span class="question-mark">?
                                 </span>.prime(),
                             felt252_ty
                         ),
                     )
-                    .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                    .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1394,7 +1394,7 @@
                 .append_operation(arith::constant(
                     context,
                     Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"-1 : {}"</span>, felt252_ty))
-                        .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?

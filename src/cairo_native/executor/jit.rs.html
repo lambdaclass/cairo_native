@@ -155,11 +155,8 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -229,11 +226,11 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
@@ -254,11 +251,11 @@
         args: <span class="kw-2">&amp;</span>[JitValue],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
@@ -276,29 +273,26 @@
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, RunnerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, Error&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::jit_engine::ErrorImpl::InsufficientGasError)<span class="question-mark">?</span>;
-
+            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
         <span class="comment">// TODO: Check signature for contract interface.
-        </span><span class="prelude-val">Ok</span>(ContractExecutionResult::from_execution_result(
-            <span class="kw">super</span>::invoke_dynamic(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
-                <span class="self">self</span>.find_function_ptr(function_id),
-                <span class="self">self</span>.extract_signature(function_id),
-                <span class="kw-2">&amp;</span>[JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::Array(
-                        args.iter().cloned().map(JitValue::Felt252).collect(),
-                    )],
-                    <span class="comment">// TODO: Populate `debug_name`.
-                    </span>debug_name: <span class="prelude-val">None</span>,
-                }],
-                available_gas,
-                <span class="prelude-val">Some</span>(syscall_handler),
-            ),
-        )<span class="question-mark">?</span>)
+        </span>ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
+            <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.extract_signature(function_id),
+            <span class="kw-2">&amp;</span>[JitValue::Struct {
+                fields: <span class="macro">vec!</span>[JitValue::Array(
+                    args.iter().cloned().map(JitValue::Felt252).collect(),
+                )],
+                <span class="comment">// TODO: Populate `debug_name`.
+                </span>debug_name: <span class="prelude-val">None</span>,
+            }],
+            available_gas,
+            <span class="prelude-val">Some</span>(syscall_handler),
+        ))
     }
 
     <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {

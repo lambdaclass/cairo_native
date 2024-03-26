@@ -127,13 +127,7 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    error::{jit_engine::ErrorImpl, JitRunnerError},
-    values::JitValue,
-};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{error::Error, values::JitValue};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="attr">#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -168,7 +162,7 @@
 
 <span class="kw">impl </span>ContractExecutionResult {
     <span class="doccomment">/// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
-    </span><span class="kw">pub fn </span>from_execution_result(result: ExecutionResult) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, JitRunnerError&gt; {
+    </span><span class="kw">pub fn </span>from_execution_result(result: ExecutionResult) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>error_msg = <span class="prelude-val">None</span>;
         <span class="kw">let </span>failure_flag;
 
@@ -192,22 +186,22 @@
                                     .collect();
                                 felt_vec
                             } <span class="kw">else </span>{
-                                <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                                <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                                     <span class="string">"wrong type, expect: array, value: {:?}"</span>,
                                     value
-                                ))))<span class="question-mark">?
+                                )))<span class="question-mark">?
                             </span>}
                         } <span class="kw">else </span>{
-                            <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                            <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                                 <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
                                 value
-                            ))))<span class="question-mark">?
+                            )))<span class="question-mark">?
                         </span>}
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
                             value
-                        ))))<span class="question-mark">?
+                        )))<span class="question-mark">?
                     </span>}
                 } <span class="kw">else if let </span>JitValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
                     <span class="kw">if let </span>JitValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">1</span>] {
@@ -233,23 +227,23 @@
                         error_msg = <span class="prelude-val">Some</span>(str_error);
                         felt_vec
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"wrong type, expect: array, value: {:?}"</span>,
                             value
-                        ))))<span class="question-mark">?
+                        )))<span class="question-mark">?
                     </span>}
                 } <span class="kw">else </span>{
-                    <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(<span class="macro">format!</span>(
+                    <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                         <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
                         value
-                    ))))<span class="question-mark">?
+                    )))<span class="question-mark">?
                 </span>}
             }
             <span class="kw">_ </span>=&gt; {
                 failure_flag = <span class="bool-val">true</span>;
-                <span class="prelude-val">Err</span>(JitRunnerError::from(ErrorImpl::UnexpectedValue(
+                <span class="prelude-val">Err</span>(Error::UnexpectedValue(
                     <span class="string">"wrong return value type expected a enum"</span>.to_string(),
-                )))<span class="question-mark">?
+                ))<span class="question-mark">?
             </span>}
         };
 

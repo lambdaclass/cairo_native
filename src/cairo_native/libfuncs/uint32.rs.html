@@ -1041,7 +1041,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::libfuncs::{ErrorImpl, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
     utils::ProgramRegistryExt,
 };
@@ -1135,7 +1135,7 @@
     <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {value_ty}"</span>))
-            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
@@ -1651,7 +1651,7 @@
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, u32::MAX, felt252_ty))
-            .ok_or(ErrorImpl::ParseAttributeError)<span class="question-mark">?</span>,
+            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ));
     <span class="kw">let </span>const_max = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

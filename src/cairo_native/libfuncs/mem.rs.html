@@ -137,7 +137,7 @@
 //! segments. Because of this, all of the memory-related libfuncs here are no-ops.
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use crate</span>::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+<span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
