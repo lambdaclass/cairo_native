@@ -829,7 +829,7 @@ pub(crate) mod handler {
 
                     ArrayAbi {
                         ptr,
-                        since: len,
+                        since: 0,
                         until: len,
                         capacity: len,
                     }
