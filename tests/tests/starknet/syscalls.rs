@@ -161,7 +161,20 @@ impl StarknetSyscallHandler for SyscallHandler {
         _calldata: &[Felt],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>> {
-        Ok(Vec::new())
+        Ok(vec![
+            Felt::from_dec_str(
+                "3358892263739032253767642605669710712087178958719188919195252597609334880396",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "1104291043781086177955655234103730593173963850634630109574183288837411031513",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "3346377229881115874907650557159666001431249650068516742483979624047277128413",
+            )
+            .unwrap(),
+        ])
     }
 
     fn call_contract(
@@ -171,7 +184,20 @@ impl StarknetSyscallHandler for SyscallHandler {
         _calldata: &[Felt],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Vec<Felt>> {
-        Ok(Vec::new())
+        Ok(vec![
+            Felt::from_dec_str(
+                "3358892263739032253767642605669710712087178958719188919195252597609334880396",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "1104291043781086177955655234103730593173963850634630109574183288837411031513",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "3346377229881115874907650557159666001431249650068516742483979624047277128413",
+            )
+            .unwrap(),
+        ])
     }
 
     fn storage_read(
@@ -588,7 +614,20 @@ fn library_call() {
         JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Array(Vec::new())],
+                fields: vec![JitValue::Array(vec![
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "3358892263739032253767642605669710712087178958719188919195252597609334880396"
+                    )
+                    .unwrap()),
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "1104291043781086177955655234103730593173963850634630109574183288837411031513"
+                    )
+                    .unwrap()),
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "3346377229881115874907650557159666001431249650068516742483979624047277128413"
+                    )
+                    .unwrap()),
+                ])],
                 debug_name: None,
             }),
             debug_name: None,
@@ -611,7 +650,20 @@ fn call_contract() {
         JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Array(Vec::new())],
+                fields: vec![JitValue::Array(vec![
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "3358892263739032253767642605669710712087178958719188919195252597609334880396"
+                    )
+                    .unwrap()),
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "1104291043781086177955655234103730593173963850634630109574183288837411031513"
+                    )
+                    .unwrap()),
+                    JitValue::Felt252(Felt::from_dec_str(
+                        "3346377229881115874907650557159666001431249650068516742483979624047277128413"
+                    )
+                    .unwrap()),
+                ])],
                 debug_name: None,
             }),
             debug_name: None,
