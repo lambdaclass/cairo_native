@@ -111,10 +111,8 @@ pub fn build_const_as_box<'ctx, 'this>(
     let inner_ty =
         registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
 
-    let mut types_stack = vec![inner_type];
-
     match inner_type {
-        CoreTypeConcrete::Struct(_struct_info) => {
+        CoreTypeConcrete::Struct(struct_info) => {
             dbg!("struct!");
             dbg!(&const_type.inner_data);
             todo!()
@@ -122,7 +120,6 @@ pub fn build_const_as_box<'ctx, 'this>(
         CoreTypeConcrete::Enum(_enum_info) => {
             match &const_type.inner_data[..] {
                 [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
-                    let tag = get_variant_sele
                     todo!()
                 }
                 _ => return Err(Error::ConstDataMismatch),
@@ -329,3 +326,28 @@ pub fn build_const_as_immediate<'ctx, 'this>(
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
+
+
+/*
+./cairo2/bin/cairo-compile -r -s program.cairo > program.sierra
+cargo r --bin  cairo-native-dump -- program.cairo
+
+
+use core::box::BoxTrait;
+
+enum MyEnum {
+    A: u32,
+    B: u16,
+}
+
+struct Hello {
+    x: MyEnum,
+}
+
+fn run_test() -> Hello {
+    let x = BoxTrait::new(Hello {
+        x: MyEnum::A(2)
+    });
+    x.unbox()
+}
+*/
