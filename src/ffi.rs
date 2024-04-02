@@ -3,6 +3,7 @@ use llvm_sys::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
+    error::LLVMGetErrorMessage,
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
         LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
@@ -14,13 +15,16 @@ use llvm_sys::{
         LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
+    transforms::pass_builder::{
+        LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMRunPasses,
+    },
 };
 use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::MlirOperation;
 use std::{
     borrow::Cow,
     error::Error,
-    ffi::{c_void, CStr},
+    ffi::{c_void, CStr, CString},
     fmt::Display,
     io::Write,
     mem::MaybeUninit,
@@ -30,7 +34,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-use crate::error::Error as CompileError;
+use crate::error::compile::{CompileError, ErrorImpl};
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -129,6 +133,23 @@ pub fn module_to_object(
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
+
+        let opts = LLVMCreatePassBuilderOptions();
+        let opt = match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        };
+        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        if !error.is_null() {
+            let msg = LLVMGetErrorMessage(error);
+            let msg = CStr::from_ptr(msg);
+            Err(LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
@@ -270,7 +291,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
             let err = error.to_string_lossy().to_string();
             tracing::error!("error getting target triple: {}", err);
             LLVMDisposeMessage(*error_buffer);
-            Err(CompileError::LLVMCompileError(err))?;
+            Err(ErrorImpl::LLVMCompileError(err))?;
         }
         if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
