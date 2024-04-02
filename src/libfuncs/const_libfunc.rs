@@ -275,12 +275,14 @@ pub fn build_const_as_immediate<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConstAsImmediateConcreteLibfunc,
 ) -> Result<()> {
-    let value_ty = registry.get_type(&info.const_type)?;
+    let const_ty = registry.get_type(&info.const_type)?;
 
-    let const_type = match &value_ty {
+    // Create constant
+    let const_type = match &const_ty {
         CoreTypeConcrete::Const(inner) => inner,
         _ => unreachable!(),
     };
+
     // const_type.inner_data Should be one of the following:
     // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
     //   etc.).
@@ -289,44 +291,79 @@ pub fn build_const_as_immediate<'ctx, 'this>(
     // - A selector (a single value) followed by a const type, if the inner type is an enum. The
     //   type of the const type must be the same as the corresponding enum variant type.
 
-    let value_type =
+    let inner_type = registry.get_type(&const_type.inner_ty)?;
+    let inner_ty =
         registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
-    // it seems it's only used for simple data types.
-    // If the value is a felt252 need to check if the it is negative and add prime to it
-    let mut value = const_type.inner_data[0].clone();
-    if const_type
-        .inner_ty
-        .debug_name
-        .as_ref()
-        .is_some_and(|name| name == "felt252")
-    {
-        if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
-            if num.sign() == num_bigint::Sign::Minus {
-                let prime = metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(Error::MissingMetadata)?
-                    .prime();
-                let value_mod_prime =
-                    num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
-                let generic_arg = GenericArg::Value(value_mod_prime);
-                value = generic_arg;
-            }
-        }
-    }
 
-    let result = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let result = match inner_type {
+        CoreTypeConcrete::Struct(struct_info) => {
+            dbg!("struct!");
+            dbg!(&const_type.inner_data);
+            todo!()
+        }
+        CoreTypeConcrete::Enum(_enum_info) => {
+            match &const_type.inner_data[..] {
+                [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
+                    todo!()
+                }
+                _ => return Err(Error::ConstDataMismatch),
+            }
+            dbg!("enum!");
+            dbg!(&const_type.inner_data);
+            todo!()
+        }
+        CoreTypeConcrete::NonZero(_) => match &const_type.inner_data[..] {
+            [GenericArg::Type(_inner)] => {
+                todo!()
+            }
+            _ => return Err(Error::ConstDataMismatch),
+        },
+        inner_type => match &const_type.inner_data[..] {
+            [GenericArg::Value(value)] => {
+                let mlir_value: Value = match inner_type {
+                    CoreTypeConcrete::Felt252(_) => {
+                        let value = if value.sign() == num_bigint::Sign::Minus {
+                            let prime = metadata
+                                .get::<PrimeModuloMeta<Felt>>()
+                                .ok_or(Error::MissingMetadata)?
+                                .prime();
+
+                            value + prime.to_bigint().expect("Prime to BigInt shouldn't fail")
+                        } else {
+                            value.clone()
+                        };
+
+                        entry
+                            .append_operation(arith::constant(
+                                context,
+                                Attribute::parse(context, &format!("{} : {}", value, inner_ty))
+                                    .unwrap(),
+                                location,
+                            ))
+                            .result(0)?
+                            .into()
+                    }
+                    // any other int type
+                    _ => entry
+                        .append_operation(arith::constant(
+                            context,
+                            Attribute::parse(context, &format!("{} : {}", value, inner_ty))
+                                .unwrap(),
+                            location,
+                        ))
+                        .result(0)?
+                        .into(),
+                };
+
+                mlir_value
+            }
+            _ => return Err(Error::ConstDataMismatch),
+        },
+    };
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
-
 
 /*
 ./cairo2/bin/cairo-compile -r -s program.cairo > program.sierra
