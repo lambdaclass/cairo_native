@@ -39,6 +39,7 @@ mod test {
         utils::test::{load_cairo, run_program},
         values::JitValue,
     };
+    use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::collections::HashMap;
 
@@ -138,7 +139,7 @@ mod test {
         };
 
         let result = run_program(&program, "run_program", &[]);
-        assert_eq!(
+        pretty_assertions_sorted::assert_eq_sorted!(
             result.return_value,
             JitValue::Felt252Dict {
                 value: HashMap::from([

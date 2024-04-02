@@ -122,12 +122,12 @@ fn remap_sierra_statements_to_locations(
 
 fn locate_statement(variables: &Arena<Variable>, statement: &LoweringStatement) -> LocationId {
     match statement {
-        LoweringStatement::Literal(x) => variables[x.output].location,
         LoweringStatement::Call(x) => x.location,
         LoweringStatement::StructConstruct(x) => variables[x.output].location,
         LoweringStatement::StructDestructure(x) => x.input.location,
         LoweringStatement::EnumConstruct(x) => variables[x.output].location,
-        LoweringStatement::Snapshot(x) => variables[x.output_snapshot].location,
+        LoweringStatement::Snapshot(x) => variables[x.snapshot()].location,
         LoweringStatement::Desnap(x) => variables[x.output].location,
+        LoweringStatement::Const(x) => variables[x.output].location,
     }
 }

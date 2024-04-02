@@ -6,7 +6,7 @@ use cairo_lang_defs::plugin::NamedPlugin;
 use cairo_lang_semantic::plugin::PluginSuite;
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{
-    contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
+    compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
 use cairo_native::{
