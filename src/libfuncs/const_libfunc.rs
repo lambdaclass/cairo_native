@@ -26,7 +26,7 @@ use melior::{
         arith,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
     Context,
 };
 use num_bigint::{BigInt, ToBigInt};
@@ -98,6 +98,7 @@ pub fn build_const_as_box<'ctx, 'this>(
         CoreTypeConcrete::Const(inner) => inner,
         _ => unreachable!(),
     };
+
     // const_type.inner_data Should be one of the following:
     // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
     //   etc.).
@@ -106,53 +107,91 @@ pub fn build_const_as_box<'ctx, 'this>(
     // - A selector (a single value) followed by a const type, if the inner type is an enum. The
     //   type of the const type must be the same as the corresponding enum variant type.
 
-    let value_type =
+    let inner_type = registry.get_type(&const_type.inner_ty)?;
+    let inner_ty =
         registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
 
-    if const_type.inner_data.len() == 1 {
-        // Simple data types.
-        // If the value is a felt252 need to check if the it is negative and add prime to it
-        let mut value = const_type.inner_data[0].clone();
-        if const_type
-            .inner_ty
-            .debug_name
-            .as_ref()
-            .is_some_and(|name| name == "felt252")
-        {
-            if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
-                if num.sign() == num_bigint::Sign::Minus {
-                    let prime = metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime();
-                    let value_mod_prime =
-                        num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
-                    let generic_arg = GenericArg::Value(value_mod_prime);
-                    value = generic_arg;
-                }
-            }
-        }
-        let value = entry
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(context, &format!("{} : {}", value, value_type)).unwrap(),
-                location,
-            ))
-            .result(0)?
-            .into();
+    let mut types_stack = vec![inner_type];
 
-        // Store constant in box
-        entry.append_operation(llvm::store(
-            context,
-            value,
-            ptr,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                inner_layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
-        ));
-    } else if let Some(variants) = registry.get_type(&const_type.inner_ty)?.variants() {
+    match inner_type {
+        CoreTypeConcrete::Struct(_struct_info) => {
+            dbg!("struct!");
+            dbg!(&const_type.inner_data);
+            todo!()
+        }
+        CoreTypeConcrete::Enum(_enum_info) => {
+            match &const_type.inner_data[..] {
+                [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
+                    let tag = get_variant_sele
+                    todo!()
+                }
+                _ => return Err(Error::ConstDataMismatch),
+            }
+            dbg!("enum!");
+            dbg!(&const_type.inner_data);
+            todo!()
+        }
+        CoreTypeConcrete::NonZero(_) => match &const_type.inner_data[..] {
+            [GenericArg::Type(_inner)] => {
+                todo!()
+            }
+            _ => return Err(Error::ConstDataMismatch),
+        },
+        inner_type => match &const_type.inner_data[..] {
+            [GenericArg::Value(value)] => {
+                let mlir_value: Value = match inner_type {
+                    CoreTypeConcrete::Felt252(_) => {
+                        let value = if value.sign() == num_bigint::Sign::Minus {
+                            let prime = metadata
+                                .get::<PrimeModuloMeta<Felt>>()
+                                .ok_or(Error::MissingMetadata)?
+                                .prime();
+
+                            value + prime.to_bigint().expect("Prime to BigInt shouldn't fail")
+                        } else {
+                            value.clone()
+                        };
+
+                        entry
+                            .append_operation(arith::constant(
+                                context,
+                                Attribute::parse(context, &format!("{} : {}", value, inner_ty))
+                                    .unwrap(),
+                                location,
+                            ))
+                            .result(0)?
+                            .into()
+                    }
+                    // any other int type
+                    _ => entry
+                        .append_operation(arith::constant(
+                            context,
+                            Attribute::parse(context, &format!("{} : {}", value, inner_ty))
+                                .unwrap(),
+                            location,
+                        ))
+                        .result(0)?
+                        .into(),
+                };
+
+                // Store constant in box
+                entry.append_operation(llvm::store(
+                    context,
+                    mlir_value,
+                    ptr,
+                    location,
+                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                        inner_layout.align() as i64,
+                        IntegerType::new(context, 64).into(),
+                    ))),
+                ));
+            }
+            _ => return Err(Error::ConstDataMismatch),
+        },
+    }
+
+    /*
+    if let Some(variants) = registry.get_type(&const_type.inner_ty)?.variants() {
         use num_traits::cast::ToPrimitive;
         let tag = match &const_type.inner_data[0] {
             GenericArg::Value(val) => val.to_usize().unwrap_or_default(),
@@ -223,6 +262,7 @@ pub fn build_const_as_box<'ctx, 'this>(
             ))),
         ));
     }
+    */
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())

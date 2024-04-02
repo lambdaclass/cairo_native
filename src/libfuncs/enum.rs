@@ -97,7 +97,7 @@ pub fn build_init<'ctx, 'this>(
             let tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(info.index as i64, tag_ty).into(),
+                    IntegerAttribute::new(info.index.try_into().expect("couldnt convert index to i64"), tag_ty).into(),
                     location,
                 ))
                 .result(0)?
