@@ -61,7 +61,7 @@ pub enum Error {
     LLVMCompileError(String),
 
     #[error("cairo const data mismatch")]
-    ConstDataMismatch
+    ConstDataMismatch,
 }
 
 pub fn make_unexpected_value_error(expected: String) -> Error {

@@ -11,6 +11,7 @@ use cairo_lang_sierra::{
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -59,26 +60,55 @@ pub fn build_construct<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let (struct_ty, layout) = registry.build_type_with_layout(
+    let mut fields = Vec::new();
+
+    for (i, param) in info.param_signatures().iter().enumerate() {
+        fields.push((param.ty.clone(), entry.argument(i).unwrap().into()));
+    }
+
+    let value = build_struct_value(
         context,
-        helper,
         registry,
+        entry,
+        location,
+        helper,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
+        &fields,
     )?;
+
+    entry.append_operation(helper.br(0, &[value], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `struct_construct` libfunc.
+#[allow(clippy::too_many_arguments)]
+pub fn build_struct_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    struct_type: &ConcreteTypeId,
+    fields: &[(ConcreteTypeId, Value<'ctx, 'this>)],
+) -> Result<Value<'ctx, 'this>> {
+    let (struct_ty, layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, struct_type)?;
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
     let mut is_memory_allocated = false;
-    for (i, param_sig) in info.param_signatures().iter().enumerate() {
-        let type_info = registry.get_type(&param_sig.ty)?;
+    for (i, (field_ty, field_value)) in fields.iter().enumerate() {
+        let type_info = registry.get_type(field_ty)?;
 
         let value = if type_info.is_memory_allocated(registry) {
             is_memory_allocated = true;
             entry
                 .append_operation(llvm::load(
                     context,
-                    entry.argument(i)?.into(),
-                    type_info.build(context, helper, registry, metadata, &param_sig.ty)?,
+                    *field_value,
+                    type_info.build(context, helper, registry, metadata, field_ty)?,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                         type_info.layout(registry)?.align() as i64,
@@ -88,7 +118,7 @@ pub fn build_construct<'ctx, 'this>(
                 .result(0)?
                 .into()
         } else {
-            entry.argument(i)?.into()
+            *field_value
         };
 
         acc = entry.append_operation(llvm::insert_value(
@@ -138,12 +168,10 @@ pub fn build_construct<'ctx, 'this>(
             ))),
         ));
 
-        entry.append_operation(helper.br(0, &[stack_ptr], location));
+        Ok(stack_ptr)
     } else {
-        entry.append_operation(helper.br(0, &[acc.result(0)?.into()], location));
+        Ok(acc.result(0)?.into())
     }
-
-    Ok(())
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.

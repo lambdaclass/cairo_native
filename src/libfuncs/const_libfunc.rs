@@ -5,6 +5,7 @@ use std::str::FromStr;
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    libfuncs::r#struct::build_struct_value,
     metadata::{
         prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
@@ -15,6 +16,7 @@ use cairo_lang_sierra::{
     extensions::{
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
+            ConstConcreteType,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
     },
@@ -107,85 +109,21 @@ pub fn build_const_as_box<'ctx, 'this>(
     // - A selector (a single value) followed by a const type, if the inner type is an enum. The
     //   type of the const type must be the same as the corresponding enum variant type.
 
-    let inner_type = registry.get_type(&const_type.inner_ty)?;
-    let inner_ty =
-        registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
+    let value = build_const_type_value(
+        context, registry, entry, location, helper, metadata, const_type,
+    )?;
 
-    match inner_type {
-        CoreTypeConcrete::Struct(struct_info) => {
-            dbg!("struct!");
-            dbg!(&const_type.inner_data);
-            todo!()
-        }
-        CoreTypeConcrete::Enum(_enum_info) => {
-            match &const_type.inner_data[..] {
-                [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
-                    todo!()
-                }
-                _ => return Err(Error::ConstDataMismatch),
-            }
-            dbg!("enum!");
-            dbg!(&const_type.inner_data);
-            todo!()
-        }
-        CoreTypeConcrete::NonZero(_) => match &const_type.inner_data[..] {
-            [GenericArg::Type(_inner)] => {
-                todo!()
-            }
-            _ => return Err(Error::ConstDataMismatch),
-        },
-        inner_type => match &const_type.inner_data[..] {
-            [GenericArg::Value(value)] => {
-                let mlir_value: Value = match inner_type {
-                    CoreTypeConcrete::Felt252(_) => {
-                        let value = if value.sign() == num_bigint::Sign::Minus {
-                            let prime = metadata
-                                .get::<PrimeModuloMeta<Felt>>()
-                                .ok_or(Error::MissingMetadata)?
-                                .prime();
-
-                            value + prime.to_bigint().expect("Prime to BigInt shouldn't fail")
-                        } else {
-                            value.clone()
-                        };
-
-                        entry
-                            .append_operation(arith::constant(
-                                context,
-                                Attribute::parse(context, &format!("{} : {}", value, inner_ty))
-                                    .unwrap(),
-                                location,
-                            ))
-                            .result(0)?
-                            .into()
-                    }
-                    // any other int type
-                    _ => entry
-                        .append_operation(arith::constant(
-                            context,
-                            Attribute::parse(context, &format!("{} : {}", value, inner_ty))
-                                .unwrap(),
-                            location,
-                        ))
-                        .result(0)?
-                        .into(),
-                };
-
-                // Store constant in box
-                entry.append_operation(llvm::store(
-                    context,
-                    mlir_value,
-                    ptr,
-                    location,
-                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        inner_layout.align() as i64,
-                        IntegerType::new(context, 64).into(),
-                    ))),
-                ));
-            }
-            _ => return Err(Error::ConstDataMismatch),
-        },
-    }
+    // Store constant in box
+    entry.append_operation(llvm::store(
+        context,
+        value,
+        ptr,
+        location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            inner_layout.align() as i64,
+            IntegerType::new(context, 64).into(),
+        ))),
+    ));
 
     /*
     if let Some(variants) = registry.get_type(&const_type.inner_ty)?.variants() {
@@ -277,48 +215,92 @@ pub fn build_const_as_immediate<'ctx, 'this>(
 ) -> Result<()> {
     let const_ty = registry.get_type(&info.const_type)?;
 
-    // Create constant
     let const_type = match &const_ty {
         CoreTypeConcrete::Const(inner) => inner,
         _ => unreachable!(),
     };
 
-    // const_type.inner_data Should be one of the following:
-    // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
-    //   etc.).
-    // - A list of const types, if the inner type is a struct. The type of each const type must be
-    //   the same as the corresponding struct member type.
-    // - A selector (a single value) followed by a const type, if the inner type is an enum. The
-    //   type of the const type must be the same as the corresponding enum variant type.
+    let value = build_const_type_value(
+        context, registry, entry, location, helper, metadata, const_type,
+    )?;
 
-    let inner_type = registry.get_type(&const_type.inner_ty)?;
-    let inner_ty =
-        registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
+    entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
+}
 
-    let result = match inner_type {
-        CoreTypeConcrete::Struct(struct_info) => {
+pub fn build_const_type_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConstConcreteType,
+) -> Result<Value<'ctx, 'this>> {
+    let inner_type = registry.get_type(&info.inner_ty)?;
+    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.inner_ty)?;
+
+    match inner_type {
+        CoreTypeConcrete::Struct(_) => {
             dbg!("struct!");
-            dbg!(&const_type.inner_data);
-            todo!()
+            dbg!(&info.inner_data);
+            let mut fields = Vec::new();
+
+            for field in &info.inner_data {
+                match field {
+                    GenericArg::Type(const_field_ty) => {
+                        let field_type = registry.get_type(const_field_ty)?;
+
+                        let const_field_type = match &field_type {
+                            CoreTypeConcrete::Const(inner) => inner,
+                            _ => unreachable!(),
+                        };
+
+                        let field_ty = const_field_type.inner_ty.clone();
+                        let field_value = build_const_type_value(
+                            context,
+                            registry,
+                            entry,
+                            location,
+                            helper,
+                            metadata,
+                            const_field_type,
+                        )?;
+                        fields.push((field_ty, field_value));
+                    }
+                    _ => return Err(Error::ConstDataMismatch),
+                }
+            }
+
+            build_struct_value(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                &info.inner_ty,
+                &fields,
+            )
         }
         CoreTypeConcrete::Enum(_enum_info) => {
-            match &const_type.inner_data[..] {
+            match &info.inner_data[..] {
                 [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
                     todo!()
                 }
                 _ => return Err(Error::ConstDataMismatch),
             }
             dbg!("enum!");
-            dbg!(&const_type.inner_data);
+            dbg!(&info.inner_data);
             todo!()
         }
-        CoreTypeConcrete::NonZero(_) => match &const_type.inner_data[..] {
+        CoreTypeConcrete::NonZero(_) => match &info.inner_data[..] {
             [GenericArg::Type(_inner)] => {
                 todo!()
             }
-            _ => return Err(Error::ConstDataMismatch),
+            _ => Err(Error::ConstDataMismatch),
         },
-        inner_type => match &const_type.inner_data[..] {
+        inner_type => match &info.inner_data[..] {
             [GenericArg::Value(value)] => {
                 let mlir_value: Value = match inner_type {
                     CoreTypeConcrete::Felt252(_) => {
@@ -355,14 +337,11 @@ pub fn build_const_as_immediate<'ctx, 'this>(
                         .into(),
                 };
 
-                mlir_value
+                Ok(mlir_value)
             }
-            _ => return Err(Error::ConstDataMismatch),
+            _ => Err(Error::ConstDataMismatch),
         },
-    };
-
-    entry.append_operation(helper.br(0, &[result], location));
-    Ok(())
+    }
 }
 
 /*
