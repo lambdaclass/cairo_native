@@ -15,6 +15,7 @@ use cairo_lang_sierra::{
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -65,8 +66,38 @@ pub fn build_init<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &EnumInitConcreteLibfunc,
 ) -> Result<()> {
-    let type_info = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let val = build_enum_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        entry.argument(0)?.into(),
+        &info.branch_signatures()[0].vars[0].ty,
+        &info.signature.param_signatures[0].ty,
+        info.index,
+    )?;
+    entry.append_operation(helper.br(0, &[val], location));
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_enum_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    payload_value: Value<'ctx, 'this>,
+    enum_type: &ConcreteTypeId,
+    variant_type: &ConcreteTypeId,
+    variant_index: usize,
+) -> Result<Value<'ctx, 'this>> {
+    let type_info = registry.get_type(enum_type)?;
+    let payload_type_info = registry.get_type(variant_type)?;
 
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
@@ -76,10 +107,8 @@ pub fn build_init<'ctx, 'this>(
         type_info.variants().unwrap(),
     )?;
 
-    match variant_tys.len() {
-        0 | 1 => {
-            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-        }
+    Ok(match variant_tys.len() {
+        0 | 1 => payload_value,
         _ => {
             let enum_ty = llvm::r#type::r#struct(
                 context,
@@ -88,7 +117,7 @@ pub fn build_init<'ctx, 'this>(
                     if payload_type_info.is_zst(registry) {
                         llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
                     } else {
-                        variant_tys[info.index].0
+                        variant_tys[variant_index].0
                     },
                 ],
                 false,
@@ -98,7 +127,9 @@ pub fn build_init<'ctx, 'this>(
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(
-                        info.index.try_into().expect("couldnt convert index to i64"),
+                        variant_index
+                            .try_into()
+                            .expect("couldnt convert index to i64"),
                         tag_ty,
                     )
                     .into(),
@@ -111,18 +142,18 @@ pub fn build_init<'ctx, 'this>(
                 entry
                     .append_operation(llvm::load(
                         context,
-                        entry.argument(0)?.into(),
-                        variant_tys[info.index].0,
+                        payload_value,
+                        variant_tys[variant_index].0,
                         location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            variant_tys[info.index].1.align() as i64,
+                            variant_tys[variant_index].1.align() as i64,
                             IntegerType::new(context, 64).into(),
                         ))),
                     ))
                     .result(0)?
                     .into()
             } else {
-                entry.argument(0)?.into()
+                payload_value
             };
 
             let val = entry
@@ -176,13 +207,9 @@ pub fn build_init<'ctx, 'this>(
                                 layout.align() as i64,
                                 IntegerType::new(context, 64).into(),
                             )))
-                            .elem_type(Some(TypeAttribute::new(type_info.build(
-                                context,
-                                helper,
-                                registry,
-                                metadata,
-                                &info.branch_signatures()[0].vars[0].ty,
-                            )?))),
+                            .elem_type(Some(TypeAttribute::new(
+                                type_info.build(context, helper, registry, metadata, enum_type)?,
+                            ))),
                     ))
                     .result(0)?
                     .into();
@@ -198,14 +225,12 @@ pub fn build_init<'ctx, 'this>(
                     ))),
                 ));
 
-                entry.append_operation(helper.br(0, &[stack_ptr], location));
+                stack_ptr
             } else {
-                entry.append_operation(helper.br(0, &[val], location));
+                val
             }
         }
-    }
-
-    Ok(())
+    })
 }
 
 /// Generate MLIR operations for the `enum_match` libfunc.

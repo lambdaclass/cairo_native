@@ -5,7 +5,7 @@ use std::str::FromStr;
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
-    libfuncs::r#struct::build_struct_value,
+    libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{
         prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
@@ -284,15 +284,41 @@ pub fn build_const_type_value<'ctx, 'this>(
             )
         }
         CoreTypeConcrete::Enum(_enum_info) => {
-            match &info.inner_data[..] {
-                [GenericArg::Value(variant_index), GenericArg::Type(enum_ty)] => {
-                    todo!()
-                }
-                _ => return Err(Error::ConstDataMismatch),
-            }
             dbg!("enum!");
             dbg!(&info.inner_data);
-            todo!()
+            match &info.inner_data[..] {
+                [GenericArg::Value(variant_index), GenericArg::Type(payload_ty)] => {
+                    let payload_type = registry.get_type(payload_ty)?;
+                    let const_payload_type = match payload_type {
+                        CoreTypeConcrete::Const(inner) => inner,
+                        _ => unreachable!(),
+                    };
+
+                    let payload_value = build_const_type_value(
+                        context,
+                        registry,
+                        entry,
+                        location,
+                        helper,
+                        metadata,
+                        const_payload_type,
+                    )?;
+
+                    build_enum_value(
+                        context,
+                        registry,
+                        entry,
+                        location,
+                        helper,
+                        metadata,
+                        payload_value,
+                        &info.inner_ty,
+                        payload_ty,
+                        variant_index.try_into().unwrap(),
+                    )
+                }
+                _ => Err(Error::ConstDataMismatch),
+            }
         }
         CoreTypeConcrete::NonZero(_) => match &info.inner_data[..] {
             [GenericArg::Type(_inner)] => {

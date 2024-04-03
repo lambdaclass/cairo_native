@@ -550,7 +550,10 @@ impl TypeBuilder for CoreTypeConcrete {
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
             CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => {
+                let type_info = registry.get_type(&info.inner_ty).unwrap();
+                type_info.is_zst(registry)
+            }
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
         }
@@ -728,7 +731,10 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Bytes31(_) => false,
 
             CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => registry
+                .get_type(&info.inner_ty)
+                .unwrap()
+                .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
