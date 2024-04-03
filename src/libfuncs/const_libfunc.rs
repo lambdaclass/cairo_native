@@ -344,6 +344,35 @@ pub fn build_const_type_value<'ctx, 'this>(
     }
 }
 
+#[cfg(test)]
+pub mod test {
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
+        values::JitValue,
+    };
+
+    #[test]
+    fn run_const_as_box() {
+        let program = load_cairo!(
+            use core::box::BoxTrait;
+
+            struct Hello {
+                x: i32,
+            }
+
+            fn run_test() -> Hello {
+                let x = BoxTrait::new(Hello {
+                    x: -2
+                });
+                x.unbox()
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+        assert_eq!(result, jit_struct!(JitValue::Sint32(-2)));
+    }
+}
+
 /*
 ./cairo2/bin/cairo-compile -r -s program.cairo > program.sierra
 cargo r --bin  cairo-native-dump -- program.cairo
