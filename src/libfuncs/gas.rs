@@ -18,9 +18,9 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        llvm, ods,
     },
-    ir::{attribute::StringAttribute, r#type::IntegerType, Attribute, Block, Location, ValueLike},
+    ir::{r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
 
@@ -108,13 +108,9 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .into();
 
     let resulting_gas = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[current_gas, gas_cost_val],
-            &[gas_cost_val.r#type()],
-            location,
-        ))
+        .append_operation(
+            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        )
         .result(0)?
         .into();
 
@@ -168,13 +164,9 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .into();
 
     let resulting_gas = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[current_gas, gas_cost_val],
-            &[gas_cost_val.r#type()],
-            location,
-        ))
+        .append_operation(
+            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        )
         .result(0)?
         .into();
 

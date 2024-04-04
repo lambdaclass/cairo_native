@@ -23,13 +23,11 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, scf,
+        llvm, ods, scf,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Location, Module, Region, Type, Value,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -151,21 +149,17 @@ fn snapshot_take<'ctx, 'this>(
                     .result(0)?
                     .into();
 
-                let is_volatile = block
-                    .append_operation(arith::constant(
+                block.append_operation(
+                    ods::llvm::intr_memcpy(
                         context,
-                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                        cloned_ptr,
+                        src_value,
+                        alloc_len,
+                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
                         location,
-                    ))
-                    .result(0)?
-                    .into();
-                block.append_operation(llvm::call_intrinsic(
-                    context,
-                    StringAttribute::new(context, "llvm.memcpy.inline"),
-                    &[cloned_ptr, src_value, alloc_len, is_volatile],
-                    &[],
-                    location,
-                ));
+                    )
+                    .into(),
+                );
 
                 block.append_operation(scf::r#yield(&[cloned_ptr], location));
                 region
