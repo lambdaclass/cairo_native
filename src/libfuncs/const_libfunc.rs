@@ -1,7 +1,5 @@
 //! # Const libfuncs
 
-use std::str::FromStr;
-
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
@@ -28,10 +26,14 @@ use melior::{
         arith,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
+    ir::{
+        attribute::{IntegerAttribute, StringAttribute},
+        r#type::IntegerType,
+        Attribute, Block, Location, Value,
+    },
     Context,
 };
-use num_bigint::{BigInt, ToBigInt};
+use num_bigint::ToBigInt;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -67,8 +69,21 @@ pub fn build_const_as_box<'ctx, 'this>(
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
-    let inner_type = registry.get_type(&info.const_type)?;
-    let inner_layout = inner_type.layout(registry)?;
+
+    let const_type_outer = registry.get_type(&info.const_type)?;
+
+    // Create constant
+    let const_type = match &const_type_outer {
+        CoreTypeConcrete::Const(inner) => inner,
+        _ => unreachable!(),
+    };
+
+    let value = build_const_type_value(
+        context, registry, entry, location, helper, metadata, const_type,
+    )?;
+
+    let const_ty = registry.get_type(&const_type.inner_ty)?;
+    let inner_layout = const_ty.layout(registry)?;
 
     // Create box
     let value_len = entry
@@ -95,109 +110,44 @@ pub fn build_const_as_box<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // Create constant
-    let const_type = match &inner_type {
-        CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
-    };
-
-    // const_type.inner_data Should be one of the following:
-    // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
-    //   etc.).
-    // - A list of const types, if the inner type is a struct. The type of each const type must be
-    //   the same as the corresponding struct member type.
-    // - A selector (a single value) followed by a const type, if the inner type is an enum. The
-    //   type of the const type must be the same as the corresponding enum variant type.
-
-    let value = build_const_type_value(
-        context, registry, entry, location, helper, metadata, const_type,
-    )?;
-
     // Store constant in box
-    entry.append_operation(llvm::store(
-        context,
-        value,
-        ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            inner_layout.align() as i64,
-            IntegerType::new(context, 64).into(),
-        ))),
-    ));
 
-    /*
-    if let Some(variants) = registry.get_type(&const_type.inner_ty)?.variants() {
-        use num_traits::cast::ToPrimitive;
-        let tag = match &const_type.inner_data[0] {
-            GenericArg::Value(val) => val.to_usize().unwrap_or_default(),
-            // Enum tag should always be value
-            _ => todo!(),
-        };
-        let mut value = const_type.inner_data[1].clone();
-        let variant_ty = &variants[tag];
-        let variant_type = registry.build_type(context, helper, registry, metadata, variant_ty)?;
-        if let GenericArg::Type(ref t) = value {
-            // In this case we have to fetch the number from the debug name
-            // We get stuff like "Const<felt252, 1234>"
-            let str_val = t
-                .debug_name
-                .as_ref()
-                .unwrap()
-                .split(' ')
-                .last()
-                .unwrap()
-                .trim_end_matches('>');
-            let val = if let Ok(val) = BigInt::from_str(str_val) {
-                val
-            } else {
-                // Unit type enum
-                entry.append_operation(helper.br(0, &[ptr], location));
-                return Ok(());
-            };
-            value = GenericArg::Value(val);
-        }
-
-        if variant_ty
-            .debug_name
-            .as_ref()
-            .is_some_and(|name| name == "felt252")
+    match const_ty.variants() {
+        Some(variants)
+            if variants.len() > 1
+                && !variants
+                    .iter()
+                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            if let cairo_lang_sierra::program::GenericArg::Value(ref num) = value {
-                if num.sign() == num_bigint::Sign::Minus {
-                    let prime = metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime();
-                    let value_mod_prime =
-                        num + prime.to_bigint().expect("Prime to BigInt shouldn't fail");
-                    let generic_arg = GenericArg::Value(value_mod_prime);
-                    value = generic_arg;
-                }
-            }
-        }
-
-        let value = entry
-            .append_operation(arith::constant(
+            let is_volatile = entry
+                .append_operation(arith::constant(
+                    context,
+                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+            entry.append_operation(llvm::call_intrinsic(
                 context,
-                Attribute::parse(context, &format!("{} : {}", value, variant_type)).unwrap(),
+                StringAttribute::new(context, "llvm.memcpy"),
+                &[ptr, value, value_len, is_volatile],
+                &[],
                 location,
-            ))
-            .result(0)?
-            .into();
-
-        // Store constant in box
-        entry.append_operation(llvm::store(
-            context,
-            value,
-            ptr,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                inner_layout.align() as i64,
-                IntegerType::new(context, 64).into(),
-            ))),
-        ));
+            ));
+        }
+        _ => {
+            entry.append_operation(llvm::store(
+                context,
+                value,
+                ptr,
+                location,
+                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                    inner_layout.align() as i64,
+                    IntegerType::new(context, 64).into(),
+                ))),
+            ));
+        }
     }
-    */
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -237,6 +187,14 @@ pub fn build_const_type_value<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConstConcreteType,
 ) -> Result<Value<'ctx, 'this>> {
+    // const_type.inner_data Should be one of the following:
+    // - A single value, if the inner type is a simple numeric type (e.g., `felt252`, `u32`,
+    //   etc.).
+    // - A list of const types, if the inner type is a struct. The type of each const type must be
+    //   the same as the corresponding struct member type.
+    // - A selector (a single value) followed by a const type, if the inner type is an enum. The
+    //   type of the const type must be the same as the corresponding enum variant type.
+
     let inner_type = registry.get_type(&info.inner_ty)?;
     let inner_ty = registry.build_type(context, helper, registry, metadata, &info.inner_ty)?;
 
@@ -373,7 +331,7 @@ pub fn build_const_type_value<'ctx, 'this>(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
+        utils::test::{jit_struct, load_cairo, run_program},
         values::JitValue,
     };
 
@@ -398,27 +356,3 @@ pub mod test {
         assert_eq!(result, jit_struct!(JitValue::Sint32(-2)));
     }
 }
-
-/*
-./cairo2/bin/cairo-compile -r -s program.cairo > program.sierra
-cargo r --bin  cairo-native-dump -- program.cairo
-
-
-use core::box::BoxTrait;
-
-enum MyEnum {
-    A: u32,
-    B: u16,
-}
-
-struct Hello {
-    x: MyEnum,
-}
-
-fn run_test() -> Hello {
-    let x = BoxTrait::new(Hello {
-        x: MyEnum::A(2)
-    });
-    x.unbox()
-}
-*/
