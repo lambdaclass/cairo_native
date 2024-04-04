@@ -25,12 +25,9 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        ods,
     },
-    ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        r#type::IntegerType,
-        Attribute, Block, Location, Value,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
     Context,
 };
 use num_bigint::ToBigInt;
@@ -119,21 +116,17 @@ pub fn build_const_as_box<'ctx, 'this>(
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    ptr,
+                    value,
+                    value_len,
+                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
                     location,
-                ))
-                .result(0)?
-                .into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy"),
-                &[ptr, value, value_len, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
         _ => {
             entry.append_operation(llvm::store(
@@ -200,8 +193,6 @@ pub fn build_const_type_value<'ctx, 'this>(
 
     match inner_type {
         CoreTypeConcrete::Struct(_) => {
-            dbg!("struct!");
-            dbg!(&info.inner_data);
             let mut fields = Vec::new();
 
             for field in &info.inner_data {
@@ -241,43 +232,39 @@ pub fn build_const_type_value<'ctx, 'this>(
                 &fields,
             )
         }
-        CoreTypeConcrete::Enum(_enum_info) => {
-            dbg!("enum!");
-            dbg!(&info.inner_data);
-            match &info.inner_data[..] {
-                [GenericArg::Value(variant_index), GenericArg::Type(payload_ty)] => {
-                    let payload_type = registry.get_type(payload_ty)?;
-                    let const_payload_type = match payload_type {
-                        CoreTypeConcrete::Const(inner) => inner,
-                        _ => unreachable!(),
-                    };
+        CoreTypeConcrete::Enum(_enum_info) => match &info.inner_data[..] {
+            [GenericArg::Value(variant_index), GenericArg::Type(payload_ty)] => {
+                let payload_type = registry.get_type(payload_ty)?;
+                let const_payload_type = match payload_type {
+                    CoreTypeConcrete::Const(inner) => inner,
+                    _ => unreachable!(),
+                };
 
-                    let payload_value = build_const_type_value(
-                        context,
-                        registry,
-                        entry,
-                        location,
-                        helper,
-                        metadata,
-                        const_payload_type,
-                    )?;
+                let payload_value = build_const_type_value(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    const_payload_type,
+                )?;
 
-                    build_enum_value(
-                        context,
-                        registry,
-                        entry,
-                        location,
-                        helper,
-                        metadata,
-                        payload_value,
-                        &info.inner_ty,
-                        payload_ty,
-                        variant_index.try_into().unwrap(),
-                    )
-                }
-                _ => Err(Error::ConstDataMismatch),
+                build_enum_value(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    payload_value,
+                    &info.inner_ty,
+                    payload_ty,
+                    variant_index.try_into().unwrap(),
+                )
             }
-        }
+            _ => Err(Error::ConstDataMismatch),
+        },
         CoreTypeConcrete::NonZero(_) => match &info.inner_data[..] {
             [GenericArg::Type(_inner)] => {
                 todo!()

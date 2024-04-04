@@ -37,9 +37,10 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Module, Type, Value,
     },
@@ -245,22 +246,17 @@ fn snapshot_take<'ctx, 'this>(
             ));
         }
         None => {
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    dst_ptr,
+                    src_ptr,
+                    dst_len_bytes,
+                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
                     location,
-                ))
-                .result(0)?
-                .into();
-
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy"),
-                &[dst_ptr, src_ptr, dst_len_bytes, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
     }
 

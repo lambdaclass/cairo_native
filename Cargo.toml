@@ -90,7 +90,7 @@ walkdir = "2"
 serde_json = { version = "1.0" }
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.0.90"
 
 [profile.optimized-dev]
 inherits = "dev"
