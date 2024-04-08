@@ -317,10 +317,6 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
@@ -360,9 +356,10 @@
     dialect::{
         arith,
         llvm::{<span class="self">self</span>, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Module, Type, Value,
     },
@@ -568,22 +565,17 @@
             ));
         }
         <span class="prelude-val">None </span>=&gt; {
-            <span class="kw">let </span>is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                    dst_ptr,
+                    src_ptr,
+                    dst_len_bytes,
+                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
                     location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
-
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, <span class="string">"llvm.memcpy"</span>),
-                <span class="kw-2">&amp;</span>[dst_ptr, src_ptr, dst_len_bytes, is_volatile],
-                <span class="kw-2">&amp;</span>[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
     }
 

@@ -384,13 +384,6 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box libfuncs
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
@@ -416,9 +409,10 @@
     dialect::{
         arith,
         llvm::{<span class="self">self</span>, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
         Block, Location,
     },
@@ -496,21 +490,17 @@
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =&gt;
         {
-            <span class="kw">let </span>is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                    ptr,
+                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                    value_len,
+                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
                     location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, <span class="string">"llvm.memcpy.inline"</span>),
-                <span class="kw-2">&amp;</span>[ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value_len, is_volatile],
-                <span class="kw-2">&amp;</span>[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
         <span class="kw">_ </span>=&gt; {
             entry.append_operation(llvm::store(
@@ -581,21 +571,17 @@
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
 
-            <span class="kw">let </span>is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                    stack_ptr,
+                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                    value_len,
+                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
                     location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, <span class="string">"llvm.memcpy.inline"</span>),
-                <span class="kw-2">&amp;</span>[stack_ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), value_len, is_volatile],
-                <span class="kw-2">&amp;</span>[],
-                location,
-            ));
+                )
+                .into(),
+            );
 
             stack_ptr
         }

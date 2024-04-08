@@ -1169,14 +1169,6 @@
 <a href="#1168" id="1168">1168</a>
 <a href="#1169" id="1169">1169</a>
 <a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1200,10 +1192,10 @@
 <span class="kw">use </span>melior::{
     dialect::{
         arith::{<span class="self">self</span>, CmpiPredicate},
-        llvm, scf,
+        llvm, ods, scf,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Attribute, Block, Identifier, Location, Region, Value, ValueLike,
@@ -1264,30 +1256,22 @@
 <span class="doccomment">/// Generate MLIR operations for the `u128_byte_reverse` libfunc.
 </span><span class="kw">pub fn </span>build_byte_reverse&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>bitwise =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>u128_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
-    )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>bswap_intrin_attr = StringAttribute::new(context, <span class="string">"llvm.bswap.i128"</span>).into();
-
     <span class="kw">let </span>arg1 = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-        ; res = <span class="string">"llvm.call_intrinsic"</span>(arg1) { <span class="string">"intrin" </span>= bswap_intrin_attr } : (u128_ty) -&gt; u128_ty
-    };
+
+    <span class="kw">let </span>res = entry
+        .append_operation(ods::llvm::intr_bswap(context, arg1, location).into())
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[bitwise, res], location));
     <span class="prelude-val">Ok</span>(())

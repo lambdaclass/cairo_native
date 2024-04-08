@@ -170,12 +170,6 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable type
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
@@ -201,13 +195,11 @@
 <span class="kw">use </span>melior::{
     dialect::{
         arith::{<span class="self">self</span>, CmpiPredicate},
-        llvm, scf,
+        llvm, ods, scf,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Location, Module, Region, Type, Value,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -329,21 +321,17 @@
                     .result(<span class="number">0</span>)<span class="question-mark">?
                     </span>.into();
 
-                <span class="kw">let </span>is_volatile = block
-                    .append_operation(arith::constant(
+                block.append_operation(
+                    ods::llvm::intr_memcpy(
                         context,
-                        IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                        cloned_ptr,
+                        src_value,
+                        alloc_len,
+                        IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
                         location,
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into();
-                block.append_operation(llvm::call_intrinsic(
-                    context,
-                    StringAttribute::new(context, <span class="string">"llvm.memcpy.inline"</span>),
-                    <span class="kw-2">&amp;</span>[cloned_ptr, src_value, alloc_len, is_volatile],
-                    <span class="kw-2">&amp;</span>[],
-                    location,
-                ));
+                    )
+                    .into(),
+                );
 
                 block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[cloned_ptr], location));
                 region
