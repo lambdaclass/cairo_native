@@ -76,8 +76,8 @@ pub fn build_into_box<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                inner_layout.pad_to_align().size().try_into()?,
                 IntegerType::new(context, 64).into(),
+                inner_layout.pad_to_align().size().try_into()?,
             )
             .into(),
             location,
@@ -106,7 +106,7 @@ pub fn build_into_box<'ctx, 'this>(
             let is_volatile = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -126,8 +126,8 @@ pub fn build_into_box<'ctx, 'this>(
                 ptr,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    inner_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    inner_layout.align() as i64,
                 ))),
             ));
         }
@@ -163,8 +163,8 @@ pub fn build_unbox<'ctx, 'this>(
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(
-                        inner_layout.size() as i64,
                         IntegerType::new(context, 64).into(),
+                        inner_layout.size() as i64,
                     )
                     .into(),
                     location,
@@ -180,8 +180,8 @@ pub fn build_unbox<'ctx, 'this>(
                     location,
                     AllocaOptions::new()
                         .align(Some(IntegerAttribute::new(
-                            inner_layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            inner_layout.align() as i64,
                         )))
                         .elem_type(Some(TypeAttribute::new(inner_ty))),
                 ))
@@ -191,7 +191,7 @@ pub fn build_unbox<'ctx, 'this>(
             let is_volatile = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -213,8 +213,8 @@ pub fn build_unbox<'ctx, 'this>(
                 inner_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    inner_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    inner_layout.align() as i64,
                 ))),
             ))
             .result(0)?

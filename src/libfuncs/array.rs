@@ -108,7 +108,7 @@ pub fn build_new<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -201,7 +201,7 @@ pub fn build_append<'ctx, 'this>(
     let k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -210,7 +210,7 @@ pub fn build_append<'ctx, 'this>(
     let elem_stride = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64).into(),
             location,
         ))
         .result(0)?
@@ -267,7 +267,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = handle_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
                 location,
             ))
             .result(0)?
@@ -371,7 +371,7 @@ pub fn build_append<'ctx, 'this>(
         let is_volatile = memmove_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 Location::unknown(context),
             ))
             .result(0)?
@@ -387,7 +387,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = memmove_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -420,7 +420,7 @@ pub fn build_append<'ctx, 'this>(
         let k8 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(8, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 8).into(),
                 location,
             ))
             .result(0)?
@@ -428,7 +428,7 @@ pub fn build_append<'ctx, 'this>(
         let k1024 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1024, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1024).into(),
                 location,
             ))
             .result(0)?
@@ -567,8 +567,8 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                elem_layout.align() as i64,
                 IntegerType::new(context, 64).into(),
+                elem_layout.align() as i64,
             ))),
         ));
 
@@ -764,7 +764,7 @@ pub fn build_get<'ctx, 'this>(
         let elem_stride = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into())
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64)
                     .into(),
                 location,
             ))
@@ -791,8 +791,8 @@ pub fn build_get<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -824,7 +824,7 @@ pub fn build_get<'ctx, 'this>(
         let is_volatile = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 Location::unknown(context),
             ))
             .result(0)?
@@ -935,8 +935,8 @@ pub fn build_pop_front<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -991,7 +991,7 @@ pub fn build_pop_front<'ctx, 'this>(
         let is_volatile = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 Location::unknown(context),
             ))
             .result(0)?
@@ -1008,7 +1008,7 @@ pub fn build_pop_front<'ctx, 'this>(
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1139,7 +1139,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1164,8 +1164,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -1220,7 +1220,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         let is_volatile = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 Location::unknown(context),
             ))
             .result(0)?
@@ -1363,8 +1363,8 @@ pub fn build_slice<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.pad_to_align().size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.pad_to_align().size() as i64,
                 )
                 .into(),
                 location,
@@ -1440,7 +1440,7 @@ pub fn build_slice<'ctx, 'this>(
         let is_volatile = slice_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 location,
             ))
             .result(0)?
@@ -1456,7 +1456,7 @@ pub fn build_slice<'ctx, 'this>(
         let k0 = slice_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -1543,8 +1543,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    struct_type_info.layout(registry)?.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    struct_type_info.layout(registry)?.align() as i64,
                 ))),
             ))
             .result(0)?
@@ -1568,7 +1568,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_len_value = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(fields.len().try_into().unwrap(), len_ty).into(),
+            IntegerAttribute::new(len_ty, fields.len().try_into().unwrap()).into(),
             location,
         ))
         .result(0)?
@@ -1582,7 +1582,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, len_ty).into(),
+            IntegerAttribute::new(len_ty, 0).into(),
             location,
         ))
         .result(0)?
@@ -1630,8 +1630,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                field_stride.try_into().unwrap(),
                 IntegerType::new(context, 64).into(),
+                field_stride.try_into().unwrap(),
             )
             .into(),
             location,
@@ -1713,7 +1713,7 @@ fn assert_nonnull<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
         ))
         .result(0)?

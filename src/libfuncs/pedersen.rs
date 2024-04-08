@@ -81,7 +81,7 @@ pub fn build_pedersen<'ctx>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();
@@ -91,8 +91,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -107,8 +107,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -123,8 +123,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -169,8 +169,8 @@ pub fn build_pedersen<'ctx>(
         lhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -179,8 +179,8 @@ pub fn build_pedersen<'ctx>(
         rhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
 
@@ -197,8 +197,8 @@ pub fn build_pedersen<'ctx>(
         i256_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     let result_be = op.result(0)?.into();

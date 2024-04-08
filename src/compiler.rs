@@ -374,7 +374,7 @@ fn compile_func(
                                 op0,
                                 index::constant(
                                     context,
-                                    IntegerAttribute::new(0, Type::index(context)),
+                                    IntegerAttribute::new(Type::index(context), 0),
                                     Location::unknown(context),
                                 ),
                             );
@@ -458,7 +458,7 @@ fn compile_func(
                             ));
                             let op1 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(0, Type::index(context)),
+                                IntegerAttribute::new(Type::index(context), 0),
                                 Location::unknown(context),
                             ));
                             let op2 = block.append_operation(index::cmp(
@@ -471,7 +471,7 @@ fn compile_func(
 
                             let op3 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(1, Type::index(context)),
+                                IntegerAttribute::new(Type::index(context), 1),
                                 Location::unknown(context),
                             ));
                             let op4 = block.append_operation(index::sub(
@@ -532,9 +532,9 @@ fn compile_func(
                                                         Location::unknown(context),
                                                         LoadStoreOptions::new().align(Some(
                                                             IntegerAttribute::new(
-                                                                layout.align() as i64,
                                                                 IntegerType::new(context, 64)
                                                                     .into(),
+                                                                layout.align() as i64,
                                                             ),
                                                         )),
                                                     ))
@@ -583,8 +583,8 @@ fn compile_func(
                                 .append_operation(arith::constant(
                                     context,
                                     IntegerAttribute::new(
-                                        ret_layout.size() as i64,
                                         IntegerType::new(context, 64).into(),
+                                        ret_layout.size() as i64,
                                     )
                                     .into(),
                                     Location::unknown(context),
@@ -594,7 +594,7 @@ fn compile_func(
                             let is_volatile = block
                                 .append_operation(arith::constant(
                                     context,
-                                    IntegerAttribute::new(0, IntegerType::new(context, 1).into())
+                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0)
                                         .into(),
                                     Location::unknown(context),
                                 ))
@@ -631,8 +631,8 @@ fn compile_func(
                                             Location::unknown(context),
                                             LoadStoreOptions::new().align(Some(
                                                 IntegerAttribute::new(
-                                                    layout.align() as i64,
                                                     IntegerType::new(context, 64).into(),
+                                                    layout.align() as i64,
                                                 ),
                                             )),
                                         ))

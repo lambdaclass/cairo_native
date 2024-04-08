@@ -83,7 +83,7 @@ fn snapshot_take<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -135,8 +135,8 @@ fn snapshot_take<'ctx, 'this>(
                     .append_operation(arith::constant(
                         context,
                         IntegerAttribute::new(
-                            elem_layout.size() as i64,
                             IntegerType::new(context, 64).into(),
+                            elem_layout.size() as i64,
                         )
                         .into(),
                         location,
@@ -154,7 +154,7 @@ fn snapshot_take<'ctx, 'this>(
                 let is_volatile = block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                         location,
                     ))
                     .result(0)?
