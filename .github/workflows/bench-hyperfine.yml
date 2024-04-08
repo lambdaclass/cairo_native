@@ -19,7 +19,6 @@ jobs:
     name: Hyperfine
     runs-on: ubuntu-latest
     env:
-      CAIRO_NATIVE_RUNTIME_LIBDIR: ${{ github.workspace }}/target/release
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
@@ -65,7 +64,7 @@ jobs:
       - name: Build project
         run: make build
       - name: Build runtime subproject
-        run: cargo build --release --package=cairo-native-runtime
+        run: make runtime-ci
       - name: Run benchmarks
         run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
       - name: Create markdown file

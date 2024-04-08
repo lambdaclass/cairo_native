@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{gas::GasCost, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -90,7 +90,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -150,7 +150,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?

@@ -16,8 +16,7 @@
 //! # };
 //! # use cairo_native::{
 //! #     error::{
-//! #         libfuncs::{Error, Result},
-//! #         CoreTypeBuilderError,
+//! #         Error, Result,
 //! #     },
 //! #     libfuncs::{LibfuncBuilder, LibfuncHelper},
 //! #     metadata::{debug_utils::DebugUtils, MetadataStorage},
@@ -84,7 +83,7 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::error::libfuncs::Result;
+use crate::error::Result;
 use melior::{
     dialect::{arith, func, llvm},
     ir::{
@@ -103,6 +102,7 @@ enum DebugBinding {
     BreakpointMarker,
     PrintI1,
     PrintI8,
+    PrintI32,
     PrintI128,
     PrintPointer,
     PrintFelt252,
@@ -378,6 +378,44 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn print_i32<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::PrintI32) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__print_i32"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[IntegerType::new(context, 32).into()], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__print_i32"),
+            &[value],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn print_i128<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -475,6 +513,15 @@ impl DebugUtils {
             }
         }
 
+        if self.active_map.contains(&DebugBinding::PrintI32) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__print_i32",
+                    print_i32_impl as *const fn(u8) -> () as *mut (),
+                );
+            }
+        }
+
         if self.active_map.contains(&DebugBinding::PrintI128) {
             unsafe {
                 engine.register_symbol(
@@ -513,6 +560,10 @@ extern "C" fn print_i1_impl(value: bool) {
 }
 
 extern "C" fn print_i8_impl(value: u8) {
+    println!("[DEBUG] {value}");
+}
+
+extern "C" fn print_i32_impl(value: u32) {
     println!("[DEBUG] {value}");
 }
 

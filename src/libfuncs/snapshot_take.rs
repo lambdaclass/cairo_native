@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{

@@ -3,7 +3,7 @@ use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::{compile_path, ContractClass};
 use cairo_native::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
-    StarkNetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+    StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
 };
 use lazy_static::lazy_static;
 use starknet_types_core::felt::Felt;
@@ -12,7 +12,7 @@ use std::path::Path;
 #[derive(Debug)]
 struct SyscallHandler;
 
-impl StarkNetSyscallHandler for SyscallHandler {
+impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
         Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
@@ -288,12 +288,9 @@ fn keccak_test() {
 
     let program = contract.extract_sierra_program().unwrap();
     let result =
-        run_native_starknet_contract(&program, entry_point.function_idx, &[], &mut SyscallHandler);
+        run_native_starknet_contract(&program, entry_point.function_idx, &[], SyscallHandler);
 
     assert!(!result.failure_flag);
-    assert_eq!(
-        result.remaining_gas,
-        340282366920938463463374607431768104815
-    );
+    assert_eq!(result.remaining_gas, 0xfffffffffffffffffffffffefffffc29);
     assert_eq!(result.return_values, vec![1.into()]);
 }

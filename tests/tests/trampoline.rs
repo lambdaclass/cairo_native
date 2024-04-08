@@ -18,9 +18,7 @@ fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> Execu
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
 
-    executor
-        .invoke_dynamic(entry_point_id, args, None, None)
-        .unwrap()
+    executor.invoke_dynamic(entry_point_id, args, None).unwrap()
 }
 
 #[test]

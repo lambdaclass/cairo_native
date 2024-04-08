@@ -13,12 +13,12 @@ jobs:
     name: GitHub Pages
     runs-on: ubuntu-latest
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
       TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.76
+      - uses: dtolnay/rust-toolchain@1.76.0
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11

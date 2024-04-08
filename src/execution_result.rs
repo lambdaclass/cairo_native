@@ -1,7 +1,4 @@
-use crate::{
-    error::{jit_engine::ErrorImpl, JitRunnerError},
-    values::JitValue,
-};
+use crate::{error::Error, values::JitValue};
 use starknet_types_core::felt::Felt;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -36,7 +33,7 @@ pub struct ContractExecutionResult {
 
 impl ContractExecutionResult {
     /// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
-    pub fn from_execution_result(result: ExecutionResult) -> Result<Self, JitRunnerError> {
+    pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
         let failure_flag;
 
@@ -60,22 +57,22 @@ impl ContractExecutionResult {
                                     .collect();
                                 felt_vec
                             } else {
-                                Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                                Err(Error::UnexpectedValue(format!(
                                     "wrong type, expect: array, value: {:?}",
                                     value
-                                ))))?
+                                )))?
                             }
                         } else {
-                            Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                            Err(Error::UnexpectedValue(format!(
                                 "wrong type, expect: struct, value: {:?}",
                                 value
-                            ))))?
+                            )))?
                         }
                     } else {
-                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: struct, value: {:?}",
                             value
-                        ))))?
+                        )))?
                     }
                 } else if let JitValue::Struct { fields, .. } = &**value {
                     if let JitValue::Array(data) = &fields[1] {
@@ -90,31 +87,34 @@ impl ContractExecutionResult {
                             })
                             .collect();
 
-                        let str_error =
-                            String::from_utf8(felt_vec.first().unwrap().to_bytes_be().to_vec())
-                                .unwrap()
-                                .trim_start_matches('\0')
-                                .to_owned();
+                        let bytes_err: Vec<_> = felt_vec
+                            .iter()
+                            .flat_map(|felt| felt.to_bytes_be().to_vec())
+                            // remove null chars
+                            .filter(|b| *b != 0)
+                            .collect();
+                        let str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+
                         error_msg = Some(str_error);
                         felt_vec
                     } else {
-                        Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: array, value: {:?}",
                             value
-                        ))))?
+                        )))?
                     }
                 } else {
-                    Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(format!(
+                    Err(Error::UnexpectedValue(format!(
                         "wrong type, expect: struct, value: {:?}",
                         value
-                    ))))?
+                    )))?
                 }
             }
             _ => {
                 failure_flag = true;
-                Err(JitRunnerError::from(ErrorImpl::UnexpectedValue(
+                Err(Error::UnexpectedValue(
                     "wrong return value type expected a enum".to_string(),
-                )))?
+                ))?
             }
         };
 

@@ -4,27 +4,17 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_defs::plugin::NamedPlugin;
 use cairo_lang_semantic::plugin::PluginSuite;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program::Program,
-    program_registry::ProgramRegistry,
-    ProgramParser,
-};
+use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{
     contract_class::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
 use cairo_native::{
+    context::NativeContext,
     debug_info::{DebugInfo, DebugLocations},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use clap::Parser;
-use melior::{
-    dialect::DialectRegistry,
-    ir::{operation::OperationPrintingFlags, Location, Module},
-    utility::register_all_dialects,
-    Context,
-};
+use melior::{ir::operation::OperationPrintingFlags, Context};
 use std::{
     ffi::OsStr,
     fs,
@@ -45,37 +35,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Load the program.
-    let context = Context::new();
-    let (program, debug_info) =
-        load_program(Path::new(&args.input), Some(&context), args.starknet)?;
-
-    // Initialize MLIR.
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
+    let context = NativeContext::new();
+    // TODO: Reconnect debug information.
+    let (program, _debug_info) = load_program(
+        Path::new(&args.input),
+        Some(context.context()),
+        args.starknet,
+    )?;
 
     // Compile the program.
-    let module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program)?;
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    cairo_native::compile(
-        &context,
-        &module,
-        &program,
-        &registry,
-        &mut metadata,
-        debug_info.as_ref(),
-    )?;
+    let module = context.compile(&program)?;
 
     // Write the output.
     let output_str = module
+        .module()
         .as_operation()
         .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))?;
     match args.output {

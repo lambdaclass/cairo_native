@@ -3,7 +3,7 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
-    error::jit_engine::{make_type_builder_error, ErrorImpl, RunnerError},
+    error::Error,
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
 };
@@ -179,7 +179,7 @@ impl JitValue {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-    ) -> Result<NonNull<()>, RunnerError> {
+    ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
         Ok(unsafe {
@@ -195,15 +195,11 @@ impl JitValue {
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
                         let elem_ty = registry.get_type(&info.ty)?;
-                        let elem_layout = elem_ty
-                            .layout(registry)
-                            .map_err(make_type_builder_error(type_id))?
-                            .pad_to_align();
+                        let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
                         let ptr: *mut NonNull<()> =
                             libc::malloc(elem_layout.size() * data.len()).cast();
-                        let mut len: u32 = 0;
-                        let cap: u32 = data.len().try_into().unwrap();
+                        let len: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
                             let elem = elem.to_jit(arena, registry, &info.ty)?;
@@ -220,8 +216,6 @@ impl JitValue {
                                 .as_ptr(),
                                 elem_layout.size(),
                             );
-
-                            len += 1;
                         }
 
                         let target = arena.alloc_layout(
@@ -236,21 +230,25 @@ impl JitValue {
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
+                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
+                            .unwrap()
+                            .cast()
+                            .as_mut() = 0;
 
+                        let (layout, offset) = layout.extend(Layout::new::<u32>())?;
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
                             .as_mut() = len;
 
                         let (_, offset) = layout.extend(Layout::new::<u32>())?;
-
                         *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
                             .unwrap()
                             .cast()
-                            .as_mut() = cap;
+                            .as_mut() = len;
                         target.cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an array",
                             type_id.debug_name
                         )))?
@@ -266,9 +264,7 @@ impl JitValue {
                         let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
-                            let member_layout = member_ty
-                                .layout(registry)
-                                .map_err(make_type_builder_error(type_id))?;
+                            let member_layout = member_ty.layout(registry)?;
 
                             let (new_layout, offset) = match layout {
                                 Some(layout) => layout.extend(member_layout)?,
@@ -315,7 +311,7 @@ impl JitValue {
                             ptr
                         }
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a struct",
                             type_id.debug_name
                         )))?
@@ -359,7 +355,7 @@ impl JitValue {
                             .unwrap()
                             .cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",
                             type_id.debug_name
                         )))?
@@ -392,7 +388,7 @@ impl JitValue {
 
                         NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
                     } else {
-                        Err(ErrorImpl::UnexpectedValue(format!(
+                        Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
                             type_id.debug_name
                         )))?
@@ -514,18 +510,28 @@ impl JitValue {
                     let ptr_layout = Layout::new::<*mut ()>();
                     let len_layout = crate::utils::get_integer_layout(32);
 
-                    let len_value = *NonNull::new(
-                        ((ptr.as_ptr() as usize) + ptr_layout.extend(len_layout).unwrap().1)
-                            as *mut (),
-                    )
-                    .unwrap()
-                    .cast::<u32>()
-                    .as_ref();
+                    let (ptr_layout, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let offset_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
+                    let (_, offset) = ptr_layout.extend(len_layout).unwrap();
+                    let length_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                        .unwrap()
+                        .cast::<u32>()
+                        .as_ref();
 
-                    let data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let mut array_value = Vec::new();
+                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
+                    let data_ptr = NonNull::new_unchecked(
+                        init_data_ptr
+                            .as_ptr()
+                            .byte_add(elem_stride * offset_value as usize),
+                    );
 
-                    for i in 0..(len_value as usize) {
+                    assert!(length_value >= offset_value);
+                    let num_elems = (length_value - offset_value) as usize;
+                    let mut array_value = Vec::with_capacity(num_elems);
+                    for i in 0..num_elems {
                         let cur_elem_ptr = NonNull::new(
                             ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
                         )
@@ -534,7 +540,7 @@ impl JitValue {
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    libc::free(data_ptr.as_ptr().cast());
+                    libc::free(init_data_ptr.as_ptr().cast());
 
                     Self::Array(array_value)
                 }

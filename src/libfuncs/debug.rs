@@ -11,7 +11,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
@@ -57,10 +57,6 @@ pub fn build_print<'ctx>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let runtime_bindings = metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
-
     let stdout_fd = entry
         .append_operation(arith::constant(
             context,
@@ -75,12 +71,12 @@ pub fn build_print<'ctx>(
             context,
             entry.argument(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+            llvm::r#type::opaque_pointer(context),
             location,
         ))
         .result(0)?
         .into();
-    let values_len = entry
+    let values_start = entry
         .append_operation(llvm::extract_value(
             context,
             entry.argument(0)?.into(),
@@ -90,6 +86,48 @@ pub fn build_print<'ctx>(
         ))
         .result(0)?
         .into();
+    let values_end = entry
+        .append_operation(llvm::extract_value(
+            context,
+            entry.argument(0)?.into(),
+            DenseI64ArrayAttribute::new(context, &[2]),
+            IntegerType::new(context, 32).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let runtime_bindings = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
+
+    let values_len = entry
+        .append_operation(arith::subi(values_end, values_start, location))
+        .result(0)?
+        .into();
+
+    let values_ptr = {
+        let values_start = entry
+            .append_operation(arith::extui(
+                values_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))
+            .result(0)?
+            .into();
+
+        entry
+            .append_operation(llvm::get_element_ptr_dynamic(
+                context,
+                values_ptr,
+                &[values_start],
+                IntegerType::new(context, 252).into(),
+                llvm::r#type::opaque_pointer(context),
+                location,
+            ))
+            .result(0)?
+            .into()
+    };
 
     let return_code = runtime_bindings.libfunc_debug_print(
         context, helper, entry, stdout_fd, values_ptr, values_len, location,

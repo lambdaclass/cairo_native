@@ -1,7 +1,7 @@
 //! # Unconditional jump libfunc
 
 use super::LibfuncHelper;
-use crate::{error::libfuncs::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
