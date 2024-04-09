@@ -23,9 +23,10 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
         Block, Location,
     },
@@ -103,21 +104,17 @@ pub fn build_into_box<'ctx, 'this>(
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
+                    ptr,
+                    entry.argument(0)?.into(),
+                    value_len,
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                ))
-                .result(0)?
-                .into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy.inline"),
-                &[ptr, entry.argument(0)?.into(), value_len, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
         _ => {
             entry.append_operation(llvm::store(
@@ -188,21 +185,17 @@ pub fn build_unbox<'ctx, 'this>(
                 .result(0)?
                 .into();
 
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
+                    stack_ptr,
+                    entry.argument(0)?.into(),
+                    value_len,
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                ))
-                .result(0)?
-                .into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy.inline"),
-                &[stack_ptr, entry.argument(0)?.into(), value_len, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
 
             stack_ptr
         }

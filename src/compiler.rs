@@ -74,7 +74,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref,
+        memref, ods,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
@@ -591,28 +591,17 @@ fn compile_func(
                                 ))
                                 .result(0)?
                                 .into();
-                            let is_volatile = block
-                                .append_operation(arith::constant(
+                            block.append_operation(
+                                ods::llvm::intr_memcpy(
                                     context,
-                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0)
-                                        .into(),
-                                    Location::unknown(context),
-                                ))
-                                .result(0)?
-                                .into();
-
-                            block.append_operation(llvm::call_intrinsic(
-                                context,
-                                StringAttribute::new(context, "llvm.memcpy.inline"),
-                                &[
                                     pre_entry_block.argument(0)?.into(),
                                     ptr,
                                     num_bytes,
-                                    is_volatile,
-                                ],
-                                &[],
-                                Location::unknown(context),
-                            ));
+                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                    Location::unknown(context),
+                                )
+                                .into(),
+                            );
                         }
                         Some(false) => {
                             for (value, (type_id, type_info)) in
