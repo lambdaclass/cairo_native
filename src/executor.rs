@@ -1,6 +1,6 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
@@ -35,11 +35,12 @@ global_asm!(include_str!("arch/aarch64.s"));
 global_asm!(include_str!("arch/x86_64.s"));
 
 extern "C" {
-    /// Invoke an AOT-compiled function.
+    /// Invoke an AOT or JIT-compiled function.
     ///
     /// The `ret_ptr` argument is only used when the first argument (the actual return pointer) is
     /// unused. Used for u8, u16, u32, u64, u128 and felt252, but not for arrays, enums or structs.
-    fn aot_trampoline(
+    #[cfg_attr(not(target_os = "macos"), link_name = "_invoke_trampoline")]
+    fn invoke_trampoline(
         fn_ptr: *const c_void,
         args_ptr: *const u64,
         args_len: usize,
@@ -59,7 +60,7 @@ impl<'a> NativeExecutor<'a> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
             NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
@@ -72,7 +73,7 @@ impl<'a> NativeExecutor<'a> {
         args: &[JitValue],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
                 function_id,
@@ -95,7 +96,7 @@ impl<'a> NativeExecutor<'a> {
         args: &[Felt],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+    ) -> Result<ContractExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => {
                 executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
@@ -223,7 +224,7 @@ fn invoke_dynamic(
     let mut ret_registers = [0; 4];
 
     unsafe {
-        aot_trampoline(
+        invoke_trampoline(
             function_ptr,
             invoke_data.invoke_data().as_ptr(),
             invoke_data.invoke_data().len(),

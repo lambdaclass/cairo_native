@@ -3,7 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::{error::libfuncs::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

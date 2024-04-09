@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::{mlir_asm, ProgramRegistryExt},
 };
@@ -86,22 +86,22 @@ pub fn build_binary_operation<'ctx, 'this>(
             "{} : {i256}",
             metadata
                 .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(ErrorImpl::MissingMetadata)?
+                .ok_or(Error::MissingMetadata)?
                 .prime()
         ),
     )
-    .ok_or(ErrorImpl::ParseAttributeError)?;
+    .ok_or(Error::ParseAttributeError)?;
     let attr_prime_i512 = Attribute::parse(
         context,
         &format!(
             "{} : {i512}",
             metadata
                 .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(ErrorImpl::MissingMetadata)?
+                .ok_or(Error::MissingMetadata)?
                 .prime()
         ),
     )
-    .ok_or(ErrorImpl::ParseAttributeError)?;
+    .ok_or(Error::ParseAttributeError)?;
 
     let attr_cmp_uge = IntegerAttribute::new(
         CmpiPredicate::Uge as i64,
@@ -125,7 +125,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 Sign::Minus => {
                     let prime = metadata
                         .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(ErrorImpl::MissingMetadata)?
+                        .ok_or(Error::MissingMetadata)?
                         .prime();
                     (&operation.c + prime.to_bigint().expect("always is Some"))
                         .to_biguint()
@@ -135,7 +135,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             };
 
             let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
-                .ok_or(ErrorImpl::MissingMetadata)?;
+                .ok_or(Error::MissingMetadata)?;
 
             // TODO: Ensure that the constant is on the correct side of the operation.
             mlir_asm! { context, entry, location =>
@@ -401,7 +401,7 @@ pub fn build_const<'ctx, 'this>(
         Sign::Minus => {
             let prime = metadata
                 .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(ErrorImpl::MissingMetadata)?
+                .ok_or(Error::MissingMetadata)?
                 .prime();
             (&info.c + prime.to_bigint().expect("always is Some"))
                 .to_biguint()
@@ -419,7 +419,7 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
-        .ok_or(ErrorImpl::ParseAttributeError)?;
+        .ok_or(Error::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> felt252_ty

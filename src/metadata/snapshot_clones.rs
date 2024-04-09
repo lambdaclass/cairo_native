@@ -1,5 +1,5 @@
 use super::MetadataStorage;
-use crate::{error::libfuncs, libfuncs::LibfuncHelper, types::WithSelf};
+use crate::{error::Result, libfuncs::LibfuncHelper, types::WithSelf};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
@@ -20,7 +20,7 @@ pub type CloneFn<P> = for<'ctx, 'this> fn(
     &mut MetadataStorage,
     WithSelf<P>,
     Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>>;
+) -> Result<Value<'ctx, 'this>>;
 
 type CloneFnWrapper = Arc<
     dyn for<'ctx, 'this> Fn(
@@ -31,7 +31,7 @@ type CloneFnWrapper = Arc<
         &LibfuncHelper<'ctx, 'this>,
         &mut MetadataStorage,
         Value<'this, 'ctx>,
-    ) -> libfuncs::Result<Value<'ctx, 'this>>,
+    ) -> Result<Value<'ctx, 'this>>,
 >;
 
 #[derive(Default)]

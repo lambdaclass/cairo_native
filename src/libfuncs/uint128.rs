@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::MetadataStorage,
     utils::{mlir_asm, ProgramRegistryExt},
 };
@@ -21,10 +21,10 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, scf,
+        llvm, ods, scf,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Attribute, Block, Identifier, Location, Region, Value, ValueLike,
@@ -85,30 +85,22 @@ pub fn build<'ctx, 'this>(
 /// Generate MLIR operations for the `u128_byte_reverse` libfunc.
 pub fn build_byte_reverse<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let bitwise =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let u128_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[1].ty,
-    )?;
-
-    let bswap_intrin_attr = StringAttribute::new(context, "llvm.bswap.i128").into();
-
     let arg1 = entry.argument(1)?.into();
-    mlir_asm! { context, entry, location =>
-        ; res = "llvm.call_intrinsic"(arg1) { "intrin" = bswap_intrin_attr } : (u128_ty) -> u128_ty
-    };
+
+    let res = entry
+        .append_operation(ods::llvm::intr_bswap(context, arg1, location).into())
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.br(0, &[bitwise, res], location));
     Ok(())
@@ -135,7 +127,7 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
-        .ok_or(ErrorImpl::ParseAttributeError)?;
+        .ok_or(Error::ParseAttributeError)?;
 
     mlir_asm! { context, entry, location =>
         ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty

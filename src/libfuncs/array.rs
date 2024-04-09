@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
@@ -24,11 +24,10 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
@@ -368,21 +367,17 @@ pub fn build_append<'ctx, 'this>(
             .append_operation(arith::muli(memmove_len, elem_stride, location))
             .result(0)?
             .into();
-        let is_volatile = memmove_block
-            .append_operation(arith::constant(
+        memmove_block.append_operation(
+            ods::llvm::intr_memmove(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-        memmove_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memmove"),
-            &[dst_ptr, src_ptr, memmove_len, is_volatile],
-            &[],
-            location,
-        ));
+                dst_ptr,
+                src_ptr,
+                memmove_len,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                location,
+            )
+            .into(),
+        );
 
         let k0 = memmove_block
             .append_operation(arith::constant(
@@ -821,23 +816,18 @@ pub fn build_get<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
         // TODO: Support clone-only types (those that are not copy).
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, elem_ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
+                context,
+                target_ptr,
+                elem_ptr,
+                elem_size,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                location,
+            )
+            .into(),
+        );
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -988,22 +978,17 @@ pub fn build_pop_front<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+                target_ptr,
+                ptr,
+                elem_size,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                location,
+            )
+            .into(),
+        );
 
         let k1 = valid_block
             .append_operation(arith::constant(
@@ -1217,22 +1202,17 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+                target_ptr,
+                ptr,
+                elem_size,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                location,
+            )
+            .into(),
+        );
 
         let value = valid_block
             .append_operation(llvm::insert_value(
@@ -1437,21 +1417,17 @@ pub fn build_slice<'ctx, 'this>(
             .result(0)?
             .into();
 
-        let is_volatile = slice_block
-            .append_operation(arith::constant(
+        slice_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                dst_ptr,
+                src_ptr,
+                dst_size,
+                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
                 location,
-            ))
-            .result(0)?
-            .into();
-        slice_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy"),
-            &[dst_ptr, src_ptr, dst_size, is_volatile],
-            &[],
-            location,
-        ));
+            )
+            .into(),
+        );
 
         let k0 = slice_block
             .append_operation(arith::constant(
@@ -2167,6 +2143,27 @@ mod test {
     }
 
     #[test]
+    fn seq_append2_popb1() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<u32> {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let mut data = data.span();
+                let _ = data.pop_back();
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_struct!([1u32].into())
+        );
+    }
+
+    #[test]
     fn seq_append1_popf1_append1() {
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -2265,6 +2262,35 @@ mod test {
     }
 
     #[test]
+    fn seq_append2_popb1_last() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> u32 {
+                let mut data = ArrayTrait::new();
+                data.append(1);
+                data.append(2);
+                let mut data_span = data.span();
+                let _ = data_span.pop_back();
+                let last = data_span.len() - 1;
+                *data_span.at(last)
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::from(1u32)],
+                    debug_name: None,
+                }),
+                debug_name: None,
+            }
+        );
+    }
+
+    #[test]
     fn seq_append1_popf1_append1_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
@@ -2311,5 +2337,25 @@ mod test {
                 debug_name: None,
             },
         );
+    }
+    #[test]
+    fn array_pop_back_state() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<u32> {
+                let mut numbers = ArrayTrait::new();
+                numbers.append(1_u32);
+                numbers.append(2_u32);
+                numbers.append(3_u32);
+                let mut numbers = numbers.span();
+                let _ = numbers.pop_back();
+                numbers
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(result, jit_struct!([1u32, 2u32].into()));
     }
 }

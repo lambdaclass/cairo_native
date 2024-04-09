@@ -3,7 +3,7 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{
-    error::CoreTypeBuilderError,
+    error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,

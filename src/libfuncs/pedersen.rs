@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -20,12 +20,11 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Identifier, Location,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Identifier, Location,
     },
     Context,
 };
@@ -139,29 +138,15 @@ pub fn build_pedersen<'ctx>(
     let op = entry.append_operation(arith::extui(rhs, i256_ty, location));
     let rhs_i256 = op.result(0)?.into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[lhs_i256])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let lhs_be = op.result(0)?.into();
+    let lhs_be = entry
+        .append_operation(ods::llvm::intr_bswap(context, lhs_i256, location).into())
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[rhs_i256])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let rhs_be = op.result(0)?.into();
+    let rhs_be = entry
+        .append_operation(ods::llvm::intr_bswap(context, rhs_i256, location).into())
+        .result(0)?
+        .into();
 
     entry.append_operation(llvm::store(
         context,
@@ -203,17 +188,10 @@ pub fn build_pedersen<'ctx>(
     ));
     let result_be = op.result(0)?.into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[result_be])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let result = op.result(0)?.into();
+    let result = entry
+        .append_operation(ods::llvm::intr_bswap(context, result_be, location).into())
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::trunci(result, felt252_ty, location));
     let result = op.result(0)?.into();
