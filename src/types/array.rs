@@ -137,8 +137,8 @@ fn snapshot_take<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                elem_stride.try_into()?,
                 IntegerType::new(context, 64).into(),
+                elem_stride.try_into()?,
             )
             .into(),
             location,
@@ -224,8 +224,8 @@ fn snapshot_take<'ctx, 'this>(
                     elem_ty,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        elem_layout.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        elem_layout.align() as i64,
                     ))),
                 ))
                 .result(0)?
@@ -240,8 +240,8 @@ fn snapshot_take<'ctx, 'this>(
                 dst_ptr,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    elem_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.align() as i64,
                 ))),
             ));
         }
@@ -252,7 +252,7 @@ fn snapshot_take<'ctx, 'this>(
                     dst_ptr,
                     src_ptr,
                     dst_len_bytes,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
                 )
                 .into(),
@@ -268,7 +268,7 @@ fn snapshot_take<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
             location,
         ))
         .result(0)?

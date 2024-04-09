@@ -117,7 +117,7 @@ fn build_match_nullable<'ctx, 'this>(
             .add_operands(&[arg, nullptr])
             .add_attributes(&[(
                 Identifier::new(context, "predicate"),
-                IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
             .build()?,

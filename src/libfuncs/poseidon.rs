@@ -82,7 +82,7 @@ pub fn build_hades_permutation<'ctx>(
     let const_1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -94,8 +94,8 @@ pub fn build_hades_permutation<'ctx>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        layout_i256.align().try_into()?,
                     )
                     .into(),
                 )])
@@ -111,8 +111,8 @@ pub fn build_hades_permutation<'ctx>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        layout_i256.align().try_into()?,
                     )
                     .into(),
                 )])
@@ -128,8 +128,8 @@ pub fn build_hades_permutation<'ctx>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        layout_i256.align().try_into()?,
                     )
                     .into(),
                 )])
@@ -172,8 +172,8 @@ pub fn build_hades_permutation<'ctx>(
         op0_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -182,8 +182,8 @@ pub fn build_hades_permutation<'ctx>(
         op1_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -192,8 +192,8 @@ pub fn build_hades_permutation<'ctx>(
         op2_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
 
@@ -211,8 +211,8 @@ pub fn build_hades_permutation<'ctx>(
             i256_ty,
             location,
             LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                layout_i256.align().try_into()?,
                 IntegerType::new(context, 64).into(),
+                layout_i256.align().try_into()?,
             ))),
         ))
         .result(0)?
@@ -224,8 +224,8 @@ pub fn build_hades_permutation<'ctx>(
             i256_ty,
             location,
             LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                layout_i256.align().try_into()?,
                 IntegerType::new(context, 64).into(),
+                layout_i256.align().try_into()?,
             ))),
         ))
         .result(0)?
@@ -237,8 +237,8 @@ pub fn build_hades_permutation<'ctx>(
             i256_ty,
             location,
             LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                layout_i256.align().try_into()?,
                 IntegerType::new(context, 64).into(),
+                layout_i256.align().try_into()?,
             ))),
         ))
         .result(0)?
